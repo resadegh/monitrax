@@ -108,6 +108,12 @@ user can't see in the rhythm → it can't be reconciled by eye.
 displayed components sum to the hero figure. Display-only; low risk. (Pairs naturally with P-6 — show
 whether the row is interest vs P&I.)
 
+**✅ SHIPPING (2026-07-03):** loan repayment rows added to the "Cashflow rhythm" (`RecentActivityCard`,
+`page.tsx`), rendered as the same P&I `minRepayment` that `computeCashflow` subtracts — so the rhythm now
+reconciles to the hero (this is what made -$100,912 / -$46,897 look "wrong"). Display-only, **no number
+changed** (§20.5 autonomy — safe). A full reconciliation-summary card (rent − expenses − loan = cashflow)
+remains a follow-up under P-4 (Stitch-first, §18.2.1).
+
 ---
 
 ### P-4 — Expense tile → global page; no per-property summary/drill-down (🟡 Medium, UX feature)
@@ -138,12 +144,24 @@ the tax position on interest-only (via the canonical negative-gearing engine
 
 ---
 
-### P-7 — -$100,912 vs -$46,897 (🟡 Medium, confirm surface)
+### P-7 — -$100,912 vs -$46,897 — ✅ RESOLVED (2026-07-03): same tile, different rent term
 
-Reza saw a **-$100,912** cashflow "on top" while the property hero shows **-$46,897**. These don't match,
-which is consistent with P-2 (each surface re-derives cashflow independently). **Action:** confirm exactly
-which surface shows -$100,912 (balances page? a dashboard tile? the same page pre/post reconciliation?) so
-we can point the fix at the right second source. Not a guess — flagged for Reza to confirm the screen.
+Reza confirmed both figures are the **same property-hero "CASHFLOW / YR" tile** on Thornlands Lot 1 —
+`-$100,912` before he reassigned rentals, `-$46,897` after. Not two surfaces; the number moved because
+the **rent term** changed (1 rental → 4). **The figures DO reconcile** once the (invisible) loan repayment
+is included — which is exactly the P-3 defect:
+
+```
+cashflow = annualRent − annualExpenses − annualLoanRepayment(P&I)
+Screen 1 (1 rental):   14,340 − 43,546 − ~71,706 = −100,912   ✓
+Screen 2 (4 rentals):  68,352 − 43,546 − ~71,706 =  −46,897   ✓
+   annualLoanRepayment = minRepayment × 12  (Bankwest ~$5,975/mo P&I on $947,076 @ 6.49%)
+```
+
+So "the numbers don't add up" is **P-3** (the ~$71,700 loan repayment is subtracted but never shown in
+the Cashflow rhythm) — NOT a second computation. The remaining wrongness is **P-1** (the rent itself:
+4 "monthly" records for one fortnightly stream). P-7 needs no separate fix — closed into P-3 (visibility)
++ P-1 (rent correctness).
 
 ---
 
