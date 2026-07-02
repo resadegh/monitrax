@@ -768,3 +768,19 @@ Every claim verified in source (orchestrator overlay loop :231-245, 0 production
 
 ### §20.4 review → 10/10 (trivial UI affordance; not a financial build)
 Obvious, discoverable back affordance (full-width sky pill + arrow, not a subtle text link); clears both drill + search so one button always returns to the first layer. tsc + eslint clean. 10/10.
+
+---
+
+## Session: property-cashflow-issue-tracker (investigation + tracker — 2026-07-03)
+
+### Changes Made
+- **Type**: Investigation + issue tracker (NO code, NO financial logic changed — docs only). Reza reported a property's numbers don't reconcile and asked to find the issues + create an issue tracker.
+- Investigated per §19 (verified in source, never guessed), §21.5 (Neomatrix-first), §12.2.1 (SSOT). Two parallel Explore agents mapped the property-detail page data flow + the reconcile→Income frequency write path; findings verified against source `file:line`.
+- **7 issues found (P-1…P-7)** — see `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md`. Headline: the property page computes every KPI inline from DECLARED records (ignoring the API's own reconciled-transaction actuals). P-1 fortnightly rent stored/treated as MONTHLY (~54% off); P-2 inline cashflow not the canonical engine (SSOT drift across surfaces); P-5 DEPRECIATION/YR always $0 (reads `annualClaim`, a non-existent model field); P-3 loan repayment missing from the "Cashflow rhythm"; P-4 expense tile → global page, no per-property summary; P-6 cash-vs-tax basis conflation; P-7 -$100,912 vs -$46,897 surface to confirm.
+
+### Files Modified
+- `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md` (new) — the tracker.
+- `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md` — finding + tracker link.
+
+### §20.4 3× self-review → 10/10 (investigation; not a build — no numbers changed)
+Every root cause verified in source (agents + direct reads; depreciation bonus bug grep-confirmed `annualClaim` exists only in page.tsx); number-changing issues (P-1/P-2/P-5/P-6) explicitly flagged as needing Reza's go-ahead (§19.3, never auto-fixed); P-7's -$100,912 marked "confirm surface" rather than guessed; the un-modelled-surface blind spot (§21.5) named as part of the P-2 fix. 10/10.

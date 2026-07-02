@@ -147,3 +147,15 @@
 **Reza decision (2026-06-26):** *"for uncomputed shells go with your recommendation, however document and plan it for later implementation."* → **Do NOT ship empty router shells now** (they'd return UNCOMPUTED-for-everyone, which implies a capability we don't have — §19). The full per-engine **data-capture + wiring + sequencing plan** is documented at **`docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md`** (recommended order: **FTE/IEE end-to-end first** as the proving slice — its trigger flag `hasFamilyTrustElection` is already captured, smallest new-capture gap). Implementation deferred until explicitly scheduled.
 
 **Surfaced in the graph:** the 3 unwired Neomatrix nodes are annotated with this verdict + flagged as allowed islands by the A6 connectivity gate (reviewed allowlist, §22.2) — they show honestly as disconnected (because they ARE unwired), not faked-connected. When a slice ships, the engine moves off the A6 allowlist + its lineage edges to the assembler/route are added in the **same PR** (§21.2.1 zero-drift) — the graph becoming connected is the proof the wiring is real.
+
+---
+
+### 🔎 Finding (2026-07-03) — Property detail cashflow/rent don't reconcile (7 issues, tracker opened)
+
+**Surfaced by:** Reza's review of a property (Thornland / Bankwest) whose numbers don't add up. Investigated per §19 (verified in source, no guessing) + §21.5 (Neomatrix-first) + §12.2.1 (SSOT).
+
+**Tracker (SSOT for this cluster):** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md` — 7 issues (P-1…P-7) with verified `file:line` root causes, severity, number-changing flags, proposed fixes, and a recommended sequence.
+
+**Headline root cause:** `app/dashboard/properties/[id]/page.tsx` computes **every per-property KPI inline from DECLARED records** (`Income/Expense/Loan` × frequency) — no canonical engine, and it **ignores the reconciled-transaction actuals the API already computes** (§12.2.1 + §19.1). Highlights: **P-1** fortnightly rent stored/treated as MONTHLY (reconcile write paths never persist the detected cadence — `transactions/[id]/link/route.ts:318/156-166/656-663`) → rent ~54% off; **P-5** DEPRECIATION/YR always $0 (`page.tsx:170` reads `d.annualClaim`, a field absent from the `DepreciationSchedule` model); **P-3** loan repayment missing from the "Cashflow rhythm" list though cashflow subtracts it; **P-4** expense tile → global page, no per-property summary (Reza wants a summary card + drill-down; Stitch-first §18.2.1).
+
+**Status:** investigation complete; fixes DEFERRED — P-1/P-2/P-5/P-6 change user-facing money numbers → Reza's go-ahead + scheduling required (§19.3). None of these inline compute helpers are modelled in the Neomatrix (the blind spot that let the drift slip); modelling them with a `semanticKey` is part of the P-2 fix so A3 convergence catches future drift.
