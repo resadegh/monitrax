@@ -340,10 +340,10 @@
       "semanticKey": "moneyStoryMargin",
       "produces": "Renders the FreedomRibbon (earned vs spent) + Cash Flow / Income / Outgoings KPI sparklines; quiet empty state when <2 months of data.",
       "formula": null,
-      "authority": "app/api/dashboard/insights/route.ts:173 getMoneyStoryTrend(userId, 12)",
+      "authority": "app/api/dashboard/insights/route.ts:198 getMoneyStoryTrend(userId, 12)",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "app/api/dashboard/insights/route.ts:173",
+      "verifiedBy": "app/api/dashboard/insights/route.ts:198",
       "workedExample": null,
       "verifiedDate": "2026-06-24",
       "status": "documented"
@@ -2455,18 +2455,18 @@
       "kind": "orchestrator",
       "label": "Dashboard insights composer",
       "file": "app/api/dashboard/insights/route.ts",
-      "line": 171,
+      "line": 172,
       "layer": "route",
       "domain": "core",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders.",
-      "formula": "Composition root for the dashboard: GET handler calls getMasterFinancialSnapshot(userId) (:161) and getMoneyStoryTrend(userId,12) (:173), merges into the insights response.",
+      "produces": "The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. Phase 57: kpiTiles.canonical serves the trailing-12-month basis (declared-plan fallback) that the dashboard KPI tiles headline.",
+      "formula": "Composition root for the dashboard: GET handler calls getMasterFinancialSnapshot(userId) (:177) and getMoneyStoryTrend(userId,12) (:198), merges into the insights response.",
       "authority": "CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "app/api/dashboard/insights/route.ts:156,161,173 (read this session)",
+      "verifiedBy": "app/api/dashboard/insights/route.ts:172,177,198 (read 2026-07-02)",
       "workedExample": null,
       "verifiedDate": "2026-06-25",
       "status": "documented"
@@ -6461,7 +6461,7 @@
       "source": "verified",
       "fromUnit": "%",
       "toUnit": "%",
-      "evidence": "app/api/dashboard/insights/route.ts:173",
+      "evidence": "app/api/dashboard/insights/route.ts:198",
       "verifiedDate": "2026-06-24"
     },
     {
@@ -6681,7 +6681,7 @@
       "source": "verified",
       "fromUnit": null,
       "toUnit": null,
-      "evidence": "app/api/dashboard/insights/route.ts:161 getMasterFinancialSnapshot(userId)",
+      "evidence": "app/api/dashboard/insights/route.ts:177 getMasterFinancialSnapshot(userId)",
       "verifiedDate": "2026-06-24"
     },
     {
@@ -6691,7 +6691,7 @@
       "source": "verified",
       "fromUnit": null,
       "toUnit": null,
-      "evidence": "app/api/dashboard/insights/route.ts:173 getMoneyStoryTrend(userId,12) — same route composes both",
+      "evidence": "app/api/dashboard/insights/route.ts:198 getMoneyStoryTrend(userId,12) — same route composes both",
       "verifiedDate": "2026-06-24"
     },
     {
