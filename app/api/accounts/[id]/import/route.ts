@@ -14,6 +14,7 @@ import { withPermission } from '@/lib/auth/guards';
 // 2026-06-10 second incident) and returns a non-JSON error page to the dialog.
 export const maxDuration = 300;
 import { parseQIF, isValidQIF } from '@/lib/bank/parsers/qif';
+import { parseCSV } from '@/lib/bank/parsers/csv';
 import { normaliseTransactions } from '@/lib/bank/normalisation';
 import { detectDuplicates, detectOverlap, getDuplicateSummaryMessage } from '@/lib/bank/smartDuplicateDetection';
 import { balanceWriteFields } from '@/lib/utils/accountBalance';
@@ -194,18 +195,28 @@ export const POST = withPermission<RouteContext>('account.write', async (request
       let parsedFile;
       const fileName = file.name.toLowerCase();
 
+      // QIF or CSV (many AU banks — e.g. NAB, ING — export CSV, not QIF).
+      // QIF is content-sniffable; CSV is matched by extension so a QIF is never
+      // mis-parsed as a headerless CSV. Both parsers return the same ParsedFile.
       if (fileName.endsWith('.qif') || isValidQIF(content)) {
         parsedFile = parseQIF(content);
+      } else if (fileName.endsWith('.csv')) {
+        parsedFile = parseCSV(content);
       } else {
         return NextResponse.json(
-          { error: 'Unsupported file format. Please upload a QIF file.' },
+          { error: 'Unsupported file format. Please upload a QIF or CSV file.' },
           { status: 400 }
         );
       }
 
       if (parsedFile.transactions.length === 0) {
+        // For CSV this usually means the date/description/amount columns weren't
+        // recognised — point the user at the fix rather than a dead end.
+        const emptyMsg = fileName.endsWith('.csv')
+          ? 'No transactions found. Check the CSV has date, description and amount columns (a header row helps us map them).'
+          : 'No transactions found in file';
         return NextResponse.json(
-          { error: 'No transactions found in file' },
+          { error: emptyMsg },
           { status: 400 }
         );
       }

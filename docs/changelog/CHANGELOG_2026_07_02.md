@@ -20,3 +20,27 @@
 
 ### Self-review gate (§20.5) — financial build 10/10
 Requirement: stop the import timeout without losing categorisation or correctness. 3× review: v1 drop only grounding at import (rejected — still N serial ungrounded calls + per-import cost) → v2 deterministic-only import + AI on-demand (chosen — fully fixes timeout + cost; §54.2 means AI guesses went to review regardless, so identical outcome) → v3 confirmed known merchants still categorise (RULE/KB) and the on-demand re-scan is the deduped/capped home for AI. Numbers unchanged; §19.1 actuals unaffected.
+
+---
+
+## Fix — CSV import: the account import route now accepts CSV (not just QIF)
+
+**Type**: Fix (Reza: "some banks still don't have QIF! … fix CSV upload"). The Import dialog offered "QIF or CSV" and the file picker accepted `.csv`, but `POST /api/accounts/[id]/import` only handled QIF → CSV uploads returned "Unsupported file format. Please upload a QIF file."
+
+**Root cause (verified in source):** the route's format branch (`route.ts:197`) called `parseQIF` for `.qif`/QIF-content and rejected everything else. A `parseCSV` parser already existed (`lib/bank/parsers/csv.ts`, returning the same `ParsedFile` shape) but was never wired into this route — only the separate `/api/bank/preview` + `/api/bank/import` routes used it.
+
+**Fix:**
+1. Wired `parseCSV` into the account import route: `.csv` extension → `parseCSV(content)` (QIF stays content-sniffed so a QIF is never mis-parsed as CSV). Error copy → "QIF or CSV file"; the empty-CSV message now points at the date/description/amount columns.
+2. **Parser robustness (§19 — don't ship a feature that drops data):** while testing I found the greedy bank-mapping fuzzy-match (60% header overlap) could pick a bank (e.g. ANZ) for a generic `date,description,amount` CSV, then fail to find that bank's differently-named column (ANZ's `Details`) and **silently drop the description** → blank merchants → everything uncategorised. Added `resolveCol()` in `parseCSV`: when an explicit/mapping column NAME isn't present in the actual headers it falls THROUGH to the positional default (date→col0, description→col1) instead of returning -1. Optional columns (amount/credit/debit/balance/ref) still resolve to -1 (truly absent). Real banks with distinctive headers (NAB/CBA/Westpac/ING/Up) are unaffected — their columns resolve, so the fallback never fires.
+
+### Files Modified
+- `app/api/accounts/[id]/import/route.ts` — import + wire `parseCSV`; CSV-aware error copy.
+- `lib/bank/parsers/csv.ts` — `resolveCol()` fallback so a mis-detected/generic CSV never drops date/description.
+- `tests/bank/csvParser.test.ts` — NEW (4): generic signed-amount CSV, NAB Debits/Credits CSV, garbage → 0, empty → 0.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — import-route anchors updated (POST 105→106; edges 247→258/254→265/338→349; §21.2.1).
+
+### Testing
+- [x] 126 bank + neobrain tests green (incl. 4 new CSV). `tsc` clean on touched files. `neomatrix:check` green (150/150 anchors).
+
+### Self-review gate (§20.5) — 10/10
+Requirement: accept CSV so QIF-less banks can import. 3× review: v1 wire parseCSV only (rejected — my own test proved generic CSVs silently lose descriptions via the ANZ fuzzy-mis-map) → v2 add resolveCol positional fallback so no CSV drops date/description → v3 confirmed real-bank CSVs (distinctive headers) are untouched + optional columns stay -1. SSOT: reuses the one existing `parseCSV` (§12.2.1), no parallel parser.

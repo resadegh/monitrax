@@ -87,7 +87,7 @@
 | **Routing memory (write)** | `lib/documents/intelligence/learnedRouting.ts:78` | engine | neobrain | Routing memory write — increments (userId, vendorKey, entityType, entityId) so a vendor's documents pre-select the same asset next time (suggestion only). | Phase 50 D.4 (learned routing) |  | documented |
 | **Routing memory (read)** | `lib/documents/intelligence/learnedRouting.ts:123` | engine | neobrain | Most-used entity hint for a vendor (or null) — the pre-selection for 'What is this for?' on a new scan/upload. Suggestion, never auto-applied. | Phase 50 D.4 |  | documented |
 | **Document Management Engine (DME)** | `lib/documents/engine/DocumentManagementEngine.ts:79` | engine | neobrain | EngineResult — stores the file (GCS/Monitrax), dedups by SHA256, routes to the right Vault path/folder, creates entity DocumentLinks. | Phase 25 (DME) + Phase 50 |  | documented |
-| **Transaction import pipeline** | `app/api/accounts/[id]/import/route.ts:105` | route | neobrain | QIF/CSV import — parse, dedup, categoriseWithLearning, classifyByConfidence, write auto-accepts to UnifiedTransaction + park the rest in the review queue. | Phase 29 / Phase 51 |  | documented |
+| **Transaction import pipeline** | `app/api/accounts/[id]/import/route.ts:106` | route | neobrain | QIF/CSV import — parse, dedup, categoriseWithLearning, classifyByConfidence, write auto-accepts to UnifiedTransaction + park the rest in the review queue. | Phase 29 / Phase 51 |  | documented |
 | **Document upload intake** | `app/api/documents/upload/route.ts:25` | route | neobrain | Upload intake — DME.processUpload (store + route) then optional DIE.analyzeDocument (recognise + extract). | Phase 25/26/50 |  | documented |
 | **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
 | **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
@@ -423,10 +423,10 @@
 | Transaction categoriser (hybrid cascade) | → | Gemini-on-miss (RAG) | falls-back-to | — | verified | lib/tie/categorisation.ts:732 |
 | UnifiedTransaction.description (raw text) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:571 |
 | MerchantMapping (per-user learned map) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:600 |
-| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:247 |
+| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:258 |
 | UserCategorizationSettings (thresholds) | → | Confidence-band classifier | feeds | — | verified | lib/bank/aiCategorisation.ts:539 |
-| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:254 |
-| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:338 |
+| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:265 |
+| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:349 |
 | Review-queue confirm (SSOT) | → | UnifiedTransaction | feeds | — | verified | lib/bank/reviewQueue.ts:194 |
 | Review-queue confirm (SSOT) | → | KB write gate (human-only) | feeds | — | verified | lib/bank/reviewQueue.ts:244 |
 | Review-queue confirm (SSOT) | → | Per-user learning loop | feeds | — | verified | lib/bank/reviewQueue.ts:282 |
