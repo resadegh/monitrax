@@ -182,10 +182,58 @@ interface UnknownRow {
   currentStandardised: string | null;
 }
 
+/** A category-free result used to drive `planBackfillWrite` for a NAME-ONLY pass. */
+const NAME_ONLY_RESULT = {
+  source: 'FALLBACK',
+  confidence: 0,
+  categoryLevel1: '',
+  categoryLevel2: null,
+  subcategory: null,
+} as const;
+
+/**
+ * Cosmetic merchant-NAME tidy-up across ALL of a user's rows, REGARDLESS of
+ * category (Reza 2026-07-01: "broaden the tidy up"). Re-runs the P1/P2 denoiser
+ * and updates `merchantStandardised` only when it changed.
+ *
+ * NON-DESTRUCTIVE + §12.11-safe: it touches ONLY the DERIVED display name — never
+ * user-entered data (category, amount, links) and never `userCorrectedCategory`.
+ * So cleaning a row the user already confirmed just fixes how its name READS
+ * ("16 49hjs North Parramatta" → "Hungry Jacks") without altering their category.
+ * Reuses the tested rename policy in `planBackfillWrite` (§12.2.1). Returns the
+ * number of rows whose name was cleaned.
+ */
+export async function renameAllMerchants(userId: string): Promise<number> {
+  const rows = await prisma.unifiedTransaction.findMany({
+    where: { userId },
+    select: { id: true, merchantRaw: true, description: true, merchantStandardised: true },
+  });
+  let renamed = 0;
+  for (const row of rows) {
+    const cleaned = renormaliseMerchant(row.merchantRaw || row.description || '');
+    const plan = planBackfillWrite(row.merchantStandardised, cleaned, NAME_ONLY_RESULT);
+    if (!plan.renamed) continue;
+    await prisma.unifiedTransaction.update({
+      where: { id: row.id },
+      data: { merchantStandardised: cleaned },
+    });
+    renamed++;
+  }
+  return renamed;
+}
+
 export async function recategoriseUncategorised(
   userId: string,
   opts: RecategoriseOptions = {},
 ): Promise<RecategoriseResult> {
+  // Pass A — cosmetic name tidy-up across ALL rows regardless of category
+  // (Reza 2026-07-01: "broaden the tidy up"). Name-only + non-destructive, so a
+  // row the user confirmed long ago also gets its noisy name cleaned. Runs FIRST
+  // so Pass B reads the already-cleaned names (no double rename-write).
+  const renamed = await renameAllMerchants(userId);
+
+  // Pass B — deterministic CATEGORY fill on the still-uncategorised rows (names
+  // are already tidy from Pass A).
   const rows = await prisma.unifiedTransaction.findMany({
     where: uncategorisedGuard(userId),
     select: {
@@ -201,15 +249,9 @@ export async function recategoriseUncategorised(
     },
     take: MAX_ROWS_PER_RUN,
   });
-  const empty: RecategoriseResult = {
-    scanned: 0,
-    recategorised: 0,
-    renamed: 0,
-    aiSuggested: 0,
-    aiMerchantsQueried: 0,
-    aiCapped: false,
-  };
-  if (rows.length === 0) return empty;
+  if (rows.length === 0) {
+    return { scanned: 0, recategorised: 0, renamed, aiSuggested: 0, aiMerchantsQueried: 0, aiCapped: false };
+  }
 
   // Cascade layer 1 — the user's private + global merchant mappings (one query).
   const merchantMappings = (await prisma.merchantMapping.findMany({
@@ -217,7 +259,6 @@ export async function recategoriseUncategorised(
   })) as unknown as MerchantMapping[];
 
   let recategorised = 0;
-  let renamed = 0;
   const stillUnknown: UnknownRow[] = [];
 
   for (const row of rows) {
@@ -248,7 +289,8 @@ export async function recategoriseUncategorised(
     const result = await categoriseTransaction(uni, { merchantMappings, skipAiOnMiss: true });
     const plan = planBackfillWrite(row.merchantStandardised, cleaned, result);
 
-    if (Object.keys(plan.data).length > 0) {
+    // Names were tidied in Pass A, so only the CATEGORY fill matters here.
+    if (plan.recategorised) {
       // §12.11 — re-assert the guard at WRITE time (updateMany, not update): the row
       // must STILL be uncategorised/unlinked, so a category the user set between the
       // read and the write is never clobbered.
@@ -256,14 +298,9 @@ export async function recategoriseUncategorised(
         where: { id: row.id, ...uncategorisedGuard(userId) },
         data: plan.data,
       });
-      if (written.count > 0) {
-        if (plan.renamed) renamed++;
-        if (plan.recategorised) recategorised++;
-      }
-    }
-
-    // Deterministic layers missed → an AI-tail candidate (name is now cleaned).
-    if (!plan.recategorised) {
+      if (written.count > 0) recategorised++;
+    } else {
+      // Deterministic layers missed → an AI-tail candidate (name already cleaned).
       stillUnknown.push({ id: row.id, rawForAi, currentStandardised: cleaned || row.merchantStandardised });
     }
   }
