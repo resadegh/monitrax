@@ -413,9 +413,29 @@ interface MoneyStoryProps {
   freedomYears: number;
   marginDeltaPoints: number;
   ribbon: RibbonPoint[];
+  // Phase 58 (Freedom hero) — Financial Independence coverage. When supplied,
+  // the hero leads with "N% of your lifestyle is funded by your portfolio".
+  coverageNow?: number;
+  coverageAt60?: number;
+  passiveMonthly?: number;
+  incomeProducingCount?: number;
+  growthBuildingCount?: number;
+  freedomHasData?: boolean;
 }
 
-export function GlassMoneyStoryHero({ earned, kept, freedomYears, marginDeltaPoints, ribbon }: MoneyStoryProps) {
+export function GlassMoneyStoryHero({
+  earned,
+  kept,
+  freedomYears,
+  marginDeltaPoints,
+  ribbon,
+  coverageNow,
+  coverageAt60,
+  passiveMonthly,
+  incomeProducingCount,
+  growthBuildingCount,
+  freedomHasData,
+}: MoneyStoryProps) {
   return (
     <GlassPanel subPalette="emerald" radius="hero" padding="p-0">
       <div className="[&>article]:!border-0 [&>article]:!bg-transparent [&>article]:!shadow-none [&>div]:!border-0 [&>div]:!bg-transparent [&>div]:!shadow-none">
@@ -425,6 +445,12 @@ export function GlassMoneyStoryHero({ earned, kept, freedomYears, marginDeltaPoi
           freedomYears={freedomYears}
           marginDeltaPoints={marginDeltaPoints}
           trendData={ribbon}
+          coverageNow={coverageNow}
+          coverageAt60={coverageAt60}
+          passiveMonthly={passiveMonthly}
+          incomeProducingCount={incomeProducingCount}
+          growthBuildingCount={growthBuildingCount}
+          freedomHasData={freedomHasData}
         />
       </div>
     </GlassPanel>

@@ -8,6 +8,18 @@
 
 ## 🟡 Active Workstreams
 
+### 0·DASH-KPI. Dashboard KPI tiles — trailing basis (Phase 57, Reza review 2026-07-02)
+
+- **Status:** 🟢 SHIPPING — KPI tiles (income/outgoings/saving-rate/cash-flow) fixed; PR open. Freedom Horizon reframe **deferred** pending Reza's product-philosophy pick.
+- **Started:** 2026-07-02.
+- **Owner:** Reza (direction + Freedom Horizon fork) + Claude (research + build).
+- **Last touched:** 2026-07-02 — root-caused + built the trailing-basis fix.
+- **Source of truth:** [`docs/blueprint/PHASE_57_DASHBOARD_KPI_TRAILING_BASIS.md`](../blueprint/PHASE_57_DASHBOARD_KPI_TRAILING_BASIS.md).
+- **Root cause (verified):** the tiles headlined the **in-progress current month × 12** — early each month that's ~$0 income → $0 saving rate (net÷0) → `-100% YoY`. Path: `page.tsx cf.*` ← `insights.kpiTiles.canonical` ← `getCanonicalMonthlyCashflow` ← `actualCashflow.currentMonth*`.
+- **Fix (Reza-approved A + X):** headline the **trailing basis** (avg of COMPLETE populated months × 12, current month excluded, data-driven divisor) computed once in `moneyStoryTrend` (§12.2.1, no parallel source); declared-plan fallback + em-dash/nudge instead of a bare `$0`; basis label. §19.2 worked example in the A1 test; Neomatrix node updated same-PR.
+- **✅ Freedom Horizon fork — DECIDED (Reza delegated → my 10/10 pick, 2026-07-02):** reframed into the **Financial Independence hero** (Phase 58, [`PHASE_58_FREEDOM_HERO.md`](../blueprint/PHASE_58_FREEDOM_HERO.md)): *"your portfolio covers N% of the life you live"* = net accessible passive income ÷ trailing real spend. NET (per-property net cashflow + dividends/interest/royalties — never gross rent), ACCESSIBLE (super excluded from "now", surfaced as an "at 60" 4%-drawdown layer), growth-vs-income split reframes geared property. New canonical engine `lib/calculations/financialIndependence.ts` + Neomatrix node + A1 worked example; `MARGIN 100%` fixed via trailing-basis earned/kept. Shipping in PR #1330 (same branch).
+- **Follow-ups (Phase 58):** wire the "wealth grew $X while you slept" momentum line (net-worth history — engine already supports it); SMSF preservation gating for the "now" figure; regenerate Layer-0 structural graph via `graphify` (manifest hand-reconciled in-sandbox).
+
 ### 0·MOBILE-ACTIVITY. Mobile Activity / Reconciliation redesign (Reza report 2026-06-30)
 
 - **Status:** 🟢 SHIPPING — PR-A/B (#1303), PR-C (#1304), 56.1 tap (#1305), 56.2 card-deck (#1306) all **merged**. **56.3 review-count SSOT** (Reza: Home "78" ≠ Activity "365" + deck wouldn't open + numeric search) → PR open: one `reviewQueue.ts` SSOT (unconfirmed, all-time) read by Home + Activity bands + deck; deck fed the full set (fixes "won't open"); "Fix now" → `?review=1`; numeric amount search.
