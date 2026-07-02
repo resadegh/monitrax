@@ -86,3 +86,40 @@ describe('parseCSV — headerless CSVs (NAB-style; 2026-07-02 fix)', () => {
     expect(out.transactions[0].direction).toBe('OUT');
   });
 });
+
+describe('parseCSV — blank-column immunity + odd bank formats (2026-07-02)', () => {
+  it('AMEX/Qantas-style CSV with a BLANK column + full-month dates parses correctly', () => {
+    // Date, Amount(signed), Account, <blank>, Type, Details, Category, Merchant, Processed.
+    // The blank column previously matched EVERY pattern (p.includes('') === true),
+    // so a bank "matched" 100% and every lookup collapsed onto the blank column
+    // → "Missing or invalid amount".
+    const csv = [
+      'Date,Amount,Account Number,,Transaction Type,Transaction Details,Category,Merchant Name,Processed On',
+      '27 June 26,500.00,Card ending 6000,,CREDIT CARD PAYMENT,BPAY PAYMENT - THANK YOU,Internal transfers,,29 June 26',
+      '20 June 26,-28.62,Card ending 7959,,CREDIT CARD PURCHASE,OPENAI *CHATGPT SUBSCR SAN FRANCISCO,Electronics,OpenAI,21 June 26',
+    ].join('\n');
+    const out = parseCSV(csv);
+    expect(out.transactions).toHaveLength(2);
+    // amount comes from the real Amount column, NOT the blank column
+    expect(out.transactions[0].amount).toBeCloseTo(500, 2);
+    expect(out.transactions[0].direction).toBe('IN');
+    expect(out.transactions[0].description).toContain('BPAY PAYMENT');
+    expect(Math.abs(out.transactions[1].amount!)).toBeCloseTo(28.62, 2);
+    expect(out.transactions[1].direction).toBe('OUT');
+    expect(out.transactions[1].description).toContain('OPENAI');
+  });
+
+  it('a headed CSV from an UNKNOWN bank infers columns from the data', () => {
+    // No known-bank header names; a blank column present too.
+    const csv = [
+      'When,,Memo,Value,Running Total',
+      '2026-07-01,,Coffee shop,-4.50,995.50',
+      '2026-06-30,,Payday,2000.00,1000.00',
+    ].join('\n');
+    const out = parseCSV(csv);
+    expect(out.transactions).toHaveLength(2);
+    expect(Math.abs(out.transactions[0].amount!)).toBeCloseTo(4.5, 2); // "Value", not "Running Total"
+    expect(out.transactions[0].direction).toBe('OUT');
+    expect(out.transactions[1].direction).toBe('IN');
+  });
+});
