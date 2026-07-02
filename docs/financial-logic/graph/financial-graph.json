@@ -277,14 +277,14 @@
       "kind": "engine",
       "label": "Money Story 12-month trend (earned vs spent)",
       "file": "lib/calculations/moneyStoryTrend.ts",
-      "line": 68,
+      "line": 88,
       "layer": "engine",
       "domain": "core",
       "trailStage": "T",
       "regime": null,
       "semanticKey": null,
-      "produces": "MoneyStoryTrendResult — per-month RibbonPoint{spent, kept}, currentMargin, baselineMargin, marginDeltaPoints, monthly earned/spent/netCashflow series + KPI deltas. Powers the Money Story v2 hero + KPI sparklines.",
-      "formula": "Bucket transactions by YYYY-MM (IN→earned, OUT→+|amount| spent); kept = max(0, round(earned−spent)); currentMargin = round(last.kept/lastEarned×100) (lastEarned = kept+spent); incomeDeltaPct = round((earnedLast−earnedFirst)/earnedFirst×1000)/10; cashflowDeltaMonthly = last−prev month net; outgoingsDeltaVsAvg = round(lastSpent − windowAvg). Honesty gate: <2 months with activity → empty.",
+      "produces": "MoneyStoryTrendResult — per-month RibbonPoint{spent, kept}, currentMargin, baselineMargin, marginDeltaPoints, monthly earned/spent/netCashflow series + KPI deltas, AND (Phase 57) the trailing annual basis annualIncome/annualOutgoings/annualNet/avgMonthlyNet/savingsRateTrailing/trailingMonthsWithData. Powers the Money Story v2 hero + the dashboard KPI tiles (income/outgoings/saving-rate/cash-flow headline the trailing basis).",
+      "formula": "Bucket transactions by YYYY-MM (IN→earned, OUT→+|amount| spent); kept = max(0, round(earned−spent)); currentMargin = round(last.kept/lastEarned×100) (lastEarned = kept+spent). Phase 57 (2026-07-02): deltas + the trailing annual basis EXCLUDE the in-progress current month (the last bucket) — complete* = series.slice(0,-1). incomeDeltaPct = round((earnedLast−earnedFirst)/earnedFirst×1000)/10 over complete months; cashflowDeltaMonthly = lastComplete−prevComplete month net; outgoingsDeltaVsAvg = round(lastCompleteSpent − avgOfPopulatedCompleteSpent). Trailing annual = avg of COMPLETE populated months × 12 (data-driven divisor): annualIncome = round(avg(completeEarned>0)×12), annualOutgoings likewise, annualNet = annualIncome−annualOutgoings, savingsRateTrailing = round(annualNet/annualIncome×1000)/10. Honesty gate: <2 months with activity → empty; 0 trailing when no complete populated months (consumer falls back to declared plan, §19.1).",
       "authority": "CLAUDE.md §0 financial-adviser honesty contract (never invent data; zero months render zero, never interpolated) + §19.1 (actual transactions)",
       "inputs": [
         {
@@ -302,8 +302,8 @@
       ],
       "astHash": null,
       "verifiedBy": "tests/neomatrix/moneyStoryTrendAudit.test.ts (A1 law-referenced, prisma-mocked + fake timers) + lib/calculations/moneyStoryTrend.ts:77 (SSOT: reads UnifiedTransaction, transfers excluded — 2026-06-25)",
-      "workedExample": "May earned 10k/spent 6k, June earned 12k/spent 6k → currentMargin 50, baselineMargin 40, marginΔ +10pts, incomeΔ +20.0%, cashflowΔ +2,000, outgoingsΔvsAvg +5,000; kept clamps ≥0; <2 months → empty",
-      "verifiedDate": "2026-06-25",
+      "workedExample": "Phase 57 (partial current month): clock=Jun 15; complete Mar/Apr/May earned 38k/40k/42k & spent 30k/28k/32k, June (current) $0 income + $200 spent → EXCLUDE June: annualIncome = avg(38k,40k,42k)=40k ×12 = 480,000; annualOutgoings = avg(30k,28k,32k)=30k ×12 = 360,000; annualNet 120,000; avgMonthlyNet 10,000; savingsRateTrailing 25.0%; incomeΔ (42k−38k)/38k = +10.5% (never −100%); cashflowΔ May10k−Apr12k = −2,000; outgoingsΔvsAvg 32k−30k = +2,000; trailingMonthsWithData 3. (Legacy margin example: May 10k/6k, June 12k/6k → currentMargin 50, baselineMargin 40, marginΔ +10pts.)",
+      "verifiedDate": "2026-07-02",
       "status": "documented"
     },
     {

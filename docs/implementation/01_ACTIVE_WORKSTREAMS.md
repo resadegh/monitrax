@@ -8,6 +8,17 @@
 
 ## 🟡 Active Workstreams
 
+### 0·DASH-KPI. Dashboard KPI tiles — trailing basis (Phase 57, Reza review 2026-07-02)
+
+- **Status:** 🟢 SHIPPING — KPI tiles (income/outgoings/saving-rate/cash-flow) fixed; PR open. Freedom Horizon reframe **deferred** pending Reza's product-philosophy pick.
+- **Started:** 2026-07-02.
+- **Owner:** Reza (direction + Freedom Horizon fork) + Claude (research + build).
+- **Last touched:** 2026-07-02 — root-caused + built the trailing-basis fix.
+- **Source of truth:** [`docs/blueprint/PHASE_57_DASHBOARD_KPI_TRAILING_BASIS.md`](../blueprint/PHASE_57_DASHBOARD_KPI_TRAILING_BASIS.md).
+- **Root cause (verified):** the tiles headlined the **in-progress current month × 12** — early each month that's ~$0 income → $0 saving rate (net÷0) → `-100% YoY`. Path: `page.tsx cf.*` ← `insights.kpiTiles.canonical` ← `getCanonicalMonthlyCashflow` ← `actualCashflow.currentMonth*`.
+- **Fix (Reza-approved A + X):** headline the **trailing basis** (avg of COMPLETE populated months × 12, current month excluded, data-driven divisor) computed once in `moneyStoryTrend` (§12.2.1, no parallel source); declared-plan fallback + em-dash/nudge instead of a bare `$0`; basis label. §19.2 worked example in the A1 test; Neomatrix node updated same-PR.
+- **Open decision (Reza) — Freedom Horizon fork:** the hero `MARGIN 100%` is the same partial-month bug; the `N months of freedom` is a liquid-cash runway mislabelled as "freedom" (ignores income + ~$5.5M assets; overlaps Emergency tile). Options: **F1** true work-optional runway (investable assets) · **F2** relabel as cash runway (then likely remove) · **F3** genuine FIRE-progress (passive income ÷ expenses; most TRAIL-aligned). Ships once chosen.
+
 ### 0·MOBILE-ACTIVITY. Mobile Activity / Reconciliation redesign (Reza report 2026-06-30)
 
 - **Status:** 🟢 SHIPPING — PR-A/B (#1303), PR-C (#1304), 56.1 tap (#1305), 56.2 card-deck (#1306) all **merged**. **56.3 review-count SSOT** (Reza: Home "78" ≠ Activity "365" + deck wouldn't open + numeric search) → PR open: one `reviewQueue.ts` SSOT (unconfirmed, all-time) read by Home + Activity bands + deck; deck fed the full set (fixes "won't open"); "Fix now" → `?review=1`; numeric amount search.

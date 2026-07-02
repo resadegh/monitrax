@@ -163,7 +163,8 @@ interface DashboardInsights {
       monthlyOutflow: number;
       annualOutflow: number;
       savingsRate: number;
-      basis: 'actual' | 'declared';
+      // Phase 57 — 'actual-ttm' = trailing 12-month actuals (the tile headline basis).
+      basis: 'actual' | 'actual-ttm' | 'declared';
     };
   };
 }
@@ -494,16 +495,47 @@ export const GET = withPermission('report.read', async (request, auth) => {
           incomeMonthly: snapshot.quickMetrics.monthlyGrossIncome,
           // SSOT canonical cashflow (§12.2 / §19.1) — precomputed actuals-aware
           // figures the dashboard headline tiles read verbatim.
-          canonical: {
-            monthlyNet: canonicalCashflow.net,
-            annualNet: canonicalCashflow.net * 12,
-            monthlyInflow: canonicalCashflow.inflow,
-            annualInflow: canonicalCashflow.inflow * 12,
-            monthlyOutflow: canonicalCashflow.outflow,
-            annualOutflow: canonicalCashflow.outflow * 12,
-            savingsRate: canonicalCashflow.savingsRate,
-            basis: canonicalCashflow.basis,
-          },
+          //
+          // Phase 57 (2026-07-02) — the "Annual income / outgoings / saving rate"
+          // + "Monthly cash flow" tiles headline the TRAILING basis (average of
+          // COMPLETE populated months × 12, from moneyStoryTrend), NOT the
+          // in-progress current month × 12 (which read $0 in the first days of
+          // each month). Falls back to the declared PLAN when there are no
+          // complete actual months yet (a brand-new user), so a tile is never a
+          // misleading bare $0 (§19.1 actuals-win-when-present; declared = plan).
+          canonical: (() => {
+            const hasTrailing =
+              moneyStoryTrend.trailingMonthsWithData > 0 &&
+              (moneyStoryTrend.annualIncome > 0 || moneyStoryTrend.annualOutgoings > 0);
+            if (hasTrailing) {
+              return {
+                monthlyNet: moneyStoryTrend.avgMonthlyNet,
+                annualNet: moneyStoryTrend.annualNet,
+                monthlyInflow: Math.round(moneyStoryTrend.annualIncome / 12),
+                annualInflow: moneyStoryTrend.annualIncome,
+                monthlyOutflow: Math.round(moneyStoryTrend.annualOutgoings / 12),
+                annualOutflow: moneyStoryTrend.annualOutgoings,
+                savingsRate: moneyStoryTrend.savingsRateTrailing,
+                basis: 'actual-ttm' as const,
+              };
+            }
+            // Declared plan fallback (net income basis, matching "money in").
+            const inM = snapshot.quickMetrics.monthlyIncome;
+            const outM =
+              snapshot.quickMetrics.monthlyExpenses +
+              snapshot.quickMetrics.monthlyLoanRepayments;
+            const netM = inM - outM;
+            return {
+              monthlyNet: netM,
+              annualNet: netM * 12,
+              monthlyInflow: inM,
+              annualInflow: inM * 12,
+              monthlyOutflow: outM,
+              annualOutflow: outM * 12,
+              savingsRate: inM > 0 ? (netM / inM) * 100 : 0,
+              basis: 'declared' as const,
+            };
+          })(),
         },
       };
 

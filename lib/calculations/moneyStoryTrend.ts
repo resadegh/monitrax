@@ -54,9 +54,29 @@ export interface MoneyStoryTrendResult {
    * free of inline financial math (the Phase 41i.6b surface linter forbids
    * it in `app/`). 0 when not enough history.
    */
-  cashflowDeltaMonthly: number; // latest month − previous month
-  incomeDeltaPct: number;       // (latest − first) / first × 100, YoY-ish
-  outgoingsDeltaVsAvg: number;  // latest month − window average
+  cashflowDeltaMonthly: number; // latest COMPLETE month − previous complete month
+  incomeDeltaPct: number;       // (latest complete − first) / first × 100, YoY-ish
+  outgoingsDeltaVsAvg: number;  // latest complete month − complete-month average
+  /**
+   * Phase 57 (KPI-tiles trailing basis, 2026-07-02) — annual figures on the
+   * honest TRAILING basis: the average of COMPLETE, populated calendar months
+   * in the window × 12. Excludes the in-progress current month (so a 2-day-old
+   * month can't drag the number to ~0) and uses a data-driven divisor (a month
+   * with no imported transactions is missing data, not a real zero-month). This
+   * is what the dashboard's "Annual income / outgoings / saving rate" tiles
+   * headline — never the partial current month × 12 (which read $0 early in
+   * every month). 0 when there are no complete populated months, in which case
+   * the consumer falls back to the declared plan (§19.1). §19.1 actuals:
+   * income = actual IN (money that hit the account), outgoings = actual OUT
+   * (transfers excluded, uncategorised included).
+   */
+  annualIncome: number;
+  annualOutgoings: number;
+  annualNet: number;           // annualIncome − annualOutgoings
+  avgMonthlyNet: number;       // annualNet / 12 — the cash-flow tile headline
+  savingsRateTrailing: number; // annualNet / annualIncome × 100 (0 when no income)
+  /** Count of complete months with any actual data — gates the declared fallback + basis label. */
+  trailingMonthsWithData: number;
 }
 
 /**
@@ -141,6 +161,12 @@ export async function getMoneyStoryTrend(
     cashflowDeltaMonthly: 0,
     incomeDeltaPct: 0,
     outgoingsDeltaVsAvg: 0,
+    annualIncome: 0,
+    annualOutgoings: 0,
+    annualNet: 0,
+    avgMonthlyNet: 0,
+    savingsRateTrailing: 0,
+    trailingMonthsWithData: 0,
   };
 
   // Count months that actually have any transaction activity. If <2
@@ -166,21 +192,55 @@ export async function getMoneyStoryTrend(
 
   // KPI delta computations — all financial arithmetic stays here in the
   // service so the dashboard surface stays linter-clean (Phase 41i.6b).
-  const cfLen = monthlyNetCashflow.length;
-  const cashflowDeltaMonthly =
-    cfLen >= 2 ? monthlyNetCashflow[cfLen - 1] - monthlyNetCashflow[cfLen - 2] : 0;
+  //
+  // Phase 57 (2026-07-02): deltas + trailing annuals are computed over COMPLETE
+  // months only — the last bucket is always the in-progress current month
+  // (window ends at `now`), and two days into a month it is near-zero. Comparing
+  // against or annualising from it produced the "-100% YoY" pill and the "$0"
+  // headline the tiles used to show. Dropping it makes every figure reflect
+  // months that actually finished.
+  const completeEarned = monthlyEarned.slice(0, -1);
+  const completeSpent = monthlySpent.slice(0, -1);
+  const completeNet = monthlyNetCashflow.slice(0, -1);
 
-  const earnedFirst = monthlyEarned.find((v) => v > 0) ?? 0;
-  const earnedLast = monthlyEarned[monthlyEarned.length - 1];
+  const cfLen = completeNet.length;
+  const cashflowDeltaMonthly =
+    cfLen >= 2 ? completeNet[cfLen - 1] - completeNet[cfLen - 2] : 0;
+
+  const earnedFirst = completeEarned.find((v) => v > 0) ?? 0;
+  const earnedLast = completeEarned.length > 0 ? completeEarned[completeEarned.length - 1] : 0;
   const incomeDeltaPct =
     earnedFirst > 0 ? Math.round(((earnedLast - earnedFirst) / earnedFirst) * 1000) / 10 : 0;
 
-  const spentTotal = monthlySpent.reduce((a, b) => a + b, 0);
-  const spentAvg = monthlySpent.length > 0 ? spentTotal / monthlySpent.length : 0;
-  const outgoingsDeltaVsAvg =
-    monthlySpent.length > 0
-      ? Math.round(monthlySpent[monthlySpent.length - 1] - spentAvg)
+  // Data-driven averages: divide only by months that actually have activity, so
+  // months with no imported data don't drag the average toward zero (mirrors
+  // the actualCashflow trailing-average rule, 2026-06-23 cashflow-SSOT audit).
+  const populatedEarned = completeEarned.filter((v) => v > 0);
+  const populatedSpent = completeSpent.filter((v) => v > 0);
+  const avgMonthlyIncome =
+    populatedEarned.length > 0
+      ? populatedEarned.reduce((a, b) => a + b, 0) / populatedEarned.length
       : 0;
+  const avgMonthlyOutgoings =
+    populatedSpent.length > 0
+      ? populatedSpent.reduce((a, b) => a + b, 0) / populatedSpent.length
+      : 0;
+
+  const outgoingsDeltaVsAvg =
+    completeSpent.length > 0
+      ? Math.round(completeSpent[completeSpent.length - 1] - avgMonthlyOutgoings)
+      : 0;
+
+  // Trailing annual basis (× 12 of the data-driven monthly averages).
+  const annualIncome = Math.round(avgMonthlyIncome * 12);
+  const annualOutgoings = Math.round(avgMonthlyOutgoings * 12);
+  const annualNet = annualIncome - annualOutgoings;
+  const avgMonthlyNet = Math.round(annualNet / 12);
+  const savingsRateTrailing =
+    annualIncome > 0 ? Math.round((annualNet / annualIncome) * 1000) / 10 : 0;
+  const trailingMonthsWithData = completeEarned.filter(
+    (v, i) => v > 0 || completeSpent[i] > 0
+  ).length;
 
   return {
     trend,
@@ -193,5 +253,11 @@ export async function getMoneyStoryTrend(
     cashflowDeltaMonthly,
     incomeDeltaPct,
     outgoingsDeltaVsAvg,
+    annualIncome,
+    annualOutgoings,
+    annualNet,
+    avgMonthlyNet,
+    savingsRateTrailing,
+    trailingMonthsWithData,
   };
 }

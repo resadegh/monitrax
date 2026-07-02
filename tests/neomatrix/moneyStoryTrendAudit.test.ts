@@ -64,6 +64,22 @@ const baseRows = () => [
   tx(2026, 5, 6000, 'OUT'),
 ];
 
+// Phase 57 (2026-07-02) — realistic partial-current-month fixture. The clock is
+// pinned to June 15 (below), so June is the IN-PROGRESS current month. Complete
+// months Mar/Apr/May carry full data; June has only a tiny partial OUT and NO
+// income yet — the real start-of-month situation that made the KPI tiles read
+// $0 / -100% / 0%. The trailing annual basis + the delta pills must EXCLUDE the
+// in-progress June bucket.
+const partialCurrentRows = () => [
+  tx(2026, 2, 38000, 'IN'),  // Mar (complete)
+  tx(2026, 2, 30000, 'OUT'),
+  tx(2026, 3, 40000, 'IN'),  // Apr (complete)
+  tx(2026, 3, 28000, 'OUT'),
+  tx(2026, 4, 42000, 'IN'),  // May (complete)
+  tx(2026, 4, 32000, 'OUT'),
+  tx(2026, 5, 200, 'OUT'),   // Jun (current, in-progress) — partial, no income yet
+];
+
 describe('Neomatrix A1 — moneyStoryTrend (model refs the code; DB + clock pinned)', () => {
   it('the engine node exists in financial-graph.json (audit tied to the model)', () => {
     expect(nodeIds.has('engine.moneyStoryTrend.getMoneyStoryTrend')).toBe(true);
@@ -91,25 +107,51 @@ describe('Neomatrix A1 — moneyStoryTrend (model refs the code; DB + clock pinn
     expect(r.marginDeltaPoints).toBe(10); // 50 − 40
   });
 
-  it('incomeDeltaPct = round((earnedLast − earnedFirst)/earnedFirst × 1000)/10', async () => {
-    findMany.mockResolvedValue(baseRows());
+  // Phase 57 (2026-07-02) — deltas + the trailing annual basis are computed over
+  // COMPLETE months only; the in-progress current month (June) is excluded. This
+  // is the fix for the dashboard tiles that read $0 / -100% / 0% in the first
+  // days of a month. The partialCurrentRows fixture is the §19.2 worked example.
+  it('incomeDeltaPct excludes the in-progress current month (never a false -100%)', async () => {
+    findMany.mockResolvedValue(partialCurrentRows());
     const r = await getMoneyStoryTrend('u1', 12);
-    // (12,000 − 10,000) / 10,000 × 100 = 20.0
-    expect(r.incomeDeltaPct).toBe(20);
+    // Complete Mar/Apr/May earned 38k/40k/42k; June ($0 income) EXCLUDED.
+    // (42,000 − 38,000) / 38,000 × 100 = 10.526 → 10.5.
+    expect(r.incomeDeltaPct).toBe(10.5);
   });
 
-  it('cashflowDeltaMonthly = latest month net − previous month net', async () => {
-    findMany.mockResolvedValue(baseRows());
+  it('cashflowDeltaMonthly = last COMPLETE month net − prior complete month net', async () => {
+    findMany.mockResolvedValue(partialCurrentRows());
     const r = await getMoneyStoryTrend('u1', 12);
-    // June net 6,000 − May net 4,000 = 2,000
-    expect(r.cashflowDeltaMonthly).toBe(2000);
+    // May net 10,000 − Apr net 12,000 = -2,000 (June excluded).
+    expect(r.cashflowDeltaMonthly).toBe(-2000);
   });
 
-  it('outgoingsDeltaVsAvg = round(latest spent − window average spent)', async () => {
-    findMany.mockResolvedValue(baseRows());
+  it('outgoingsDeltaVsAvg = last complete month spent − complete-month average', async () => {
+    findMany.mockResolvedValue(partialCurrentRows());
     const r = await getMoneyStoryTrend('u1', 12);
-    // spent total 12,000 / 12 months = 1,000 avg; latest 6,000 → +5,000
-    expect(r.outgoingsDeltaVsAvg).toBe(5000);
+    // May spent 32,000 − avg(30k, 28k, 32k = 30,000) = 2,000.
+    expect(r.outgoingsDeltaVsAvg).toBe(2000);
+  });
+
+  it('§19.2 trailing annual basis = avg of COMPLETE populated months × 12 (the tile headline)', async () => {
+    findMany.mockResolvedValue(partialCurrentRows());
+    const r = await getMoneyStoryTrend('u1', 12);
+    // avg income 40,000 × 12 = 480,000; avg outgoings 30,000 × 12 = 360,000.
+    expect(r.annualIncome).toBe(480000);
+    expect(r.annualOutgoings).toBe(360000);
+    expect(r.annualNet).toBe(120000);
+    expect(r.avgMonthlyNet).toBe(10000);
+    expect(r.savingsRateTrailing).toBe(25);
+    expect(r.trailingMonthsWithData).toBe(3);
+  });
+
+  it('regression: a near-empty in-progress month does NOT zero the annual tiles', async () => {
+    findMany.mockResolvedValue(partialCurrentRows());
+    const r = await getMoneyStoryTrend('u1', 12);
+    // The bug produced $0 income / -100% YoY / 0% savings from current-month×12.
+    expect(r.annualIncome).toBeGreaterThan(0);
+    expect(r.savingsRateTrailing).toBeGreaterThan(0);
+    expect(r.incomeDeltaPct).not.toBe(-100);
   });
 
   it('kept clamps ≥ 0: a month that spent more than it earned shows kept 0 (never negative)', async () => {

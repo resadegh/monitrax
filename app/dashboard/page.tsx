@@ -193,7 +193,9 @@ interface DashboardInsights {
       monthlyOutflow: number;
       annualOutflow: number;
       savingsRate: number;
-      basis: 'actual' | 'declared';
+      // 'actual-ttm' = trailing 12-month actuals (the tile headline basis, Phase 57);
+      // 'actual' = current-month actuals (legacy consumers); 'declared' = the plan fallback.
+      basis: 'actual' | 'actual-ttm' | 'declared';
     };
   };
 }
@@ -447,6 +449,26 @@ export default function DashboardPage() {
     savingsRate: canonicalKpi?.savingsRate ?? declaredCf?.savingsRate ?? 0,
     basis: canonicalKpi?.basis ?? 'declared',
   };
+
+  // Phase 57 (2026-07-02) — basis label + never-a-bare-$0 tile values. The
+  // headline reads trailing-12-month actuals ('Last 12 months'); a brand-new
+  // user with no complete months falls back to the declared plan. When a tile
+  // genuinely has no data on either basis we show an em-dash + a next-action
+  // nudge instead of "$0" — §0 behaviour lens: "$0 income" reads as failure,
+  // "— · Add income" invites the action. Formatting only (no arithmetic in app/).
+  const cfBasisLabel =
+    cf.basis === 'actual-ttm'
+      ? 'Last 12 months'
+      : cf.basis === 'actual'
+        ? 'This month'
+        : 'Your plan';
+  const incomeTileValue = cf.annualInflow > 0 ? formatCompactCurrency(cf.annualInflow) : '—';
+  const outgoingsTileValue = cf.annualOutflow > 0 ? formatCompactCurrency(cf.annualOutflow) : '—';
+  const incomeTileHelper =
+    cf.annualInflow > 0 ? `${formatCurrency(cf.monthlyInflow)}/mo · ${cfBasisLabel}` : 'Add income to see this';
+  const outgoingsTileHelper =
+    cf.annualOutflow > 0 ? `${formatCurrency(cf.monthlyOutflow)}/mo · ${cfBasisLabel}` : 'Import transactions to see this';
+  const cashflowTileHelper = `${formatCurrency(cf.annualNet)}/year · ${cfBasisLabel}`;
 
   // Generate insights based on portfolio data
   const generateInsights = () => {
@@ -726,7 +748,7 @@ export default function DashboardPage() {
                   subPalette="emerald"
                   eyebrow="Monthly cash flow"
                   value={formatCurrency(cf.monthlyNet)}
-                  helper={`${formatCurrency(cf.annualNet)}/year`}
+                  helper={cashflowTileHelper}
                   valueClassName={cf.monthlyNet >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
                   tone={cf.monthlyNet >= 0 ? 'emerald' : 'amber'}
                   series={insights?.kpiTiles?.cashflowSeries ?? []}
@@ -746,10 +768,10 @@ export default function DashboardPage() {
                   icon={TrendingUpIcon}
                   subPalette="emerald"
                   eyebrow="Annual income"
-                  value={formatCompactCurrency(cf.annualInflow)}
+                  value={incomeTileValue}
                   helper={
                     insights?.kpiTiles
-                      ? `${formatCurrency(insights.kpiTiles.incomeMonthly)}/month gross`
+                      ? incomeTileHelper
                       : 'Gross annual income'
                   }
                   tone="emerald"
@@ -770,10 +792,10 @@ export default function DashboardPage() {
                   icon={Receipt}
                   subPalette="slate"
                   eyebrow="Annual outgoings"
-                  value={formatCompactCurrency(cf.annualOutflow)}
+                  value={outgoingsTileValue}
                   helper={
                     insights?.kpiTiles
-                      ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
+                      ? outgoingsTileHelper
                       : 'Expenses + loan repayments'
                   }
                   tone="slate"
@@ -825,7 +847,7 @@ export default function DashboardPage() {
                 subPalette="emerald"
                 eyebrow="Monthly cash flow"
                 value={formatCurrency(cf.monthlyNet)}
-                helper={`${formatCurrency(cf.annualNet)}/year`}
+                helper={cashflowTileHelper}
                 valueClassName={cf.monthlyNet >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
                 tone={cf.monthlyNet >= 0 ? 'emerald' : 'amber'}
                 series={insights?.kpiTiles?.cashflowSeries ?? []}
@@ -845,10 +867,10 @@ export default function DashboardPage() {
                 icon={TrendingUpIcon}
                 subPalette="emerald"
                 eyebrow="Annual income"
-                value={formatCompactCurrency(cf.annualInflow)}
+                value={incomeTileValue}
                 helper={
                   insights?.kpiTiles
-                    ? `${formatCurrency(insights.kpiTiles.incomeMonthly)}/month gross`
+                    ? incomeTileHelper
                     : 'Gross annual income'
                 }
                 tone="emerald"
@@ -869,10 +891,10 @@ export default function DashboardPage() {
                 icon={Receipt}
                 subPalette="slate"
                 eyebrow="Annual outgoings"
-                value={formatCompactCurrency(cf.annualOutflow)}
+                value={outgoingsTileValue}
                 helper={
                   insights?.kpiTiles
-                    ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
+                    ? outgoingsTileHelper
                     : 'Expenses + loan repayments'
                 }
                 tone="slate"
