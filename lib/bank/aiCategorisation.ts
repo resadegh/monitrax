@@ -273,7 +273,15 @@ export async function categoriseUnknownsViaCascade(
   if (txs.length === 0) return { results: [], degraded: false };
   try {
     const unified = txs.map(tx => mapNormalisedToUnified(tx, userId));
-    const resultMap = await categoriseTransactionBatch(unified, {});
+    // DETERMINISTIC-ONLY at import (`skipAiOnMiss`). Running the Gemini-on-miss
+    // layer inline — N serial ungrounded + grounded (web-search) LLM calls —
+    // made a small QIF exceed the function timeout and 504 (2026-07-02). The
+    // deterministic cascade (rules + user mappings + shared-KB prior) is fast +
+    // free and categorises known merchants; genuine unknowns land in review and
+    // the user runs the OPT-IN, deduped, cost-bounded "Ask AI for the rest"
+    // re-scan (`recategoriseUncategorised({ useAI })`). AI never auto-files
+    // anyway (§54.2), so those guesses always went to review — no UX loss.
+    const resultMap = await categoriseTransactionBatch(unified, { skipAiOnMiss: true });
     const results = txs.map((tx, i) =>
       cascadeResultToAIResult(tx, resultMap.get(unified[i].id))
     );

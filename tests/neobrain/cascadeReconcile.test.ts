@@ -20,8 +20,9 @@ import {
   mapNormalisedToUnified,
   type AICategorizationResult,
 } from '@/lib/bank/aiCategorisation';
+import { categoriseTransactionBatch } from '@/lib/tie/categorisation';
 import type { NormalisedTransaction } from '@/lib/bank/types';
-import type { CategorisationResult } from '@/lib/tie/types';
+import type { CategorisationResult, UnifiedTransaction } from '@/lib/tie/types';
 
 const SETTINGS = { autoAcceptThreshold: 0.9, showForReviewThreshold: 0.7, enableAI: true, batchSize: 20 };
 
@@ -136,5 +137,44 @@ describe('mapNormalisedToUnified — adapter input', () => {
     expect(u.direction).toBe('OUT');
     expect(u.merchantStandardised).toBe('Someshop Sydney');
     expect(u.currency).toBe('AUD');
+  });
+});
+
+// Import-timeout fix (2026-07-02): the import path is DETERMINISTIC-ONLY — it must
+// never run the slow Gemini-on-miss layer inline (that 504'd on a small QIF).
+describe('categoriseTransactionBatch — skipAiOnMiss (the import path)', () => {
+  const uni = (merchant: string): UnifiedTransaction =>
+    ({
+      id: `t-${merchant}`,
+      userId: 'u1',
+      accountId: 'a1',
+      date: new Date('2026-07-01T00:00:00Z'),
+      amount: 9,
+      currency: 'AUD',
+      direction: 'OUT',
+      description: merchant,
+      merchantStandardised: merchant,
+      merchantRaw: merchant,
+      tags: [],
+      userCorrectedCategory: false,
+      isRecurring: false,
+      anomalyFlags: [],
+      source: 'CSV',
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+      updatedAt: new Date('2026-07-01T00:00:00Z'),
+    }) as UnifiedTransaction;
+
+  it('a known merchant still resolves deterministically (RULE)', async () => {
+    const map = await categoriseTransactionBatch([uni('Hungry Jacks')], { skipAiOnMiss: true });
+    const r = map.get('t-Hungry Jacks');
+    expect(r?.source).toBe('RULE');
+    expect(r?.categoryLevel1).toBe('Food & Dining');
+  });
+
+  it('an unknown merchant falls back to Uncategorised with NO LLM call (no timeout)', async () => {
+    const map = await categoriseTransactionBatch([uni('Zzq Obscure Merchant 999')], { skipAiOnMiss: true });
+    const r = map.get('t-Zzq Obscure Merchant 999');
+    expect(r?.source).toBe('FALLBACK');
+    expect(r?.categoryLevel2).toBe('Uncategorised');
   });
 });
