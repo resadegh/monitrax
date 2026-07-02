@@ -764,6 +764,14 @@ export async function categoriseTransactionBatch(
   transactions: UnifiedTransaction[],
   options: {
     merchantMappings?: MerchantMapping[];
+    /**
+     * Skip the paid/slow Gemini-on-miss layer for the whole batch. The IMPORT
+     * path sets this so a bank file never runs N serial (ungrounded + grounded
+     * web-search) LLM calls inline — that blew past the function timeout and
+     * 504'd (2026-07-02). AI over unknowns is the OPT-IN, deduped, cost-bounded
+     * re-scan instead (`recategoriseUncategorised({ useAI })`).
+     */
+    skipAiOnMiss?: boolean;
   } = {}
 ): Promise<Map<string, CategorisationResult>> {
   const results = new Map<string, CategorisationResult>();
