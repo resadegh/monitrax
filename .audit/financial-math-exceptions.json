@@ -1,12 +1,26 @@
 {
-  "count": 1,
+  "count": 3,
   "records": [
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1436,
+      "line": 1458,
       "pattern": "FREQUENCY_CONVERSION",
       "reason": "UI-only display formatting (annual→monthly per-expense)",
-      "recordedAt": "2026-06-26T09:33:43.628Z"
+      "recordedAt": "2026-07-02T08:38:48.265Z"
+    },
+    {
+      "file": "app/api/dashboard/insights/route.ts",
+      "line": 492,
+      "pattern": "INLINE_ARITHMETIC",
+      "reason": "declared outgoings context for the tile delta subtext (app/api; §19.1 plan side)",
+      "recordedAt": "2026-07-02T08:38:48.265Z"
+    },
+    {
+      "file": "app/api/dashboard/insights/route.ts",
+      "line": 494,
+      "pattern": "INLINE_ARITHMETIC",
+      "reason": "declared outgoings context for the tile delta subtext (app/api; §19.1 plan side)",
+      "recordedAt": "2026-07-02T08:38:48.265Z"
     }
   ]
 }

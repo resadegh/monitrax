@@ -106,18 +106,6 @@
       "match": "27500"
     },
     {
-      "file": "app/api/dashboard/insights/route.ts",
-      "line": 491,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "snapshot.cashflow.annualExpenses + snapshot.cashflow.annualLoanRepayments"
-    },
-    {
-      "file": "app/api/dashboard/insights/route.ts",
-      "line": 493,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "snapshot.cashflow.monthlyExpenses + snapshot.cashflow.monthlyLoanRepayments"
-    },
-    {
       "file": "app/api/dashboard/margin-trend/route.ts",
       "line": 181,
       "pattern": "INLINE_ARITHMETIC",

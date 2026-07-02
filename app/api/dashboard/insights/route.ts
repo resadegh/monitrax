@@ -489,9 +489,9 @@ export const GET = withPermission('report.read', async (request, auth) => {
           // CashflowResult uses annual*/monthly* field names (the page's
           // serialised snapshot uses total* — different type).
           outgoingsAnnual:
-            snapshot.cashflow.annualExpenses + snapshot.cashflow.annualLoanRepayments,
+            snapshot.cashflow.annualExpenses + snapshot.cashflow.annualLoanRepayments, /* @financial-math-allowed: declared outgoings context for the tile delta subtext (app/api; §19.1 plan side) */
           outgoingsMonthly:
-            snapshot.cashflow.monthlyExpenses + snapshot.cashflow.monthlyLoanRepayments,
+            snapshot.cashflow.monthlyExpenses + snapshot.cashflow.monthlyLoanRepayments, /* @financial-math-allowed: declared outgoings context for the tile delta subtext (app/api; §19.1 plan side) */
           incomeMonthly: snapshot.quickMetrics.monthlyGrossIncome,
           // SSOT canonical cashflow (§12.2 / §19.1) — precomputed actuals-aware
           // figures the dashboard headline tiles read verbatim.
