@@ -8,6 +8,56 @@
 > money numbers → per the standing rule they need Reza's go-ahead + scheduling before any fix ships
 > (§19.3 / number-changing). P-3/P-4/P-7 are display/UX. Recommended sequence in §Sequencing.
 
+## ⭐ The unified requirement (Reza, 2026-07-03) — one rule for every property number
+
+> *"Both manual and statement-import repayments are available in the loan setting; the loan is correctly
+> linked to the property and I assumed all numbers should be picked from that relationship. Per SSOT I
+> don't want the user to add this value anywhere else. Same rule for expenses: initial values first, but
+> actuals used when available through reconciliation."*
+
+**The single rule** — for rent, expenses, AND loan repayment on a property:
+1. **Source everything from the entity → property relationship** (income↔property, expense↔property,
+   loan↔property). The user enters each **initial/manual value once, on that entity** — never duplicated
+   on the property (SSOT §12.2.1).
+2. **Initial value is the baseline; ACTUALS (from reconciliation) override when available** (§19.1).
+3. This applies uniformly to all three streams — not just rent.
+
+**The good news — the API already does step 2.** `GET /api/properties/[id]` (`route.ts:193-248`) returns,
+for **every** linked income / expense / loan: `budgetAmount` (the manual/initial value), `actualFromTransactions`
++ `monthlyAverageActual` (the reconciled actual), and `hasTransactions`. The manual-first / actuals-when-present
+data **already exists on the relationship**, exactly as Reza wants.
+
+**The actual bug — the detail page throws all of it away.** `app/dashboard/properties/[id]/page.tsx`
+ignores `budgetAmount`/`actualFromTransactions`/`hasTransactions` and recomputes from the raw declared
+`amount`/`minRepayment` × frequency. So actuals never apply, and the frequency/amount errors (P-1) and the
+silent-$0 loan (when `minRepayment` is 0 and actuals are ignored) surface. **The fix is mostly page-side:
+consume the API's actuals-first fields (use actual when `hasTransactions`, else `budgetAmount`) for all
+three streams.**
+
+### ✅ Neomatrix validation (Reza's explicit ask — "validate these are the logic; if not, fix that too")
+- The **global** actuals-first rule **IS** modelled: `engine.canonicalCashflow.resolveCanonicalCashflow`
+  (`canonicalCashflow.ts:78`) = *"actuals win when present; declared is fallback only."* ✓
+- The **per-property** cashflow + the property API's per-entity actuals enrichment are **NOT modelled**
+  — 0 Neomatrix nodes reference any `app/(api|dashboard)/properties` file. This is the blind spot that
+  let the drift slip (§21.5). **→ The per-property canonical engine must be built AND modelled in the
+  Neomatrix (with a `semanticKey`) so A3 convergence enforces it** (§21.2.1). This is the "fix the
+  Neomatrix too" part.
+
+### ✏️ Correction to P-8 (my earlier error, 2026-07-03)
+My earlier claim that the loan form has **no** repayment field was **WRONG** — I truncated a grep at
+line 525 and didn't read the whole form. The **"Minimum Repayment"** field DOES exist
+(`LoanFormDialog.tsx:531-537`), plus **Repayment Frequency** (`:546`) and **Linked Property** (`:571`).
+The manual repayment IS capturable. See P-8 (retracted/re-scoped) below.
+
+### 🆕 Expense-entry gap (Reza, 2026-07-03) — inconsistent, not on the surfaces he uses
+The property **edit form** (`app/dashboard/properties/page.tsx`) captures only **due dates** (Renewals &
+reminders: council/water/land-tax/strata/insurance) — **no expense amounts**. A manual **"Add Expense"**
+path DOES exist, but on the older properties **list** page (`page.tsx:215,1602` → `ExpenseDialog`), **not**
+on the new detail page or its edit form. So initial expense entry is present-but-hidden/inconsistent, and
+it must follow the same rule (manual initial → actuals when reconciled). Tracked as P-9.
+
+---
+
 ## The surface
 
 `app/dashboard/properties/[id]/page.tsx` (864 lines) fetches `GET /api/properties/[id]` once and
@@ -34,7 +84,11 @@ is part of the fix so future drift becomes a build failure.
 | **P-3** | **Loan repayment missing** from the "Cashflow rhythm" list → cashflow can't be reconciled visually | 🟡 Medium | No (display) | `RecentActivityCard` renders only income + expenses |
 | **P-4** | Clicking **"N expenses tracked"** goes to the global `/dashboard/expenses`; no per-property summary / drill-down | 🟡 Medium | No (UX) | `href:'/dashboard/expenses'`; no per-property summary component |
 | **P-6** | Cashflow subtracts full **P&I `minRepayment`** but the "Tax position" card calls it "before tax" → conflates **cash** basis with **tax** (which needs *interest only*) | 🟢 Low | Yes (labelling) | `computeAnnualLoanRepayments` uses `minRepayment`, not interest |
-| **P-7** | Cashflow figure Reza saw (**-$100,912**) ≠ the property-hero figure (**-$46,897**) — confirm which surface shows -$100,912 | 🟡 Medium | — | likely a second inline computation (P-2 drift); **surface to confirm** |
+| **P-7** | ✅ RESOLVED — -$100,912 vs -$46,897 are the **same hero tile** (Lot 1), before/after reassigning rentals; reconciles once the hidden loan repayment is shown (P-3) | 🟡 Medium | — | same surface, different rent term |
+| **P-8** | ❌ RETRACTED (my error) — the "Minimum Repayment" field **does** exist (`LoanFormDialog:531`) | — | — | folded into P-2 (no actuals fallback) |
+| **P-9** | Expense **initial-entry inconsistent** (only due-dates on the property edit form; "Add Expense" hidden on the list page) — must follow the same manual→actuals rule | 🟡 Medium | No (UX) | `properties/page.tsx:215/1602`; not on detail/edit |
+
+> **⭐ See "The unified requirement" section above** — the whole cluster reduces to one rule: source every property number from the entity→property relationship (SSOT, no duplicate entry); manual/initial value is the baseline, actuals override when reconciled. The API already returns `budgetAmount`+`actualFromTransactions`+`hasTransactions` per entity; the detail page ignores them. Neomatrix models the rule globally but **not** per-property (must be modelled — §21.2.1).
 
 ---
 
@@ -83,13 +137,30 @@ property "financial structure" shows each as **"monthly · rental"** and annuali
 
 **Decision (folds in P-6 — the product meaning of "Cashflow / yr"):** with actuals available, the actual repayment is P&I (cash). Recommended: headline "Cashflow / yr" = rent − expenses − repayment (**actuals-first P&I**, manual fallback), and the **Tax position** card uses **interest-only** (actual `INTEREST_CHARGED`, else `principal × rate`). Awaiting Reza's confirm on the headline basis.
 
-### P-8 — The manual repayment amount is NOT capturable (🟠 High) — answers "where is the manual?"
+### P-8 — ❌ RETRACTED (my error) — the manual repayment field DOES exist
 
-**Root cause (verified).** `components/loans/LoanFormDialog.tsx` renders **no input for `minRepayment`**. Its fields are Name, Type, Principal, Interest Rate, Rate Type, Repayment Type (P&I/IO), Fixed Expiry, Extra Repayment Cap, Term Remaining — but **no "Repayment amount"**. So `minRepayment` is only ever set by its default `0` (`LoanFormDialog.tsx:139`) or auto-filled from a statement mapping (`:214-216`). The user has **no way to type a repayment**, so for any loan without a statement import it stays **0** → the property cashflow subtracts nothing for the loan (the Lot 2 symptom).
+My earlier claim was **wrong**: `components/loans/LoanFormDialog.tsx` **does** render a **"Minimum
+Repayment"** input (`:531-537`) + **Repayment Frequency** (`:546`) + **Linked Property** (`:571`) — I
+truncated a grep at line 525 and misreported. The manual repayment IS capturable (Lot 1 = 5975.38). So
+there is no missing-field bug. The real loan issue is entirely in P-2: the property page reads the manual
+`minRepayment` but **never falls back to the captured actuals** (`LoanTransaction` / the API's
+`actualFromTransactions`). No separate fix — folded into P-2.
 
-**Proposed fix.** Add a **"Repayment amount" input** (+ its frequency, reusing `repaymentFrequency`) to `LoanFormDialog`, so the manual amount is capturable. Pairs with the P-2 actuals-fallback: manual is the default, actuals win when captured. (Also consider defaulting/estimating from `principal × rate` + term when both blank, so it's never silently $0.)
+### P-9 — Expense initial-entry is inconsistent + must follow the same rule (🟡 Medium)
 
-**Proposed fix.** Route per-property cashflow/rent/expenses through a single canonical helper that (a) uses **actuals when transactions exist**, declared as fallback (§19.1), and (b) is **modelled in the Neomatrix with a `semanticKey`** so A3 convergence catches any future second source (§21.2.1). This subsumes much of P-1.
+**Verified.** The property **edit form** (`app/dashboard/properties/page.tsx`) captures only **due dates**
+(Renewals & reminders) — no expense amounts. A manual **"Add Expense"** path exists but only on the older
+properties **list** page (`page.tsx:215` `handleAddExpenseForProperty`, `:1602` button → `ExpenseDialog`),
+**not** on the detail page or edit form. So initial expense entry is present-but-hidden. **Need:** a
+consistent way to add initial expense amounts in the property context, following the same rule as rent/loan
+— **manual initial → actuals when reconciled** (the API already returns `expensesWithActuals`, `route.ts:210`).
+
+**Overall fix for the cluster.** Route per-property cashflow/rent/expenses/loan-repayment through a single
+canonical helper that: (a) reads from the entity→property relationships (SSOT — no duplicate entry); (b)
+uses **actuals when `hasTransactions`, else the manual/initial `budgetAmount`** (§19.1), for all three
+streams — consuming the fields the API already computes; and (c) is **modelled in the Neomatrix with a
+`semanticKey`** so A3 convergence catches any future second source (§21.2.1). This subsumes P-1 and the
+loan half of P-2, and gives P-9 its shared rule.
 
 ---
 
