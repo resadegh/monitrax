@@ -44,3 +44,26 @@ Requirement: stop the import timeout without losing categorisation or correctnes
 
 ### Self-review gate (§20.5) — 10/10
 Requirement: accept CSV so QIF-less banks can import. 3× review: v1 wire parseCSV only (rejected — my own test proved generic CSVs silently lose descriptions via the ANZ fuzzy-mis-map) → v2 add resolveCol positional fallback so no CSV drops date/description → v3 confirmed real-bank CSVs (distinctive headers) are untouched + optional columns stay -1. SSOT: reuses the one existing `parseCSV` (§12.2.1), no parallel parser.
+
+---
+
+## Fix — CSV import 500: headerless CSV support + crash guard
+
+**Type**: Fix (Reza after #1327 merged: "still the CSV import is not working". Console: `POST /api/accounts/new/import` → 500 "Failed to process import").
+
+**Root cause (REPRODUCED locally, §19.2 — the Vercel log API was timing out):** the account import route's format fix (#1327) parsed CSV, but a **headerless** CSV — how NAB and several AU banks export — broke downstream. `parseCSV` assumed a header row, so the first transaction was consumed as a phantom "header" and the remaining rows failed column detection (no amount column) → `normaliseTransactions` dropped every row → `normalisationResult.transactions` empty. The route only checked the *raw* parsed count, not the *normalised* count, so it proceeded to `dateRange = new Date(Math.min(...[]))` = **Invalid Date** → Prisma rejected it → the catch-all 500. A local repro test confirmed: headerless 1-row CSV → parsed 1, normalised 0, dateRange Invalid Date.
+
+**Fix (two parts):**
+1. **Headerless support** (`lib/bank/parsers/csv.ts`): auto-detect header presence (`rowLooksLikeData` — a header row has no cell that parses as a date; a data row does). When headerless AND no known bank, `inferColumns()` classifies each column from the DATA — date = most parseable-dates column; amount = a signed-money column PREFERRING negatives + smallest magnitude (so a running **balance** column is never mistaken for the amount, §19); description = most text-like column. A headed known-bank CSV keeps its named mapping (unaffected).
+2. **Crash guard** (`route.ts`): if 0 rows survive normalisation, return an actionable **400** naming the reason (from the normalise errors — unreadable dates/amounts) instead of proceeding into the Invalid-Date → Prisma 500.
+
+### Files Modified
+- `lib/bank/parsers/csv.ts` — `rowLooksLikeData` + `inferColumns`; headerless auto-detect wired into the column fallbacks.
+- `app/api/accounts/[id]/import/route.ts` — empty-after-normalise guard → clear 400.
+- `tests/bank/csvParser.test.ts` — +3 (headerless infer date/amount/desc; balance-column not mistaken for amount; headed CSV unaffected).
+
+### Testing
+- [x] 129 bank + neobrain tests green (7 CSV, incl. 3 new headerless). `tsc` clean on touched files. `neomatrix:check` green (import-route edge anchors 278/285/369).
+
+### Self-review gate (§20.5) — financial build 10/10
+Requirement: make real bank CSVs import; never 500. 3× review: v1 crash-guard only (rejected — stops the 500 but Reza's file still wouldn't import) → v2 add headerless detection + positional inference → v3 hardened the amount inference against grabbing the balance column (§19 — a wrong amount mis-states every transaction), verified by a dedicated test. Honest residual: I couldn't read Reza's exact file or the prod logs, so if a bank uses an unusual layout the new 400 now names the reason instead of a blind 500.

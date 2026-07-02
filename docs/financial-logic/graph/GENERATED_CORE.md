@@ -423,10 +423,10 @@
 | Transaction categoriser (hybrid cascade) | → | Gemini-on-miss (RAG) | falls-back-to | — | verified | lib/tie/categorisation.ts:732 |
 | UnifiedTransaction.description (raw text) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:571 |
 | MerchantMapping (per-user learned map) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:600 |
-| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:258 |
+| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:278 |
 | UserCategorizationSettings (thresholds) | → | Confidence-band classifier | feeds | — | verified | lib/bank/aiCategorisation.ts:539 |
-| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:265 |
-| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:349 |
+| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:285 |
+| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:369 |
 | Review-queue confirm (SSOT) | → | UnifiedTransaction | feeds | — | verified | lib/bank/reviewQueue.ts:194 |
 | Review-queue confirm (SSOT) | → | KB write gate (human-only) | feeds | — | verified | lib/bank/reviewQueue.ts:244 |
 | Review-queue confirm (SSOT) | → | Per-user learning loop | feeds | — | verified | lib/bank/reviewQueue.ts:282 |

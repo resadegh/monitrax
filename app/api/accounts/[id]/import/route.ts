@@ -229,6 +229,26 @@ export const POST = withPermission<RouteContext>('account.write', async (request
 
       const transactions = normalisationResult.transactions;
 
+      // GUARD (2026-07-02): rows parsed but NONE survived validation (unreadable
+      // dates or amounts — e.g. a headerless CSV whose columns we couldn't map).
+      // Without this, `dateRange` below computes Math.min(...[]) → Invalid Date →
+      // Prisma throws → an opaque 500 "Failed to process import". Return an
+      // actionable 400 that names the actual reason instead.
+      if (transactions.length === 0) {
+        const reasons = Array.from(
+          new Set((normalisationResult.errors ?? []).map((e) => e.message))
+        );
+        const detail = reasons.length > 0 ? ` (${reasons.join('; ')})` : '';
+        return NextResponse.json(
+          {
+            error:
+              `We read ${parsedFile.transactions.length} row(s) but couldn't understand any of them${detail}. ` +
+              `For CSV, make sure it has a date column and either an amount column or separate debit/credit columns.`,
+          },
+          { status: 400 }
+        );
+      }
+
       // Calculate date range
       const dates = transactions.map(t => t.date.getTime());
       const dateRange = {
