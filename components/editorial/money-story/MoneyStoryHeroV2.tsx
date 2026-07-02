@@ -34,8 +34,25 @@ import { FreedomRibbonChart, type RibbonPoint } from './FreedomRibbonChart';
 import { TimePeriodPill, type TimePeriod } from './TimePeriodPill';
 
 export interface MoneyStoryHeroV2Props {
-  /** Freedom horizon in years (e.g. 14.4). The hero number. */
+  /** LEGACY liquid-cash runway in years. Fallback hero number when the FI
+   *  coverage below is not supplied. */
   freedomYears: number;
+  /**
+   * Phase 58 (Freedom hero) — Financial Independence coverage: what % of the
+   * user's real lifestyle spend is already funded by NET, ACCESSIBLE passive
+   * income. When provided, this becomes the hero number (supersedes years).
+   */
+  coverageNow?: number;
+  /** % covered once preserved super unlocks (at a labelled 4% drawdown). */
+  coverageAt60?: number;
+  /** Net accessible passive income per month (AUD) — the subtext figure. */
+  passiveMonthly?: number;
+  /** Properties producing positive net income now. */
+  incomeProducingCount?: number;
+  /** Properties building equity (net cashflow ≤ 0) — the deliberate growth play. */
+  growthBuildingCount?: number;
+  /** False when there's no lifestyle spend to divide by → show a gentle empty state. */
+  freedomHasData?: boolean;
   /** Monthly earned (gross income, AUD). */
   earned: number;
   /** Monthly kept (after spending). earned - spent = kept. */
@@ -89,6 +106,38 @@ function AnimatedYears({ value, reduced }: { value: number; reduced: boolean }) 
     const controls = animate(motionValue, value, {
       duration: 1.1,
       ease: [0.22, 0.61, 0.36, 1], // calm ease-out
+    });
+    return controls.stop;
+  }, [value, reduced, motionValue]);
+
+  return (
+    <motion.span className="tabular-nums-data" aria-live="polite">
+      {display}
+    </motion.span>
+  );
+}
+
+/** Format a coverage number as a whole percent: 43.6 → "44%". */
+function formatCoverage(n: number): string {
+  return `${Math.round(Math.max(0, n))}%`;
+}
+
+/**
+ * AnimatedPercent — count-up the FI coverage hero number 0 → value, same
+ * calm ease-out as AnimatedYears. Static when reducedMotion.
+ */
+function AnimatedPercent({ value, reduced }: { value: number; reduced: boolean }) {
+  const motionValue = useMotionValue(reduced ? value : 0);
+  const display = useTransform(motionValue, (v) => formatCoverage(v));
+
+  useEffect(() => {
+    if (reduced) {
+      motionValue.set(value);
+      return;
+    }
+    const controls = animate(motionValue, value, {
+      duration: 1.1,
+      ease: [0.22, 0.61, 0.36, 1],
     });
     return controls.stop;
   }, [value, reduced, motionValue]);
@@ -163,6 +212,12 @@ function KpiChip({
 
 export function MoneyStoryHeroV2({
   freedomYears,
+  coverageNow,
+  coverageAt60,
+  passiveMonthly,
+  incomeProducingCount,
+  growthBuildingCount,
+  freedomHasData = true,
   earned,
   kept,
   marginDeltaPoints,
@@ -178,12 +233,43 @@ export function MoneyStoryHeroV2({
 
   const marginPct = earned > 0 ? Math.round((kept / earned) * 100) : 0;
   const deltaSign = marginDeltaPoints >= 0 ? '+' : '';
-  const subText =
-    marginDeltaPoints === 0
+
+  // Phase 58 — FI coverage mode when `coverageNow` is supplied (supersedes the
+  // legacy years runway). The subtext tells the story only the whole portfolio
+  // can: "N% of your lifestyle is funded by your portfolio."
+  const fiMode = coverageNow !== undefined;
+  const subText = fiMode
+    ? !freedomHasData
+      ? 'Add your income and spending to see how much of your life your portfolio already funds'
+      : passiveMonthly !== undefined
+        ? `of your lifestyle is funded by your portfolio — ${CURRENCY_FMT.format(passiveMonthly)}/mo of net passive income`
+        : 'of your lifestyle is funded by your portfolio'
+    : marginDeltaPoints === 0
       ? 'of freedom at your current burn'
       : marginDeltaPoints > 0
         ? `of freedom — your kept margin widened ${marginDeltaPoints} ${marginDeltaPoints === 1 ? 'point' : 'points'}`
         : `of freedom — your kept margin tightened ${Math.abs(marginDeltaPoints)} ${Math.abs(marginDeltaPoints) === 1 ? 'point' : 'points'}`;
+
+  // Secondary "at 60" line — only when super meaningfully lifts coverage.
+  const at60Line =
+    fiMode && freedomHasData && coverageAt60 !== undefined && coverageAt60 > (coverageNow ?? 0)
+      ? `→ ${Math.round(coverageAt60)}% once your super unlocks at 60`
+      : null;
+  // Growth-vs-income split — reframes negatively-geared property as a deliberate
+  // equity strategy, not a failure (§0 behaviour lens). Only when there are properties.
+  const splitLine =
+    fiMode && ((incomeProducingCount ?? 0) + (growthBuildingCount ?? 0)) > 0
+      ? [
+          (growthBuildingCount ?? 0) > 0
+            ? `${growthBuildingCount} building equity`
+            : null,
+          (incomeProducingCount ?? 0) > 0
+            ? `${incomeProducingCount} producing income`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : null;
 
   const handlePeriodChange = (next: TimePeriod) => {
     setPeriod(next);
@@ -218,13 +304,29 @@ export function MoneyStoryHeroV2({
       {/* Hero number + breathing dot */}
       <div className="mt-5 flex items-end gap-3">
         <h2 className="text-[40px] font-semibold leading-none tracking-[-0.03em] text-editorial-ink md:text-[48px]">
-          <AnimatedYears value={freedomYears} reduced={reducedMotion} />
+          {fiMode ? (
+            freedomHasData ? (
+              <AnimatedPercent value={coverageNow ?? 0} reduced={reducedMotion} />
+            ) : (
+              // No lifestyle spend yet — never headline a bare, misleading "0%".
+              <span className="tabular-nums-data">—</span>
+            )
+          ) : (
+            <AnimatedYears value={freedomYears} reduced={reducedMotion} />
+          )}
         </h2>
         <BreathingDot className="mb-2" />
       </div>
       <p className="mt-2 text-sm leading-snug text-editorial-slate">
         {subText}
       </p>
+      {(at60Line || splitLine) && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] leading-snug text-editorial-slate/80">
+          {at60Line && <span className="tabular-nums-data">{at60Line}</span>}
+          {at60Line && splitLine && <span aria-hidden className="text-editorial-divider">·</span>}
+          {splitLine && <span>{splitLine}</span>}
+        </div>
+      )}
 
       {/* The ribbon chart — empty trend renders a quiet placeholder
           line so users without enough history still see a coherent

@@ -8,8 +8,8 @@
     ],
     "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
     "counts": {
-      "files": 1063,
-      "filesOnDisk": 1065,
+      "files": 1064,
+      "filesOnDisk": 1066,
       "nodes": 8589,
       "edges": 15041,
       "allowlisted": 3
@@ -715,6 +715,7 @@
     "lib/calculations/entityBreakdown.ts",
     "lib/calculations/entityValueBreakdown.ts",
     "lib/calculations/expenseAggregator.ts",
+    "lib/calculations/financialIndependence.ts",
     "lib/calculations/incomeAggregator.ts",
     "lib/calculations/index.ts",
     "lib/calculations/loanAggregator.ts",

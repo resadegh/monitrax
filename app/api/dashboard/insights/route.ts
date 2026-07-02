@@ -22,6 +22,7 @@ import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialServic
 import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
 import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
+import { computeFinancialIndependence } from '@/lib/calculations/financialIndependence';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -128,10 +129,23 @@ interface DashboardInsights {
     // or tightened (negative) over the trend window. 0 when not enough
     // history. Drives the hero sub-text.
     marginDeltaPoints: number;
-    // Freedom horizon in years (= freeCashDays / 365.25). The headline
-    // metric on the Money Story v2 hero. Replaces the previous
-    // "5255 days of life" framing.
+    // Freedom horizon in years (= freeCashDays / 365.25). LEGACY liquid-cash
+    // runway — retained for back-compat; the hero now leads with the FI
+    // coverage below (Phase 58).
     freedomYears: number;
+    // Phase 58 (Freedom hero) — Financial Independence: what fraction of the
+    // user's real lifestyle spend is already funded by NET, ACCESSIBLE passive
+    // income (rent net of costs+interest + dividends + distributions + interest).
+    // The single number that only exists because the WHOLE portfolio is on one
+    // page. `...At60` adds preserved super at a labelled 4% drawdown assumption.
+    freedomCoverageNow: number;
+    freedomCoverageAt60: number;
+    passiveMonthly: number;
+    superIncomeAt60Monthly: number;
+    superDrawdownRate: number;
+    incomeProducingCount: number;
+    growthBuildingCount: number;
+    freedomHasData: boolean;
   };
   // Phase KPI-tiles (2026-05-28) — series + deltas for the dashboard's
   // 3 sparkline KPI tiles (Cash Flow / Income / Outgoings). The band
@@ -413,6 +427,33 @@ export const GET = withPermission('report.read', async (request, auth) => {
         ? qm.actualNetCashflow
         : qm.monthlyCashflow;
 
+      // Phase 58 (Freedom hero) — Financial Independence coverage. Assemble the
+      // pure engine's inputs from canonical snapshot fields. NET passive income
+      // = per-property net cashflow (the ONLY figure net of expenses + loan
+      // repayments — snapshot.income.passive is GROSS and must not be used for
+      // rent) + non-property passive (dividends/interest/royalties, no modelled
+      // costs). Gross rent is never used — it would overstate freedom on geared
+      // property (§0 financial-adviser honesty; §19.1). Lifestyle = the trailing
+      // real spend (Phase 57), declared-plan fallback when no trailing actuals.
+      const fiPropertyNetMonthly = snapshot.properties.map((p) => p.monthlyCashflow);
+      const fiPropertyNetAnnual =
+        fiPropertyNetMonthly.reduce((s, v) => s + v, 0) * 12; /* @financial-math-allowed: Σ canonical per-property net cashflow, annualised, for the FI engine (§19.1) */
+      const fiPassiveByType = snapshot.income.annual.passive.byType;
+      const fiNonPropertyPassiveAnnual =
+        (fiPassiveByType['DIVIDEND']?.net ?? 0) +
+        (fiPassiveByType['INTEREST']?.net ?? 0) +
+        (fiPassiveByType['ROYALTY']?.net ?? 0); /* @financial-math-allowed: non-property passive income (no modelled costs) for the FI engine */
+      const fiLifestyleAnnual =
+        moneyStoryTrend.trailingMonthsWithData > 0 && moneyStoryTrend.annualOutgoings > 0
+          ? moneyStoryTrend.annualOutgoings
+          : (snapshot.quickMetrics.monthlyExpenses + snapshot.quickMetrics.monthlyLoanRepayments) * 12; /* @financial-math-allowed: declared-plan lifestyle fallback when no trailing actuals (§19.1) */
+      const financialIndependence = computeFinancialIndependence({
+        netAccessiblePassiveAnnual: fiPropertyNetAnnual + fiNonPropertyPassiveAnnual, /* @financial-math-allowed: net accessible passive = property net cashflow + non-property passive */
+        preservedSuperBalance: snapshot.netWorth.assets.superannuation,
+        lifestyleAnnual: fiLifestyleAnnual,
+        propertyNetMonthly: fiPropertyNetMonthly,
+      });
+
       const response: DashboardInsights = {
         healthScore: {
           score: healthScore,
@@ -460,10 +501,16 @@ export const GET = withPermission('report.read', async (request, auth) => {
         // freedomYears for the Freedom Horizon ribbon hero. Honest
         // transaction aggregation; empty trend when <2 months of data.
         moneyStory: {
-          earned: snapshot.quickMetrics.monthlyGrossIncome,
-          // Phase 1 (cashflow-actuals) — Kept/margin/surplus reflect ACTUAL
-          // spend when transaction data exists (declared fallback otherwise).
-          kept: keptActual,
+          // Phase 58 — earned/kept on the trailing basis (avg money-in and avg
+          // net over COMPLETE months) so MARGIN is a real savings margin, not
+          // "100%" (the old bug: declared income − near-empty current-month
+          // actual spend). Declared fallback when there are no trailing actuals.
+          earned:
+            moneyStoryTrend.annualIncome > 0
+              ? Math.round(moneyStoryTrend.annualIncome / 12)
+              : snapshot.quickMetrics.monthlyGrossIncome,
+          kept:
+            moneyStoryTrend.annualIncome > 0 ? moneyStoryTrend.avgMonthlyNet : keptActual,
           keptMargin: keptMarginActual,
           freeToday: snapshot.quickMetrics.liquidCash,
           freeDays: snapshot.quickMetrics.freeCashDays,
@@ -473,6 +520,15 @@ export const GET = withPermission('report.read', async (request, auth) => {
           trend: moneyStoryTrend.trend,
           marginDeltaPoints: moneyStoryTrend.marginDeltaPoints,
           freedomYears: snapshot.quickMetrics.freeCashDays / 365.25,
+          // Phase 58 — Financial Independence coverage (the Freedom hero number).
+          freedomCoverageNow: financialIndependence.coverageNowPct,
+          freedomCoverageAt60: financialIndependence.coverageAt60Pct,
+          passiveMonthly: financialIndependence.netAccessiblePassiveMonthly,
+          superIncomeAt60Monthly: financialIndependence.superIncomeAt60Monthly,
+          superDrawdownRate: financialIndependence.superDrawdownRate,
+          incomeProducingCount: financialIndependence.incomeProducingCount,
+          growthBuildingCount: financialIndependence.growthBuildingCount,
+          freedomHasData: financialIndependence.hasData,
         },
         // Phase KPI-tiles — pure passthrough of the service-computed
         // sparkline series + deltas. No arithmetic here (all done in

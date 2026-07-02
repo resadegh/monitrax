@@ -170,6 +170,15 @@ interface DashboardInsights {
     trend: Array<{ label: string; spent: number; kept: number }>;
     marginDeltaPoints: number;
     freedomYears: number;
+    // Phase 58 (Freedom hero) — Financial Independence coverage.
+    freedomCoverageNow: number;
+    freedomCoverageAt60: number;
+    passiveMonthly: number;
+    superIncomeAt60Monthly: number;
+    superDrawdownRate: number;
+    incomeProducingCount: number;
+    growthBuildingCount: number;
+    freedomHasData: boolean;
   };
   // Phase KPI-tiles (2026-05-28) — sparkline series + deltas for the
   // dashboard Cash Flow / Income / Outgoings tiles.
@@ -667,6 +676,12 @@ export default function DashboardPage() {
               kept={insights.moneyStory.kept}
               marginDeltaPoints={insights.moneyStory.marginDeltaPoints}
               ribbon={insights.moneyStory.trend}
+              coverageNow={insights.moneyStory.freedomCoverageNow}
+              coverageAt60={insights.moneyStory.freedomCoverageAt60}
+              passiveMonthly={insights.moneyStory.passiveMonthly}
+              incomeProducingCount={insights.moneyStory.incomeProducingCount}
+              growthBuildingCount={insights.moneyStory.growthBuildingCount}
+              freedomHasData={insights.moneyStory.freedomHasData}
             />
           )}
 

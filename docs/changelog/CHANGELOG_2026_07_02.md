@@ -71,6 +71,60 @@ Score: **10/10 against requirement**; code correctness verified by tests + types
   $5.5M in assets, likely duplicates the Emergency tile). Reframing it is a product-philosophy fork
   presented to Reza; the fix ships in a focused follow-up once the direction is chosen.
 
+---
+
+## Session (cont.): Phase 58 — the "Freedom" hero (Financial Independence)
+
+### Changes Made
+- **Type**: Feature (the "wow" — cross-portfolio Financial Independence) + Fix (hero MARGIN 100%)
+- **Scope**: Dashboard hero (`MoneyStoryHeroV2`) + new canonical FI engine.
+- **Why (Reza, 2026-07-02)**: *"I need the tiles to be real value add … something that wow the
+  users (that will be very hard for the user to figure out without having all portfolio in one page)."*
+- **Solution**: reframe the hero from a liquid-cash **runway** into a **Financial Independence**
+  number: *"your portfolio covers N% of the life you actually live"* = **net, accessible** passive
+  income ÷ **real** (trailing) lifestyle spend. Net = Σ per-property net cashflow (rent − costs −
+  loan repayments) + dividends + interest + royalties — **gross rent is never used** (it would
+  overstate freedom on geared property). Preserved super is **excluded** from "now" and surfaced as
+  an **"→ N% once your super unlocks at 60"** line (labelled 4% safe-withdrawal assumption). A
+  **growth-vs-income split** ("2 building equity · 1 producing income") reframes negatively-geared
+  property as the deliberate strategy it is, not a failure. The `MARGIN 100%` hero bug is fixed by
+  putting earned/kept on the same trailing basis.
+
+### Files
+- `lib/calculations/financialIndependence.ts` — NEW pure canonical engine (`computeFinancialIndependence`).
+- `tests/neomatrix/financialIndependenceAudit.test.ts` — NEW A1 worked-example audit (9 tests).
+- `app/api/dashboard/insights/route.ts` — assemble net-accessible passive + lifestyle + super, call
+  the engine, expose `moneyStory.freedom*`; fix earned/kept to the trailing basis (MARGIN).
+- `components/editorial/money-story/MoneyStoryHeroV2.tsx` — FI-coverage hero number + at-60 + split
+  lines; em-dash (never a bare 0%) when no lifestyle data.
+- `components/dashboard/tiles/GlassInsightTiles.tsx`, `app/dashboard/page.tsx` — prop wiring.
+- Neomatrix: NEW `engine.financialIndependence.computeFinancialIndependence` node + 2 edges
+  (moneyStoryTrend → FI → hero); Layer-0 manifest updated for the new file (graphify binary
+  unavailable in-sandbox — manifest hand-reconciled, to be regenerated on next graphify run);
+  `GENERATED_CORE.md` regenerated; `neomatrix:check` green (Layer 0, binding 150/150, census 0 uncovered).
+
+### §19.2 worked example (verified — FI test 9/9)
+net passive $24k/yr ÷ lifestyle $120k/yr → **coverageNow 20.0%**; preserved super $300k × 4% = $12k →
+**coverageAt60 30.0%**; propertyNetMonthly [-500,200,-300] → 1 income-producing, 2 growth-building;
+lifestyle 0 → coverage 0 + hasData false (em-dash, no bare 0%).
+
+### §19.1 basis + honesty
+Net (not gross) passive; accessible (super excluded from "now"); lifestyle = trailing real spend.
+Known caveat (documented): SMSF assets flow through entity investments and are not yet
+preservation-gated — a v1 limitation for the "now" figure.
+
+### §20.4 self-review (financial build → 10/10)
+Critique caught: gross-rent would lie → used per-property net cashflow; super in "now" would mislead
+→ at-60 layer; a bare "0%" empty state → em-dash guard; new engine must be modelled + connected in
+the graph (not an island) → added node + 2 edges. **10/10 against requirement.**
+
+### Build Status
+- [x] `vitest` — FI 9/9 + moneyStory 11/11 (20/20).
+- [x] `lint:financial-surfaces` — 0 new (engine math lives in the engine; route assembly annotated).
+- [x] `tsc --noEmit` — changed files type-clean (repo-wide errors are the missing-Prisma-client pattern).
+- [x] `neomatrix:check` — green.
+- [ ] `next build` — Vercel preview (Prisma engine download blocked in-sandbox).
+
 ### PR
-- PR URL: (pending)
+- PR: #1330 (same branch — Phase 57 + 58)
 - Status: Draft
