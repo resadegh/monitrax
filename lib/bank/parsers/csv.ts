@@ -296,47 +296,32 @@ export function parseCSV(
   // Detect bank format or use provided options
   const bankMapping = headers.length > 0 ? detectBankMapping(headers) : null;
 
-  const dateCol = options?.dateColumn
-    ? findColumnIndex(headers, options.dateColumn)
-    : bankMapping?.dateColumn
-    ? findColumnIndex(headers, bankMapping.dateColumn)
-    : 0;
+  // Resolve a column: explicit option → detected-bank column → positional
+  // fallback. CRITICAL: when the explicit/mapping column NAME isn't found in the
+  // actual headers (findColumnIndex → -1), fall THROUGH to the fallback rather
+  // than returning -1. Without this, a generic "date,description,amount" CSV that
+  // fuzzy-matches a bank whose column is named differently (e.g. ANZ's "Details")
+  // silently dropped the description → blank merchants. `fallback` is -1 for
+  // optional columns (amount/credit/debit/balance/ref) so those stay truly absent.
+  const resolveCol = (explicit: string | undefined, mappingCol: string | undefined, fallback: number): number => {
+    if (explicit) {
+      const i = findColumnIndex(headers, explicit);
+      if (i >= 0) return i;
+    }
+    if (mappingCol) {
+      const i = findColumnIndex(headers, mappingCol);
+      if (i >= 0) return i;
+    }
+    return fallback;
+  };
 
-  const descCol = options?.descriptionColumn
-    ? findColumnIndex(headers, options.descriptionColumn)
-    : bankMapping?.descriptionColumn
-    ? findColumnIndex(headers, bankMapping.descriptionColumn)
-    : 1;
-
-  const amountCol = options?.amountColumn
-    ? findColumnIndex(headers, options.amountColumn)
-    : bankMapping?.amountColumn
-    ? findColumnIndex(headers, bankMapping.amountColumn)
-    : -1;
-
-  const creditCol = options?.creditColumn
-    ? findColumnIndex(headers, options.creditColumn)
-    : bankMapping?.creditColumn
-    ? findColumnIndex(headers, bankMapping.creditColumn)
-    : -1;
-
-  const debitCol = options?.debitColumn
-    ? findColumnIndex(headers, options.debitColumn)
-    : bankMapping?.debitColumn
-    ? findColumnIndex(headers, bankMapping.debitColumn)
-    : -1;
-
-  const balanceCol = options?.balanceColumn
-    ? findColumnIndex(headers, options.balanceColumn)
-    : bankMapping?.balanceColumn
-    ? findColumnIndex(headers, bankMapping.balanceColumn)
-    : -1;
-
-  const refCol = options?.referenceColumn
-    ? findColumnIndex(headers, options.referenceColumn)
-    : bankMapping?.referenceColumn
-    ? findColumnIndex(headers, bankMapping.referenceColumn)
-    : -1;
+  const dateCol = resolveCol(options?.dateColumn, bankMapping?.dateColumn, 0);
+  const descCol = resolveCol(options?.descriptionColumn, bankMapping?.descriptionColumn, 1);
+  const amountCol = resolveCol(options?.amountColumn, bankMapping?.amountColumn, -1);
+  const creditCol = resolveCol(options?.creditColumn, bankMapping?.creditColumn, -1);
+  const debitCol = resolveCol(options?.debitColumn, bankMapping?.debitColumn, -1);
+  const balanceCol = resolveCol(options?.balanceColumn, bankMapping?.balanceColumn, -1);
+  const refCol = resolveCol(options?.referenceColumn, bankMapping?.referenceColumn, -1);
 
   const dateFormat = options?.dateFormat ?? bankMapping?.dateFormat ?? 'DD/MM/YYYY';
 
