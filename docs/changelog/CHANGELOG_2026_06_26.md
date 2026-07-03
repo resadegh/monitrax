@@ -787,7 +787,7 @@ Every root cause verified in source (agents + direct reads; depreciation bonus b
 
 ---
 
-## Session: property-cashflow-rhythm-loan-rows (P-3 fix + P-7 resolved — 2026-07-03)
+## Session: property-cashflow-rhythm-loan-rows (P-3 fix + P-7 resolved — 2026-07-03) — MERGED #1333
 
 ### Changes Made
 - **Type**: Property detail UI fix (display-only — NO number changed, NO financial logic touched).
@@ -800,3 +800,18 @@ Every root cause verified in source (agents + direct reads; depreciation bonus b
 
 ### §20.4/§20.5 self-review → 10/10 (display-only; not a financial build — no number changed)
 The fix shows a term the cashflow already subtracts (no recomputation); reconciliation verified arithmetically against both of Reza's screens; §18.2.1 "true tweak" (one row type into an approved section, code-first allowed); tsc + eslint clean. The number-changing issues (P-1 rent frequency, P-2 canonical/actuals, P-5 depreciation) remain parked for Reza's go-ahead. 10/10.
+
+---
+
+## Session: claudemd-full-flow-verification (§19.4 added — 2026-07-03)
+
+### Changes Made
+- **Type**: CLAUDE.md protocol change (process rule — no code, no financial logic).
+- **§19.4 FULL-FLOW VERIFICATION added** (CRITICAL/NON-NEGOTIABLE) per Reza directive 2026-07-03: every number-changing fix must trace + verify EVERY downstream consumer across the whole app before it's "done" — enumerate consumers via the Neomatrix lineage (model the number first if it's an unmodelled blind spot), grep every render site, confirm ONE source (delete any second producer — the whack-a-mole cause), add a HARD automated cross-surface/propagation test (not an eyeball), and report the sweep + test in the PR. Reviewer enforcement + version footer bumped to 3.2.
+
+### Files Modified
+- `CLAUDE.md` — §19.4 + version footer (3.1 → 3.2).
+- `docs/changelog/CHANGELOG_2026_06_26.md` — this entry.
+
+### §20.4 review → 10/10
+Rule is enforceable (concrete steps + reviewer rejection criteria), leverages the Neomatrix lineage as the downstream map (its actual purpose), distinguishes SSOT-the-architecture from §19.4-the-verification, and directly targets Reza's "fixed here, still broken there" pain with a hard test requirement. 10/10.
