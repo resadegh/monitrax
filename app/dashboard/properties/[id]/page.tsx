@@ -62,7 +62,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
-import { toAnnual } from '@/lib/utils/frequencies';
+import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
 import { DocumentsSection } from '@/components/documents';
 import { LinkedEntityType } from '@/lib/documents/types';
@@ -71,7 +71,14 @@ import { LinkedEntityType } from '@/lib/documents/types';
 // TYPES
 // =============================================================================
 
-interface Loan {
+// Actuals fields the API attaches per entity (MON-002): reconciled figures that
+// override the declared/manual value when present. See lib/calculations/propertyActuals.ts.
+interface Actuals {
+  monthlyAverageActual?: number | null;
+  hasTransactions?: boolean;
+}
+
+interface Loan extends Actuals {
   id: string;
   name: string;
   principal: number;
@@ -80,7 +87,7 @@ interface Loan {
   repaymentFrequency: string | null;
 }
 
-interface IncomeItem {
+interface IncomeItem extends Actuals {
   id: string;
   name: string;
   type: string;
@@ -88,7 +95,7 @@ interface IncomeItem {
   frequency: string;
 }
 
-interface ExpenseItem {
+interface ExpenseItem extends Actuals {
   id: string;
   name: string;
   category: string;
@@ -135,35 +142,11 @@ function computeLvr(p: Property): number {
   return (totalLoans / p.currentValue) * 100;
 }
 
-function computeAnnualRent(p: Property): number {
-  return (p.income ?? []).reduce((sum, i) => {
-    if (i.type === 'RENT' || i.type === 'RENTAL') {
-      return sum + toAnnual(i.amount, i.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
-    }
-    return sum;
-  }, 0);
-}
-
-function computeRentalYield(p: Property): number {
-  if (p.currentValue <= 0) return 0;
-  return (computeAnnualRent(p) / p.currentValue) * 100;
-}
-
-function computeAnnualLoanRepayments(p: Property): number {
-  return (p.loans ?? []).reduce((sum, l) => {
-    return sum + toAnnual(l.minRepayment ?? 0, (l.repaymentFrequency ?? 'MONTHLY') as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
-  }, 0);
-}
-
-function computeAnnualExpenses(p: Property): number {
-  return (p.expenses ?? []).reduce((sum, e) => {
-    return sum + toAnnual(e.amount, e.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
-  }, 0);
-}
-
-function computeCashflow(p: Property): number {
-  const income = (p.income ?? []).reduce((sum, i) => sum + toAnnual(i.amount, i.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'), 0);
-  return income - computeAnnualExpenses(p) - computeAnnualLoanRepayments(p);
+// MON-002: rent / expenses / cashflow now come from the ONE canonical engine
+// (lib/calculations/propertyCashflow.ts) — actuals-first, loan never $0 — the
+// same engine the property list page reads. No inline re-derivation here.
+function cashflowOf(p: Property) {
+  return computePropertyCashflow({ income: p.income, expenses: p.expenses, loans: p.loans });
 }
 
 function computeAnnualDepreciation(p: Property): number {
@@ -275,9 +258,10 @@ export default function PropertyDetailPage() {
   const isRental = property.type === 'RENTAL';
   const equity = computeEquity(property);
   const lvr = computeLvr(property);
-  const yieldPct = computeRentalYield(property);
-  const annualRent = computeAnnualRent(property);
-  const cashflow = computeCashflow(property);
+  const cf = cashflowOf(property);
+  const yieldPct = property.currentValue > 0 ? (cf.annualRent / property.currentValue) * 100 : 0;
+  const annualRent = cf.annualRent;
+  const cashflow = cf.annualCashflow;
   const loanBalance = computeTotalLoanBalance(property);
   const depreciation = computeAnnualDepreciation(property);
   const gainPct = computeGainPercentage(property);
@@ -526,7 +510,7 @@ export default function PropertyDetailPage() {
             <InsightCard
               icon={FileText}
               title="Tax position"
-              body={`This property contributes ${formatCurrency(cashflow)} to annual cashflow before tax. See its impact in your FY26 tax position.`}
+              body={`For tax, this property's result is ${formatCurrency(cf.annualTaxCashflow)}/yr (rent − expenses − loan interest; principal isn't deductible). Cash cashflow is ${formatCurrency(cf.annualCashflow)}/yr. See its impact in your FY26 tax position.`}
               cta="View tax position"
               href="/dashboard/tax"
               tint="emerald"
@@ -702,7 +686,7 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
   });
 
   if ((property.expenses ?? []).length > 0) {
-    const annual = computeAnnualExpenses(property);
+    const annual = computePropertyCashflow({ expenses: property.expenses }).annualExpenses;
     items.push({
       id: 'exp-summary',
       icon: Receipt,

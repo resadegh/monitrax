@@ -8,7 +8,7 @@
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
 | MON-001 | 🟡 DIAGNOSED | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | — | — |
-| MON-002 | 🟡 DIAGNOSED | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | — | — |
+| MON-002 | 🟡 DIAGNOSED | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | — | ✅ |
 | MON-003 | 🟡 DIAGNOSED | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | — | — |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
 | MON-005 | 🟡 DIAGNOSED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | — | n/a |
@@ -34,25 +34,25 @@
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 
-Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time.
+Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time. Folded into MON-002: the shared engine uses monthlyAverageActual (a true monthly average from the reconciled fortnightly cadence) so fortnightly rent annualises at ×26 not ×12. Advances to VERIFIED with MON-002 once Reza confirms on his data.
 
 ### MON-002 — Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift
 
 **🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
 
-> **What was wrong:** A property's cashflow was calculated on the page from your typed-in figures and ignored your reconciled transactions — and if you hadn't typed a loan repayment, the loan cost showed as $0, making the property look far more positive than it really is.
+> **What was wrong:** A property's Cashflow/yr was worked out on the page from your typed-in figures and ignored your reconciled bank transactions. Worse, if you hadn't typed a loan repayment the loan cost dropped to $0, so the property looked far healthier than it was — and the list tile and the detail page used two different formulas, so they disagreed.
 >
-> **What changed:** (planned) One shared calculation used everywhere: use your actual reconciled figures when available (rent, expenses, loan repayments), fall back to your typed values otherwise, and always include the loan cost.
+> **What changed:** One shared calculation (computePropertyCashflow) now powers BOTH the property list tile and the detail page. It uses your reconciled actuals when transactions exist (so fortnightly rent counts correctly), falls back to your typed values otherwise, and always includes the loan cost — never $0 when a loan exists. The headline Cashflow/yr is cash-basis (rent − expenses − full repayment); the Tax card uses interest-only (the deductible part).
 >
-> **What you should see:** (after fix) The property Cashflow/yr includes the loan (never $0 when there's a loan) and matches the dashboard, balances and tax position — the same number in every place.
+> **What you should see:** Open a property: the Cashflow/yr now includes the loan repayment (never $0 with a loan), and the SAME number shows on the Properties list tile and the detail page. Fortnightly rents read at their true annual amount, not ~half. The Tax card figure is less negative than the cash figure (interest-only vs full P&I).
 
-- **Root cause:** `app/dashboard/properties/[id]/page.tsx:164`, `app/dashboard/properties/[id]/page.tsx:152`, `app/api/properties/[id]/route.ts:193`
-- **Neomatrix:** `engine.canonicalCashflow.resolveCanonicalCashflow`
+- **Root cause:** `app/dashboard/properties/page.tsx:471`, `app/dashboard/properties/[id]/page.tsx:148`, `app/api/properties/route.ts:47`
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Holistic test (§19.4):** `tests/calculations/propertyCashflow.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2`
 
-Decision locked (Reza 2026-07-03): headline = actuals-first P&I (actual repayment when captured, else manual minRepayment); Tax card = interest-only. The API already returns budgetAmount + actualFromTransactions + hasTransactions per entity; the page ignores them. Per-property cashflow NOT modelled in the Neomatrix (blind spot) -> must be modelled at fix time (§21.2.1). §19.4 downstream sweep + cross-surface propagation test required before VERIFIED.
+Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-first P&I headline, interest-only tax) + ONE shared actuals producer lib/services/propertyActuals.ts (batched into BOTH the list and detail APIs so tiles match the detail page — §19.4 same-number-everywhere). Modelled in the Neomatrix (engine.propertyCashflow.computePropertyCashflow + number.propertyCashflow, both surfaces converge on one engine — A3). Folds in MON-001 (fortnightly-as-monthly: actuals-first monthlyAverageActual fixes it) + MON-006 (cash-vs-tax basis: both returned explicitly). Status stays FIXING until Reza tests the numbers on his data.
 
 ### MON-003 — DEPRECIATION / YR always $0 (reads a field absent from the model)
 
@@ -121,7 +121,7 @@ New in-app section-level composition -> Stitch-first (§18.2.1).
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-6`
 
-Folded into MON-002 (headline = P&I cash; Tax card = interest).
+Folded into MON-002 (headline = P&I cash; Tax card = interest). Folded into MON-002: computePropertyCashflow returns BOTH annualCashflow (cash, full P&I) and annualTaxCashflow (interest-only, deductible) explicitly — the detail Tax card renders the tax basis, the headline renders cash. Advances to VERIFIED with MON-002.
 
 ### MON-007 — -$100,912 vs -$46,897 don't add up
 

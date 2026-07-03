@@ -20,7 +20,9 @@
         "app/api/transactions/[id]/link/route.ts:156",
         "app/dashboard/properties/[id]/page.tsx:141"
       ],
-      "semanticKeys": ["engine.incomeAggregator.aggregateIncome"],
+      "semanticKeys": [
+        "engine.incomeAggregator.aggregateIncome"
+      ],
       "downstreamConsumers": [
         "app/dashboard/properties/[id]/page.tsx",
         "app/dashboard/properties/page.tsx"
@@ -28,7 +30,7 @@
       "fixPRs": [],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
-      "notes": "Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time."
+      "notes": "Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time. Folded into MON-002: the shared engine uses monthlyAverageActual (a true monthly average from the reconciled fortnightly cadence) so fortnightly rent annualises at ×26 not ×12. Advances to VERIFIED with MON-002 once Reza confirms on his data."
     },
     {
       "id": "MON-002",
@@ -39,24 +41,27 @@
       "opened": "2026-07-03",
       "area": "properties",
       "plain": {
-        "issue": "A property's cashflow was calculated on the page from your typed-in figures and ignored your reconciled transactions — and if you hadn't typed a loan repayment, the loan cost showed as $0, making the property look far more positive than it really is.",
-        "fix": "(planned) One shared calculation used everywhere: use your actual reconciled figures when available (rent, expenses, loan repayments), fall back to your typed values otherwise, and always include the loan cost.",
-        "check": "(after fix) The property Cashflow/yr includes the loan (never $0 when there's a loan) and matches the dashboard, balances and tax position — the same number in every place."
+        "issue": "A property's Cashflow/yr was worked out on the page from your typed-in figures and ignored your reconciled bank transactions. Worse, if you hadn't typed a loan repayment the loan cost dropped to $0, so the property looked far healthier than it was — and the list tile and the detail page used two different formulas, so they disagreed.",
+        "fix": "One shared calculation (computePropertyCashflow) now powers BOTH the property list tile and the detail page. It uses your reconciled actuals when transactions exist (so fortnightly rent counts correctly), falls back to your typed values otherwise, and always includes the loan cost — never $0 when a loan exists. The headline Cashflow/yr is cash-basis (rent − expenses − full repayment); the Tax card uses interest-only (the deductible part).",
+        "check": "Open a property: the Cashflow/yr now includes the loan repayment (never $0 with a loan), and the SAME number shows on the Properties list tile and the detail page. Fortnightly rents read at their true annual amount, not ~half. The Tax card figure is less negative than the cash figure (interest-only vs full P&I)."
       },
       "rootCause": [
-        "app/dashboard/properties/[id]/page.tsx:164",
-        "app/dashboard/properties/[id]/page.tsx:152",
-        "app/api/properties/[id]/route.ts:193"
+        "app/dashboard/properties/page.tsx:471",
+        "app/dashboard/properties/[id]/page.tsx:148",
+        "app/api/properties/route.ts:47"
       ],
-      "semanticKeys": ["engine.canonicalCashflow.resolveCanonicalCashflow"],
+      "semanticKeys": [
+        "engine.propertyCashflow.computePropertyCashflow",
+        "number.propertyCashflow"
+      ],
       "downstreamConsumers": [
         "app/dashboard/properties/[id]/page.tsx",
         "app/dashboard/properties/page.tsx"
       ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/calculations/propertyCashflow.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2",
-      "notes": "Decision locked (Reza 2026-07-03): headline = actuals-first P&I (actual repayment when captured, else manual minRepayment); Tax card = interest-only. The API already returns budgetAmount + actualFromTransactions + hasTransactions per entity; the page ignores them. Per-property cashflow NOT modelled in the Neomatrix (blind spot) -> must be modelled at fix time (§21.2.1). §19.4 downstream sweep + cross-surface propagation test required before VERIFIED."
+      "notes": "Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-first P&I headline, interest-only tax) + ONE shared actuals producer lib/services/propertyActuals.ts (batched into BOTH the list and detail APIs so tiles match the detail page — §19.4 same-number-everywhere). Modelled in the Neomatrix (engine.propertyCashflow.computePropertyCashflow + number.propertyCashflow, both surfaces converge on one engine — A3). Folds in MON-001 (fortnightly-as-monthly: actuals-first monthlyAverageActual fixes it) + MON-006 (cash-vs-tax basis: both returned explicitly). Status stays FIXING until Reza tests the numbers on his data."
     },
     {
       "id": "MON-003",
@@ -71,9 +76,13 @@
         "fix": "(planned) Calculate the yearly depreciation from the schedule's cost and rate (prime-cost / diminishing-value).",
         "check": "(after fix) Depreciation/yr shows a real figure based on your depreciation schedule."
       },
-      "rootCause": ["app/dashboard/properties/[id]/page.tsx:170"],
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:170"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx"
+      ],
       "fixPRs": [],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5",
@@ -93,10 +102,16 @@
         "fix": "Added the loan repayment as a line in the 'Cashflow rhythm', using the same figure the cashflow already subtracts.",
         "check": "Open a property that has a loan → the 'Cashflow rhythm' now lists the loan repayment, and rent − expenses − loan repayment adds up to the Cashflow/yr shown at the top."
       },
-      "rootCause": ["app/dashboard/properties/[id]/page.tsx:768"],
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:768"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
-      "fixPRs": [1333],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx"
+      ],
+      "fixPRs": [
+        1333
+      ],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-3",
       "notes": "Display-only (no computed number changed). Fixed in #1333 (merged + prod-verified). §19.4 propagation test not required for display-only; reconciliation verified arithmetically against both screenshots."
@@ -114,9 +129,13 @@
         "fix": "(planned) Show a small summary card of this property's expenses, with a link to drill into the full page if needed.",
         "check": "(after fix) Clicking the expenses tile opens a summary of that property's expenses; a link takes you to the full page."
       },
-      "rootCause": ["app/dashboard/properties/[id]/page.tsx:714"],
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:714"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx"
+      ],
       "fixPRs": [],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-4",
@@ -135,13 +154,17 @@
         "fix": "(planned) Headline cashflow shows your real cash position; the tax card uses interest-only (the deductible part), clearly separated.",
         "check": "(after fix) The tax-position figure is based on loan interest only and is labelled distinctly from the cash cashflow."
       },
-      "rootCause": ["app/dashboard/properties/[id]/page.tsx:529"],
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:529"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx"
+      ],
       "fixPRs": [],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-6",
-      "notes": "Folded into MON-002 (headline = P&I cash; Tax card = interest)."
+      "notes": "Folded into MON-002 (headline = P&I cash; Tax card = interest). Folded into MON-002: computePropertyCashflow returns BOTH annualCashflow (cash, full P&I) and annualTaxCashflow (interest-only, deductible) explicitly — the detail Tax card renders the tax basis, the headline renders cash. Advances to VERIFIED with MON-002."
     },
     {
       "id": "MON-007",
@@ -157,10 +180,16 @@
         "fix": "Confirmed both figures are the same tile before/after you reassigned rentals, and made the loan repayment visible so it reconciles (via MON-004).",
         "check": "The two numbers now make sense: same tile with different rent, and rent − expenses − loan repayment matches the headline."
       },
-      "rootCause": ["app/dashboard/properties/[id]/page.tsx:164"],
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:164"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
-      "fixPRs": [1333],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx"
+      ],
+      "fixPRs": [
+        1333
+      ],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-7",
       "notes": "Same hero tile before/after reassigning rentals; reconciles once the hidden loan repayment is shown (MON-004)."
@@ -183,7 +212,9 @@
         "app/dashboard/properties/page.tsx:1602"
       ],
       "semanticKeys": [],
-      "downstreamConsumers": ["app/dashboard/properties/page.tsx"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/page.tsx"
+      ],
       "fixPRs": [],
       "test": null,
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9",

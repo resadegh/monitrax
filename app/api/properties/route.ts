@@ -9,6 +9,7 @@ import {
   resolveOwnerEntityIdForSelection,
 } from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { enrichPropertiesWithActuals } from '@/lib/services/propertyActuals';
 import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 
 /**
@@ -44,8 +45,14 @@ export const GET = withPermission('property.read', async (request, auth) => {
         orderBy: { createdAt: 'desc' },
       });
 
+      // Enrich income / expenses / loans with reconciled actuals via the ONE
+      // shared producer (§12.2.1 / §19.4) — BATCHED across all properties (3
+      // queries total, no N+1). This is what lets the list tiles render the
+      // SAME actuals-first cashflow the detail page shows.
+      const enriched = await enrichPropertiesWithActuals(auth.userId, properties);
+
       // Apply GRDCS wrapper to each property
-      const propertiesWithLinks = properties.map((property: typeof properties[number]) => {
+      const propertiesWithLinks = enriched.map((property) => {
         const links = extractPropertyLinks(property);
         return wrapWithGRDCS(property as Record<string, unknown>, 'property', links);
       });

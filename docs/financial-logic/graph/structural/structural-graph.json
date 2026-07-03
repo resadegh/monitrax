@@ -1,17 +1,17 @@
 {
   "_meta": {
     "generator": "graphify 0.8.45 (code-only/offline, tree-sitter AST)",
-    "builtAtCommit": "2e7bfb346ba06e8cb01da2bf4ca4150a40c57293",
+    "builtAtCommit": "62b8f0fd77f47134ddac1004fc730de4b65697d1",
     "roots": [
       "lib",
       "app"
     ],
     "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
     "counts": {
-      "files": 1064,
-      "filesOnDisk": 1066,
-      "nodes": 8589,
-      "edges": 15041,
+      "files": 1079,
+      "filesOnDisk": 1081,
+      "nodes": 8723,
+      "edges": 15351,
       "allowlisted": 3
     }
   },
@@ -722,6 +722,7 @@
     "lib/calculations/moneyStoryTrend.ts",
     "lib/calculations/netWorthCalculator.ts",
     "lib/calculations/netWorthHistory.ts",
+    "lib/calculations/propertyCashflow.ts",
     "lib/cashflow-intelligence/geminiSummary.ts",
     "lib/cashflow-intelligence/healthScoreAggregator.ts",
     "lib/cashflow-intelligence/index.ts",
@@ -976,6 +977,7 @@
     "lib/services/ownershipService.ts",
     "lib/services/privateCompanyBenefitService.ts",
     "lib/services/professionalRequestService.ts",
+    "lib/services/propertyActuals.ts",
     "lib/services/setupStateService.ts",
     "lib/services/stripeBillingService.ts",
     "lib/services/trustDeedRuleService.ts",
@@ -1303,127 +1305,127 @@
       "activity_page_activitypage",
       "ActivityPage()",
       "app/dashboard/activity/page.tsx",
-      2074
+      2351
     ],
     [
       "activity_page_activitypagecontent",
       "ActivityPageContent()",
       "app/dashboard/activity/page.tsx",
-      212
+      224
     ],
     [
       "activity_page_analyticssummary",
       "AnalyticsSummary",
       "app/dashboard/activity/page.tsx",
-      110
+      122
     ],
     [
       "activity_page_band_label",
       "BAND_LABEL",
       "app/dashboard/activity/page.tsx",
-      1458
+      1626
     ],
     [
       "activity_page_category_options",
       "CATEGORY_OPTIONS",
       "app/dashboard/activity/page.tsx",
-      145
+      157
     ],
     [
       "activity_page_chiptoggle",
       "ChipToggle()",
       "app/dashboard/activity/page.tsx",
-      1391
+      1559
     ],
     [
       "activity_page_confidencechip",
       "ConfidenceChip()",
       "app/dashboard/activity/page.tsx",
-      1428
+      1596
     ],
     [
       "activity_page_emptystate",
       "EmptyState()",
       "app/dashboard/activity/page.tsx",
-      2058
+      2335
     ],
     [
       "activity_page_errorstate",
       "ErrorState()",
       "app/dashboard/activity/page.tsx",
-      2031
+      2308
     ],
     [
       "activity_page_filterfield",
       "FilterField()",
       "app/dashboard/activity/page.tsx",
-      1685
+      1853
     ],
     [
       "activity_page_getcategorytone",
       "getCategoryTone()",
       "app/dashboard/activity/page.tsx",
-      161
+      173
     ],
     [
       "activity_page_groupbyday",
       "groupByDay()",
       "app/dashboard/activity/page.tsx",
-      183
+      195
     ],
     [
       "activity_page_importaccount",
       "ImportAccount",
       "app/dashboard/activity/page.tsx",
-      133
+      145
     ],
     [
       "activity_page_loadinglist",
       "LoadingList()",
       "app/dashboard/activity/page.tsx",
-      2007
+      2284
     ],
     [
       "activity_page_queuereviewlist",
       "QueueReviewList()",
       "app/dashboard/activity/page.tsx",
-      1476
+      1644
     ],
     [
       "activity_page_queuereviewrow",
       "QueueReviewRow()",
       "app/dashboard/activity/page.tsx",
-      1584
+      1752
     ],
     [
       "activity_page_reviewqueueitem",
       "ReviewQueueItem",
       "app/dashboard/activity/page.tsx",
-      120
+      132
     ],
     [
       "activity_page_summarytile",
       "SummaryTile()",
       "app/dashboard/activity/page.tsx",
-      1319
+      1487
     ],
     [
       "activity_page_tilefilter",
       "TileFilter",
       "app/dashboard/activity/page.tsx",
-      139
+      151
     ],
     [
       "activity_page_transaction",
       "Transaction",
       "app/dashboard/activity/page.tsx",
-      80
+      92
     ],
     [
       "activity_page_transactionrow",
       "TransactionRow()",
       "app/dashboard/activity/page.tsx",
-      1700
+      1869
     ],
     [
       "adapters_coreadapters",
@@ -1807,19 +1809,19 @@
       "admin_constants_admin_api_routes",
       "ADMIN_API_ROUTES",
       "lib/admin/constants.ts",
-      64
+      65
     ],
     [
       "admin_constants_admin_error_codes",
       "ADMIN_ERROR_CODES",
       "lib/admin/constants.ts",
-      323
+      325
     ],
     [
       "admin_constants_admin_role_display_names",
       "ADMIN_ROLE_DISPLAY_NAMES",
       "lib/admin/constants.ts",
-      380
+      382
     ],
     [
       "admin_constants_admin_routes",
@@ -1831,73 +1833,73 @@
       "admin_constants_adminerrorcode",
       "AdminErrorCode",
       "lib/admin/constants.ts",
-      374
+      376
     ],
     [
       "admin_constants_audit_actions",
       "AUDIT_ACTIONS",
       "lib/admin/constants.ts",
-      263
+      265
     ],
     [
       "admin_constants_audit_categories",
       "AUDIT_CATEGORIES",
       "lib/admin/constants.ts",
-      305
+      307
     ],
     [
       "admin_constants_date_range_presets",
       "DATE_RANGE_PRESETS",
       "lib/admin/constants.ts",
-      415
+      417
     ],
     [
       "admin_constants_organization_plan_display_names",
       "ORGANIZATION_PLAN_DISPLAY_NAMES",
       "lib/admin/constants.ts",
-      394
+      396
     ],
     [
       "admin_constants_organization_plan_limits",
       "ORGANIZATION_PLAN_LIMITS",
       "lib/admin/constants.ts",
-      181
+      183
     ],
     [
       "admin_constants_organizationplanlimits",
       "OrganizationPlanLimits",
       "lib/admin/constants.ts",
-      169
+      171
     ],
     [
       "admin_constants_pagination_defaults",
       "PAGINATION_DEFAULTS",
       "lib/admin/constants.ts",
-      405
+      407
     ],
     [
       "admin_constants_security_constants",
       "SECURITY_CONSTANTS",
       "lib/admin/constants.ts",
-      232
+      234
     ],
     [
       "admin_constants_user_tier_display_names",
       "USER_TIER_DISPLAY_NAMES",
       "lib/admin/constants.ts",
-      387
+      389
     ],
     [
       "admin_constants_user_tier_limits",
       "USER_TIER_LIMITS",
       "lib/admin/constants.ts",
-      126
+      128
     ],
     [
       "admin_constants_usertierlimits",
       "UserTierLimits",
       "lib/admin/constants.ts",
-      115
+      117
     ],
     [
       "admin_dashboard_page_tsx_dashboard_page",
@@ -2689,31 +2691,31 @@
       "ai_anthropic_anthropiccompletionresult",
       "AnthropicCompletionResult",
       "lib/ai/anthropic.ts",
-      89
+      107
     ],
     [
       "ai_anthropic_anthropicmessage",
       "AnthropicMessage",
       "lib/ai/anthropic.ts",
-      84
+      102
     ],
     [
       "ai_anthropic_generateanthropiccompletion",
       "generateAnthropicCompletion()",
       "lib/ai/anthropic.ts",
-      101
+      119
     ],
     [
       "ai_anthropic_getanthropicclient",
       "getAnthropicClient()",
       "lib/ai/anthropic.ts",
-      70
+      88
     ],
     [
       "ai_anthropic_isanthropicconfigured",
       "isAnthropicConfigured()",
       "lib/ai/anthropic.ts",
-      62
+      79
     ],
     [
       "ai_gemini",
@@ -3014,6 +3016,54 @@
       "TaxOptimizationQuery",
       "lib/ai/types.ts",
       225
+    ],
+    [
+      "ai_usage_page",
+      "page.tsx",
+      "app/admin/ai-usage/page.tsx",
+      1
+    ],
+    [
+      "ai_usage_page_aiusagemetrics",
+      "AiUsageMetrics",
+      "app/admin/ai-usage/page.tsx",
+      29
+    ],
+    [
+      "ai_usage_page_aiusagepage",
+      "AiUsagePage()",
+      "app/admin/ai-usage/page.tsx",
+      45
+    ],
+    [
+      "ai_usage_page_breakdownrow",
+      "BreakdownRow",
+      "app/admin/ai-usage/page.tsx",
+      21
+    ],
+    [
+      "ai_usage_page_usd",
+      "usd()",
+      "app/admin/ai-usage/page.tsx",
+      42
+    ],
+    [
+      "ai_usage_route",
+      "route.ts",
+      "app/api/admin/ai-usage/route.ts",
+      1
+    ],
+    [
+      "ai_usage_route_aiusagemetricsresponse",
+      "AiUsageMetricsResponse",
+      "app/api/admin/ai-usage/route.ts",
+      22
+    ],
+    [
+      "ai_usage_route_get",
+      "GET()",
+      "app/api/admin/ai-usage/route.ts",
+      35
     ],
     [
       "alerts_alertengine",
@@ -3577,13 +3627,13 @@
       "analyzers_aidocumentanalyzer_buildsuggestedactions",
       "buildSuggestedActions()",
       "lib/documents/intelligence/analyzers/aiDocumentAnalyzer.ts",
-      243
+      244
     ],
     [
       "analyzers_aidocumentanalyzer_explainextraction",
       "explainExtraction()",
       "lib/documents/intelligence/analyzers/aiDocumentAnalyzer.ts",
-      363
+      364
     ],
     [
       "analyzers_aidocumentanalyzer_isaianalysisavailable",
@@ -4015,19 +4065,19 @@
       "api_accounts_id_import_route_ts_import_route_get",
       "GET",
       "app/api/accounts/[id]/import/route.ts",
-      35
+      36
     ],
     [
       "api_accounts_id_import_route_ts_import_route_post",
       "POST",
       "app/api/accounts/[id]/import/route.ts",
-      105
+      106
     ],
     [
       "api_accounts_id_import_route_ts_import_route_routecontext",
       "RouteContext",
       "app/api/accounts/[id]/import/route.ts",
-      33
+      34
     ],
     [
       "api_accounts_id_route_ts_id_route",
@@ -4957,7 +5007,7 @@
       "api_budget_analysis_generate_route_ts_generate_route_post",
       "POST",
       "app/api/budget-analysis/generate/route.ts",
-      35
+      36
     ],
     [
       "api_budget_analysis_latest_route_ts_latest_route",
@@ -5155,7 +5205,7 @@
       "api_dashboard_insights_route_ts_insights_route_get",
       "GET",
       "app/api/dashboard/insights/route.ts",
-      171
+      186
     ],
     [
       "api_debug_intelligence_route_ts_intelligence_route",
@@ -6139,25 +6189,25 @@
       "api_properties_id_route_ts_id_route_delete",
       "DELETE",
       "app/api/properties/[id]/route.ts",
-      373
+      192
     ],
     [
       "api_properties_id_route_ts_id_route_get",
       "GET",
       "app/api/properties/[id]/route.ts",
-      22
+      23
     ],
     [
       "api_properties_id_route_ts_id_route_put",
       "PUT",
       "app/api/properties/[id]/route.ts",
-      256
+      75
     ],
     [
       "api_properties_id_route_ts_id_route_routecontext",
       "RouteContext",
       "app/api/properties/[id]/route.ts",
-      9
+      10
     ],
     [
       "api_recurring_payments_id_link_route_ts_link_route",
@@ -6475,19 +6525,19 @@
       "api_transactions_id_link_route_ts_link_route_linkrequest",
       "LinkRequest",
       "app/api/transactions/[id]/link/route.ts",
-      72
+      74
     ],
     [
       "api_transactions_id_link_route_ts_link_route_post",
       "POST",
       "app/api/transactions/[id]/link/route.ts",
-      110
+      112
     ],
     [
       "api_transactions_id_link_route_ts_link_route_routecontext",
       "RouteContext",
       "app/api/transactions/[id]/link/route.ts",
-      108
+      110
     ],
     [
       "api_unified_transactions_id_route_ts_id_route",
@@ -6499,7 +6549,7 @@
       "api_unified_transactions_id_route_ts_id_route_delete",
       "DELETE",
       "app/api/unified-transactions/[id]/route.ts",
-      346
+      353
     ],
     [
       "api_unified_transactions_id_route_ts_id_route_get",
@@ -7966,106 +8016,94 @@
       1
     ],
     [
-      "bank_aicategorisation_aibatchcategorizationresult",
-      "AIBatchCategorizationResult",
-      "lib/bank/aiCategorisation.ts",
-      54
-    ],
-    [
       "bank_aicategorisation_aicategorizationprediction",
       "AICategorizationPrediction",
       "lib/bank/aiCategorisation.ts",
-      34
+      32
     ],
     [
       "bank_aicategorisation_aicategorizationresult",
       "AICategorizationResult",
       "lib/bank/aiCategorisation.ts",
-      46
+      44
     ],
     [
       "bank_aicategorisation_aipredictiontocategorised",
       "aiPredictionToCategorised()",
       "lib/bank/aiCategorisation.ts",
-      500
+      104
     ],
     [
       "bank_aicategorisation_builduncategorisedresults",
       "buildUncategorisedResults()",
       "lib/bank/aiCategorisation.ts",
-      474
-    ],
-    [
-      "bank_aicategorisation_builduserprompt",
-      "buildUserPrompt()",
-      "lib/bank/aiCategorisation.ts",
-      151
+      78
     ],
     [
       "bank_aicategorisation_bulkconfirmautoaccepted",
       "bulkConfirmAutoAccepted()",
       "lib/bank/aiCategorisation.ts",
-      751
+      490
     ],
     [
-      "bank_aicategorisation_calculateadjustedconfidence",
-      "calculateAdjustedConfidence()",
+      "bank_aicategorisation_cascade_reasoning",
+      "CASCADE_REASONING",
       "lib/bank/aiCategorisation.ts",
-      187
+      211
     ],
     [
-      "bank_aicategorisation_categoriseinbatches",
-      "categoriseInBatches()",
+      "bank_aicategorisation_cascaderesulttoairesult",
+      "cascadeResultToAIResult()",
       "lib/bank/aiCategorisation.ts",
-      383
+      226
     ],
     [
-      "bank_aicategorisation_categorisewithai",
-      "categoriseWithAI()",
+      "bank_aicategorisation_categoriseunknownsviacascade",
+      "categoriseUnknownsViaCascade()",
       "lib/bank/aiCategorisation.ts",
-      268
+      269
     ],
     [
       "bank_aicategorisation_categorisewithlearning",
       "categoriseWithLearning()",
       "lib/bank/aiCategorisation.ts",
-      571
+      311
     ],
     [
       "bank_aicategorisation_categorizationsettings",
       "CategorizationSettings",
       "lib/bank/aiCategorisation.ts",
-      72
+      59
     ],
     [
       "bank_aicategorisation_classifybyconfidence",
       "classifyByConfidence()",
       "lib/bank/aiCategorisation.ts",
-      530
+      134
     ],
     [
       "bank_aicategorisation_default_settings",
       "DEFAULT_SETTINGS",
       "lib/bank/aiCategorisation.ts",
-      79
+      66
     ],
     [
       "bank_aicategorisation_getcategorizationsettings",
       "getCategorizationSettings()",
       "lib/bank/aiCategorisation.ts",
-      551
+      165
     ],
     [
-      "bank_aicategorisation_merchantlearning",
-      "MerchantLearning",
+      "bank_aicategorisation_mapnormalisedtounified",
+      "mapNormalisedToUnified()",
       "lib/bank/aiCategorisation.ts",
-      64
+      185
     ],
     [
       "bank_aicategorisation_processuserconfirmation",
       "processUserConfirmation()",
       "lib/bank/aiCategorisation.ts",
-      705
+      444
     ],
     [
       "bank_ailearning",
@@ -8191,67 +8229,67 @@
       "bank_basiqsync_basiqsyncoptions",
       "BasiqSyncOptions",
       "lib/bank/basiqSync.ts",
-      56
+      57
     ],
     [
       "bank_basiqsync_basiqsyncresult",
       "BasiqSyncResult",
       "lib/bank/basiqSync.ts",
-      38
+      39
     ],
     [
       "bank_basiqsync_canacceptmanualimport",
       "canAcceptManualImport()",
       "lib/bank/basiqSync.ts",
-      591
+      605
     ],
     [
       "bank_basiqsync_gettransactionsourcecounts",
       "getTransactionSourceCounts()",
       "lib/bank/basiqSync.ts",
-      748
+      762
     ],
     [
       "bank_basiqsync_importbasiqtransactions",
       "importBasiqTransactions()",
       "lib/bank/basiqSync.ts",
-      223
+      224
     ],
     [
       "bank_basiqsync_importbasiqtransactionswithai",
       "importBasiqTransactionsWithAI()",
       "lib/bank/basiqSync.ts",
-      372
+      373
     ],
     [
       "bank_basiqsync_mergemanualimportwithbasiq",
       "mergeManualImportWithBasiq()",
       "lib/bank/basiqSync.ts",
-      637
+      651
     ],
     [
       "bank_basiqsync_prisma",
       "prisma",
       "lib/bank/basiqSync.ts",
-      32
+      33
     ],
     [
       "bank_basiqsync_stringsimilarity",
       "stringSimilarity()",
       "lib/bank/basiqSync.ts",
-      725
+      739
     ],
     [
       "bank_basiqsync_supersedenonbasiqtransactions",
       "supersedeNonBasiqTransactions()",
       "lib/bank/basiqSync.ts",
-      194
+      195
     ],
     [
       "bank_basiqsync_syncbasiqtransactions",
       "syncBasiqTransactions()",
       "lib/bank/basiqSync.ts",
-      74
+      75
     ],
     [
       "bank_budgetcomparison",
@@ -8335,19 +8373,19 @@
       "bank_bulkconfirm_bulkconfirmcategorisations",
       "bulkConfirmCategorisations()",
       "lib/bank/bulkConfirm.ts",
-      157
+      240
     ],
     [
       "bank_bulkconfirm_bulkconfirmhighband",
       "bulkConfirmHighBand()",
       "lib/bank/bulkConfirm.ts",
-      127
+      210
     ],
     [
       "bank_bulkconfirm_bulkconfirmresult",
       "BulkConfirmResult",
       "lib/bank/bulkConfirm.ts",
-      140
+      223
     ],
     [
       "bank_bulkconfirm_confidenceband",
@@ -8362,10 +8400,40 @@
       30
     ],
     [
+      "bank_bulkconfirm_getcategorisabletotal",
+      "getCategorisableTotal()",
+      "lib/bank/bulkConfirm.ts",
+      141
+    ],
+    [
       "bank_bulkconfirm_getconfidencesummary",
       "getConfidenceSummary()",
       "lib/bank/bulkConfirm.ts",
       64
+    ],
+    [
+      "bank_bulkconfirm_getreviewqueuebands",
+      "getReviewQueueBands()",
+      "lib/bank/bulkConfirm.ts",
+      167
+    ],
+    [
+      "bank_bulkconfirm_getreviewqueuecount",
+      "getReviewQueueCount()",
+      "lib/bank/bulkConfirm.ts",
+      131
+    ],
+    [
+      "bank_bulkconfirm_reviewqueuebands",
+      "ReviewQueueBands",
+      "lib/bank/bulkConfirm.ts",
+      151
+    ],
+    [
+      "bank_bulkconfirm_reviewqueuewhere",
+      "reviewQueueWhere()",
+      "lib/bank/bulkConfirm.ts",
+      126
     ],
     [
       "bank_categorisation",
@@ -8377,55 +8445,55 @@
       "bank_categorisation_categorisetransaction",
       "categoriseTransaction()",
       "lib/bank/categorisation.ts",
-      218
+      219
     ],
     [
       "bank_categorisation_categorisetransactions",
       "categoriseTransactions()",
       "lib/bank/categorisation.ts",
-      330
+      352
     ],
     [
       "bank_categorisation_default_rules",
       "DEFAULT_RULES",
       "lib/bank/categorisation.ts",
-      23
+      24
     ],
     [
       "bank_categorisation_determinecategorytype",
       "determineCategoryType()",
       "lib/bank/categorisation.ts",
-      183
+      184
     ],
     [
       "bank_categorisation_getcategorylevel1options",
       "getCategoryLevel1Options()",
       "lib/bank/categorisation.ts",
-      374
+      396
     ],
     [
       "bank_categorisation_getcategorylevel2options",
       "getCategoryLevel2Options()",
       "lib/bank/categorisation.ts",
-      385
+      407
     ],
     [
       "bank_categorisation_getdefaultrules",
       "getDefaultRules()",
       "lib/bank/categorisation.ts",
-      367
+      389
     ],
     [
       "bank_categorisation_mapbanksuppliedcategory",
       "mapBankSuppliedCategory()",
       "lib/bank/categorisation.ts",
-      282
+      304
     ],
     [
       "bank_categorisation_matchesrule",
       "matchesRule()",
       "lib/bank/categorisation.ts",
-      155
+      156
     ],
     [
       "bank_duplicatedetection",
@@ -8542,6 +8610,54 @@
       145
     ],
     [
+      "bank_merchantnoise",
+      "merchantNoise.ts",
+      "lib/bank/merchantNoise.ts",
+      1
+    ],
+    [
+      "bank_merchantnoise_alias_matchers",
+      "ALIAS_MATCHERS",
+      "lib/bank/merchantNoise.ts",
+      76
+    ],
+    [
+      "bank_merchantnoise_denoisemerchanttext",
+      "denoiseMerchantText()",
+      "lib/bank/merchantNoise.ts",
+      100
+    ],
+    [
+      "bank_merchantnoise_expandmerchantaliases",
+      "expandMerchantAliases()",
+      "lib/bank/merchantNoise.ts",
+      85
+    ],
+    [
+      "bank_merchantnoise_merchant_aliases",
+      "MERCHANT_ALIASES",
+      "lib/bank/merchantNoise.ts",
+      71
+    ],
+    [
+      "bank_merchantnoise_numeric_noise_strips",
+      "NUMERIC_NOISE_STRIPS",
+      "lib/bank/merchantNoise.ts",
+      122
+    ],
+    [
+      "bank_merchantnoise_stripmerchantnumericnoise",
+      "stripMerchantNumericNoise()",
+      "lib/bank/merchantNoise.ts",
+      129
+    ],
+    [
+      "bank_merchantnoise_striptransactiontimes",
+      "stripTransactionTimes()",
+      "lib/bank/merchantNoise.ts",
+      53
+    ],
+    [
       "bank_normalisation",
       "normalisation.ts",
       "lib/bank/normalisation.ts",
@@ -8551,55 +8667,121 @@
       "bank_normalisation_cleandescription",
       "cleanDescription()",
       "lib/bank/normalisation.ts",
-      141
+      157
     ],
     [
       "bank_normalisation_extractmerchant",
       "extractMerchant()",
       "lib/bank/normalisation.ts",
-      126
+      142
     ],
     [
       "bank_normalisation_generatehash",
       "generateHash()",
       "lib/bank/normalisation.ts",
-      314
+      330
     ],
     [
       "bank_normalisation_generatetransactionhash",
       "generateTransactionHash()",
       "lib/bank/normalisation.ts",
-      178
+      194
     ],
     [
       "bank_normalisation_merchant_mappings",
       "MERCHANT_MAPPINGS",
       "lib/bank/normalisation.ts",
-      23
+      24
     ],
     [
       "bank_normalisation_normalisemerchantname",
       "normaliseMerchantName()",
       "lib/bank/normalisation.ts",
-      94
+      95
     ],
     [
       "bank_normalisation_normalisetransaction",
       "normaliseTransaction()",
       "lib/bank/normalisation.ts",
-      198
+      214
     ],
     [
       "bank_normalisation_normalisetransactions",
       "normaliseTransactions()",
       "lib/bank/normalisation.ts",
-      273
+      289
     ],
     [
       "bank_normalisation_renormalisemerchant",
       "renormaliseMerchant()",
       "lib/bank/normalisation.ts",
-      307
+      323
+    ],
+    [
+      "bank_recategoriseexisting",
+      "recategoriseExisting.ts",
+      "lib/bank/recategoriseExisting.ts",
+      1
+    ],
+    [
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "aiSuggestDistinctUnknowns()",
+      "lib/bank/recategoriseExisting.ts",
+      333
+    ],
+    [
+      "bank_recategoriseexisting_name_only_result",
+      "NAME_ONLY_RESULT",
+      "lib/bank/recategoriseExisting.ts",
+      186
+    ],
+    [
+      "bank_recategoriseexisting_planaisuggestionwrite",
+      "planAiSuggestionWrite()",
+      "lib/bank/recategoriseExisting.ts",
+      96
+    ],
+    [
+      "bank_recategoriseexisting_planbackfillwrite",
+      "planBackfillWrite()",
+      "lib/bank/recategoriseExisting.ts",
+      126
+    ],
+    [
+      "bank_recategoriseexisting_recategoriseoptions",
+      "RecategoriseOptions",
+      "lib/bank/recategoriseExisting.ts",
+      76
+    ],
+    [
+      "bank_recategoriseexisting_recategoriseresult",
+      "RecategoriseResult",
+      "lib/bank/recategoriseExisting.ts",
+      57
+    ],
+    [
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "recategoriseUncategorised()",
+      "lib/bank/recategoriseExisting.ts",
+      225
+    ],
+    [
+      "bank_recategoriseexisting_renameallmerchants",
+      "renameAllMerchants()",
+      "lib/bank/recategoriseExisting.ts",
+      206
+    ],
+    [
+      "bank_recategoriseexisting_uncategorisedguard",
+      "uncategorisedGuard()",
+      "lib/bank/recategoriseExisting.ts",
+      166
+    ],
+    [
+      "bank_recategoriseexisting_unknownrow",
+      "UnknownRow",
+      "lib/bank/recategoriseExisting.ts",
+      179
     ],
     [
       "bank_recurringexpensedetection",
@@ -9376,6 +9558,36 @@
       20
     ],
     [
+      "bookkeeping_applytosimilarunified",
+      "applyToSimilarUnified.ts",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      1
+    ],
+    [
+      "bookkeeping_applytosimilarunified_applycategorytosimilarunified",
+      "applyCategoryToSimilarUnified()",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      72
+    ],
+    [
+      "bookkeeping_applytosimilarunified_buildsimilaruncategorisedwhere",
+      "buildSimilarUncategorisedWhere()",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      46
+    ],
+    [
+      "bookkeeping_applytosimilarunified_getlearnedcategorysuggestions",
+      "getLearnedCategorySuggestions()",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      126
+    ],
+    [
+      "bookkeeping_applytosimilarunified_similarapplyresult",
+      "SimilarApplyResult",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      34
+    ],
+    [
       "bookkeeping_cashaccount",
       "cashAccount.ts",
       "lib/bookkeeping/cashAccount.ts",
@@ -9856,6 +10068,42 @@
       21
     ],
     [
+      "bookkeeping_transactionstatus",
+      "transactionStatus.ts",
+      "lib/bookkeeping/transactionStatus.ts",
+      1
+    ],
+    [
+      "bookkeeping_transactionstatus_deriverowstatus",
+      "deriveRowStatus()",
+      "lib/bookkeeping/transactionStatus.ts",
+      64
+    ],
+    [
+      "bookkeeping_transactionstatus_rowstate",
+      "RowState",
+      "lib/bookkeeping/transactionStatus.ts",
+      29
+    ],
+    [
+      "bookkeeping_transactionstatus_rowstatus",
+      "RowStatus",
+      "lib/bookkeeping/transactionStatus.ts",
+      41
+    ],
+    [
+      "bookkeeping_transactionstatus_rowstatusinput",
+      "RowStatusInput",
+      "lib/bookkeeping/transactionStatus.ts",
+      32
+    ],
+    [
+      "bookkeeping_transactionstatus_summariserowstates",
+      "summariseRowStates()",
+      "lib/bookkeeping/transactionStatus.ts",
+      85
+    ],
+    [
       "bookkeeping_transfercategorisation",
       "transferCategorisation.ts",
       "lib/bookkeeping/transferCategorisation.ts",
@@ -9866,6 +10114,18 @@
       "confirmedTransferFields()",
       "lib/bookkeeping/transferCategorisation.ts",
       23
+    ],
+    [
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "isTransferDescription()",
+      "lib/bookkeeping/transferCategorisation.ts",
+      79
+    ],
+    [
+      "bookkeeping_transfercategorisation_transfer_description_patterns",
+      "TRANSFER_DESCRIPTION_PATTERNS",
+      "lib/bookkeeping/transferCategorisation.ts",
+      63
     ],
     [
       "bookkeeping_transferpairing",
@@ -9880,10 +10140,22 @@
       73
     ],
     [
+      "bookkeeping_transferpairing_pairtransferacrossaccounts",
+      "pairTransferAcrossAccounts()",
+      "lib/bookkeeping/transferPairing.ts",
+      228
+    ],
+    [
       "bookkeeping_transferpairing_pairtransferifpossible",
       "pairTransferIfPossible()",
       "lib/bookkeeping/transferPairing.ts",
-      128
+      135
+    ],
+    [
+      "bookkeeping_transferpairing_recategoriseuncategorisedtransfers",
+      "recategoriseUncategorisedTransfers()",
+      "lib/bookkeeping/transferPairing.ts",
+      315
     ],
     [
       "bookkeeping_transferpairing_txlite",
@@ -9991,13 +10263,13 @@
       "budget_analysis_aiprompt_base_costs",
       "BASE_COSTS",
       "lib/budget-analysis/aiPrompt.ts",
-      258
+      289
     ],
     [
       "budget_analysis_aiprompt_benchmarkparams",
       "BenchmarkParams",
       "lib/budget-analysis/aiPrompt.ts",
-      247
+      278
     ],
     [
       "budget_analysis_aiprompt_buildvariableexpenseprompt",
@@ -10009,13 +10281,19 @@
       "budget_analysis_aiprompt_calculatebenchmarkexpenses",
       "calculateBenchmarkExpenses()",
       "lib/budget-analysis/aiPrompt.ts",
-      280
+      311
+    ],
+    [
+      "budget_analysis_aiprompt_groundvariableexpensetotal",
+      "groundVariableExpenseTotal()",
+      "lib/budget-analysis/aiPrompt.ts",
+      264
     ],
     [
       "budget_analysis_aiprompt_lifestyle_mult",
       "LIFESTYLE_MULT",
       "lib/budget-analysis/aiPrompt.ts",
-      274
+      305
     ],
     [
       "budget_analysis_aiprompt_validatevariableexpenseresponse",
@@ -10201,19 +10479,19 @@
       "bulk_confirm_route_bulkconfirmbody",
       "BulkConfirmBody",
       "app/api/unified-transactions/bulk-confirm/route.ts",
-      34
+      49
     ],
     [
       "bulk_confirm_route_get",
       "GET",
       "app/api/unified-transactions/bulk-confirm/route.ts",
-      29
+      31
     ],
     [
       "bulk_confirm_route_post",
       "POST",
       "app/api/unified-transactions/bulk-confirm/route.ts",
-      39
+      54
     ],
     [
       "bulk_route",
@@ -11110,6 +11388,36 @@
       22
     ],
     [
+      "calculations_financialindependence",
+      "financialIndependence.ts",
+      "lib/calculations/financialIndependence.ts",
+      1
+    ],
+    [
+      "calculations_financialindependence_computefinancialindependence",
+      "computeFinancialIndependence()",
+      "lib/calculations/financialIndependence.ts",
+      97
+    ],
+    [
+      "calculations_financialindependence_financialindependenceinput",
+      "FinancialIndependenceInput",
+      "lib/calculations/financialIndependence.ts",
+      38
+    ],
+    [
+      "calculations_financialindependence_financialindependenceresult",
+      "FinancialIndependenceResult",
+      "lib/calculations/financialIndependence.ts",
+      69
+    ],
+    [
+      "calculations_financialindependence_round1",
+      "round1()",
+      "lib/calculations/financialIndependence.ts",
+      90
+    ],
+    [
       "calculations_incomeaggregator",
       "incomeAggregator.ts",
       "lib/calculations/incomeAggregator.ts",
@@ -11287,7 +11595,7 @@
       "calculations_moneystorytrend_getmoneystorytrend",
       "getMoneyStoryTrend()",
       "lib/calculations/moneyStoryTrend.ts",
-      68
+      88
     ],
     [
       "calculations_moneystorytrend_moneystorytrendresult",
@@ -11438,6 +11746,72 @@
       "NetWorthHistoryResult",
       "lib/calculations/netWorthHistory.ts",
       32
+    ],
+    [
+      "calculations_propertycashflow",
+      "propertyCashflow.ts",
+      "lib/calculations/propertyCashflow.ts",
+      1
+    ],
+    [
+      "calculations_propertycashflow_annualvalue",
+      "annualValue()",
+      "lib/calculations/propertyCashflow.ts",
+      76
+    ],
+    [
+      "calculations_propertycashflow_cashflowexpense",
+      "CashflowExpense",
+      "lib/calculations/propertyCashflow.ts",
+      43
+    ],
+    [
+      "calculations_propertycashflow_cashflowincome",
+      "CashflowIncome",
+      "lib/calculations/propertyCashflow.ts",
+      38
+    ],
+    [
+      "calculations_propertycashflow_cashflowloan",
+      "CashflowLoan",
+      "lib/calculations/propertyCashflow.ts",
+      47
+    ],
+    [
+      "calculations_propertycashflow_computepropertycashflow",
+      "computePropertyCashflow()",
+      "lib/calculations/propertyCashflow.ts",
+      81
+    ],
+    [
+      "calculations_propertycashflow_entityactuals",
+      "EntityActuals",
+      "lib/calculations/propertyCashflow.ts",
+      34
+    ],
+    [
+      "calculations_propertycashflow_freq",
+      "Freq",
+      "lib/calculations/propertyCashflow.ts",
+      31
+    ],
+    [
+      "calculations_propertycashflow_isactual",
+      "isActual()",
+      "lib/calculations/propertyCashflow.ts",
+      74
+    ],
+    [
+      "calculations_propertycashflow_propertycashflow",
+      "PropertyCashflow",
+      "lib/calculations/propertyCashflow.ts",
+      59
+    ],
+    [
+      "calculations_propertycashflow_propertycashflowinput",
+      "PropertyCashflowInput",
+      "lib/calculations/propertyCashflow.ts",
+      53
     ],
     [
       "callback_route",
@@ -11965,55 +12339,55 @@
       "cashflow_intelligence_geminisummary_buildprompt",
       "buildPrompt()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      128
+      131
     ],
     [
       "cashflow_intelligence_geminisummary_extractkeyinsights",
       "extractKeyInsights()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      170
+      173
     ],
     [
       "cashflow_intelligence_geminisummary_generatedatahash",
       "generateDataHash()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      67
+      70
     ],
     [
       "cashflow_intelligence_geminisummary_generatefallbacksummary",
       "generateFallbackSummary()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      287
+      347
     ],
     [
       "cashflow_intelligence_geminisummary_generategeminisummary",
       "generateGeminiSummary()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      219
+      222
     ],
     [
       "cashflow_intelligence_geminisummary_hassignificantchange",
       "hasSignificantChange()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      86
+      89
     ],
     [
       "cashflow_intelligence_geminisummary_issummarystale",
       "isSummaryStale()",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      320
+      380
     ],
     [
       "cashflow_intelligence_geminisummary_significant_change_thresholds",
       "SIGNIFICANT_CHANGE_THRESHOLDS",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      28
+      31
     ],
     [
       "cashflow_intelligence_geminisummary_summaryinput",
       "SummaryInput",
       "lib/cashflow-intelligence/geminiSummary.ts",
-      40
+      43
     ],
     [
       "cashflow_intelligence_healthscoreaggregator",
@@ -13429,169 +13803,169 @@
       "cfo_aiadvisor_aiadvicedocument",
       "AIAdviceDocument",
       "lib/cfo/aiAdvisor.ts",
-      103
+      106
     ],
     [
       "cfo_aiadvisor_aiadviceevidence",
       "AIAdviceEvidence",
       "lib/cfo/aiAdvisor.ts",
-      57
+      60
     ],
     [
       "cfo_aiadvisor_aiadviceheadline",
       "AIAdviceHeadline",
       "lib/cfo/aiAdvisor.ts",
-      98
+      101
     ],
     [
       "cfo_aiadvisor_aiadvicerecommendation",
       "AIAdviceRecommendation",
       "lib/cfo/aiAdvisor.ts",
-      77
+      80
     ],
     [
       "cfo_aiadvisor_aiadvicesuggestedscenario",
       "AIAdviceSuggestedScenario",
       "lib/cfo/aiAdvisor.ts",
-      71
+      74
     ],
     [
       "cfo_aiadvisor_buildaicontext",
       "buildAIContext()",
       "lib/cfo/aiAdvisor.ts",
-      414
+      417
     ],
     [
       "cfo_aiadvisor_buildfallbackdoc",
       "buildFallbackDoc()",
       "lib/cfo/aiAdvisor.ts",
-      990
+      1004
     ],
     [
       "cfo_aiadvisor_callgeminiadvisor",
       "callGeminiAdvisor()",
       "lib/cfo/aiAdvisor.ts",
-      704
+      707
     ],
     [
       "cfo_aiadvisor_clamp",
       "clamp()",
       "lib/cfo/aiAdvisor.ts",
-      1055
+      1069
     ],
     [
       "cfo_aiadvisor_cryptorandomid",
       "cryptoRandomId()",
       "lib/cfo/aiAdvisor.ts",
-      1059
+      1073
     ],
     [
       "cfo_aiadvisor_determineusertrailstage",
       "determineUserTrailStage()",
       "lib/cfo/aiAdvisor.ts",
-      343
+      346
     ],
     [
       "cfo_aiadvisor_fetchloanviews",
       "fetchLoanViews()",
       "lib/cfo/aiAdvisor.ts",
-      357
+      360
     ],
     [
       "cfo_aiadvisor_findfreshcache",
       "findFreshCache()",
       "lib/cfo/aiAdvisor.ts",
-      233
+      236
     ],
     [
       "cfo_aiadvisor_fingerprintsnapshot",
       "fingerprintSnapshot()",
       "lib/cfo/aiAdvisor.ts",
-      318
+      321
     ],
     [
       "cfo_aiadvisor_geminiadvisorinput",
       "GeminiAdvisorInput",
       "lib/cfo/aiAdvisor.ts",
-      672
+      675
     ],
     [
       "cfo_aiadvisor_generateadviceoptions",
       "GenerateAdviceOptions",
       "lib/cfo/aiAdvisor.ts",
-      136
+      139
     ],
     [
       "cfo_aiadvisor_generateorfetchadvice",
       "generateOrFetchAdvice()",
       "lib/cfo/aiAdvisor.ts",
-      160
+      163
     ],
     [
       "cfo_aiadvisor_persistadvice",
       "persistAdvice()",
       "lib/cfo/aiAdvisor.ts",
-      259
+      262
     ],
     [
       "cfo_aiadvisor_rawairesponse",
       "RawAIResponse",
       "lib/cfo/aiAdvisor.ts",
-      681
+      684
     ],
     [
       "cfo_aiadvisor_resolvepath",
       "resolvePath()",
       "lib/cfo/aiAdvisor.ts",
-      890
+      904
     ],
     [
       "cfo_aiadvisor_resolvesnapshotpath",
       "resolveSnapshotPath()",
       "lib/cfo/aiAdvisor.ts",
-      884
+      898
     ],
     [
       "cfo_aiadvisor_round",
       "round()",
       "lib/cfo/aiAdvisor.ts",
-      513
+      516
     ],
     [
       "cfo_aiadvisor_rowtodocument",
       "rowToDocument()",
       "lib/cfo/aiAdvisor.ts",
-      278
+      281
     ],
     [
       "cfo_aiadvisor_slugify",
       "slugify()",
       "lib/cfo/aiAdvisor.ts",
-      1047
+      1061
     ],
     [
       "cfo_aiadvisor_validateairesponse",
       "validateAIResponse()",
       "lib/cfo/aiAdvisor.ts",
-      779
+      793
     ],
     [
       "cfo_aiadvisor_validatedairesponse",
       "ValidatedAIResponse",
       "lib/cfo/aiAdvisor.ts",
-      771
+      785
     ],
     [
       "cfo_aiadvisor_validatescenarioparams",
       "validateScenarioParams()",
       "lib/cfo/aiAdvisor.ts",
-      917
+      931
     ],
     [
       "cfo_aiadvisor_validationcontext",
       "ValidationContext",
       "lib/cfo/aiAdvisor.ts",
-      765
+      779
     ],
     [
       "cfo_index",
@@ -14911,19 +15285,19 @@
       "chat_route_chatbody",
       "ChatBody",
       "app/api/cfo/advice/chat/route.ts",
-      55
+      56
     ],
     [
       "chat_route_get",
       "GET",
       "app/api/cfo/advice/chat/route.ts",
-      214
+      237
     ],
     [
       "chat_route_post",
       "POST",
       "app/api/cfo/advice/chat/route.ts",
-      59
+      60
     ],
     [
       "classifiers_documentclassifier",
@@ -16927,7 +17301,7 @@
       "dashboard_page_cashflowperiod",
       "CashflowPeriod",
       "app/dashboard/page.tsx",
-      332
+      343
     ],
     [
       "dashboard_page_clientsummaryresponse",
@@ -16939,7 +17313,7 @@
       "dashboard_page_dashboardcharts",
       "DashboardCharts",
       "app/dashboard/page.tsx",
-      204
+      215
     ],
     [
       "dashboard_page_dashboardinsights",
@@ -16951,7 +17325,7 @@
       "dashboard_page_dashboardpage",
       "DashboardPage()",
       "app/dashboard/page.tsx",
-      334
+      345
     ],
     [
       "dashboard_page_dashboardstats",
@@ -16963,7 +17337,7 @@
       "dashboard_page_detailtiletype",
       "DetailTileType",
       "app/dashboard/page.tsx",
-      331
+      342
     ],
     [
       "dashboard_page_portaldashboardpage",
@@ -16975,7 +17349,7 @@
       "dashboard_page_portfoliosnapshot",
       "PortfolioSnapshot",
       "app/dashboard/page.tsx",
-      217
+      228
     ],
     [
       "dashboard_page_realclientsummary",
@@ -17023,43 +17397,43 @@
       "dashboard_properties_id_page_tsx_id_page_insightcard",
       "InsightCard()",
       "app/dashboard/properties/[id]/page.tsx",
-      826
+      825
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_minikpi",
       "MiniKpi()",
       "app/dashboard/properties/[id]/page.tsx",
-      574
+      558
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_polishedkpitile",
       "PolishedKpiTile()",
       "app/dashboard/properties/[id]/page.tsx",
-      631
+      615
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_recentactivitycard",
       "RecentActivityCard()",
       "app/dashboard/properties/[id]/page.tsx",
-      768
+      752
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_tile_accent_gradient",
       "TILE_ACCENT_GRADIENT",
       "app/dashboard/properties/[id]/page.tsx",
-      617
+      601
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_tile_badge_shadow",
       "TILE_BADGE_SHADOW",
       "app/dashboard/properties/[id]/page.tsx",
-      624
+      608
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_tile_tint_bg",
       "TILE_TINT_BG",
       "app/dashboard/properties/[id]/page.tsx",
-      610
+      594
     ],
     [
       "dashboard_properties_id_strategy_page_tsx_strategy_page",
@@ -17521,31 +17895,31 @@
       "debt_analysis_route_builddebtanalysisprompt",
       "buildDebtAnalysisPrompt()",
       "app/api/ai/debt-analysis/route.ts",
-      428
+      439
     ],
     [
       "debt_analysis_route_debtanalysisresponse",
       "DebtAnalysisResponse",
       "app/api/ai/debt-analysis/route.ts",
-      29
+      30
     ],
     [
       "debt_analysis_route_post",
       "POST",
       "app/api/ai/debt-analysis/route.ts",
-      72
+      73
     ],
     [
       "debt_analysis_route_promptcontext",
       "PromptContext",
       "app/api/ai/debt-analysis/route.ts",
-      416
+      427
     ],
     [
       "debt_analysis_route_validateandcaprecommendations",
       "validateAndCapRecommendations()",
       "app/api/ai/debt-analysis/route.ts",
-      356
+      367
     ],
     [
       "debt_plan_route",
@@ -20617,61 +20991,61 @@
       "engagement_pendingactions_actionlabel",
       "actionLabel()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      255
+      237
     ],
     [
       "engagement_pendingactions_buildpendingactions",
       "buildPendingActions()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      89
+      81
     ],
     [
       "engagement_pendingactions_dismisspromptfortoday",
       "dismissPromptForToday()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      240
+      222
     ],
     [
       "engagement_pendingactions_issameutcday",
       "isSameUtcDay()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      268
+      250
     ],
     [
       "engagement_pendingactions_markpromptshown",
       "markPromptShown()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      232
+      214
     ],
     [
       "engagement_pendingactions_optoutofprompt",
       "optOutOfPrompt()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      248
+      230
     ],
     [
       "engagement_pendingactions_pendingaction",
       "PendingAction",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      42
+      43
     ],
     [
       "engagement_pendingactions_pendingactionkind",
       "PendingActionKind",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      36
+      37
     ],
     [
       "engagement_pendingactions_pendingactionsresult",
       "PendingActionsResult",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      52
+      53
     ],
     [
       "engagement_pendingactions_shouldshowprompttoday",
       "shouldShowPromptToday()",
       "lib/bookkeeping/engagement/pendingActions.ts",
-      215
+      197
     ],
     [
       "engagement_streak",
@@ -24055,7 +24429,7 @@
       "generate_route_formatanalysisresponse",
       "formatAnalysisResponse()",
       "app/api/budget-analysis/generate/route.ts",
-      449
+      456
     ],
     [
       "generators_entitybreakdownsection",
@@ -24427,103 +24801,121 @@
       "google_geminiclient_estimatetokencount",
       "estimateTokenCount()",
       "lib/ai/google/geminiClient.ts",
-      333
+      490
     ],
     [
       "google_geminiclient_formatcurrencyforprompt",
       "formatCurrencyForPrompt()",
       "lib/ai/google/geminiClient.ts",
-      315
+      472
     ],
     [
       "google_geminiclient_formatpercentageforprompt",
       "formatPercentageForPrompt()",
       "lib/ai/google/geminiClient.ts",
-      326
+      483
     ],
     [
       "google_geminiclient_geminicompletionoptions",
       "GeminiCompletionOptions",
       "lib/ai/google/geminiClient.ts",
-      52
+      53
     ],
     [
       "google_geminiclient_geminicompletionresult",
       "GeminiCompletionResult",
       "lib/ai/google/geminiClient.ts",
-      68
+      77
+    ],
+    [
+      "google_geminiclient_geminigroundedresult",
+      "GeminiGroundedResult",
+      "lib/ai/google/geminiClient.ts",
+      87
     ],
     [
       "google_geminiclient_geminitextresult",
       "GeminiTextResult",
       "lib/ai/google/geminiClient.ts",
-      73
+      82
     ],
     [
       "google_geminiclient_geminiusagemetrics",
       "GeminiUsageMetrics",
       "lib/ai/google/geminiClient.ts",
-      60
+      69
+    ],
+    [
+      "google_geminiclient_generategeminigroundedtext",
+      "generateGeminiGroundedText()",
+      "lib/ai/google/geminiClient.ts",
+      332
     ],
     [
       "google_geminiclient_generategeminijsoncompletion",
       "generateGeminiJSONCompletion()",
       "lib/ai/google/geminiClient.ts",
-      268
+      374
     ],
     [
       "google_geminiclient_generategeminitextcompletion",
       "generateGeminiTextCompletion()",
       "lib/ai/google/geminiClient.ts",
-      290
+      422
     ],
     [
       "google_geminiclient_getgeminiclient",
       "getGeminiClient()",
       "lib/ai/google/geminiClient.ts",
-      24
+      25
     ],
     [
       "google_geminiclient_isgeminiconfigured",
       "isGeminiConfigured()",
       "lib/ai/google/geminiClient.ts",
-      44
+      45
     ],
     [
       "google_geminiclient_isretriablegeminierror",
       "isRetriableGeminiError()",
       "lib/ai/google/geminiClient.ts",
-      92
+      109
     ],
     [
       "google_geminiclient_sleep",
       "sleep()",
       "lib/ai/google/geminiClient.ts",
-      102
+      119
     ],
     [
       "google_geminiclient_truncatetotokenlimit",
       "truncateToTokenLimit()",
       "lib/ai/google/geminiClient.ts",
-      341
+      498
+    ],
+    [
+      "google_geminiclient_trygenerategroundedwithmodel",
+      "tryGenerateGroundedWithModel()",
+      "lib/ai/google/geminiClient.ts",
+      292
     ],
     [
       "google_geminiclient_trygeneratetextwithmodel",
       "tryGenerateTextWithModel()",
       "lib/ai/google/geminiClient.ts",
-      220
+      237
     ],
     [
       "google_geminiclient_trygeneratewithmodel",
       "tryGenerateWithModel()",
       "lib/ai/google/geminiClient.ts",
-      166
+      183
     ],
     [
       "google_geminiclient_withmodelfallbackandretry",
       "withModelFallbackAndRetry()",
       "lib/ai/google/geminiClient.ts",
-      112
+      129
     ],
     [
       "google_index",
@@ -26248,6 +26640,12 @@
       204
     ],
     [
+      "id_page_actuals",
+      "Actuals",
+      "app/dashboard/properties/[id]/page.tsx",
+      76
+    ],
+    [
       "id_page_adminlistingdetailpage",
       "AdminListingDetailPage()",
       "app/admin/marketplace/listings/[id]/page.tsx",
@@ -26272,64 +26670,40 @@
       146
     ],
     [
+      "id_page_cashflowof",
+      "cashflowOf()",
+      "app/dashboard/properties/[id]/page.tsx",
+      148
+    ],
+    [
       "id_page_computeannualdepreciation",
       "computeAnnualDepreciation()",
       "app/dashboard/properties/[id]/page.tsx",
-      169
-    ],
-    [
-      "id_page_computeannualexpenses",
-      "computeAnnualExpenses()",
-      "app/dashboard/properties/[id]/page.tsx",
-      158
-    ],
-    [
-      "id_page_computeannualloanrepayments",
-      "computeAnnualLoanRepayments()",
-      "app/dashboard/properties/[id]/page.tsx",
       152
-    ],
-    [
-      "id_page_computeannualrent",
-      "computeAnnualRent()",
-      "app/dashboard/properties/[id]/page.tsx",
-      138
-    ],
-    [
-      "id_page_computecashflow",
-      "computeCashflow()",
-      "app/dashboard/properties/[id]/page.tsx",
-      164
     ],
     [
       "id_page_computeequity",
       "computeEquity()",
       "app/dashboard/properties/[id]/page.tsx",
-      127
+      134
     ],
     [
       "id_page_computegainpercentage",
       "computeGainPercentage()",
       "app/dashboard/properties/[id]/page.tsx",
-      177
+      160
     ],
     [
       "id_page_computelvr",
       "computeLvr()",
       "app/dashboard/properties/[id]/page.tsx",
-      132
-    ],
-    [
-      "id_page_computerentalyield",
-      "computeRentalYield()",
-      "app/dashboard/properties/[id]/page.tsx",
-      147
+      139
     ],
     [
       "id_page_computetotalloanbalance",
       "computeTotalLoanBalance()",
       "app/dashboard/properties/[id]/page.tsx",
-      173
+      156
     ],
     [
       "id_page_contributionscard",
@@ -26359,7 +26733,7 @@
       "id_page_depreciationschedule",
       "DepreciationSchedule",
       "app/dashboard/properties/[id]/page.tsx",
-      99
+      106
     ],
     [
       "id_page_detailrow",
@@ -26389,7 +26763,7 @@
       "id_page_expenseitem",
       "ExpenseItem",
       "app/dashboard/properties/[id]/page.tsx",
-      91
+      98
     ],
     [
       "id_page_formatcurrency",
@@ -26467,7 +26841,7 @@
       "id_page_incomeitem",
       "IncomeItem",
       "app/dashboard/properties/[id]/page.tsx",
-      83
+      90
     ],
     [
       "id_page_investmentaccount",
@@ -26485,7 +26859,7 @@
       "id_page_linkedentitiescard",
       "LinkedEntitiesCard()",
       "app/dashboard/properties/[id]/page.tsx",
-      675
+      659
     ],
     [
       "id_page_listingdetail",
@@ -26497,7 +26871,7 @@
       "id_page_loan",
       "Loan",
       "app/dashboard/properties/[id]/page.tsx",
-      74
+      81
     ],
     [
       "id_page_loandetailredirectpage",
@@ -26527,13 +26901,13 @@
       "id_page_property",
       "Property",
       "app/dashboard/properties/[id]/page.tsx",
-      105
+      112
     ],
     [
       "id_page_propertydetailpage",
       "PropertyDetailPage()",
       "app/dashboard/properties/[id]/page.tsx",
-      186
+      169
     ],
     [
       "id_page_realizedgains",
@@ -26671,7 +27045,7 @@
       "id_route_reform_cut_over_utc_ms",
       "REFORM_CUT_OVER_UTC_MS",
       "app/api/properties/[id]/route.ts",
-      20
+      21
     ],
     [
       "id_route_resolvemember",
@@ -27073,43 +27447,43 @@
       "insights_route_buildhealthinput",
       "buildHealthInput()",
       "app/api/dashboard/insights/route.ts",
-      563
+      651
     ],
     [
       "insights_route_categoryspending",
       "CategorySpending",
       "app/api/dashboard/insights/route.ts",
-      40
+      41
     ],
     [
       "insights_route_dashboardinsights",
       "DashboardInsights",
       "app/api/dashboard/insights/route.ts",
-      60
+      61
     ],
     [
       "insights_route_expensedetail",
       "ExpenseDetail",
       "app/api/dashboard/insights/route.ts",
-      31
+      32
     ],
     [
       "insights_route_formatcurrency",
       "formatCurrency()",
       "app/api/dashboard/insights/route.ts",
-      517
+      605
     ],
     [
       "insights_route_getnetmonthlyincome",
       "getNetMonthlyIncome()",
       "app/api/dashboard/insights/route.ts",
-      548
+      636
     ],
     [
       "insights_route_insight",
       "Insight",
       "app/api/dashboard/insights/route.ts",
-      52
+      53
     ],
     [
       "insights_route_patch",
@@ -27121,7 +27495,7 @@
       "insights_route_riskbandtograde",
       "riskBandToGrade()",
       "app/api/dashboard/insights/route.ts",
-      530
+      618
     ],
     [
       "integrations_page",
@@ -29095,25 +29469,43 @@
       "kb_geminionmiss_buildcategorisationprompt",
       "buildCategorisationPrompt()",
       "lib/categorisation/kb/geminiOnMiss.ts",
-      48
+      75
+    ],
+    [
+      "kb_geminionmiss_categorisesignatureungrounded",
+      "categoriseSignatureUngrounded()",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      141
     ],
     [
       "kb_geminionmiss_geminicategoriseonmiss",
       "geminiCategoriseOnMiss()",
       "lib/categorisation/kb/geminiOnMiss.ts",
-      83
+      110
     ],
     [
       "kb_geminionmiss_geminicategoryresult",
       "GeminiCategoryResult",
       "lib/categorisation/kb/geminiOnMiss.ts",
-      29
+      47
+    ],
+    [
+      "kb_geminionmiss_geminiidentifymerchantgrounded",
+      "geminiIdentifyMerchantGrounded()",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      230
     ],
     [
       "kb_geminionmiss_geminiraw",
       "GeminiRaw",
       "lib/categorisation/kb/geminiOnMiss.ts",
-      37
+      64
+    ],
+    [
+      "kb_geminionmiss_parsegroundedmerchantresult",
+      "parseGroundedMerchantResult()",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      188
     ],
     [
       "kb_housekeeping",
@@ -29233,13 +29625,13 @@
       "kb_scrubsignature_scrubresult",
       "ScrubResult",
       "lib/categorisation/kb/scrubSignature.ts",
-      24
+      25
     ],
     [
       "kb_scrubsignature_scrubtosignature",
       "scrubToSignature()",
       "lib/categorisation/kb/scrubSignature.ts",
-      46
+      47
     ],
     [
       "kb_seeddata",
@@ -30025,19 +30417,19 @@
       "link_route_calculatesimilarity",
       "calculateSimilarity()",
       "app/api/transactions/[id]/link/route.ts",
-      1782
+      1802
     ],
     [
       "link_route_get",
       "GET",
       "app/api/transactions/[id]/link/route.ts",
-      1202
+      1222
     ],
     [
       "link_route_learncanonicalfromlink",
       "learnCanonicalFromLink()",
       "app/api/transactions/[id]/link/route.ts",
-      45
+      47
     ],
     [
       "link_route_mappatterntofrequency",
@@ -31040,6 +31432,246 @@
       "trailNavItems",
       "lib/navigation/trailNav.tsx",
       52
+    ],
+    [
+      "neobrain_debtprojections",
+      "debtProjections.ts",
+      "lib/neobrain/debtProjections.ts",
+      1
+    ],
+    [
+      "neobrain_debtprojections_buildengineprojections",
+      "buildEngineProjections()",
+      "lib/neobrain/debtProjections.ts",
+      74
+    ],
+    [
+      "neobrain_debtprojections_debtprojections",
+      "DebtProjections",
+      "lib/neobrain/debtProjections.ts",
+      13
+    ],
+    [
+      "neobrain_debtprojections_debtstrategy",
+      "DebtStrategy",
+      "lib/neobrain/debtProjections.ts",
+      20
+    ],
+    [
+      "neobrain_debtprojections_formatmonthyear",
+      "formatMonthYear()",
+      "lib/neobrain/debtProjections.ts",
+      28
+    ],
+    [
+      "neobrain_debtprojections_formatprojections",
+      "formatProjections()",
+      "lib/neobrain/debtProjections.ts",
+      38
+    ],
+    [
+      "neobrain_debtprojections_monthsbetween",
+      "monthsBetween()",
+      "lib/neobrain/debtProjections.ts",
+      23
+    ],
+    [
+      "neobrain_debtprojections_toloaninputs",
+      "toLoanInputs()",
+      "lib/neobrain/debtProjections.ts",
+      91
+    ],
+    [
+      "neobrain_factpack",
+      "factPack.ts",
+      "lib/neobrain/factPack.ts",
+      1
+    ],
+    [
+      "neobrain_factpack_all_fact_scopes",
+      "ALL_FACT_SCOPES",
+      "lib/neobrain/factPack.ts",
+      148
+    ],
+    [
+      "neobrain_factpack_assemblefactpack",
+      "assembleFactPack()",
+      "lib/neobrain/factPack.ts",
+      219
+    ],
+    [
+      "neobrain_factpack_assemblefactpackforuser",
+      "assembleFactPackForUser()",
+      "lib/neobrain/factPack.ts",
+      371
+    ],
+    [
+      "neobrain_factpack_buildtaxrulesreference",
+      "buildTaxRulesReference()",
+      "lib/neobrain/factPack.ts",
+      110
+    ],
+    [
+      "neobrain_factpack_fact",
+      "Fact",
+      "lib/neobrain/factPack.ts",
+      44
+    ],
+    [
+      "neobrain_factpack_factpack",
+      "FactPack",
+      "lib/neobrain/factPack.ts",
+      157
+    ],
+    [
+      "neobrain_factpack_factscope",
+      "FactScope",
+      "lib/neobrain/factPack.ts",
+      140
+    ],
+    [
+      "neobrain_factpack_factsource",
+      "FactSource",
+      "lib/neobrain/factPack.ts",
+      40
+    ],
+    [
+      "neobrain_factpack_factstate",
+      "FactState",
+      "lib/neobrain/factPack.ts",
+      39
+    ],
+    [
+      "neobrain_factpack_factunit",
+      "FactUnit",
+      "lib/neobrain/factPack.ts",
+      41
+    ],
+    [
+      "neobrain_factpack_reformmeasure",
+      "reformMeasure()",
+      "lib/neobrain/factPack.ts",
+      101
+    ],
+    [
+      "neobrain_factpack_statefor",
+      "stateFor()",
+      "lib/neobrain/factPack.ts",
+      183
+    ],
+    [
+      "neobrain_factpack_taxreformmeasure",
+      "TaxReformMeasure",
+      "lib/neobrain/factPack.ts",
+      68
+    ],
+    [
+      "neobrain_factpack_taxrulesreference",
+      "TaxRulesReference",
+      "lib/neobrain/factPack.ts",
+      81
+    ],
+    [
+      "neobrain_factpack_userfact",
+      "userFact()",
+      "lib/neobrain/factPack.ts",
+      189
+    ],
+    [
+      "neobrain_grounding",
+      "grounding.ts",
+      "lib/neobrain/grounding.ts",
+      1
+    ],
+    [
+      "neobrain_grounding_buildgroundingclause",
+      "buildGroundingClause()",
+      "lib/neobrain/grounding.ts",
+      114
+    ],
+    [
+      "neobrain_grounding_buildtaxlawlines",
+      "buildTaxLawLines()",
+      "lib/neobrain/grounding.ts",
+      139
+    ],
+    [
+      "neobrain_grounding_claimedref",
+      "ClaimedRef",
+      "lib/neobrain/grounding.ts",
+      20
+    ],
+    [
+      "neobrain_grounding_groundingresult",
+      "GroundingResult",
+      "lib/neobrain/grounding.ts",
+      24
+    ],
+    [
+      "neobrain_grounding_renderfact",
+      "renderFact()",
+      "lib/neobrain/grounding.ts",
+      46
+    ],
+    [
+      "neobrain_grounding_rendertaxlawlines",
+      "renderTaxLawLines()",
+      "lib/neobrain/grounding.ts",
+      149
+    ],
+    [
+      "neobrain_grounding_resolvefactref",
+      "resolveFactRef()",
+      "lib/neobrain/grounding.ts",
+      37
+    ],
+    [
+      "neobrain_grounding_validategroundednumbers",
+      "validateGroundedNumbers()",
+      "lib/neobrain/grounding.ts",
+      78
+    ],
+    [
+      "neobrain_verifynarrativefigures",
+      "verifyNarrativeFigures.ts",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      1
+    ],
+    [
+      "neobrain_verifynarrativefigures_buildbackedvalues",
+      "buildBackedValues()",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      26
+    ],
+    [
+      "neobrain_verifynarrativefigures_figureverification",
+      "FigureVerification",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      49
+    ],
+    [
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "groundNarrative()",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      100
+    ],
+    [
+      "neobrain_verifynarrativefigures_isbacked",
+      "isBacked()",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      44
+    ],
+    [
+      "neobrain_verifynarrativefigures_round2",
+      "round2()",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      19
+    ],
+    [
+      "neobrain_verifynarrativefigures_verifynarrativefigures",
+      "verifyNarrativeFigures()",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      61
     ],
     [
       "neomatrix_page",
@@ -33283,19 +33915,31 @@
       "parsers_csv_findcolumnindex",
       "findColumnIndex()",
       "lib/bank/parsers/csv.ts",
-      182
+      200
+    ],
+    [
+      "parsers_csv_headermatches",
+      "headerMatches()",
+      "lib/bank/parsers/csv.ts",
+      188
+    ],
+    [
+      "parsers_csv_infercolumns",
+      "inferColumns()",
+      "lib/bank/parsers/csv.ts",
+      308
     ],
     [
       "parsers_csv_parseamount",
       "parseAmount()",
       "lib/bank/parsers/csv.ts",
-      256
+      271
     ],
     [
       "parsers_csv_parsecsv",
       "parseCSV()",
       "lib/bank/parsers/csv.ts",
-      274
+      369
     ],
     [
       "parsers_csv_parsecsvrows",
@@ -33307,13 +33951,19 @@
       "parsers_csv_parsedate",
       "parseDate()",
       "lib/bank/parsers/csv.ts",
-      192
+      207
+    ],
+    [
+      "parsers_csv_rowlookslikedata",
+      "rowLooksLikeData()",
+      "lib/bank/parsers/csv.ts",
+      291
     ],
     [
       "parsers_csv_suggestcolumnmappings",
       "suggestColumnMappings()",
       "lib/bank/parsers/csv.ts",
-      441
+      536
     ],
     [
       "parsers_index",
@@ -35113,61 +35763,61 @@
       "properties_page_depreciationschedule",
       "DepreciationSchedule",
       "app/dashboard/properties/page.tsx",
-      96
+      97
     ],
     [
       "properties_page_empty_renewals",
       "EMPTY_RENEWALS",
       "app/dashboard/properties/page.tsx",
-      177
+      178
     ],
     [
       "properties_page_expense",
       "Expense",
       "app/dashboard/properties/page.tsx",
-      80
+      81
     ],
     [
       "properties_page_income",
       "Income",
       "app/dashboard/properties/page.tsx",
-      65
+      66
     ],
     [
       "properties_page_loan",
       "Loan",
       "app/dashboard/properties/page.tsx",
-      47
+      48
     ],
     [
       "properties_page_propertiespage",
       "PropertiesPage()",
       "app/dashboard/properties/page.tsx",
-      1802
+      1792
     ],
     [
       "properties_page_propertiespagecontent",
       "PropertiesPageContent()",
       "app/dashboard/properties/page.tsx",
-      191
+      192
     ],
     [
       "properties_page_property",
       "Property",
       "app/dashboard/properties/page.tsx",
-      105
+      106
     ],
     [
       "properties_page_propertyformdata",
       "PropertyFormData",
       "app/dashboard/properties/page.tsx",
-      146
+      147
     ],
     [
       "properties_page_viewmode",
       "ViewMode",
       "app/dashboard/properties/page.tsx",
-      189
+      190
     ],
     [
       "properties_route",
@@ -35179,19 +35829,19 @@
       "properties_route_get",
       "GET",
       "app/api/properties/route.ts",
-      26
+      27
     ],
     [
       "properties_route_post",
       "POST",
       "app/api/properties/route.ts",
-      66
+      73
     ],
     [
       "properties_route_reform_cut_over_utc_ms",
       "REFORM_CUT_OVER_UTC_MS",
       "app/api/properties/route.ts",
-      24
+      25
     ],
     [
       "property_roi_route",
@@ -35281,55 +35931,55 @@
       "providers_geminiprovider_convertproperty",
       "convertProperty()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      232
+      249
     ],
     [
       "providers_geminiprovider_convertschema",
       "convertSchema()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      220
+      237
     ],
     [
       "providers_geminiprovider_geminiprovider",
       "GeminiProvider",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      70
+      72
     ],
     [
       "providers_geminiprovider_geminiprovider_constructor",
       ".constructor()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      75
+      77
     ],
     [
       "providers_geminiprovider_geminiprovider_invoke",
       ".invoke()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      91
+      93
     ],
     [
       "providers_geminiprovider_geminiprovideroptions",
       "GeminiProviderOptions",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      57
+      59
     ],
     [
       "providers_geminiprovider_serialisetoolresultforgemini",
       "serialiseToolResultForGemini()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      264
+      281
     ],
     [
       "providers_geminiprovider_tooltofunctiondeclaration",
       "toolToFunctionDeclaration()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      210
+      227
     ],
     [
       "providers_geminiprovider_withtimeout",
       "withTimeout()",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
-      280
+      297
     ],
     [
       "providers_mockprovider",
@@ -35432,6 +36082,18 @@
       "GET",
       "app/api/bookkeeping/engagement/pulse/route.ts",
       16
+    ],
+    [
+      "recategorise_route",
+      "route.ts",
+      "app/api/unified-transactions/recategorise/route.ts",
+      1
+    ],
+    [
+      "recategorise_route_post",
+      "POST",
+      "app/api/unified-transactions/recategorise/route.ts",
+      21
     ],
     [
       "reconcile_reconcilesuggestedaction",
@@ -36097,7 +36759,7 @@
       "renormalize_route_post",
       "POST",
       "app/api/unified-transactions/renormalize/route.ts",
-      17
+      19
     ],
     [
       "reports_contextbuilder",
@@ -41977,37 +42639,37 @@
       "services_financialadvisor_askfinancialquestion",
       "askFinancialQuestion()",
       "lib/ai/services/financialAdvisor.ts",
-      101
+      106
     ],
     [
       "services_financialadvisor_buildfinancialcontextfromsnapshot",
       "buildFinancialContextFromSnapshot()",
       "lib/ai/services/financialAdvisor.ts",
-      396
+      434
     ],
     [
       "services_financialadvisor_buildfinancialprompt",
       "buildFinancialPrompt()",
       "lib/ai/services/financialAdvisor.ts",
-      175
+      213
     ],
     [
       "services_financialadvisor_createfallbackresponse",
       "createFallbackResponse()",
       "lib/ai/services/financialAdvisor.ts",
-      362
+      400
     ],
     [
       "services_financialadvisor_generateaiadvice",
       "generateAIAdvice()",
       "lib/ai/services/financialAdvisor.ts",
-      38
+      42
     ],
     [
       "services_financialadvisor_generateprojections",
       "generateProjections()",
       "lib/ai/services/financialAdvisor.ts",
-      318
+      356
     ],
     [
       "services_householdcategoryservice",
@@ -43268,6 +43930,84 @@
       "withdrawRequest()",
       "lib/services/professionalRequestService.ts",
       483
+    ],
+    [
+      "services_propertyactuals",
+      "propertyActuals.ts",
+      "lib/services/propertyActuals.ts",
+      1
+    ],
+    [
+      "services_propertyactuals_actualsagg",
+      "ActualsAgg",
+      "lib/services/propertyActuals.ts",
+      66
+    ],
+    [
+      "services_propertyactuals_actualsfields",
+      "ActualsFields",
+      "lib/services/propertyActuals.ts",
+      28
+    ],
+    [
+      "services_propertyactuals_actualtx",
+      "ActualTx",
+      "lib/services/propertyActuals.ts",
+      25
+    ],
+    [
+      "services_propertyactuals_attach",
+      "attach()",
+      "lib/services/propertyActuals.ts",
+      94
+    ],
+    [
+      "services_propertyactuals_calculatemonthlyaverage",
+      "calculateMonthlyAverage()",
+      "lib/services/propertyActuals.ts",
+      43
+    ],
+    [
+      "services_propertyactuals_enrichableproperty",
+      "EnrichableProperty",
+      "lib/services/propertyActuals.ts",
+      116
+    ],
+    [
+      "services_propertyactuals_enrichedproperty",
+      "EnrichedProperty",
+      "lib/services/propertyActuals.ts",
+      122
+    ],
+    [
+      "services_propertyactuals_enrichpropertieswithactuals",
+      "enrichPropertiesWithActuals()",
+      "lib/services/propertyActuals.ts",
+      133
+    ],
+    [
+      "services_propertyactuals_expenselike",
+      "ExpenseLike",
+      "lib/services/propertyActuals.ts",
+      113
+    ],
+    [
+      "services_propertyactuals_group",
+      "group()",
+      "lib/services/propertyActuals.ts",
+      73
+    ],
+    [
+      "services_propertyactuals_incomelike",
+      "IncomeLike",
+      "lib/services/propertyActuals.ts",
+      112
+    ],
+    [
+      "services_propertyactuals_loanlike",
+      "LoanLike",
+      "lib/services/propertyActuals.ts",
+      114
     ],
     [
       "services_setupstateservice",
@@ -45559,19 +46299,37 @@
       "structural_route_get",
       "GET()",
       "app/api/admin/neomatrix/structural/route.ts",
-      34
+      38
+    ],
+    [
+      "structural_route_ok",
+      "ok()",
+      "app/api/admin/neomatrix/structural/route.ts",
+      133
     ],
     [
       "structural_route_rawedgetuple",
       "RawEdgeTuple",
       "app/api/admin/neomatrix/structural/route.ts",
-      32
+      33
     ],
     [
       "structural_route_rawnodetuple",
       "RawNodeTuple",
       "app/api/admin/neomatrix/structural/route.ts",
-      31
+      32
+    ],
+    [
+      "structural_route_symbolspayload",
+      "symbolsPayload()",
+      "app/api/admin/neomatrix/structural/route.ts",
+      118
+    ],
+    [
+      "structural_route_topdir",
+      "topDir()",
+      "app/api/admin/neomatrix/structural/route.ts",
+      36
     ],
     [
       "submit_route",
@@ -48589,55 +49347,55 @@
       "tie_categorisation_categorisation_rules",
       "CATEGORISATION_RULES",
       "lib/tie/categorisation.ts",
-      56
+      57
     ],
     [
       "tie_categorisation_categorisationresult",
       "CategorisationResult",
       "lib/tie/categorisation.ts",
-      27
+      28
     ],
     [
       "tie_categorisation_categorisationrule",
       "CategorisationRule",
       "lib/tie/categorisation.ts",
-      36
+      37
     ],
     [
       "tie_categorisation_categorisebymerchantmapping",
       "categoriseByMerchantMapping()",
       "lib/tie/categorisation.ts",
-      624
+      627
     ],
     [
       "tie_categorisation_categorisebyrules",
       "categoriseByRules()",
       "lib/tie/categorisation.ts",
-      595
+      598
     ],
     [
       "tie_categorisation_categorisetransaction",
       "categoriseTransaction()",
       "lib/tie/categorisation.ts",
-      692
+      695
     ],
     [
       "tie_categorisation_categorisetransactionbatch",
       "categoriseTransactionBatch()",
       "lib/tie/categorisation.ts",
-      750
+      763
     ],
     [
       "tie_categorisation_createmerchantmappingfromcorrection",
       "createMerchantMappingFromCorrection()",
       "lib/tie/categorisation.ts",
-      773
+      794
     ],
     [
       "tie_categorisation_sorted_rules",
       "SORTED_RULES",
       "lib/tie/categorisation.ts",
-      586
+      589
     ],
     [
       "tie_index",
@@ -48655,79 +49413,73 @@
       "tie_ingestion_cleanmerchantname",
       "cleanMerchantName()",
       "lib/tie/ingestion.ts",
-      190
+      179
     ],
     [
       "tie_ingestion_createmanualtransaction",
       "createManualTransaction()",
       "lib/tie/ingestion.ts",
-      455
+      445
     ],
     [
       "tie_ingestion_findduplicatesinbatch",
       "findDuplicatesInBatch()",
       "lib/tie/ingestion.ts",
-      515
+      505
     ],
     [
       "tie_ingestion_generatededuplicationhash",
       "generateDeduplicationHash()",
       "lib/tie/ingestion.ts",
-      227
+      216
     ],
     [
       "tie_ingestion_importfromcsv",
       "importFromCSV()",
       "lib/tie/ingestion.ts",
-      335
+      325
     ],
     [
       "tie_ingestion_istransfertransaction",
       "isTransferTransaction()",
       "lib/tie/ingestion.ts",
-      246
+      235
     ],
     [
       "tie_ingestion_merchant_aliases",
       "MERCHANT_ALIASES",
       "lib/tie/ingestion.ts",
-      34
+      35
     ],
     [
       "tie_ingestion_merchant_noise_patterns",
       "MERCHANT_NOISE_PATTERNS",
       "lib/tie/ingestion.ts",
-      105
+      106
     ],
     [
       "tie_ingestion_normaliseamount",
       "normaliseAmount()",
       "lib/tie/ingestion.ts",
-      172
+      161
     ],
     [
       "tie_ingestion_normalisetransaction",
       "normaliseTransaction()",
       "lib/tie/ingestion.ts",
-      257
+      247
     ],
     [
       "tie_ingestion_parsecsvcontent",
       "parseCSVContent()",
       "lib/tie/ingestion.ts",
-      304
+      294
     ],
     [
       "tie_ingestion_parsetransactiondate",
       "parseTransactionDate()",
       "lib/tie/ingestion.ts",
-      135
-    ],
-    [
-      "tie_ingestion_transfer_patterns",
-      "TRANSFER_PATTERNS",
-      "lib/tie/ingestion.ts",
-      119
+      124
     ],
     [
       "tie_types",
@@ -50029,31 +50781,31 @@
       "unified_transactions_route_batchimportoptions",
       "BatchImportOptions",
       "app/api/unified-transactions/route.ts",
-      321
+      356
     ],
     [
       "unified_transactions_route_builddryrunpreview",
       "buildDryRunPreview()",
       "app/api/unified-transactions/route.ts",
-      577
+      612
     ],
     [
       "unified_transactions_route_get",
       "GET",
       "app/api/unified-transactions/route.ts",
-      34
+      35
     ],
     [
       "unified_transactions_route_handlebatchimport",
       "handleBatchImport()",
       "app/api/unified-transactions/route.ts",
-      330
+      365
     ],
     [
       "unified_transactions_route_post",
       "POST",
       "app/api/unified-transactions/route.ts",
-      171
+      206
     ],
     [
       "unlock_route",
@@ -50132,6 +50884,60 @@
       "jsonError()",
       "app/api/admin/gcp/uptime/route.ts",
       15
+    ],
+    [
+      "usage_recordaiusage",
+      "recordAiUsage.ts",
+      "lib/ai/usage/recordAiUsage.ts",
+      1
+    ],
+    [
+      "usage_recordaiusage_aiusagerecord",
+      "AiUsageRecord",
+      "lib/ai/usage/recordAiUsage.ts",
+      33
+    ],
+    [
+      "usage_recordaiusage_aiusagesurface",
+      "AiUsageSurface",
+      "lib/ai/usage/recordAiUsage.ts",
+      24
+    ],
+    [
+      "usage_recordaiusage_recordaiusage",
+      "recordAiUsage()",
+      "lib/ai/usage/recordAiUsage.ts",
+      52
+    ],
+    [
+      "usage_summariseaiusage",
+      "summariseAiUsage.ts",
+      "lib/ai/usage/summariseAiUsage.ts",
+      1
+    ],
+    [
+      "usage_summariseaiusage_aiusagebreakdownrow",
+      "AiUsageBreakdownRow",
+      "lib/ai/usage/summariseAiUsage.ts",
+      17
+    ],
+    [
+      "usage_summariseaiusage_aiusagegrouprow",
+      "AiUsageGroupRow",
+      "lib/ai/usage/summariseAiUsage.ts",
+      9
+    ],
+    [
+      "usage_summariseaiusage_successratepct",
+      "successRatePct()",
+      "lib/ai/usage/summariseAiUsage.ts",
+      36
+    ],
+    [
+      "usage_summariseaiusage_tobreakdownrows",
+      "toBreakdownRows()",
+      "lib/ai/usage/summariseAiUsage.ts",
+      26
     ],
     [
       "useraudit_harness",
@@ -52628,144 +53434,6 @@
       ".constructor()",
       "lib/integrations/xero/tokenRefresh.ts",
       34
-    ],
-    [
-      "bookkeeping_transactionstatus",
-      "transactionStatus.ts",
-      "lib/bookkeeping/transactionStatus.ts",
-      1
-    ],
-    [
-      "bookkeeping_transactionstatus_deriverowstatus",
-      "deriveRowStatus()",
-      "lib/bookkeeping/transactionStatus.ts",
-      64
-    ],
-    [
-      "bookkeeping_transactionstatus_summariserowstates",
-      "summariseRowStates()",
-      "lib/bookkeeping/transactionStatus.ts",
-      85
-    ],
-    [
-      "bookkeeping_applytosimilarunified",
-      "applyToSimilarUnified.ts",
-      "lib/bookkeeping/applyToSimilarUnified.ts",
-      1
-    ],
-    [
-      "bookkeeping_applytosimilarunified_applycategorytosimilarunified",
-      "applyCategoryToSimilarUnified()",
-      "lib/bookkeeping/applyToSimilarUnified.ts",
-      41
-    ],
-    [
-      "bookkeeping_applytosimilarunified_getlearnedcategorysuggestions",
-      "getLearnedCategorySuggestions()",
-      "lib/bookkeeping/applyToSimilarUnified.ts",
-      101
-    ],
-    [
-      "neobrain_factpack",
-      "factPack.ts",
-      "lib/neobrain/factPack.ts",
-      1
-    ],
-    [
-      "neobrain_factpack_fact",
-      "Fact",
-      "lib/neobrain/factPack.ts",
-      43
-    ],
-    [
-      "neobrain_factpack_factpack",
-      "FactPack",
-      "lib/neobrain/factPack.ts",
-      79
-    ],
-    [
-      "neobrain_factpack_all_fact_scopes",
-      "ALL_FACT_SCOPES",
-      "lib/neobrain/factPack.ts",
-      70
-    ],
-    [
-      "neobrain_factpack_assemblefactpack",
-      "assembleFactPack()",
-      "lib/neobrain/factPack.ts",
-      139
-    ],
-    [
-      "neobrain_factpack_assemblefactpackforuser",
-      "assembleFactPackForUser()",
-      "lib/neobrain/factPack.ts",
-      266
-    ],
-    [
-      "neobrain_grounding",
-      "grounding.ts",
-      "lib/neobrain/grounding.ts",
-      1
-    ],
-    [
-      "neobrain_grounding_resolvefactref",
-      "resolveFactRef()",
-      "lib/neobrain/grounding.ts",
-      37
-    ],
-    [
-      "neobrain_grounding_renderfact",
-      "renderFact()",
-      "lib/neobrain/grounding.ts",
-      46
-    ],
-    [
-      "neobrain_grounding_validategroundednumbers",
-      "validateGroundedNumbers()",
-      "lib/neobrain/grounding.ts",
-      78
-    ],
-    [
-      "neobrain_grounding_buildgroundingclause",
-      "buildGroundingClause()",
-      "lib/neobrain/grounding.ts",
-      114
-    ],
-    [
-      "neobrain_grounding_groundingresult",
-      "GroundingResult",
-      "lib/neobrain/grounding.ts",
-      24
-    ],
-    [
-      "neobrain_debtprojections",
-      "debtProjections.ts",
-      "lib/neobrain/debtProjections.ts",
-      1
-    ],
-    [
-      "neobrain_debtprojections_debtprojections",
-      "DebtProjections",
-      "lib/neobrain/debtProjections.ts",
-      13
-    ],
-    [
-      "neobrain_debtprojections_buildengineprojections",
-      "buildEngineProjections()",
-      "lib/neobrain/debtProjections.ts",
-      74
-    ],
-    [
-      "neobrain_debtprojections_toloaninputs",
-      "toLoanInputs()",
-      "lib/neobrain/debtProjections.ts",
-      83
-    ],
-    [
-      "neobrain_debtprojections_formatprojections",
-      "formatProjections()",
-      "lib/neobrain/debtProjections.ts",
-      38
     ]
   ],
   "edges": [
@@ -56093,6 +56761,55 @@
       "ai_types_taxoptimizationquery",
       "lib/ai/types.ts",
       225
+    ],
+    [
+      "calls",
+      "ai_usage_page_aiusagepage",
+      "ai_usage_page_usd",
+      "app/admin/ai-usage/page.tsx",
+      154
+    ],
+    [
+      "contains",
+      "ai_usage_page",
+      "ai_usage_page_aiusagemetrics",
+      "app/admin/ai-usage/page.tsx",
+      29
+    ],
+    [
+      "contains",
+      "ai_usage_page",
+      "ai_usage_page_aiusagepage",
+      "app/admin/ai-usage/page.tsx",
+      45
+    ],
+    [
+      "contains",
+      "ai_usage_page",
+      "ai_usage_page_breakdownrow",
+      "app/admin/ai-usage/page.tsx",
+      21
+    ],
+    [
+      "contains",
+      "ai_usage_page",
+      "ai_usage_page_usd",
+      "app/admin/ai-usage/page.tsx",
+      42
+    ],
+    [
+      "contains",
+      "ai_usage_route",
+      "ai_usage_route_aiusagemetricsresponse",
+      "app/api/admin/ai-usage/route.ts",
+      22
+    ],
+    [
+      "contains",
+      "ai_usage_route",
+      "ai_usage_route_get",
+      "app/api/admin/ai-usage/route.ts",
+      35
     ],
     [
       "calls",
@@ -64510,17 +65227,17 @@
     ],
     [
       "references",
-      "bank_aicategorisation_aibatchcategorizationresult",
-      "google_geminiclient_geminiusagemetrics",
-      "lib/bank/aiCategorisation.ts",
-      56
-    ],
-    [
-      "references",
       "bank_aicategorisation_aicategorizationresult",
       "bank_types_normalisedtransaction",
       "lib/bank/aiCategorisation.ts",
       47
+    ],
+    [
+      "references",
+      "bank_aicategorisation_aicategorizationresult",
+      "tie_categorisation_categorisationresult",
+      "lib/bank/aiCategorisation.ts",
+      54
     ],
     [
       "calls",
@@ -64531,17 +65248,17 @@
     ],
     [
       "calls",
-      "bank_aicategorisation_categorisewithai",
-      "bank_aicategorisation_builduserprompt",
+      "bank_aicategorisation_categoriseunknownsviacascade",
+      "bank_aicategorisation_builduncategorisedresults",
       "lib/bank/aiCategorisation.ts",
-      319
+      293
     ],
     [
       "calls",
-      "bank_aicategorisation_categorisewithai",
-      "google_geminiclient_isgeminiconfigured",
+      "bank_aicategorisation_categoriseunknownsviacascade",
+      "tie_categorisation_categorisetransactionbatch",
       "lib/bank/aiCategorisation.ts",
-      276
+      284
     ],
     [
       "calls",
@@ -64553,9 +65270,9 @@
     [
       "calls",
       "bank_aicategorisation_categorisewithlearning",
-      "bank_aicategorisation_categoriseinbatches",
+      "bank_aicategorisation_categoriseunknownsviacascade",
       "lib/bank/aiCategorisation.ts",
-      652
+      422
     ],
     [
       "calls",
@@ -64570,6 +65287,13 @@
       "bank_ailearning_getrecurringpatterns",
       "lib/bank/aiCategorisation.ts",
       601
+    ],
+    [
+      "calls",
+      "bank_aicategorisation_categorisewithlearning",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/bank/aiCategorisation.ts",
+      356
     ],
     [
       "calls",
@@ -64616,13 +65340,6 @@
     [
       "contains",
       "bank_aicategorisation",
-      "bank_aicategorisation_aibatchcategorizationresult",
-      "lib/bank/aiCategorisation.ts",
-      54
-    ],
-    [
-      "contains",
-      "bank_aicategorisation",
       "bank_aicategorisation_aicategorizationprediction",
       "lib/bank/aiCategorisation.ts",
       34
@@ -64651,13 +65368,6 @@
     [
       "contains",
       "bank_aicategorisation",
-      "bank_aicategorisation_builduserprompt",
-      "lib/bank/aiCategorisation.ts",
-      151
-    ],
-    [
-      "contains",
-      "bank_aicategorisation",
       "bank_aicategorisation_bulkconfirmautoaccepted",
       "lib/bank/aiCategorisation.ts",
       751
@@ -64665,23 +65375,23 @@
     [
       "contains",
       "bank_aicategorisation",
-      "bank_aicategorisation_calculateadjustedconfidence",
+      "bank_aicategorisation_cascade_reasoning",
       "lib/bank/aiCategorisation.ts",
-      187
+      211
     ],
     [
       "contains",
       "bank_aicategorisation",
-      "bank_aicategorisation_categoriseinbatches",
+      "bank_aicategorisation_cascaderesulttoairesult",
       "lib/bank/aiCategorisation.ts",
-      383
+      226
     ],
     [
       "contains",
       "bank_aicategorisation",
-      "bank_aicategorisation_categorisewithai",
+      "bank_aicategorisation_categoriseunknownsviacascade",
       "lib/bank/aiCategorisation.ts",
-      268
+      269
     ],
     [
       "contains",
@@ -64721,9 +65431,9 @@
     [
       "contains",
       "bank_aicategorisation",
-      "bank_aicategorisation_merchantlearning",
+      "bank_aicategorisation_mapnormalisedtounified",
       "lib/bank/aiCategorisation.ts",
-      64
+      185
     ],
     [
       "contains",
@@ -64861,6 +65571,20 @@
     [
       "imports",
       "bank_aicategorisation",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/bank/aiCategorisation.ts",
+      9
+    ],
+    [
+      "imports_from",
+      "bank_aicategorisation",
+      "bookkeeping_transfercategorisation",
+      "lib/bank/aiCategorisation.ts",
+      9
+    ],
+    [
+      "imports",
+      "bank_aicategorisation",
       "google_geminiclient_geminiusagemetrics",
       "lib/bank/aiCategorisation.ts",
       7
@@ -64899,6 +65623,41 @@
       "google_modelconfig",
       "lib/bank/aiCategorisation.ts",
       12
+    ],
+    [
+      "imports",
+      "bank_aicategorisation",
+      "tie_categorisation_categorisationresult",
+      "lib/bank/aiCategorisation.ts",
+      10
+    ],
+    [
+      "imports",
+      "bank_aicategorisation",
+      "tie_categorisation_categorisetransactionbatch",
+      "lib/bank/aiCategorisation.ts",
+      10
+    ],
+    [
+      "imports_from",
+      "bank_aicategorisation",
+      "tie_categorisation",
+      "lib/bank/aiCategorisation.ts",
+      10
+    ],
+    [
+      "imports",
+      "bank_aicategorisation",
+      "tie_types_unifiedtransaction",
+      "lib/bank/aiCategorisation.ts",
+      11
+    ],
+    [
+      "imports_from",
+      "bank_aicategorisation",
+      "tie_types",
+      "lib/bank/aiCategorisation.ts",
+      11
     ],
     [
       "calls",
@@ -65109,6 +65868,13 @@
       "basiq_mapbasiqtransactiondirection",
       "lib/bank/basiqSync.ts",
       439
+    ],
+    [
+      "calls",
+      "bank_basiqsync_importbasiqtransactionswithai",
+      "bookkeeping_transferpairing_recategoriseuncategorisedtransfers",
+      "lib/bank/basiqSync.ts",
+      589
     ],
     [
       "calls",
@@ -65363,6 +66129,20 @@
       20
     ],
     [
+      "imports",
+      "bank_basiqsync",
+      "bookkeeping_transferpairing_recategoriseuncategorisedtransfers",
+      "lib/bank/basiqSync.ts",
+      23
+    ],
+    [
+      "imports_from",
+      "bank_basiqsync",
+      "bookkeeping_transferpairing",
+      "lib/bank/basiqSync.ts",
+      23
+    ],
+    [
       "imports_from",
       "bank_basiqsync",
       "tie_index",
@@ -65559,6 +66339,20 @@
       184
     ],
     [
+      "calls",
+      "bank_bulkconfirm_getreviewqueuebands",
+      "bank_bulkconfirm_reviewqueuewhere",
+      "lib/bank/bulkConfirm.ts",
+      168
+    ],
+    [
+      "calls",
+      "bank_bulkconfirm_getreviewqueuecount",
+      "bank_bulkconfirm_reviewqueuewhere",
+      "lib/bank/bulkConfirm.ts",
+      132
+    ],
+    [
       "contains",
       "bank_bulkconfirm",
       "bank_bulkconfirm_band_to_level",
@@ -65603,9 +66397,44 @@
     [
       "contains",
       "bank_bulkconfirm",
+      "bank_bulkconfirm_getcategorisabletotal",
+      "lib/bank/bulkConfirm.ts",
+      141
+    ],
+    [
+      "contains",
+      "bank_bulkconfirm",
       "bank_bulkconfirm_getconfidencesummary",
       "lib/bank/bulkConfirm.ts",
       64
+    ],
+    [
+      "contains",
+      "bank_bulkconfirm",
+      "bank_bulkconfirm_getreviewqueuebands",
+      "lib/bank/bulkConfirm.ts",
+      167
+    ],
+    [
+      "contains",
+      "bank_bulkconfirm",
+      "bank_bulkconfirm_getreviewqueuecount",
+      "lib/bank/bulkConfirm.ts",
+      131
+    ],
+    [
+      "contains",
+      "bank_bulkconfirm",
+      "bank_bulkconfirm_reviewqueuebands",
+      "lib/bank/bulkConfirm.ts",
+      151
+    ],
+    [
+      "contains",
+      "bank_bulkconfirm",
+      "bank_bulkconfirm_reviewqueuewhere",
+      "lib/bank/bulkConfirm.ts",
+      126
     ],
     [
       "imports",
@@ -65655,6 +66484,13 @@
       "bank_categorisation_matchesrule",
       "lib/bank/categorisation.ts",
       228
+    ],
+    [
+      "calls",
+      "bank_categorisation_categorisetransaction",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/bank/categorisation.ts",
+      232
     ],
     [
       "contains",
@@ -65767,6 +66603,20 @@
       "bank_types",
       "lib/bank/categorisation.ts",
       6
+    ],
+    [
+      "imports",
+      "bank_categorisation",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/bank/categorisation.ts",
+      14
+    ],
+    [
+      "imports_from",
+      "bank_categorisation",
+      "bookkeeping_transfercategorisation",
+      "lib/bank/categorisation.ts",
+      14
     ],
     [
       "calls",
@@ -66162,6 +67012,69 @@
     ],
     [
       "calls",
+      "bank_merchantnoise_denoisemerchanttext",
+      "bank_merchantnoise_expandmerchantaliases",
+      "lib/bank/merchantNoise.ts",
+      101
+    ],
+    [
+      "calls",
+      "bank_merchantnoise_denoisemerchanttext",
+      "bank_merchantnoise_striptransactiontimes",
+      "lib/bank/merchantNoise.ts",
+      101
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_alias_matchers",
+      "lib/bank/merchantNoise.ts",
+      76
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_denoisemerchanttext",
+      "lib/bank/merchantNoise.ts",
+      100
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_expandmerchantaliases",
+      "lib/bank/merchantNoise.ts",
+      85
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_merchant_aliases",
+      "lib/bank/merchantNoise.ts",
+      71
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_numeric_noise_strips",
+      "lib/bank/merchantNoise.ts",
+      122
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_stripmerchantnumericnoise",
+      "lib/bank/merchantNoise.ts",
+      129
+    ],
+    [
+      "contains",
+      "bank_merchantnoise",
+      "bank_merchantnoise_striptransactiontimes",
+      "lib/bank/merchantNoise.ts",
+      53
+    ],
+    [
+      "calls",
       "bank_normalisation_extractmerchant",
       "bank_normalisation_normalisemerchantname",
       "lib/bank/normalisation.ts",
@@ -66173,6 +67086,20 @@
       "bank_normalisation_generatetransactionhash",
       "lib/bank/normalisation.ts",
       315
+    ],
+    [
+      "calls",
+      "bank_normalisation_normalisemerchantname",
+      "bank_merchantnoise_denoisemerchanttext",
+      "lib/bank/normalisation.ts",
+      114
+    ],
+    [
+      "calls",
+      "bank_normalisation_normalisemerchantname",
+      "bank_merchantnoise_stripmerchantnumericnoise",
+      "lib/bank/normalisation.ts",
+      121
     ],
     [
       "calls",
@@ -66229,6 +67156,27 @@
       "bank_mcccatalog",
       "lib/bank/normalisation.ts",
       14
+    ],
+    [
+      "imports",
+      "bank_normalisation",
+      "bank_merchantnoise_denoisemerchanttext",
+      "lib/bank/normalisation.ts",
+      15
+    ],
+    [
+      "imports",
+      "bank_normalisation",
+      "bank_merchantnoise_stripmerchantnumericnoise",
+      "lib/bank/normalisation.ts",
+      15
+    ],
+    [
+      "imports_from",
+      "bank_normalisation",
+      "bank_merchantnoise",
+      "lib/bank/normalisation.ts",
+      15
     ],
     [
       "contains",
@@ -66334,6 +67282,258 @@
       "bank_types",
       "lib/bank/normalisation.ts",
       7
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "bank_recategoriseexisting_planaisuggestionwrite",
+      "lib/bank/recategoriseExisting.ts",
+      357
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "bank_recategoriseexisting_uncategorisedguard",
+      "lib/bank/recategoriseExisting.ts",
+      364
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "kb_geminionmiss_geminicategoriseonmiss",
+      "lib/bank/recategoriseExisting.ts",
+      355
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "kb_scrubsignature_scrubtosignature",
+      "lib/bank/recategoriseExisting.ts",
+      340
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "bank_normalisation_renormalisemerchant",
+      "lib/bank/recategoriseExisting.ts",
+      266
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "lib/bank/recategoriseExisting.ts",
+      309
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "bank_recategoriseexisting_planbackfillwrite",
+      "lib/bank/recategoriseExisting.ts",
+      290
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "bank_recategoriseexisting_renameallmerchants",
+      "lib/bank/recategoriseExisting.ts",
+      233
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "bank_recategoriseexisting_uncategorisedguard",
+      "lib/bank/recategoriseExisting.ts",
+      238
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "tie_categorisation_categorisetransaction",
+      "lib/bank/recategoriseExisting.ts",
+      289
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_renameallmerchants",
+      "bank_normalisation_renormalisemerchant",
+      "lib/bank/recategoriseExisting.ts",
+      213
+    ],
+    [
+      "calls",
+      "bank_recategoriseexisting_renameallmerchants",
+      "bank_recategoriseexisting_planbackfillwrite",
+      "lib/bank/recategoriseExisting.ts",
+      214
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "bank_normalisation_renormalisemerchant",
+      "lib/bank/recategoriseExisting.ts",
+      36
+    ],
+    [
+      "imports_from",
+      "bank_recategoriseexisting",
+      "bank_normalisation",
+      "lib/bank/recategoriseExisting.ts",
+      36
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_aisuggestdistinctunknowns",
+      "lib/bank/recategoriseExisting.ts",
+      333
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_name_only_result",
+      "lib/bank/recategoriseExisting.ts",
+      186
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_planaisuggestionwrite",
+      "lib/bank/recategoriseExisting.ts",
+      96
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_planbackfillwrite",
+      "lib/bank/recategoriseExisting.ts",
+      126
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_recategoriseoptions",
+      "lib/bank/recategoriseExisting.ts",
+      76
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_recategoriseresult",
+      "lib/bank/recategoriseExisting.ts",
+      57
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_recategoriseuncategorised",
+      "lib/bank/recategoriseExisting.ts",
+      225
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_renameallmerchants",
+      "lib/bank/recategoriseExisting.ts",
+      206
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_uncategorisedguard",
+      "lib/bank/recategoriseExisting.ts",
+      166
+    ],
+    [
+      "contains",
+      "bank_recategoriseexisting",
+      "bank_recategoriseexisting_unknownrow",
+      "lib/bank/recategoriseExisting.ts",
+      179
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "db_prisma",
+      "lib/bank/recategoriseExisting.ts",
+      35
+    ],
+    [
+      "imports_from",
+      "bank_recategoriseexisting",
+      "db",
+      "lib/bank/recategoriseExisting.ts",
+      35
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "kb_geminionmiss_geminicategoriseonmiss",
+      "lib/bank/recategoriseExisting.ts",
+      39
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "kb_geminionmiss_geminicategoryresult",
+      "lib/bank/recategoriseExisting.ts",
+      39
+    ],
+    [
+      "imports_from",
+      "bank_recategoriseexisting",
+      "kb_geminionmiss",
+      "lib/bank/recategoriseExisting.ts",
+      39
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "kb_scrubsignature_scrubtosignature",
+      "lib/bank/recategoriseExisting.ts",
+      38
+    ],
+    [
+      "imports_from",
+      "bank_recategoriseexisting",
+      "kb_scrubsignature",
+      "lib/bank/recategoriseExisting.ts",
+      38
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "tie_categorisation_categorisetransaction",
+      "lib/bank/recategoriseExisting.ts",
+      37
+    ],
+    [
+      "imports_from",
+      "bank_recategoriseexisting",
+      "tie_categorisation",
+      "lib/bank/recategoriseExisting.ts",
+      37
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "tie_types_merchantmapping",
+      "lib/bank/recategoriseExisting.ts",
+      40
+    ],
+    [
+      "imports",
+      "bank_recategoriseexisting",
+      "tie_types_unifiedtransaction",
+      "lib/bank/recategoriseExisting.ts",
+      40
+    ],
+    [
+      "imports_from",
+      "bank_recategoriseexisting",
+      "tie_types",
+      "lib/bank/recategoriseExisting.ts",
+      40
     ],
     [
       "calls",
@@ -67492,6 +68692,55 @@
     ],
     [
       "calls",
+      "bookkeeping_applytosimilarunified_applycategorytosimilarunified",
+      "bookkeeping_applytosimilarunified_buildsimilaruncategorisedwhere",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      89
+    ],
+    [
+      "contains",
+      "bookkeeping_applytosimilarunified",
+      "bookkeeping_applytosimilarunified_applycategorytosimilarunified",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      72
+    ],
+    [
+      "contains",
+      "bookkeeping_applytosimilarunified",
+      "bookkeeping_applytosimilarunified_buildsimilaruncategorisedwhere",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      46
+    ],
+    [
+      "contains",
+      "bookkeeping_applytosimilarunified",
+      "bookkeeping_applytosimilarunified_getlearnedcategorysuggestions",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      126
+    ],
+    [
+      "contains",
+      "bookkeeping_applytosimilarunified",
+      "bookkeeping_applytosimilarunified_similarapplyresult",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      34
+    ],
+    [
+      "imports",
+      "bookkeeping_applytosimilarunified",
+      "db_prisma",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      31
+    ],
+    [
+      "imports_from",
+      "bookkeeping_applytosimilarunified",
+      "db",
+      "lib/bookkeeping/applyToSimilarUnified.ts",
+      31
+    ],
+    [
+      "calls",
       "bookkeeping_cashaccount_getorcreatecashaccount",
       "services_legalentityservice_getdefaultlegalentityid",
       "lib/bookkeeping/cashAccount.ts",
@@ -68338,11 +69587,81 @@
       19
     ],
     [
+      "calls",
+      "bookkeeping_transactionstatus_summariserowstates",
+      "bookkeeping_transactionstatus_deriverowstatus",
+      "lib/bookkeeping/transactionStatus.ts",
+      95
+    ],
+    [
+      "contains",
+      "bookkeeping_transactionstatus",
+      "bookkeeping_transactionstatus_deriverowstatus",
+      "lib/bookkeeping/transactionStatus.ts",
+      64
+    ],
+    [
+      "contains",
+      "bookkeeping_transactionstatus",
+      "bookkeeping_transactionstatus_rowstate",
+      "lib/bookkeeping/transactionStatus.ts",
+      29
+    ],
+    [
+      "contains",
+      "bookkeeping_transactionstatus",
+      "bookkeeping_transactionstatus_rowstatusinput",
+      "lib/bookkeeping/transactionStatus.ts",
+      32
+    ],
+    [
+      "contains",
+      "bookkeeping_transactionstatus",
+      "bookkeeping_transactionstatus_rowstatus",
+      "lib/bookkeeping/transactionStatus.ts",
+      41
+    ],
+    [
+      "contains",
+      "bookkeeping_transactionstatus",
+      "bookkeeping_transactionstatus_summariserowstates",
+      "lib/bookkeeping/transactionStatus.ts",
+      85
+    ],
+    [
       "contains",
       "bookkeeping_transfercategorisation",
       "bookkeeping_transfercategorisation_confirmedtransferfields",
       "lib/bookkeeping/transferCategorisation.ts",
       23
+    ],
+    [
+      "contains",
+      "bookkeeping_transfercategorisation",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/bookkeeping/transferCategorisation.ts",
+      79
+    ],
+    [
+      "contains",
+      "bookkeeping_transfercategorisation",
+      "bookkeeping_transfercategorisation_transfer_description_patterns",
+      "lib/bookkeeping/transferCategorisation.ts",
+      63
+    ],
+    [
+      "calls",
+      "bookkeeping_transferpairing_pairtransferacrossaccounts",
+      "bookkeeping_transfercategorisation_confirmedtransferfields",
+      "lib/bookkeeping/transferPairing.ts",
+      286
+    ],
+    [
+      "calls",
+      "bookkeeping_transferpairing_pairtransferacrossaccounts",
+      "bookkeeping_transferpairing_filterpaircandidates",
+      "lib/bookkeeping/transferPairing.ts",
+      279
     ],
     [
       "calls",
@@ -68366,6 +69685,13 @@
       47
     ],
     [
+      "imports",
+      "bookkeeping_transferpairing",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/bookkeeping/transferPairing.ts",
+      47
+    ],
+    [
       "imports_from",
       "bookkeeping_transferpairing",
       "bookkeeping_transfercategorisation",
@@ -68382,9 +69708,23 @@
     [
       "contains",
       "bookkeeping_transferpairing",
+      "bookkeeping_transferpairing_pairtransferacrossaccounts",
+      "lib/bookkeeping/transferPairing.ts",
+      228
+    ],
+    [
+      "contains",
+      "bookkeeping_transferpairing",
       "bookkeeping_transferpairing_pairtransferifpossible",
       "lib/bookkeeping/transferPairing.ts",
       128
+    ],
+    [
+      "contains",
+      "bookkeeping_transferpairing",
+      "bookkeeping_transferpairing_recategoriseuncategorisedtransfers",
+      "lib/bookkeeping/transferPairing.ts",
+      315
     ],
     [
       "contains",
@@ -68609,6 +69949,13 @@
       "budget_analysis_aiprompt_calculatebenchmarkexpenses",
       "lib/budget-analysis/aiPrompt.ts",
       280
+    ],
+    [
+      "contains",
+      "budget_analysis_aiprompt",
+      "budget_analysis_aiprompt_groundvariableexpensetotal",
+      "lib/budget-analysis/aiPrompt.ts",
+      264
     ],
     [
       "contains",
@@ -70775,6 +72122,41 @@
     ],
     [
       "calls",
+      "calculations_financialindependence_computefinancialindependence",
+      "calculations_financialindependence_round1",
+      "lib/calculations/financialIndependence.ts",
+      115
+    ],
+    [
+      "contains",
+      "calculations_financialindependence",
+      "calculations_financialindependence_computefinancialindependence",
+      "lib/calculations/financialIndependence.ts",
+      97
+    ],
+    [
+      "contains",
+      "calculations_financialindependence",
+      "calculations_financialindependence_financialindependenceinput",
+      "lib/calculations/financialIndependence.ts",
+      38
+    ],
+    [
+      "contains",
+      "calculations_financialindependence",
+      "calculations_financialindependence_financialindependenceresult",
+      "lib/calculations/financialIndependence.ts",
+      69
+    ],
+    [
+      "contains",
+      "calculations_financialindependence",
+      "calculations_financialindependence_round1",
+      "lib/calculations/financialIndependence.ts",
+      90
+    ],
+    [
+      "calls",
       "calculations_incomeaggregator_aggregateincomebysourcedecimal",
       "calculations_incomeaggregator_aggregateincomedecimal",
       "lib/calculations/incomeAggregator.ts",
@@ -71752,6 +73134,146 @@
       "db",
       "lib/calculations/netWorthHistory.ts",
       22
+    ],
+    [
+      "calls",
+      "calculations_propertycashflow_annualvalue",
+      "calculations_propertycashflow_isactual",
+      "lib/calculations/propertyCashflow.ts",
+      77
+    ],
+    [
+      "calls",
+      "calculations_propertycashflow_annualvalue",
+      "utils_frequencies_toannual",
+      "lib/calculations/propertyCashflow.ts",
+      78
+    ],
+    [
+      "inherits",
+      "calculations_propertycashflow_cashflowexpense",
+      "calculations_propertycashflow_entityactuals",
+      "lib/calculations/propertyCashflow.ts",
+      43
+    ],
+    [
+      "inherits",
+      "calculations_propertycashflow_cashflowincome",
+      "calculations_propertycashflow_entityactuals",
+      "lib/calculations/propertyCashflow.ts",
+      38
+    ],
+    [
+      "inherits",
+      "calculations_propertycashflow_cashflowloan",
+      "calculations_propertycashflow_entityactuals",
+      "lib/calculations/propertyCashflow.ts",
+      47
+    ],
+    [
+      "calls",
+      "calculations_propertycashflow_computepropertycashflow",
+      "calculations_propertycashflow_annualvalue",
+      "lib/calculations/propertyCashflow.ts",
+      94
+    ],
+    [
+      "calls",
+      "calculations_propertycashflow_computepropertycashflow",
+      "calculations_propertycashflow_isactual",
+      "lib/calculations/propertyCashflow.ts",
+      96
+    ],
+    [
+      "calls",
+      "calculations_propertycashflow_computepropertycashflow",
+      "utils_frequencies_toannual",
+      "lib/calculations/propertyCashflow.ts",
+      119
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_annualvalue",
+      "lib/calculations/propertyCashflow.ts",
+      76
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_cashflowexpense",
+      "lib/calculations/propertyCashflow.ts",
+      43
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_cashflowincome",
+      "lib/calculations/propertyCashflow.ts",
+      38
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_cashflowloan",
+      "lib/calculations/propertyCashflow.ts",
+      47
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_computepropertycashflow",
+      "lib/calculations/propertyCashflow.ts",
+      81
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_entityactuals",
+      "lib/calculations/propertyCashflow.ts",
+      34
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_freq",
+      "lib/calculations/propertyCashflow.ts",
+      31
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_isactual",
+      "lib/calculations/propertyCashflow.ts",
+      74
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_propertycashflowinput",
+      "lib/calculations/propertyCashflow.ts",
+      53
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_propertycashflow",
+      "lib/calculations/propertyCashflow.ts",
+      59
+    ],
+    [
+      "imports",
+      "calculations_propertycashflow",
+      "utils_frequencies_toannual",
+      "lib/calculations/propertyCashflow.ts",
+      29
+    ],
+    [
+      "imports_from",
+      "calculations_propertycashflow",
+      "utils_frequencies",
+      "lib/calculations/propertyCashflow.ts",
+      29
     ],
     [
       "calls",
@@ -72987,6 +74509,27 @@
     ],
     [
       "calls",
+      "cashflow_intelligence_geminisummary_generategeminisummary",
+      "google_modelconfig_getmodelpricing",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      262
+    ],
+    [
+      "calls",
+      "cashflow_intelligence_geminisummary_generategeminisummary",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      312
+    ],
+    [
+      "calls",
+      "cashflow_intelligence_geminisummary_generategeminisummary",
+      "usage_recordaiusage_recordaiusage",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      263
+    ],
+    [
+      "calls",
       "cashflow_intelligence_geminisummary_issummarystale",
       "cashflow_intelligence_geminisummary_generatedatahash",
       "lib/cashflow-intelligence/geminiSummary.ts",
@@ -73089,6 +74632,48 @@
       "google_geminiclient",
       "lib/cashflow-intelligence/geminiSummary.ts",
       16
+    ],
+    [
+      "imports",
+      "cashflow_intelligence_geminisummary",
+      "google_modelconfig_getmodelpricing",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      17
+    ],
+    [
+      "imports_from",
+      "cashflow_intelligence_geminisummary",
+      "google_modelconfig",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      17
+    ],
+    [
+      "imports",
+      "cashflow_intelligence_geminisummary",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      19
+    ],
+    [
+      "imports_from",
+      "cashflow_intelligence_geminisummary",
+      "neobrain_verifynarrativefigures",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      19
+    ],
+    [
+      "imports",
+      "cashflow_intelligence_geminisummary",
+      "usage_recordaiusage_recordaiusage",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      18
+    ],
+    [
+      "imports_from",
+      "cashflow_intelligence_geminisummary",
+      "usage_recordaiusage",
+      "lib/cashflow-intelligence/geminiSummary.ts",
+      18
     ],
     [
       "calls",
@@ -75584,6 +77169,27 @@
     ],
     [
       "calls",
+      "cfo_aiadvisor_callgeminiadvisor",
+      "config_taxyearconfig_getcurrenttaxyearconfig",
+      "lib/cfo/aiAdvisor.ts",
+      720
+    ],
+    [
+      "calls",
+      "cfo_aiadvisor_callgeminiadvisor",
+      "neobrain_factpack_buildtaxrulesreference",
+      "lib/cfo/aiAdvisor.ts",
+      720
+    ],
+    [
+      "calls",
+      "cfo_aiadvisor_callgeminiadvisor",
+      "neobrain_grounding_rendertaxlawlines",
+      "lib/cfo/aiAdvisor.ts",
+      720
+    ],
+    [
+      "calls",
       "cfo_aiadvisor_determineusertrailstage",
       "cfo_trailstage_determinetrailstage",
       "lib/cfo/aiAdvisor.ts",
@@ -76005,6 +77611,20 @@
     [
       "imports",
       "cfo_aiadvisor",
+      "config_taxyearconfig_getcurrenttaxyearconfig",
+      "lib/cfo/aiAdvisor.ts",
+      42
+    ],
+    [
+      "imports_from",
+      "cfo_aiadvisor",
+      "config_taxyearconfig",
+      "lib/cfo/aiAdvisor.ts",
+      42
+    ],
+    [
+      "imports",
+      "cfo_aiadvisor",
       "db_prisma",
       "lib/cfo/aiAdvisor.ts",
       35
@@ -76043,6 +77663,34 @@
       "google_modelconfig",
       "lib/cfo/aiAdvisor.ts",
       41
+    ],
+    [
+      "imports",
+      "cfo_aiadvisor",
+      "neobrain_factpack_buildtaxrulesreference",
+      "lib/cfo/aiAdvisor.ts",
+      43
+    ],
+    [
+      "imports_from",
+      "cfo_aiadvisor",
+      "neobrain_factpack",
+      "lib/cfo/aiAdvisor.ts",
+      43
+    ],
+    [
+      "imports",
+      "cfo_aiadvisor",
+      "neobrain_grounding_rendertaxlawlines",
+      "lib/cfo/aiAdvisor.ts",
+      44
+    ],
+    [
+      "imports_from",
+      "cfo_aiadvisor",
+      "neobrain_grounding",
+      "lib/cfo/aiAdvisor.ts",
+      44
     ],
     [
       "imports",
@@ -82879,37 +84527,23 @@
     [
       "contains",
       "dashboard_properties_id_page_tsx_id_page",
+      "id_page_actuals",
+      "app/dashboard/properties/[id]/page.tsx",
+      76
+    ],
+    [
+      "contains",
+      "dashboard_properties_id_page_tsx_id_page",
+      "id_page_cashflowof",
+      "app/dashboard/properties/[id]/page.tsx",
+      148
+    ],
+    [
+      "contains",
+      "dashboard_properties_id_page_tsx_id_page",
       "id_page_computeannualdepreciation",
       "app/dashboard/properties/[id]/page.tsx",
       169
-    ],
-    [
-      "contains",
-      "dashboard_properties_id_page_tsx_id_page",
-      "id_page_computeannualexpenses",
-      "app/dashboard/properties/[id]/page.tsx",
-      158
-    ],
-    [
-      "contains",
-      "dashboard_properties_id_page_tsx_id_page",
-      "id_page_computeannualloanrepayments",
-      "app/dashboard/properties/[id]/page.tsx",
-      152
-    ],
-    [
-      "contains",
-      "dashboard_properties_id_page_tsx_id_page",
-      "id_page_computeannualrent",
-      "app/dashboard/properties/[id]/page.tsx",
-      138
-    ],
-    [
-      "contains",
-      "dashboard_properties_id_page_tsx_id_page",
-      "id_page_computecashflow",
-      "app/dashboard/properties/[id]/page.tsx",
-      164
     ],
     [
       "contains",
@@ -82931,13 +84565,6 @@
       "id_page_computelvr",
       "app/dashboard/properties/[id]/page.tsx",
       132
-    ],
-    [
-      "contains",
-      "dashboard_properties_id_page_tsx_id_page",
-      "id_page_computerentalyield",
-      "app/dashboard/properties/[id]/page.tsx",
-      147
     ],
     [
       "contains",
@@ -91370,6 +92997,13 @@
     [
       "calls",
       "engagement_pendingactions_buildpendingactions",
+      "bank_bulkconfirm_getreviewqueuecount",
+      "lib/bookkeeping/engagement/pendingActions.ts",
+      115
+    ],
+    [
+      "calls",
+      "engagement_pendingactions_buildpendingactions",
       "bookkeeping_period_toperiodmonthkey",
       "lib/bookkeeping/engagement/pendingActions.ts",
       93
@@ -91401,6 +93035,20 @@
       "engagement_pendingactions_issameutcday",
       "lib/bookkeeping/engagement/pendingActions.ts",
       226
+    ],
+    [
+      "imports",
+      "engagement_pendingactions",
+      "bank_bulkconfirm_getreviewqueuecount",
+      "lib/bookkeeping/engagement/pendingActions.ts",
+      31
+    ],
+    [
+      "imports_from",
+      "engagement_pendingactions",
+      "bank_bulkconfirm",
+      "lib/bookkeeping/engagement/pendingActions.ts",
+      31
     ],
     [
       "imports",
@@ -101351,6 +102999,27 @@
     ],
     [
       "calls",
+      "google_geminiclient_generategeminigroundedtext",
+      "google_geminiclient_getgeminiclient",
+      "lib/ai/google/geminiClient.ts",
+      335
+    ],
+    [
+      "calls",
+      "google_geminiclient_generategeminigroundedtext",
+      "google_geminiclient_withmodelfallbackandretry",
+      "lib/ai/google/geminiClient.ts",
+      342
+    ],
+    [
+      "calls",
+      "google_geminiclient_generategeminigroundedtext",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/google/geminiClient.ts",
+      345
+    ],
+    [
+      "calls",
       "google_geminiclient_generategeminijsoncompletion",
       "google_geminiclient_getgeminiclient",
       "lib/ai/google/geminiClient.ts",
@@ -101365,6 +103034,13 @@
     ],
     [
       "calls",
+      "google_geminiclient_generategeminijsoncompletion",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/google/geminiClient.ts",
+      393
+    ],
+    [
+      "calls",
       "google_geminiclient_generategeminitextcompletion",
       "google_geminiclient_getgeminiclient",
       "lib/ai/google/geminiClient.ts",
@@ -101376,6 +103052,20 @@
       "google_geminiclient_withmodelfallbackandretry",
       "lib/ai/google/geminiClient.ts",
       303
+    ],
+    [
+      "calls",
+      "google_geminiclient_generategeminitextcompletion",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/google/geminiClient.ts",
+      439
+    ],
+    [
+      "calls",
+      "google_geminiclient_trygenerategroundedwithmodel",
+      "google_modelconfig_getmodelpricing",
+      "lib/ai/google/geminiClient.ts",
+      315
     ],
     [
       "calls",
@@ -101443,6 +103133,13 @@
     [
       "contains",
       "google_geminiclient",
+      "google_geminiclient_geminigroundedresult",
+      "lib/ai/google/geminiClient.ts",
+      87
+    ],
+    [
+      "contains",
+      "google_geminiclient",
       "google_geminiclient_geminitextresult",
       "lib/ai/google/geminiClient.ts",
       73
@@ -101453,6 +103150,13 @@
       "google_geminiclient_geminiusagemetrics",
       "lib/ai/google/geminiClient.ts",
       60
+    ],
+    [
+      "contains",
+      "google_geminiclient",
+      "google_geminiclient_generategeminigroundedtext",
+      "lib/ai/google/geminiClient.ts",
+      332
     ],
     [
       "contains",
@@ -101506,6 +103210,13 @@
     [
       "contains",
       "google_geminiclient",
+      "google_geminiclient_trygenerategroundedwithmodel",
+      "lib/ai/google/geminiClient.ts",
+      292
+    ],
+    [
+      "contains",
+      "google_geminiclient",
       "google_geminiclient_trygeneratetextwithmodel",
       "lib/ai/google/geminiClient.ts",
       220
@@ -101551,6 +103262,20 @@
       "google_modelconfig",
       "lib/ai/google/geminiClient.ts",
       13
+    ],
+    [
+      "imports",
+      "google_geminiclient",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/google/geminiClient.ts",
+      14
+    ],
+    [
+      "imports_from",
+      "google_geminiclient",
+      "usage_recordaiusage",
+      "lib/ai/google/geminiClient.ts",
+      14
     ],
     [
       "re_exports",
@@ -105096,27 +106821,6 @@
     ],
     [
       "calls",
-      "id_page_computecashflow",
-      "id_page_computeannualexpenses",
-      "app/dashboard/properties/[id]/page.tsx",
-      166
-    ],
-    [
-      "calls",
-      "id_page_computecashflow",
-      "id_page_computeannualloanrepayments",
-      "app/dashboard/properties/[id]/page.tsx",
-      166
-    ],
-    [
-      "calls",
-      "id_page_computerentalyield",
-      "id_page_computeannualrent",
-      "app/dashboard/properties/[id]/page.tsx",
-      149
-    ],
-    [
-      "calls",
       "id_page_distributionstotal",
       "id_page_sumtxbytype",
       "app/dashboard/investments/accounts/[id]/page.tsx",
@@ -105128,6 +106832,13 @@
       "id_page_sumtxbytype",
       "app/dashboard/investments/accounts/[id]/page.tsx",
       168
+    ],
+    [
+      "inherits",
+      "id_page_expenseitem",
+      "id_page_actuals",
+      "app/dashboard/properties/[id]/page.tsx",
+      98
     ],
     [
       "calls",
@@ -105142,6 +106853,13 @@
       "id_page_unrealizedgain",
       "app/dashboard/investments/accounts/[id]/page.tsx",
       136
+    ],
+    [
+      "inherits",
+      "id_page_incomeitem",
+      "id_page_actuals",
+      "app/dashboard/properties/[id]/page.tsx",
+      90
     ],
     [
       "calls",
@@ -105221,11 +106939,11 @@
       725
     ],
     [
-      "calls",
-      "id_page_linkedentitiescard",
-      "id_page_computeannualexpenses",
+      "inherits",
+      "id_page_loan",
+      "id_page_actuals",
       "app/dashboard/properties/[id]/page.tsx",
-      705
+      81
     ],
     [
       "calls",
@@ -105237,23 +106955,16 @@
     [
       "calls",
       "id_page_propertydetailpage",
+      "id_page_cashflowof",
+      "app/dashboard/properties/[id]/page.tsx",
+      261
+    ],
+    [
+      "calls",
+      "id_page_propertydetailpage",
       "id_page_computeannualdepreciation",
       "app/dashboard/properties/[id]/page.tsx",
       282
-    ],
-    [
-      "calls",
-      "id_page_propertydetailpage",
-      "id_page_computeannualrent",
-      "app/dashboard/properties/[id]/page.tsx",
-      279
-    ],
-    [
-      "calls",
-      "id_page_propertydetailpage",
-      "id_page_computecashflow",
-      "app/dashboard/properties/[id]/page.tsx",
-      280
     ],
     [
       "calls",
@@ -105275,13 +106986,6 @@
       "id_page_computelvr",
       "app/dashboard/properties/[id]/page.tsx",
       277
-    ],
-    [
-      "calls",
-      "id_page_propertydetailpage",
-      "id_page_computerentalyield",
-      "app/dashboard/properties/[id]/page.tsx",
-      278
     ],
     [
       "calls",
@@ -110031,10 +111735,24 @@
     ],
     [
       "calls",
+      "kb_geminionmiss_categorisesignatureungrounded",
+      "kb_geminionmiss_buildcategorisationprompt",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      153
+    ],
+    [
+      "calls",
       "kb_geminionmiss_geminicategoriseonmiss",
       "ai_gemini_isgeminiconfigured",
       "lib/categorisation/kb/geminiOnMiss.ts",
       84
+    ],
+    [
+      "calls",
+      "kb_geminionmiss_geminicategoriseonmiss",
+      "google_geminiclient_isgeminiconfigured",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      111
     ],
     [
       "calls",
@@ -110046,9 +111764,44 @@
     [
       "calls",
       "kb_geminionmiss_geminicategoriseonmiss",
+      "kb_geminionmiss_categorisesignatureungrounded",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      118
+    ],
+    [
+      "calls",
+      "kb_geminionmiss_geminicategoriseonmiss",
+      "kb_geminionmiss_geminiidentifymerchantgrounded",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      129
+    ],
+    [
+      "calls",
+      "kb_geminionmiss_geminicategoriseonmiss",
       "kb_scrubsignature_scrubtosignature",
       "lib/categorisation/kb/geminiOnMiss.ts",
       87
+    ],
+    [
+      "calls",
+      "kb_geminionmiss_geminiidentifymerchantgrounded",
+      "google_geminiclient_generategeminigroundedtext",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      250
+    ],
+    [
+      "calls",
+      "kb_geminionmiss_geminiidentifymerchantgrounded",
+      "google_geminiclient_isgeminiconfigured",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      233
+    ],
+    [
+      "calls",
+      "kb_geminionmiss_geminiidentifymerchantgrounded",
+      "kb_geminionmiss_parsegroundedmerchantresult",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      257
     ],
     [
       "imports",
@@ -110086,11 +111839,60 @@
       18
     ],
     [
+      "imports",
+      "kb_geminionmiss",
+      "google_geminiclient_generategeminigroundedtext",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      20
+    ],
+    [
+      "imports",
+      "kb_geminionmiss",
+      "google_geminiclient_generategeminijsoncompletion",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      20
+    ],
+    [
+      "imports",
+      "kb_geminionmiss",
+      "google_geminiclient_isgeminiconfigured",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      20
+    ],
+    [
+      "imports_from",
+      "kb_geminionmiss",
+      "google_geminiclient",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      20
+    ],
+    [
+      "imports",
+      "kb_geminionmiss",
+      "google_modelconfig_gemini_models",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      25
+    ],
+    [
+      "imports_from",
+      "kb_geminionmiss",
+      "google_modelconfig",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      25
+    ],
+    [
       "contains",
       "kb_geminionmiss",
       "kb_geminionmiss_buildcategorisationprompt",
       "lib/categorisation/kb/geminiOnMiss.ts",
       48
+    ],
+    [
+      "contains",
+      "kb_geminionmiss",
+      "kb_geminionmiss_categorisesignatureungrounded",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      141
     ],
     [
       "contains",
@@ -110109,9 +111911,23 @@
     [
       "contains",
       "kb_geminionmiss",
+      "kb_geminionmiss_geminiidentifymerchantgrounded",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      230
+    ],
+    [
+      "contains",
+      "kb_geminionmiss",
       "kb_geminionmiss_geminiraw",
       "lib/categorisation/kb/geminiOnMiss.ts",
       37
+    ],
+    [
+      "contains",
+      "kb_geminionmiss",
+      "kb_geminionmiss_parsegroundedmerchantresult",
+      "lib/categorisation/kb/geminiOnMiss.ts",
+      188
     ],
     [
       "imports",
@@ -110368,9 +112184,44 @@
     [
       "calls",
       "kb_scrubsignature_scrubtosignature",
+      "bank_merchantnoise_denoisemerchanttext",
+      "lib/categorisation/kb/scrubSignature.ts",
+      61
+    ],
+    [
+      "calls",
+      "kb_scrubsignature_scrubtosignature",
+      "bank_merchantnoise_stripmerchantnumericnoise",
+      "lib/categorisation/kb/scrubSignature.ts",
+      60
+    ],
+    [
+      "calls",
+      "kb_scrubsignature_scrubtosignature",
       "bookkeeping_normalisedescription_normalisedescription",
       "lib/categorisation/kb/scrubSignature.ts",
       63
+    ],
+    [
+      "imports",
+      "kb_scrubsignature",
+      "bank_merchantnoise_denoisemerchanttext",
+      "lib/categorisation/kb/scrubSignature.ts",
+      23
+    ],
+    [
+      "imports",
+      "kb_scrubsignature",
+      "bank_merchantnoise_stripmerchantnumericnoise",
+      "lib/categorisation/kb/scrubSignature.ts",
+      23
+    ],
+    [
+      "imports_from",
+      "kb_scrubsignature",
+      "bank_merchantnoise",
+      "lib/categorisation/kb/scrubSignature.ts",
+      23
     ],
     [
       "imports",
@@ -113276,6 +115127,559 @@
       "navigation_trailnav_trailnavitems",
       "lib/navigation/trailNav.tsx",
       52
+    ],
+    [
+      "calls",
+      "neobrain_debtprojections_buildengineprojections",
+      "neobrain_debtprojections_formatprojections",
+      "lib/neobrain/debtProjections.ts",
+      87
+    ],
+    [
+      "calls",
+      "neobrain_debtprojections_buildengineprojections",
+      "planning_debtplanner_rundebtplan",
+      "lib/neobrain/debtProjections.ts",
+      79
+    ],
+    [
+      "calls",
+      "neobrain_debtprojections_formatprojections",
+      "neobrain_debtprojections_formatmonthyear",
+      "lib/neobrain/debtProjections.ts",
+      57
+    ],
+    [
+      "calls",
+      "neobrain_debtprojections_formatprojections",
+      "neobrain_debtprojections_monthsbetween",
+      "lib/neobrain/debtProjections.ts",
+      52
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_buildengineprojections",
+      "lib/neobrain/debtProjections.ts",
+      74
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_debtprojections",
+      "lib/neobrain/debtProjections.ts",
+      13
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_debtstrategy",
+      "lib/neobrain/debtProjections.ts",
+      20
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_formatmonthyear",
+      "lib/neobrain/debtProjections.ts",
+      28
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_formatprojections",
+      "lib/neobrain/debtProjections.ts",
+      38
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_monthsbetween",
+      "lib/neobrain/debtProjections.ts",
+      23
+    ],
+    [
+      "contains",
+      "neobrain_debtprojections",
+      "neobrain_debtprojections_toloaninputs",
+      "lib/neobrain/debtProjections.ts",
+      91
+    ],
+    [
+      "imports",
+      "neobrain_debtprojections",
+      "planning_debtplanner_loaninput",
+      "lib/neobrain/debtProjections.ts",
+      10
+    ],
+    [
+      "imports",
+      "neobrain_debtprojections",
+      "planning_debtplanner_planresult",
+      "lib/neobrain/debtProjections.ts",
+      10
+    ],
+    [
+      "imports",
+      "neobrain_debtprojections",
+      "planning_debtplanner_rundebtplan",
+      "lib/neobrain/debtProjections.ts",
+      10
+    ],
+    [
+      "imports_from",
+      "neobrain_debtprojections",
+      "planning_debtplanner",
+      "lib/neobrain/debtProjections.ts",
+      10
+    ],
+    [
+      "calls",
+      "neobrain_factpack_assemblefactpackforuser",
+      "neobrain_factpack_assemblefactpack",
+      "lib/neobrain/factPack.ts",
+      376
+    ],
+    [
+      "calls",
+      "neobrain_factpack_assemblefactpackforuser",
+      "services_masterfinancialservice_getmasterfinancialsnapshot",
+      "lib/neobrain/factPack.ts",
+      375
+    ],
+    [
+      "calls",
+      "neobrain_factpack_assemblefactpack",
+      "config_taxyearconfig_getcurrenttaxyearconfig",
+      "lib/neobrain/factPack.ts",
+      296
+    ],
+    [
+      "calls",
+      "neobrain_factpack_assemblefactpack",
+      "neobrain_factpack_buildtaxrulesreference",
+      "lib/neobrain/factPack.ts",
+      301
+    ],
+    [
+      "calls",
+      "neobrain_factpack_assemblefactpack",
+      "neobrain_factpack_userfact",
+      "lib/neobrain/factPack.ts",
+      237
+    ],
+    [
+      "calls",
+      "neobrain_factpack_buildtaxrulesreference",
+      "neobrain_factpack_reformmeasure",
+      "lib/neobrain/factPack.ts",
+      127
+    ],
+    [
+      "calls",
+      "neobrain_factpack_userfact",
+      "neobrain_factpack_statefor",
+      "lib/neobrain/factPack.ts",
+      200
+    ],
+    [
+      "imports",
+      "neobrain_factpack",
+      "config_taxyearconfig_getcurrenttaxyearconfig",
+      "lib/neobrain/factPack.ts",
+      36
+    ],
+    [
+      "imports_from",
+      "neobrain_factpack",
+      "config_taxyearconfig",
+      "lib/neobrain/factPack.ts",
+      36
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_all_fact_scopes",
+      "lib/neobrain/factPack.ts",
+      148
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_assemblefactpackforuser",
+      "lib/neobrain/factPack.ts",
+      371
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_assemblefactpack",
+      "lib/neobrain/factPack.ts",
+      219
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_buildtaxrulesreference",
+      "lib/neobrain/factPack.ts",
+      110
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_factpack",
+      "lib/neobrain/factPack.ts",
+      157
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_factscope",
+      "lib/neobrain/factPack.ts",
+      140
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_factsource",
+      "lib/neobrain/factPack.ts",
+      40
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_factstate",
+      "lib/neobrain/factPack.ts",
+      39
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_factunit",
+      "lib/neobrain/factPack.ts",
+      41
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_fact",
+      "lib/neobrain/factPack.ts",
+      44
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_reformmeasure",
+      "lib/neobrain/factPack.ts",
+      101
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_statefor",
+      "lib/neobrain/factPack.ts",
+      183
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_taxreformmeasure",
+      "lib/neobrain/factPack.ts",
+      68
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_taxrulesreference",
+      "lib/neobrain/factPack.ts",
+      81
+    ],
+    [
+      "contains",
+      "neobrain_factpack",
+      "neobrain_factpack_userfact",
+      "lib/neobrain/factPack.ts",
+      189
+    ],
+    [
+      "imports",
+      "neobrain_factpack",
+      "services_masterfinancialservice_getmasterfinancialsnapshot",
+      "lib/neobrain/factPack.ts",
+      34
+    ],
+    [
+      "imports",
+      "neobrain_factpack",
+      "services_masterfinancialservice_masterfinancialsnapshot",
+      "lib/neobrain/factPack.ts",
+      33
+    ],
+    [
+      "imports_from",
+      "neobrain_factpack",
+      "services_masterfinancialservice",
+      "lib/neobrain/factPack.ts",
+      34
+    ],
+    [
+      "imports",
+      "neobrain_factpack",
+      "tax_engine_types_taxyearconfig",
+      "lib/neobrain/factPack.ts",
+      37
+    ],
+    [
+      "imports_from",
+      "neobrain_factpack",
+      "tax_engine_types",
+      "lib/neobrain/factPack.ts",
+      37
+    ],
+    [
+      "imports",
+      "neobrain_factpack",
+      "tie_types_all_categories",
+      "lib/neobrain/factPack.ts",
+      35
+    ],
+    [
+      "imports",
+      "neobrain_factpack",
+      "tie_types_category_hierarchy",
+      "lib/neobrain/factPack.ts",
+      35
+    ],
+    [
+      "imports_from",
+      "neobrain_factpack",
+      "tie_types",
+      "lib/neobrain/factPack.ts",
+      35
+    ],
+    [
+      "calls",
+      "neobrain_grounding_buildgroundingclause",
+      "neobrain_grounding_buildtaxlawlines",
+      "lib/neobrain/grounding.ts",
+      134
+    ],
+    [
+      "calls",
+      "neobrain_grounding_buildtaxlawlines",
+      "neobrain_grounding_rendertaxlawlines",
+      "lib/neobrain/grounding.ts",
+      140
+    ],
+    [
+      "references",
+      "neobrain_grounding_groundingresult",
+      "neobrain_factpack_fact",
+      "lib/neobrain/grounding.ts",
+      26
+    ],
+    [
+      "calls",
+      "neobrain_grounding_renderfact",
+      "utils_formatters_formatcurrency",
+      "lib/neobrain/grounding.ts",
+      50
+    ],
+    [
+      "calls",
+      "neobrain_grounding_renderfact",
+      "utils_formatters_formatpercentagevalue",
+      "lib/neobrain/grounding.ts",
+      52
+    ],
+    [
+      "calls",
+      "neobrain_grounding_rendertaxlawlines",
+      "utils_formatters_formatcurrency",
+      "lib/neobrain/grounding.ts",
+      161
+    ],
+    [
+      "calls",
+      "neobrain_grounding_validategroundednumbers",
+      "neobrain_grounding_renderfact",
+      "lib/neobrain/grounding.ts",
+      100
+    ],
+    [
+      "calls",
+      "neobrain_grounding_validategroundednumbers",
+      "neobrain_grounding_resolvefactref",
+      "lib/neobrain/grounding.ts",
+      87
+    ],
+    [
+      "imports",
+      "neobrain_grounding",
+      "neobrain_factpack_factpack",
+      "lib/neobrain/grounding.ts",
+      17
+    ],
+    [
+      "imports",
+      "neobrain_grounding",
+      "neobrain_factpack_fact",
+      "lib/neobrain/grounding.ts",
+      17
+    ],
+    [
+      "imports",
+      "neobrain_grounding",
+      "neobrain_factpack_taxrulesreference",
+      "lib/neobrain/grounding.ts",
+      17
+    ],
+    [
+      "imports_from",
+      "neobrain_grounding",
+      "neobrain_factpack",
+      "lib/neobrain/grounding.ts",
+      17
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_buildgroundingclause",
+      "lib/neobrain/grounding.ts",
+      114
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_buildtaxlawlines",
+      "lib/neobrain/grounding.ts",
+      139
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_claimedref",
+      "lib/neobrain/grounding.ts",
+      20
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_groundingresult",
+      "lib/neobrain/grounding.ts",
+      24
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_renderfact",
+      "lib/neobrain/grounding.ts",
+      46
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_rendertaxlawlines",
+      "lib/neobrain/grounding.ts",
+      149
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_resolvefactref",
+      "lib/neobrain/grounding.ts",
+      37
+    ],
+    [
+      "contains",
+      "neobrain_grounding",
+      "neobrain_grounding_validategroundednumbers",
+      "lib/neobrain/grounding.ts",
+      78
+    ],
+    [
+      "imports",
+      "neobrain_grounding",
+      "utils_formatters_formatcurrency",
+      "lib/neobrain/grounding.ts",
+      16
+    ],
+    [
+      "imports",
+      "neobrain_grounding",
+      "utils_formatters_formatpercentagevalue",
+      "lib/neobrain/grounding.ts",
+      16
+    ],
+    [
+      "imports_from",
+      "neobrain_grounding",
+      "utils_formatters",
+      "lib/neobrain/grounding.ts",
+      16
+    ],
+    [
+      "calls",
+      "neobrain_verifynarrativefigures_buildbackedvalues",
+      "neobrain_verifynarrativefigures_round2",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      33
+    ],
+    [
+      "calls",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "neobrain_verifynarrativefigures_buildbackedvalues",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      108
+    ],
+    [
+      "calls",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "neobrain_verifynarrativefigures_verifynarrativefigures",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      106
+    ],
+    [
+      "contains",
+      "neobrain_verifynarrativefigures",
+      "neobrain_verifynarrativefigures_buildbackedvalues",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      26
+    ],
+    [
+      "contains",
+      "neobrain_verifynarrativefigures",
+      "neobrain_verifynarrativefigures_figureverification",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      49
+    ],
+    [
+      "contains",
+      "neobrain_verifynarrativefigures",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      100
+    ],
+    [
+      "contains",
+      "neobrain_verifynarrativefigures",
+      "neobrain_verifynarrativefigures_isbacked",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      44
+    ],
+    [
+      "contains",
+      "neobrain_verifynarrativefigures",
+      "neobrain_verifynarrativefigures_round2",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      19
+    ],
+    [
+      "contains",
+      "neobrain_verifynarrativefigures",
+      "neobrain_verifynarrativefigures_verifynarrativefigures",
+      "lib/neobrain/verifyNarrativeFigures.ts",
+      61
     ],
     [
       "contains",
@@ -117290,6 +119694,20 @@
     ],
     [
       "calls",
+      "parsers_csv_infercolumns",
+      "parsers_csv_parseamount",
+      "lib/bank/parsers/csv.ts",
+      328
+    ],
+    [
+      "calls",
+      "parsers_csv_infercolumns",
+      "parsers_csv_parsedate",
+      "lib/bank/parsers/csv.ts",
+      327
+    ],
+    [
+      "calls",
       "parsers_csv_parsecsv",
       "parsers_csv_detectbankmapping",
       "lib/bank/parsers/csv.ts",
@@ -117301,6 +119719,13 @@
       "parsers_csv_findcolumnindex",
       "lib/bank/parsers/csv.ts",
       300
+    ],
+    [
+      "calls",
+      "parsers_csv_parsecsv",
+      "parsers_csv_infercolumns",
+      "lib/bank/parsers/csv.ts",
+      407
     ],
     [
       "calls",
@@ -117322,6 +119747,13 @@
       "parsers_csv_parsedate",
       "lib/bank/parsers/csv.ts",
       358
+    ],
+    [
+      "calls",
+      "parsers_csv_parsecsv",
+      "parsers_csv_rowlookslikedata",
+      "lib/bank/parsers/csv.ts",
+      391
     ],
     [
       "calls",
@@ -117396,6 +119828,20 @@
     [
       "contains",
       "parsers_csv",
+      "parsers_csv_headermatches",
+      "lib/bank/parsers/csv.ts",
+      188
+    ],
+    [
+      "contains",
+      "parsers_csv",
+      "parsers_csv_infercolumns",
+      "lib/bank/parsers/csv.ts",
+      308
+    ],
+    [
+      "contains",
+      "parsers_csv",
       "parsers_csv_parseamount",
       "lib/bank/parsers/csv.ts",
       256
@@ -117420,6 +119866,13 @@
       "parsers_csv_parsedate",
       "lib/bank/parsers/csv.ts",
       192
+    ],
+    [
+      "contains",
+      "parsers_csv",
+      "parsers_csv_rowlookslikedata",
+      "lib/bank/parsers/csv.ts",
+      291
     ],
     [
       "contains",
@@ -121148,6 +123601,13 @@
     [
       "calls",
       "providers_geminiprovider_geminiprovider_invoke",
+      "google_modelconfig_getmodelpricing",
+      "lib/ai/tax-advisor/providers/geminiProvider.ts",
+      199
+    ],
+    [
+      "calls",
+      "providers_geminiprovider_geminiprovider_invoke",
       "providers_geminiprovider_serialisetoolresultforgemini",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
       156
@@ -121172,6 +123632,13 @@
       "providers_types_providerinvokeresponse",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
       91
+    ],
+    [
+      "calls",
+      "providers_geminiprovider_geminiprovider_invoke",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/tax-advisor/providers/geminiProvider.ts",
+      200
     ],
     [
       "method",
@@ -121200,6 +123667,20 @@
       "providers_geminiprovider_convertschema",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
       216
+    ],
+    [
+      "imports",
+      "providers_geminiprovider",
+      "google_modelconfig_getmodelpricing",
+      "lib/ai/tax-advisor/providers/geminiProvider.ts",
+      50
+    ],
+    [
+      "imports_from",
+      "providers_geminiprovider",
+      "google_modelconfig",
+      "lib/ai/tax-advisor/providers/geminiProvider.ts",
+      50
     ],
     [
       "contains",
@@ -121305,6 +123786,20 @@
       "tax_advisor_types",
       "lib/ai/tax-advisor/providers/geminiProvider.ts",
       49
+    ],
+    [
+      "imports",
+      "providers_geminiprovider",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/tax-advisor/providers/geminiProvider.ts",
+      51
+    ],
+    [
+      "imports_from",
+      "providers_geminiprovider",
+      "usage_recordaiusage",
+      "lib/ai/tax-advisor/providers/geminiProvider.ts",
+      51
     ],
     [
       "references",
@@ -121501,6 +123996,13 @@
       "pulse_route_get",
       "app/api/bookkeeping/engagement/pulse/route.ts",
       16
+    ],
+    [
+      "contains",
+      "recategorise_route",
+      "recategorise_route_post",
+      "app/api/unified-transactions/recategorise/route.ts",
+      21
     ],
     [
       "calls",
@@ -134203,6 +136705,13 @@
     [
       "calls",
       "services_financialadvisor_askfinancialquestion",
+      "config_taxyearconfig_getcurrenttaxyearconfig",
+      "lib/ai/services/financialAdvisor.ts",
+      131
+    ],
+    [
+      "calls",
+      "services_financialadvisor_askfinancialquestion",
       "google_geminiclient_formatcurrencyforprompt",
       "lib/ai/services/financialAdvisor.ts",
       124
@@ -134213,6 +136722,27 @@
       "google_geminiclient_isgeminiconfigured",
       "lib/ai/services/financialAdvisor.ts",
       113
+    ],
+    [
+      "calls",
+      "services_financialadvisor_askfinancialquestion",
+      "neobrain_factpack_buildtaxrulesreference",
+      "lib/ai/services/financialAdvisor.ts",
+      131
+    ],
+    [
+      "calls",
+      "services_financialadvisor_askfinancialquestion",
+      "neobrain_grounding_rendertaxlawlines",
+      "lib/ai/services/financialAdvisor.ts",
+      131
+    ],
+    [
+      "calls",
+      "services_financialadvisor_askfinancialquestion",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "lib/ai/services/financialAdvisor.ts",
+      185
     ],
     [
       "calls",
@@ -134329,6 +136859,20 @@
     [
       "imports",
       "services_financialadvisor",
+      "config_taxyearconfig_getcurrenttaxyearconfig",
+      "lib/ai/services/financialAdvisor.ts",
+      25
+    ],
+    [
+      "imports_from",
+      "services_financialadvisor",
+      "config_taxyearconfig",
+      "lib/ai/services/financialAdvisor.ts",
+      25
+    ],
+    [
+      "imports",
+      "services_financialadvisor",
       "google_geminiclient_formatcurrencyforprompt",
       "lib/ai/services/financialAdvisor.ts",
       9
@@ -134374,6 +136918,48 @@
       "google_modelconfig_gemini_models",
       "lib/ai/services/financialAdvisor.ts",
       9
+    ],
+    [
+      "imports",
+      "services_financialadvisor",
+      "neobrain_factpack_buildtaxrulesreference",
+      "lib/ai/services/financialAdvisor.ts",
+      24
+    ],
+    [
+      "imports_from",
+      "services_financialadvisor",
+      "neobrain_factpack",
+      "lib/ai/services/financialAdvisor.ts",
+      24
+    ],
+    [
+      "imports",
+      "services_financialadvisor",
+      "neobrain_grounding_rendertaxlawlines",
+      "lib/ai/services/financialAdvisor.ts",
+      23
+    ],
+    [
+      "imports_from",
+      "services_financialadvisor",
+      "neobrain_grounding",
+      "lib/ai/services/financialAdvisor.ts",
+      23
+    ],
+    [
+      "imports",
+      "services_financialadvisor",
+      "neobrain_verifynarrativefigures_groundnarrative",
+      "lib/ai/services/financialAdvisor.ts",
+      22
+    ],
+    [
+      "imports_from",
+      "services_financialadvisor",
+      "neobrain_verifynarrativefigures",
+      "lib/ai/services/financialAdvisor.ts",
+      22
     ],
     [
       "contains",
@@ -138112,6 +140698,118 @@
       "services_professionalrequestservice_withdrawrequest",
       "lib/services/professionalRequestService.ts",
       483
+    ],
+    [
+      "calls",
+      "services_propertyactuals_attach",
+      "services_propertyactuals_calculatemonthlyaverage",
+      "lib/services/propertyActuals.ts",
+      100
+    ],
+    [
+      "calls",
+      "services_propertyactuals_enrichpropertieswithactuals",
+      "services_propertyactuals_group",
+      "lib/services/propertyActuals.ts",
+      167
+    ],
+    [
+      "calls",
+      "services_propertyactuals_group",
+      "bookkeeping_categoryregistry_keyof",
+      "lib/services/propertyActuals.ts",
+      80
+    ],
+    [
+      "imports_from",
+      "services_propertyactuals",
+      "db",
+      "lib/services/propertyActuals.ts",
+      23
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_actualsagg",
+      "lib/services/propertyActuals.ts",
+      66
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_actualsfields",
+      "lib/services/propertyActuals.ts",
+      28
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_actualtx",
+      "lib/services/propertyActuals.ts",
+      25
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_attach",
+      "lib/services/propertyActuals.ts",
+      94
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_calculatemonthlyaverage",
+      "lib/services/propertyActuals.ts",
+      43
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_enrichableproperty",
+      "lib/services/propertyActuals.ts",
+      116
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_enrichedproperty",
+      "lib/services/propertyActuals.ts",
+      122
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_enrichpropertieswithactuals",
+      "lib/services/propertyActuals.ts",
+      133
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_expenselike",
+      "lib/services/propertyActuals.ts",
+      113
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_group",
+      "lib/services/propertyActuals.ts",
+      73
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_incomelike",
+      "lib/services/propertyActuals.ts",
+      112
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_loanlike",
+      "lib/services/propertyActuals.ts",
+      114
     ],
     [
       "calls",
@@ -142671,11 +145369,39 @@
       248
     ],
     [
+      "calls",
+      "structural_route_get",
+      "structural_route_ok",
+      "app/api/admin/neomatrix/structural/route.ts",
+      84
+    ],
+    [
+      "calls",
+      "structural_route_get",
+      "structural_route_symbolspayload",
+      "app/api/admin/neomatrix/structural/route.ts",
+      84
+    ],
+    [
+      "calls",
+      "structural_route_get",
+      "structural_route_topdir",
+      "app/api/admin/neomatrix/structural/route.ts",
+      99
+    ],
+    [
       "contains",
       "structural_route",
       "structural_route_get",
       "app/api/admin/neomatrix/structural/route.ts",
       34
+    ],
+    [
+      "contains",
+      "structural_route",
+      "structural_route_ok",
+      "app/api/admin/neomatrix/structural/route.ts",
+      133
     ],
     [
       "contains",
@@ -142690,6 +145416,20 @@
       "structural_route_rawnodetuple",
       "app/api/admin/neomatrix/structural/route.ts",
       31
+    ],
+    [
+      "contains",
+      "structural_route",
+      "structural_route_symbolspayload",
+      "app/api/admin/neomatrix/structural/route.ts",
+      118
+    ],
+    [
+      "contains",
+      "structural_route",
+      "structural_route_topdir",
+      "app/api/admin/neomatrix/structural/route.ts",
+      36
     ],
     [
       "contains",
@@ -150170,6 +152910,20 @@
     [
       "imports",
       "tie_categorisation",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/tie/categorisation.ts",
+      21
+    ],
+    [
+      "imports_from",
+      "tie_categorisation",
+      "bookkeeping_transfercategorisation",
+      "lib/tie/categorisation.ts",
+      21
+    ],
+    [
+      "imports",
+      "tie_categorisation",
       "kb_categorypath_decodecategorypath",
       "lib/tie/categorisation.ts",
       20
@@ -150379,6 +153133,13 @@
     ],
     [
       "calls",
+      "tie_ingestion_istransfertransaction",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/tie/ingestion.ts",
+      237
+    ],
+    [
+      "calls",
       "tie_ingestion_normalisetransaction",
       "tie_ingestion_cleanmerchantname",
       "lib/tie/ingestion.ts",
@@ -150404,6 +153165,20 @@
       "tie_ingestion_parsetransactiondate",
       "lib/tie/ingestion.ts",
       262
+    ],
+    [
+      "imports",
+      "tie_ingestion",
+      "bookkeeping_transfercategorisation_istransferdescription",
+      "lib/tie/ingestion.ts",
+      16
+    ],
+    [
+      "imports_from",
+      "tie_ingestion",
+      "bookkeeping_transfercategorisation",
+      "lib/tie/ingestion.ts",
+      16
     ],
     [
       "contains",
@@ -150488,13 +153263,6 @@
       "tie_ingestion_parsetransactiondate",
       "lib/tie/ingestion.ts",
       135
-    ],
-    [
-      "contains",
-      "tie_ingestion",
-      "tie_ingestion_transfer_patterns",
-      "lib/tie/ingestion.ts",
-      119
     ],
     [
       "imports",
@@ -153421,6 +156189,76 @@
       "uptime_route_jsonerror",
       "app/api/admin/gcp/uptime/route.ts",
       15
+    ],
+    [
+      "imports",
+      "usage_recordaiusage",
+      "db_prisma",
+      "lib/ai/usage/recordAiUsage.ts",
+      21
+    ],
+    [
+      "imports_from",
+      "usage_recordaiusage",
+      "db",
+      "lib/ai/usage/recordAiUsage.ts",
+      21
+    ],
+    [
+      "contains",
+      "usage_recordaiusage",
+      "usage_recordaiusage_aiusagerecord",
+      "lib/ai/usage/recordAiUsage.ts",
+      33
+    ],
+    [
+      "contains",
+      "usage_recordaiusage",
+      "usage_recordaiusage_aiusagesurface",
+      "lib/ai/usage/recordAiUsage.ts",
+      24
+    ],
+    [
+      "contains",
+      "usage_recordaiusage",
+      "usage_recordaiusage_recordaiusage",
+      "lib/ai/usage/recordAiUsage.ts",
+      52
+    ],
+    [
+      "inherits",
+      "usage_summariseaiusage_aiusagebreakdownrow",
+      "usage_summariseaiusage_aiusagegrouprow",
+      "lib/ai/usage/summariseAiUsage.ts",
+      17
+    ],
+    [
+      "contains",
+      "usage_summariseaiusage",
+      "usage_summariseaiusage_aiusagebreakdownrow",
+      "lib/ai/usage/summariseAiUsage.ts",
+      17
+    ],
+    [
+      "contains",
+      "usage_summariseaiusage",
+      "usage_summariseaiusage_aiusagegrouprow",
+      "lib/ai/usage/summariseAiUsage.ts",
+      9
+    ],
+    [
+      "contains",
+      "usage_summariseaiusage",
+      "usage_summariseaiusage_successratepct",
+      "lib/ai/usage/summariseAiUsage.ts",
+      36
+    ],
+    [
+      "contains",
+      "usage_summariseaiusage",
+      "usage_summariseaiusage_tobreakdownrows",
+      "lib/ai/usage/summariseAiUsage.ts",
+      26
     ],
     [
       "calls",

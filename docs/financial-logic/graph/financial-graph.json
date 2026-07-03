@@ -4,7 +4,7 @@
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
-  "lastReviewed": "2026-07-01",
+  "lastReviewed": "2026-07-03",
   "nodes": [
     {
       "id": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
@@ -321,11 +321,36 @@
       "formula": "coverageNowPct = round1(netAccessiblePassiveAnnual / lifestyleAnnual × 100); superIncomeAnnual = max(0, preservedSuperBalance) × superDrawdownRate (default 0.04); coverageAt60Pct = round1((netAccessiblePassiveAnnual + superIncomeAnnual) / lifestyleAnnual × 100); incomeProducingCount = count(propertyNetMonthly > 0), growthBuildingCount = count(≤ 0); momentum = {total: ΔnetWorth, fromSavings, fromPortfolio: Δ − savings} or null; hasData = lifestyleAnnual > 0. NET passive = Σ per-property net cashflow (rent − expenses − loan repayments) + dividends + interest + royalties — gross rent is NEVER used.",
       "authority": "Financial-independence definition (passive income ÷ living expenses); 4% safe-withdrawal rule (Bengen 1994 / Trinity study) as the labelled at-60 assumption; CLAUDE.md §0 (net not gross; accessible not preserved) + §19.1",
       "inputs": [
-        { "name": "netAccessiblePassiveAnnual", "unit": "AUD/year", "type": "number", "note": "Σ per-property net cashflow + non-property passive (dividends/interest/royalties); NET, excludes preserved super" },
-        { "name": "preservedSuperBalance", "unit": "AUD", "type": "number", "note": "netWorth.assets.superannuation; at-60 layer only" },
-        { "name": "lifestyleAnnual", "unit": "AUD/year", "type": "number", "note": "trailing real spend (moneyStoryTrend.annualOutgoings); declared-plan fallback" },
-        { "name": "propertyNetMonthly", "unit": "AUD/month", "type": "number", "note": "per-property net cashflow; sign splits income-producing vs growth-building" },
-        { "name": "superDrawdownRate", "unit": "ratio", "type": "number", "note": "default 0.04 (4% rule)" }
+        {
+          "name": "netAccessiblePassiveAnnual",
+          "unit": "AUD/year",
+          "type": "number",
+          "note": "Σ per-property net cashflow + non-property passive (dividends/interest/royalties); NET, excludes preserved super"
+        },
+        {
+          "name": "preservedSuperBalance",
+          "unit": "AUD",
+          "type": "number",
+          "note": "netWorth.assets.superannuation; at-60 layer only"
+        },
+        {
+          "name": "lifestyleAnnual",
+          "unit": "AUD/year",
+          "type": "number",
+          "note": "trailing real spend (moneyStoryTrend.annualOutgoings); declared-plan fallback"
+        },
+        {
+          "name": "propertyNetMonthly",
+          "unit": "AUD/month",
+          "type": "number",
+          "note": "per-property net cashflow; sign splits income-producing vs growth-building"
+        },
+        {
+          "name": "superDrawdownRate",
+          "unit": "ratio",
+          "type": "number",
+          "note": "default 0.04 (4% rule)"
+        }
       ],
       "astHash": null,
       "verifiedBy": "tests/neomatrix/financialIndependenceAudit.test.ts (A1 law-referenced worked example) + lib/calculations/financialIndependence.ts:97",
@@ -5409,6 +5434,182 @@
       "workedExample": null,
       "verifiedDate": "2026-07-01",
       "status": "documented"
+    },
+    {
+      "id": "input.Loan.interestRateAnnual",
+      "kind": "input-field",
+      "label": "Loan interest rate (annual, decimal)",
+      "file": "prisma/schema.prisma",
+      "line": null,
+      "layer": "db",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Per-loan annual interest rate as a DECIMAL (0.0649 = 6.49%), NOT a percent.",
+      "formula": null,
+      "authority": "Prisma Loan.interestRateAnnual — stored decimal; §19.2 unit contract (100× bug class).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/calculations/propertyCashflow.ts:111 (principal × interestRateAnnual)",
+      "workedExample": "482000 × 0.0649 = 31,281.80 annual interest",
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
+    },
+    {
+      "id": "engine.propertyActuals.calculateMonthlyAverage",
+      "kind": "engine",
+      "label": "Reconciled monthly average (actuals)",
+      "file": "lib/services/propertyActuals.ts",
+      "line": 43,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "A true monthly average for a linked income/expense/loan from its reconciled-transaction cadence — so fortnightly rent annualises correctly (×26/12), not as if monthly.",
+      "formula": "avg = (Σ|amount| / totalDays) × 30.44, where totalDays = daysSpan + avgInterval over the cadence; ADVANCE (rent) drops the trailing part-period payment; <2 tx → single |amount| or null.",
+      "authority": "Day-span averaging over the actual transaction cadence (§19.1 actuals-first). 30.44 = mean days/month.",
+      "inputs": [
+        {
+          "name": "UnifiedTransaction.date",
+          "unit": "date",
+          "type": "Date",
+          "note": "per linked entity"
+        },
+        {
+          "name": "UnifiedTransaction.amount",
+          "unit": "AUD",
+          "type": "number",
+          "note": "abs value; sign ignored"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/propertyCashflow.test.ts (actuals-first cadence example)",
+      "workedExample": "fortnightly $1195 → monthlyAvg ≈ 1195×26/12 = 2588.3 → ×12 ≈ $31,060/yr (not $14,340)",
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
+    },
+    {
+      "id": "engine.propertyCashflow.computePropertyCashflow",
+      "kind": "engine",
+      "label": "Per-property cashflow",
+      "file": "lib/calculations/propertyCashflow.ts",
+      "line": 81,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Per-property annual rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow (rent − expenses − repayment) and tax cashflow (rent − expenses − interest). ONE source for both property surfaces.",
+      "formula": "annualRent = Σ rental income (actual monthlyAvg×12 when hasTransactions, else declared×freq); annualExpenses = Σ expenses (same rule); annualLoanInterest = Σ principal×interestRateAnnual; annualLoanRepayment = Σ (actual×12 | manual minRepayment×freq | interest floor — never $0); cashflow = rent − expenses − repayment; taxCashflow = rent − expenses − interest.",
+      "authority": "Property cashflow = rent − holding costs − loan servicing. §19.1 actuals-first; interest-only is the deductible figure (principal is not deductible). Loan cost never silently $0.",
+      "inputs": [
+        {
+          "name": "income.amount / frequency",
+          "unit": "AUD",
+          "type": "number",
+          "note": "declared fallback; RENT/RENTAL only"
+        },
+        {
+          "name": "expense.amount / frequency",
+          "unit": "AUD",
+          "type": "number",
+          "note": "declared fallback"
+        },
+        {
+          "name": "loan.principal",
+          "unit": "AUD",
+          "type": "number",
+          "note": "current outstanding"
+        },
+        {
+          "name": "loan.interestRateAnnual",
+          "unit": "decimal",
+          "type": "number",
+          "note": "0.0649 = 6.49%, NOT percent"
+        },
+        {
+          "name": "loan.minRepayment / repaymentFrequency",
+          "unit": "AUD",
+          "type": "number",
+          "note": "manual P&I; used when no actuals"
+        },
+        {
+          "name": "monthlyAverageActual / hasTransactions",
+          "unit": "AUD",
+          "type": "number",
+          "note": "from calculateMonthlyAverage — overrides declared"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/propertyCashflow.test.ts (§19.2 worked examples + §19.4 one-source proof)",
+      "workedExample": "Lot 1: rent 14,340 − expenses 43,546 − P&I 71,704.56 = −100,910.56 cash (tax −90,671.23 using interest 61,465.23)",
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
+    },
+    {
+      "id": "number.propertyCashflow",
+      "kind": "number",
+      "label": "Per-property cashflow (displayed)",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "propertyCashflow",
+      "produces": "The annual cashflow figure shown for a single property — identical on the list tile and the detail hero (§19.4 same number everywhere).",
+      "formula": "= computePropertyCashflow(property).annualCashflow",
+      "authority": "CLAUDE.md §12.2.1 one-source / §19.4 full-flow.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/calculations/propertyCashflow.ts:135",
+      "workedExample": null,
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
+    },
+    {
+      "id": "ui.properties.detailCashflow",
+      "kind": "ui-surface",
+      "label": "Property detail — cashflow hero",
+      "file": "app/dashboard/properties/[id]/page.tsx",
+      "line": 264,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "propertyCashflow",
+      "produces": "Renders the property annual cash cashflow (and tax cashflow in the Tax card) from the canonical engine.",
+      "formula": null,
+      "authority": "app/dashboard/properties/[id]/page.tsx:261 cashflowOf(property) → computePropertyCashflow",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/dashboard/properties/[id]/page.tsx:264",
+      "workedExample": null,
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
+    },
+    {
+      "id": "ui.properties.listTileCashflow",
+      "kind": "ui-surface",
+      "label": "Property list — tile cashflow",
+      "file": "app/dashboard/properties/page.tsx",
+      "line": 722,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "propertyCashflow",
+      "produces": "Renders the per-property annual cashflow on each PropertyTile from the SAME canonical engine as the detail page.",
+      "formula": null,
+      "authority": "app/dashboard/properties/page.tsx:476 calculateCashflow → cashflowOf → computePropertyCashflow",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/dashboard/properties/page.tsx:722",
+      "workedExample": null,
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -8352,6 +8553,106 @@
       "toUnit": null,
       "evidence": "lib/bank/recategoriseExisting.ts:355 geminiCategoriseOnMiss(group.rawForAi) — one call per distinct merchant",
       "verifiedDate": "2026-07-01"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:94 rental income declared fallback",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:102 expenses declared fallback",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:111 principal×rate interest",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.Loan.interestRateAnnual",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:111 principal×interestRateAnnual",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.Loan.minRepayment",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:119 manual P&I when no actuals",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.UnifiedTransaction",
+      "to": "engine.propertyActuals.calculateMonthlyAverage",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyActuals.ts:43 reconciled tx cadence",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "engine.propertyActuals.calculateMonthlyAverage",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:77 actual monthlyAverageActual×12 overrides declared",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "engine.propertyCashflow.computePropertyCashflow",
+      "to": "number.propertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts:135 annualCashflow",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "number.propertyCashflow",
+      "to": "ui.properties.detailCashflow",
+      "type": "rendered-at",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "detail hero cf.annualCashflow",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "number.propertyCashflow",
+      "to": "ui.properties.listTileCashflow",
+      "type": "rendered-at",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "PropertyTile metrics.cashflow (converged with detail)",
+      "verifiedDate": "2026-07-03"
     }
   ]
 }

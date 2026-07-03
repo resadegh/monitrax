@@ -33,6 +33,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
+import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -456,39 +457,28 @@ function PropertiesPageContent() {
     return property.currentValue - totalLoans;
   };
 
+  // ONE source of per-property cashflow (CLAUDE.md §12.2.1 / §19.4): every
+  // number below reads the canonical `computePropertyCashflow` engine — the
+  // SAME engine the property DETAIL page uses. Actuals-first (reconciled
+  // transactions win over declared frequency); loan cost never silently $0.
+  const cashflowOf = (property: Property) =>
+    computePropertyCashflow({
+      income: property.income,
+      expenses: property.expenses,
+      loans: property.loans,
+    });
+
   const calculateRentalYield = (property: Property) => {
-    const annualRent = property.income?.reduce((sum, inc) => {
-      if (inc.type === 'RENT' || inc.type === 'RENTAL') {
-        return sum + convertToAnnual(inc.amount, inc.frequency);
-      }
-      return sum;
-    }, 0) || 0;
-
     if (property.currentValue <= 0) return 0;
-    return (annualRent / property.currentValue) * 100;
+    return (cashflowOf(property).annualRent / property.currentValue) * 100;
   };
 
-  const calculateCashflow = (property: Property) => {
-    const annualIncome = property.income?.reduce((sum, inc) =>
-      sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0;
-    const annualExpenses = property.expenses?.reduce((sum, exp) =>
-      sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0;
-    // Use actual loan repayments instead of just interest
-    const annualLoanRepayments = property.loans?.reduce((sum, loan) =>
-      sum + convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'), 0) || 0;
+  const calculateCashflow = (property: Property) => cashflowOf(property).annualCashflow;
 
-    return annualIncome - annualExpenses - annualLoanRepayments;
-  };
+  const calculateAnnualLoanRepayments = (property: Property) =>
+    cashflowOf(property).annualLoanRepayment;
 
-  const calculateAnnualLoanRepayments = (property: Property) => {
-    return property.loans?.reduce((sum, loan) =>
-      sum + convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'), 0) || 0;
-  };
-
-  const calculateAnnualInterest = (property: Property) => {
-    return property.loans?.reduce((sum, loan) =>
-      sum + (loan.principal * loan.interestRateAnnual), 0) || 0;
-  };
+  const calculateAnnualInterest = (property: Property) => cashflowOf(property).annualLoanInterest;
 
   // Exclude RENTAL properties from value/equity calculations (they're not owned)
   const ownedProperties = properties.filter(p => p.type !== 'RENTAL');
