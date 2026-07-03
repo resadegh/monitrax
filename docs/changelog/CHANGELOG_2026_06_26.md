@@ -784,3 +784,18 @@ Obvious, discoverable back affordance (full-width sky pill + arrow, not a subtle
 
 ### §20.4 3× self-review → 10/10 (investigation; not a build — no numbers changed)
 Every root cause verified in source (agents + direct reads; depreciation bonus bug grep-confirmed `annualClaim` exists only in page.tsx); number-changing issues (P-1/P-2/P-5/P-6) explicitly flagged as needing Reza's go-ahead (§19.3, never auto-fixed); P-7's -$100,912 marked "confirm surface" rather than guessed; the un-modelled-surface blind spot (§21.5) named as part of the P-2 fix. 10/10.
+
+---
+
+## Session: claudemd-full-flow-verification (§19.4 added — 2026-07-03)
+
+### Changes Made
+- **Type**: CLAUDE.md protocol change (process rule — no code, no financial logic).
+- **§19.4 FULL-FLOW VERIFICATION added** (CRITICAL/NON-NEGOTIABLE) per Reza directive 2026-07-03: every number-changing fix must trace + verify EVERY downstream consumer across the whole app before it's "done" — enumerate consumers via the Neomatrix lineage (model the number first if it's an unmodelled blind spot), grep every render site, confirm ONE source (delete any second producer — the whack-a-mole cause), add a HARD automated cross-surface/propagation test (not an eyeball), and report the sweep + test in the PR. Reviewer enforcement + version footer bumped to 3.2.
+
+### Files Modified
+- `CLAUDE.md` — §19.4 + version footer (3.1 → 3.2).
+- `docs/changelog/CHANGELOG_2026_06_26.md` — this entry.
+
+### §20.4 review → 10/10
+Rule is enforceable (concrete steps + reviewer rejection criteria), leverages the Neomatrix lineage as the downstream map (its actual purpose), distinguishes SSOT-the-architecture from §19.4-the-verification, and directly targets Reza's "fixed here, still broken there" pain with a hard test requirement. 10/10.
