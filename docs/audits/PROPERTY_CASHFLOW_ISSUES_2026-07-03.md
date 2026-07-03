@@ -4,9 +4,10 @@
 > numbers don't reconcile. Investigated per CLAUDE.md §19 (financial correctness — every claim
 > verified in source, never guessed), §21.5 (Neomatrix-first), §12.2.1 (SSOT / one source).
 >
-> **Status: INVESTIGATION COMPLETE — fixes NOT yet applied.** P-1/P-2/P-5/P-6 change user-facing
-> money numbers → per the standing rule they need Reza's go-ahead + scheduling before any fix ships
-> (§19.3 / number-changing). P-3/P-4/P-7 are display/UX. Recommended sequence in §Sequencing.
+> **Status: IN PROGRESS.** P-3 shipped (PR #1333, loan-rows display). **P-2 fix shipped (2026-07-03)** —
+> the canonical per-property cashflow engine + shared actuals producer, folding in **P-1** (fortnightly
+> rent) and **P-6** (cash-vs-tax basis); status FIXING until Reza verifies on his data. Remaining
+> number-changers (P-5) still need Reza's go-ahead per §19.3. P-4/P-7 are display/UX. See §Sequencing.
 
 ## ⭐ The unified requirement (Reza, 2026-07-03) — one rule for every property number
 
@@ -136,6 +137,14 @@ property "financial structure" shows each as **"monthly · rental"** and annuali
 **Intended behaviour (Reza, 2026-07-03):** the repayment should default to the **manual** amount, but **when real repayments are captured it must fall back to ACTUALS** — which it does NOT today. The infrastructure exists: a full **loan ledger** (Phase 51) captures actual repayments as `LoanTransaction` rows (`schema:2848`, `INTEREST_CHARGED` + `REPAYMENT_RECEIVED` with an interest/principal split) via statement import (`lib/bookkeeping/loanLedger/importLoanStatement.ts`), and `/api/properties/[id]/route.ts:53,179` already **fetches `loanTransactions`** — but the page's `computeAnnualLoanRepayments` ignores them and uses `minRepayment`. **Fix = §19.1 for loans:** repayment = annualised actual `REPAYMENT_RECEIVED` when present, else manual `minRepayment`; the tax card uses actual `INTEREST_CHARGED`.
 
 **Decision (folds in P-6 — the product meaning of "Cashflow / yr"):** with actuals available, the actual repayment is P&I (cash). Recommended: headline "Cashflow / yr" = rent − expenses − repayment (**actuals-first P&I**, manual fallback), and the **Tax position** card uses **interest-only** (actual `INTEREST_CHARGED`, else `principal × rate`). Awaiting Reza's confirm on the headline basis.
+
+**✅ FIXED (2026-07-03, decision confirmed by Reza = actuals-first P&I).** Shipped as one canonical engine + one shared actuals producer, both surfaces converged:
+- **`lib/calculations/propertyCashflow.ts` → `computePropertyCashflow`** — the ONE pure engine (§12.2.1). Per entity: actual `monthlyAverageActual × 12` when `hasTransactions`, else declared `× frequency` (§19.1). Loan repayment = actual×12 → manual `minRepayment` → **interest floor `principal × interestRateAnnual`** (never silently $0). Returns `annualCashflow` (cash, full P&I) **and** `annualTaxCashflow` (interest-only) — folds in **P-6**.
+- **`lib/services/propertyActuals.ts` → `enrichPropertiesWithActuals`** — the ONE actuals producer, extracted from the detail route and now **batched into BOTH** `/api/properties` (list) and `/api/properties/[id]` (detail), so the list tile and detail hero read the SAME actuals-first number (§19.4 same-number-everywhere). Fixes **P-1** (fortnightly rent) because `calculateMonthlyAverage` derives the true monthly average from the reconciled cadence.
+- **Both property surfaces refactored** to the engine (`app/dashboard/properties/page.tsx` `calculateCashflow` + `[id]/page.tsx` `cashflowOf` both delegate to `computePropertyCashflow`); the inline declared-only producers are deleted.
+- **Modelled in the Neomatrix** (`engine.propertyCashflow.computePropertyCashflow` + `engine.propertyActuals.calculateMonthlyAverage` + `number.propertyCashflow`; the two `ui.properties.*Cashflow` surfaces share `semanticKey: propertyCashflow` and converge on one engine — A3). `neomatrix:check` green.
+- **§19.2 evidence + §19.4 one-source proof:** `tests/calculations/propertyCashflow.test.ts` (7 tests — Lot 1 −$100,910.56 cash / −$90,671.23 tax, Lot 2 loan-never-$0 +$2,518.2, fortnightly actuals-first, actual-repayment override, both surfaces read the engine).
+- **Registry:** MON-002 → FIXING (folds MON-001 + MON-006), holds until Reza verifies on his data.
 
 ### P-8 — ❌ RETRACTED (my error) — the manual repayment field DOES exist
 

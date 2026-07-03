@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.56.0, reviewed 2026-07-01). 
+> Rendered from `financial-graph.json` (v0.56.0, reviewed 2026-07-03). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 244 · **Edges:** 328
-- **By kind:** orchestrator 9 · engine 139 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
-- **By status:** documented 244
-- **Edge provenance:** verified 328 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/159 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 250 · **Edges:** 338
+- **By kind:** orchestrator 9 · engine 141 · input-field 28 · number 12 · ui-surface 14 · law 39 · verification 7
+- **By status:** documented 250
+- **Edge provenance:** verified 338 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/162 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -166,6 +166,8 @@
 | **Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g)** | `lib/bank/recategoriseExisting.ts:225` | engine | neobrain | RecategoriseResult {scanned, recategorised, renamed, aiSuggested, aiMerchantsQueried, aiCapped} — re-runs the current denoiser + DETERMINISTIC cascade over the user's EXISTING uncategorised rows (and, opt-in, a cost-bounded AI tail) so import-time engine improvements reach data already in the ledger. | docs/blueprint/PHASE_54_NEOBRAIN.md §19/§19A; CLAUDE.md §12.11 (guarded write), §12.2.1 (reuses the one cascade) |  | documented |
 | **All-rows merchant-name tidy-up (cosmetic, Phase 54.2g.1)** | `lib/bank/recategoriseExisting.ts:206` | engine | neobrain | number — count of rows whose merchantStandardised was cleaned. Re-runs the P1/P2 denoiser over ALL of a user's rows REGARDLESS of category. | docs/blueprint/PHASE_54_NEOBRAIN.md §19A; CLAUDE.md §12.11 (name-only, non-destructive), §12.2.1 (one source shared with the renormalize route) |  | documented |
 | **Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g)** | `lib/bank/recategoriseExisting.ts:333` | engine | neobrain | {aiSuggested, aiMerchantsQueried, aiCapped} — for the rows the deterministic pass still missed, proposes a category SUGGESTION per merchant (never auto-filed, §54.2). | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §54.2 (AI never auto-files), §12.11 (guarded write), §12.2.1 (reuses scrubToSignature + geminiCategoriseOnMiss) |  | documented |
+| **Reconciled monthly average (actuals)** | `lib/services/propertyActuals.ts:43` | engine | core | A true monthly average for a linked income/expense/loan from its reconciled-transaction cadence — so fortnightly rent annualises correctly (×26/12), not as if monthly. | Day-span averaging over the actual transaction cadence (§19.1 actuals-first). 30.44 = mean days/month. | tests/calculations/propertyCashflow.test.ts (actuals-first cadence example) | documented |
+| **Per-property cashflow** | `lib/calculations/propertyCashflow.ts:81` | engine | core | Per-property annual rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow (rent − expenses − repayment) and tax cashflow (rent − expenses − interest). ONE source for both property surfaces. | Property cashflow = rent − holding costs − loan servicing. §19.1 actuals-first; interest-only is the deductible figure (principal is not deductible). Loan cost never silently $0. | tests/calculations/propertyCashflow.test.ts (§19.2 worked examples + §19.4 one-source proof) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -189,6 +191,8 @@
 | **Loan/debt aggregation (interest)** | 500,000 × 0.0625/12 = 2,604.17/mo; ×12 = 31,250/yr |
 | **Declared expense aggregation** | $1,200 ANNUAL → $100/mo; $500 MONTHLY + $1,200 ANNUAL → $600/mo |
 | **Declared income aggregation (gross / net / PAYG)** | SALARY GROSS $120k/yr + rental $2k/mo → grossTotal $12,000/mo; PAYG $30k → $2,500/mo; SALARY NET grossAmount $100k (annual target) → grossTotal $100,000 |
+| **Reconciled monthly average (actuals)** | fortnightly $1195 → monthlyAvg ≈ 1195×26/12 = 2588.3 → ×12 ≈ $31,060/yr (not $14,340) |
+| **Per-property cashflow** | Lot 1: rent 14,340 − expenses 43,546 − P&I 71,704.56 = −100,910.56 cash (tax −90,671.23 using interest 61,465.23) |
 
 ## Number lineage — how each displayed number is born
 
@@ -205,6 +209,7 @@
 | **Monthly inflow (canonical, actuals-aware)** (`monthlyInflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), LVR — loan-to-value ratio, Property equity, Rental yield (annual), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual income KPI tile | resolveCanonicalCashflow().inflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 | **Monthly outflow (canonical, actuals-aware)** (`monthlyOutflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), LVR — loan-to-value ratio, Property equity, Rental yield (annual), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual outgoings KPI tile | resolveCanonicalCashflow().outflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 | **Cashflow-intelligence tax estimate (canonical)** (`—`) | Income tax (marginal brackets), FY tax thresholds (canonical) |  | calculateIncomeTax(annualGrossIncome − deductibleExpenses).taxPayable | CLAUDE.md §12.2.1 — sources tax from the ONE canonical engine (was a stale inline FY23-24 bracket table, W0 fix 2026-06-25) |
+| **Per-property cashflow (displayed)** (`propertyCashflow`) | Per-property cashflow, Reconciled monthly average (actuals), Review-queue confirm (SSOT), Transfer auto-pairer, Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) | Property detail — cashflow hero, Property list — tile cashflow | = computePropertyCashflow(property).annualCashflow | CLAUDE.md §12.2.1 one-source / §19.4 full-flow. |
 
 ## Governing laws / authorities (B6)
 
@@ -594,6 +599,16 @@
 | All-rows merchant-name tidy-up (cosmetic, Phase 54.2g.1) | → | Merchant identity normaliser (per-user standardised name) | feeds | — | verified | lib/bank/recategoriseExisting.ts:213 renormaliseMerchant(row.merchantRaw \|\| row.description) re-normalises ALL rows |
 | Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | feeds | — | verified | lib/bank/recategoriseExisting.ts:308 opts.useAI ? aiSuggestDistinctUnknowns(userId, stillUnknown) |
 | Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | → | Gemini-on-miss (RAG) | feeds | — | verified | lib/bank/recategoriseExisting.ts:355 geminiCategoriseOnMiss(group.rawForAi) — one call per distinct merchant |
+| Income (declared) | → | Per-property cashflow | feeds | AUD→AUD | verified | propertyCashflow.ts:94 rental income declared fallback |
+| Expense (declared) | → | Per-property cashflow | feeds | AUD→AUD | verified | propertyCashflow.ts:102 expenses declared fallback |
+| Loan.principal | → | Per-property cashflow | feeds | AUD→AUD | verified | propertyCashflow.ts:111 principal×rate interest |
+| Loan interest rate (annual, decimal) | → | Per-property cashflow | feeds | AUD→AUD | verified | propertyCashflow.ts:111 principal×interestRateAnnual |
+| Loan.minRepayment | → | Per-property cashflow | feeds | AUD→AUD | verified | propertyCashflow.ts:119 manual P&I when no actuals |
+| UnifiedTransaction | → | Reconciled monthly average (actuals) | feeds | AUD→AUD | verified | propertyActuals.ts:43 reconciled tx cadence |
+| Reconciled monthly average (actuals) | → | Per-property cashflow | feeds | AUD/month→AUD | verified | propertyCashflow.ts:77 actual monthlyAverageActual×12 overrides declared |
+| Per-property cashflow | → | Per-property cashflow (displayed) | feeds | AUD→AUD | verified | propertyCashflow.ts:135 annualCashflow |
+| Per-property cashflow (displayed) | → | Property detail — cashflow hero | rendered-at | AUD→AUD | verified | detail hero cf.annualCashflow |
+| Per-property cashflow (displayed) | → | Property list — tile cashflow | rendered-at | AUD→AUD | verified | PropertyTile metrics.cashflow (converged with detail) |
 
 ---
 
