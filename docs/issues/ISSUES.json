@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "1.1",
+  "note": "SSOT registry of tracked issues. Machine-readable; gated by scripts/issues/check-issues.mjs (npm run issues:check) + tests/issues/registry.test.ts. Human view: ISSUES.md (generated, do not hand-edit). Lifecycle: OPEN -> DIAGNOSED -> FIXING -> VERIFIED -> CLOSED (or WONTFIX/RETRACTED). Every issue carries a plain-English { issue, fix, check } trio (what was wrong / what changed / what YOU should see) — required once a fix exists. See docs/issues/README.md.",
+  "issues": [
+    {
+      "id": "MON-001",
+      "title": "Fortnightly rent stored/treated as MONTHLY (rent ~54% off)",
+      "status": "DIAGNOSED",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "Rent you receive fortnightly was being recorded as if it were monthly, so the property's annual rent — and everything built on it — was wrong.",
+        "fix": "(planned) Drive the property's rent from your actual reconciled rent transactions so the real fortnightly cadence is used, and let you set/correct the frequency where you reconcile.",
+        "check": "(after fix) On the property, Annual rent should match your real rent (roughly your fortnightly amount × 26), not × 12."
+      },
+      "rootCause": [
+        "app/api/transactions/[id]/link/route.ts:318",
+        "app/api/transactions/[id]/link/route.ts:156",
+        "app/dashboard/properties/[id]/page.tsx:141"
+      ],
+      "semanticKeys": ["engine.incomeAggregator.aggregateIncome"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx",
+        "app/dashboard/properties/page.tsx"
+      ],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
+      "notes": "Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time."
+    },
+    {
+      "id": "MON-002",
+      "title": "Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "A property's cashflow was calculated on the page from your typed-in figures and ignored your reconciled transactions — and if you hadn't typed a loan repayment, the loan cost showed as $0, making the property look far more positive than it really is.",
+        "fix": "(planned) One shared calculation used everywhere: use your actual reconciled figures when available (rent, expenses, loan repayments), fall back to your typed values otherwise, and always include the loan cost.",
+        "check": "(after fix) The property Cashflow/yr includes the loan (never $0 when there's a loan) and matches the dashboard, balances and tax position — the same number in every place."
+      },
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:164",
+        "app/dashboard/properties/[id]/page.tsx:152",
+        "app/api/properties/[id]/route.ts:193"
+      ],
+      "semanticKeys": ["engine.canonicalCashflow.resolveCanonicalCashflow"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx",
+        "app/dashboard/properties/page.tsx"
+      ],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2",
+      "notes": "Decision locked (Reza 2026-07-03): headline = actuals-first P&I (actual repayment when captured, else manual minRepayment); Tax card = interest-only. The API already returns budgetAmount + actualFromTransactions + hasTransactions per entity; the page ignores them. Per-property cashflow NOT modelled in the Neomatrix (blind spot) -> must be modelled at fix time (§21.2.1). §19.4 downstream sweep + cross-surface propagation test required before VERIFIED."
+    },
+    {
+      "id": "MON-003",
+      "title": "DEPRECIATION / YR always $0 (reads a field absent from the model)",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "The property's Depreciation per year always showed $0.",
+        "fix": "(planned) Calculate the yearly depreciation from the schedule's cost and rate (prime-cost / diminishing-value).",
+        "check": "(after fix) Depreciation/yr shows a real figure based on your depreciation schedule."
+      },
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:170"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5",
+      "notes": "computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness."
+    },
+    {
+      "id": "MON-004",
+      "title": "Loan repayment missing from the property Cashflow rhythm",
+      "status": "CLOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "closed": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "A property's yearly cashflow couldn't be reconciled by eye — the big loan repayment was subtracted in the maths but wasn't shown anywhere in the 'Cashflow rhythm' list.",
+        "fix": "Added the loan repayment as a line in the 'Cashflow rhythm', using the same figure the cashflow already subtracts.",
+        "check": "Open a property that has a loan → the 'Cashflow rhythm' now lists the loan repayment, and rent − expenses − loan repayment adds up to the Cashflow/yr shown at the top."
+      },
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:768"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [1333],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-3",
+      "notes": "Display-only (no computed number changed). Fixed in #1333 (merged + prod-verified). §19.4 propagation test not required for display-only; reconciliation verified arithmetically against both screenshots."
+    },
+    {
+      "id": "MON-005",
+      "title": "Expense tile -> global page; no per-property summary card / drill-down",
+      "status": "DIAGNOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "Clicking 'N expenses tracked' jumps to the full expenses page instead of showing this property's expenses.",
+        "fix": "(planned) Show a small summary card of this property's expenses, with a link to drill into the full page if needed.",
+        "check": "(after fix) Clicking the expenses tile opens a summary of that property's expenses; a link takes you to the full page."
+      },
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:714"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-4",
+      "notes": "New in-app section-level composition -> Stitch-first (§18.2.1)."
+    },
+    {
+      "id": "MON-006",
+      "title": "Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only)",
+      "status": "DIAGNOSED",
+      "severity": "low",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "The 'contributes X before tax' wording mixed up your cash cashflow (which includes loan principal) with the tax figure (which only counts interest).",
+        "fix": "(planned) Headline cashflow shows your real cash position; the tax card uses interest-only (the deductible part), clearly separated.",
+        "check": "(after fix) The tax-position figure is based on loan interest only and is labelled distinctly from the cash cashflow."
+      },
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:529"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-6",
+      "notes": "Folded into MON-002 (headline = P&I cash; Tax card = interest)."
+    },
+    {
+      "id": "MON-007",
+      "title": "-$100,912 vs -$46,897 don't add up",
+      "status": "CLOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "closed": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "A property's cashflow looked wrong (-$100,912 then -$46,897) and didn't seem to add up.",
+        "fix": "Confirmed both figures are the same tile before/after you reassigned rentals, and made the loan repayment visible so it reconciles (via MON-004).",
+        "check": "The two numbers now make sense: same tile with different rent, and rent − expenses − loan repayment matches the headline."
+      },
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:164"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [1333],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-7",
+      "notes": "Same hero tile before/after reassigning rentals; reconciles once the hidden loan repayment is shown (MON-004)."
+    },
+    {
+      "id": "MON-008",
+      "title": "Expense initial-entry inconsistent (only due-dates on the property edit form)",
+      "status": "DIAGNOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "plain": {
+        "issue": "There's no clear place to enter a property's initial expense amounts — the property edit form only takes renewal due-dates, and 'Add Expense' is hidden on the old list page.",
+        "fix": "(planned) A consistent way to add initial expense amounts on the property, following the same rule: your typed value first, your reconciled actuals when available.",
+        "check": "(after fix) You can add/see a property's expense amounts in the property view, and reconciled actuals override them automatically."
+      },
+      "rootCause": [
+        "app/dashboard/properties/page.tsx:215",
+        "app/dashboard/properties/page.tsx:1602"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9",
+      "notes": "Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field exists at LoanFormDialog:531.)"
+    }
+  ]
+}

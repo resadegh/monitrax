@@ -30,7 +30,9 @@
     "neomatrix:graphify": "node scripts/neomatrix/graphify-layer0.mjs",
     "neomatrix:coverage": "node scripts/neomatrix/reconcile-registry.mjs",
     "neomatrix:census": "node scripts/neomatrix/calc-census.mjs",
-    "neomatrix:proven": "node scripts/neomatrix/generate-proven-set.mjs"
+    "neomatrix:proven": "node scripts/neomatrix/generate-proven-set.mjs",
+    "issues:check": "node scripts/issues/check-issues.mjs",
+    "issues:generate": "node scripts/issues/generate-issues-md.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
