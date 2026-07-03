@@ -783,6 +783,21 @@ function RecentActivityCard({ property }: { property: Property }) {
     });
   });
 
+  // Loan repayments are a real outflow that `computeCashflow` subtracts — show
+  // them so the rhythm reconciles to the hero cashflow (P-3). Rendered as the
+  // same P&I `minRepayment` the cashflow math uses.
+  (property.loans ?? []).forEach((l) => {
+    const freq = l.repaymentFrequency ?? 'MONTHLY';
+    rows.push({
+      id: `act-loan-${l.id}`,
+      date: freq.charAt(0) + freq.slice(1).toLowerCase(),
+      icon: Landmark,
+      title: `${l.name} repayment`,
+      amount: `-${formatCurrency(l.minRepayment ?? 0)}`,
+      tone: 'text-foreground',
+    });
+  });
+
   (property.expenses ?? []).slice(0, 3).forEach((e) => {
     rows.push({
       id: `act-exp-${e.id}`,

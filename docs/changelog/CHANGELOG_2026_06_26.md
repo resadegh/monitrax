@@ -787,6 +787,22 @@ Every root cause verified in source (agents + direct reads; depreciation bonus b
 
 ---
 
+## Session: property-cashflow-rhythm-loan-rows (P-3 fix + P-7 resolved — 2026-07-03) — MERGED #1333
+
+### Changes Made
+- **Type**: Property detail UI fix (display-only — NO number changed, NO financial logic touched).
+- **P-7 resolved**: Reza confirmed -$100,912 and -$46,897 are the SAME property-hero tile (Thornlands Lot 1), before/after reassigning rentals. The figures DO reconcile: `cashflow = annualRent − annualExpenses − annualLoanRepayment(P&I)` → 14,340−43,546−~71,706 = −100,912 (1 rental); 68,352−43,546−~71,706 = −46,897 (4 rentals). The reason it looked wrong = P-3.
+- **P-3 fix**: loan repayment rows added to the "Cashflow rhythm" (`RecentActivityCard`, `app/dashboard/properties/[id]/page.tsx`) — rendered as the same P&I `minRepayment` that `computeCashflow` already subtracts. The ~$71,700 loan repayment was previously invisible (the list showed only income + expenses), so the hero couldn't be reconciled by eye. Display-only; the computed cashflow is unchanged.
+
+### Files Modified
+- `app/dashboard/properties/[id]/page.tsx` — loan repayment rows in the Cashflow rhythm.
+- `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md` — P-7 resolved, reconciliation shown, P-3 marked shipped.
+
+### §20.4/§20.5 self-review → 10/10 (display-only; not a financial build — no number changed)
+The fix shows a term the cashflow already subtracts (no recomputation); reconciliation verified arithmetically against both of Reza's screens; §18.2.1 "true tweak" (one row type into an approved section, code-first allowed); tsc + eslint clean. The number-changing issues (P-1 rent frequency, P-2 canonical/actuals, P-5 depreciation) remain parked for Reza's go-ahead. 10/10.
+
+---
+
 ## Session: claudemd-full-flow-verification (§19.4 added — 2026-07-03)
 
 ### Changes Made
