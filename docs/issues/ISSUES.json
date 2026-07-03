@@ -35,7 +35,7 @@
     {
       "id": "MON-002",
       "title": "Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-03",
@@ -58,7 +58,9 @@
         "app/dashboard/properties/[id]/page.tsx",
         "app/dashboard/properties/page.tsx"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1336
+      ],
       "test": "tests/calculations/propertyCashflow.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2",
       "notes": "Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-first P&I headline, interest-only tax) + ONE shared actuals producer lib/services/propertyActuals.ts (batched into BOTH the list and detail APIs so tiles match the detail page — §19.4 same-number-everywhere). Modelled in the Neomatrix (engine.propertyCashflow.computePropertyCashflow + number.propertyCashflow, both surfaces converge on one engine — A3). Folds in MON-001 (fortnightly-as-monthly: actuals-first monthlyAverageActual fixes it) + MON-006 (cash-vs-tax basis: both returned explicitly). Status stays FIXING until Reza tests the numbers on his data."

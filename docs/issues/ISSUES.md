@@ -3,12 +3,12 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**8 total** · 6 open · 🔵 0 · 🟡 6 · 🟠 0 · 🟢 0 · ✅ 2
+**8 total** · 6 open · 🔵 0 · 🟡 5 · 🟠 1 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
 | MON-001 | 🟡 DIAGNOSED | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | — | — |
-| MON-002 | 🟡 DIAGNOSED | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | — | ✅ |
+| MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
 | MON-003 | 🟡 DIAGNOSED | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | — | — |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
 | MON-005 | 🟡 DIAGNOSED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | — | n/a |
@@ -38,7 +38,7 @@ Reconcile write paths never persist the detected cadence; property page annualis
 
 ### MON-002 — Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
 
 > **What was wrong:** A property's Cashflow/yr was worked out on the page from your typed-in figures and ignored your reconciled bank transactions. Worse, if you hadn't typed a loan repayment the loan cost dropped to $0, so the property looked far healthier than it was — and the list tile and the detail page used two different formulas, so they disagreed.
 >
@@ -49,6 +49,7 @@ Reconcile write paths never persist the detected cadence; property page annualis
 - **Root cause:** `app/dashboard/properties/page.tsx:471`, `app/dashboard/properties/[id]/page.tsx:148`, `app/api/properties/route.ts:47`
 - **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`
+- **Fix PR(s):** #1336
 - **Holistic test (§19.4):** `tests/calculations/propertyCashflow.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2`
 
