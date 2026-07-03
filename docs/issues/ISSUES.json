@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "1.0",
+  "note": "SSOT registry of tracked issues. Machine-readable; gated by scripts/issues/check-issues.mjs (npm run issues:check) + tests/issues/registry.test.ts. Human view: ISSUES.md (generated, do not hand-edit). Lifecycle: OPEN -> DIAGNOSED -> FIXING -> VERIFIED -> CLOSED (or WONTFIX/RETRACTED). See docs/issues/README.md.",
+  "issues": [
+    {
+      "id": "MON-001",
+      "title": "Fortnightly rent stored/treated as MONTHLY (rent ~54% off)",
+      "status": "DIAGNOSED",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "rootCause": [
+        "app/api/transactions/[id]/link/route.ts:318",
+        "app/api/transactions/[id]/link/route.ts:156",
+        "app/dashboard/properties/[id]/page.tsx:141"
+      ],
+      "semanticKeys": ["engine.incomeAggregator.aggregateIncome"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx",
+        "app/dashboard/properties/page.tsx"
+      ],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
+      "notes": "Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first) which makes the stored frequency non-load-bearing. Full downstream sweep (§19.4) to be completed at fix time."
+    },
+    {
+      "id": "MON-002",
+      "title": "Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "rootCause": [
+        "app/dashboard/properties/[id]/page.tsx:164",
+        "app/dashboard/properties/[id]/page.tsx:152",
+        "app/api/properties/[id]/route.ts:193"
+      ],
+      "semanticKeys": ["engine.canonicalCashflow.resolveCanonicalCashflow"],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx",
+        "app/dashboard/properties/page.tsx"
+      ],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2",
+      "notes": "Decision locked (Reza 2026-07-03): headline = actuals-first P&I (actual repayment when captured, else manual minRepayment); Tax card = interest-only. The API already returns budgetAmount + actualFromTransactions + hasTransactions per entity; the page ignores them. Per-property cashflow is NOT modelled in the Neomatrix (blind spot) -> must be modelled at fix time (§21.2.1) so semanticKeys resolve. Full §19.4 downstream sweep + cross-surface propagation test required before VERIFIED."
+    },
+    {
+      "id": "MON-003",
+      "title": "DEPRECIATION / YR always $0 (reads a field absent from the model)",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:170"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5",
+      "notes": "computeAnnualDepreciation sums d.annualClaim, which is not a column on DepreciationSchedule (cost/rate/method are). Must compute from cost x rate (prime-cost) / diminishing-value via a canonical helper. Touches a per-asset tax position -> §12.14 reform-awareness."
+    },
+    {
+      "id": "MON-004",
+      "title": "Loan repayment missing from the property Cashflow rhythm",
+      "status": "CLOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "closed": "2026-07-03",
+      "area": "properties",
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:768"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [1333],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-3",
+      "notes": "Display-only (no computed number changed): the rhythm listed only income + expenses; the loan repayment computeCashflow subtracts was invisible. Fixed by rendering loan repayment rows (#1333, merged + prod-verified). changesNumbers=false, so no propagation test required (§19.4 applies to number-changing fixes); reconciliation verified arithmetically against both screenshots."
+    },
+    {
+      "id": "MON-005",
+      "title": "Expense tile -> global page; no per-property summary card / drill-down",
+      "status": "DIAGNOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:714"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-4",
+      "notes": "Reza wants a per-tile summary card + option to drill into the expenses page. New in-app section-level composition -> Stitch-first (§18.2.1)."
+    },
+    {
+      "id": "MON-006",
+      "title": "Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only)",
+      "status": "DIAGNOSED",
+      "severity": "low",
+      "changesNumbers": true,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:529"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-6",
+      "notes": "The Tax position card labels the full-P&I cashflow 'before tax'; tax/negative-gearing needs interest-only. Folded into MON-002 (headline = P&I cash; Tax card = interest)."
+    },
+    {
+      "id": "MON-007",
+      "title": "-$100,912 vs -$46,897 don't add up",
+      "status": "CLOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "closed": "2026-07-03",
+      "area": "properties",
+      "rootCause": ["app/dashboard/properties/[id]/page.tsx:164"],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/[id]/page.tsx"],
+      "fixPRs": [1333],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-7",
+      "notes": "Resolved: both figures are the SAME hero tile (Thornlands Lot 1), before/after reassigning rentals. They reconcile once the hidden loan repayment is shown (MON-004): rent - expenses - repayment = hero. Not a second computation."
+    },
+    {
+      "id": "MON-008",
+      "title": "Expense initial-entry inconsistent (only due-dates on the property edit form)",
+      "status": "DIAGNOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-03",
+      "area": "properties",
+      "rootCause": [
+        "app/dashboard/properties/page.tsx:215",
+        "app/dashboard/properties/page.tsx:1602"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": ["app/dashboard/properties/page.tsx"],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9",
+      "notes": "The property edit form captures only due dates; 'Add Expense' exists only on the older list page, not the detail page/edit form. Must follow the same manual-initial -> actuals-when-reconciled rule (MON-002). (Note: earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field does exist at LoanFormDialog:531; no issue.)"
+    }
+  ]
+}

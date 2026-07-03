@@ -815,3 +815,21 @@ The fix shows a term the cashflow already subtracts (no recomputation); reconcil
 
 ### §20.4 review → 10/10
 Rule is enforceable (concrete steps + reviewer rejection criteria), leverages the Neomatrix lineage as the downstream map (its actual purpose), distinguishes SSOT-the-architecture from §19.4-the-verification, and directly targets Reza's "fixed here, still broken there" pain with a hard test requirement. 10/10.
+
+---
+
+## Session: issue-tracking-system (the §19.4 mechanism — 2026-07-03)
+
+### Changes Made
+- **Type**: New tooling/system (docs + pure-node scripts + a vitest gate — NO app code, NO financial logic). Reza directive: "an issue tracking and fixing system that actually works … test each problem holistically."
+- **Built the Issue Registry (Option A, Reza-approved)** — makes CLAUDE.md §19.4 executable:
+  - `docs/issues/ISSUES.json` — SSOT registry; migrated the property cluster in as MON-001…MON-008 (with the retracted P-8 excluded).
+  - `scripts/issues/check-issues.mjs` — the gate: schema + lifecycle enforcement. A **number-changing** issue **cannot reach VERIFIED/CLOSED without a linked existing holistic test + ≥1 resolving Neomatrix semanticKey**; FIXING+ require the §19.4 downstream sweep + a fix PR; rootCause anchors must point at real files.
+  - `scripts/issues/generate-issues-md.mjs` → `docs/issues/ISSUES.md` (human view, generated).
+  - `tests/issues/registry.test.ts` — required CI check; 7 tests, incl. proofs that the gate BLOCKS closing a number-changing issue without a test / with a missing test file / without the sweep / with a bad semanticKey, and ALLOWS display-only closes.
+  - `docs/issues/README.md` — the spec; `npm run issues:check|generate`.
+  - CLAUDE.md **§19.5** points at it; version → 3.3.
+- Reuses the Neomatrix (downstream map) + the test spine — no new platform (§22).
+
+### §20.4 self-review → 10/10
+The system makes §19.4 enforceable (not discipline-based); the gate's enforcement is itself proven by tests (meta-correct); reuses existing infra per §22 (no parallel platform); migrated real issues (not a toy); gate + generator + tests all green. 10/10.
