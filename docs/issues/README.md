@@ -33,6 +33,22 @@ Display/UX issues (`changesNumbers: false`) can close without a propagation test
 
 This is the whole idea: **a number-changing fix cannot be marked done without a test that proves it flowed to every downstream surface.** That's what kills the "fixed the property page, dashboard still broken" whack-a-mole.
 
+## Plain-English trio (per issue AND per PR) — MANDATORY
+
+Every issue carries a `plain` object — **what was wrong / what changed / what YOU should see** — in
+non-technical language, so anyone can read what happened and verify it:
+
+```jsonc
+"plain": {
+  "issue": "Rent you receive fortnightly was recorded as monthly, so the annual rent was wrong.",
+  "fix":   "Drive the rent from your actual reconciled transactions so the real cadence is used.",
+  "check": "On the property, Annual rent should match your real rent (~fortnightly × 26), not × 12."
+}
+```
+
+The gate **requires all three once a fix exists** (`FIXING`+). **Every fix PR body must include the same
+trio** ("What was wrong / What changed / What you'll see"), matching the registry entry.
+
 ## An entry
 
 ```jsonc
@@ -45,6 +61,7 @@ This is the whole idea: **a number-changing fix cannot be marked done without a 
   "opened": "2026-07-03",
   "closed": "2026-07-05",          // required when CLOSED
   "area": "properties",
+  "plain": { "issue": "…", "fix": "…", "check": "…" }, // plain-English trio (required at FIXING+)
   "rootCause": ["path/to/file.ts:123"],        // anchors must point at real files
   "semanticKeys": ["engine.x.y"],              // Neomatrix nodes — must resolve
   "downstreamConsumers": ["app/.../page.tsx"], // the §19.4 sweep

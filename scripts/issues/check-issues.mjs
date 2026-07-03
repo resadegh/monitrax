@@ -100,6 +100,16 @@ export function checkIssues({ today = null, registry = null } = {}) {
       }
     }
 
+    // ── plain-English { issue, fix, check } (what was wrong / what changed /
+    //    what YOU should see) — required once a fix exists; issue recommended always ──
+    const plain = it.plain ?? {};
+    if (!plain.issue) warn(id, `plain.issue missing (add a one-line "what's wrong" in plain English)`);
+    if (IN_FLIGHT.has(it.status)) {
+      for (const k of ['issue', 'fix', 'check']) {
+        if (!plain[k] || !String(plain[k]).trim()) err(id, `status ${it.status} requires plain.${k} (plain-English ${k === 'check' ? 'what YOU should check + see' : k})`);
+      }
+    }
+
     // ── §19.4 lifecycle enforcement ──
     if (IN_FLIGHT.has(it.status)) {
       if (!(it.downstreamConsumers ?? []).length) err(id, `status ${it.status} requires the §19.4 downstream-consumer sweep (downstreamConsumers[] is empty)`);

@@ -38,6 +38,13 @@ export function generateIssuesMd() {
   for (const i of issues) {
     md += `### ${i.id} — ${i.title}\n\n`;
     md += `**${STATUS_ICON[i.status] ?? ''} ${i.status}** · ${SEV_ICON[i.severity] ?? ''} ${i.severity} · changes numbers: **${i.changesNumbers ? 'yes' : 'no'}** · area: ${i.area} · opened ${i.opened}${i.closed ? ` · closed ${i.closed}` : ''}\n\n`;
+    // Plain-English trio first — the "in one glance" view.
+    const p = i.plain ?? {};
+    if (p.issue || p.fix || p.check) {
+      if (p.issue) md += `> **What was wrong:** ${p.issue}\n>\n`;
+      if (p.fix) md += `> **What changed:** ${p.fix}\n>\n`;
+      if (p.check) md += `> **What you should see:** ${p.check}\n\n`;
+    }
     if ((i.rootCause ?? []).length) md += `- **Root cause:** ${i.rootCause.map((r) => `\`${r}\``).join(', ')}\n`;
     if ((i.semanticKeys ?? []).length) md += `- **Neomatrix:** ${i.semanticKeys.map((k) => `\`${k}\``).join(', ')}\n`;
     if ((i.downstreamConsumers ?? []).length) md += `- **Downstream consumers (§19.4):** ${i.downstreamConsumers.map((c) => `\`${c}\``).join(', ')}\n`;

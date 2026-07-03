@@ -833,3 +833,14 @@ Rule is enforceable (concrete steps + reviewer rejection criteria), leverages th
 
 ### §20.4 self-review → 10/10
 The system makes §19.4 enforceable (not discipline-based); the gate's enforcement is itself proven by tests (meta-correct); reuses existing infra per §22 (no parallel platform); migrated real issues (not a toy); gate + generator + tests all green. 10/10.
+
+---
+
+## Session: issue-tracking-system (plain-English trio added — 2026-07-03)
+
+### Changes Made
+- **Type**: Extension of the issue registry (same PR #1335). Reza directive: "for each PR tell me what was the issue, what was the fix, and what I should check and see, in plain English."
+- Added a **`plain: { issue, fix, check }`** trio to every issue (what was wrong / what changed / what YOU should see). The gate **requires all three at FIXING+**; the generator renders them as a prominent blockquote at the top of each issue in `ISSUES.md`; CLAUDE.md §19.5 now also requires the same trio in **every fix PR body**. Registry schema → 1.1. Filled the trio for all 8 property issues (MON-001…008). New test: BLOCKS a fixed issue lacking the plain "what you should see" (8 tests green).
+
+### §20.4 review → 10/10
+Makes "what you'll see" a first-class, enforced field (per issue + per PR), in plain English; gate + generator + test all updated + green. 10/10.

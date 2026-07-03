@@ -22,6 +22,7 @@ const base = {
   opened: '2026-07-03',
   closed: '2026-07-03',
   area: 'test',
+  plain: { issue: 'x is wrong', fix: 'made x right', check: 'x now reads the right value' },
   rootCause: [],
   semanticKeys: ['engine.canonicalCashflow.resolveCanonicalCashflow'], // a real Neomatrix node
   downstreamConsumers: ['x'],
@@ -65,5 +66,10 @@ describe('issue registry gate', () => {
   it('ALLOWS: display-only issue can close without a test', () => {
     const { errors } = checkIssues({ registry: wrap({ ...base, changesNumbers: false, test: null, semanticKeys: [] }) });
     expect(errors).toEqual([]);
+  });
+
+  it('BLOCKS: a fixed issue without the plain-English "what you should see"', () => {
+    const { errors } = checkIssues({ registry: wrap({ ...base, plain: { issue: 'x', fix: 'y', check: '' } }) });
+    expect(errors.some((e: string) => /requires plain\.check/.test(e))).toBe(true);
   });
 });
