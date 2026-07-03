@@ -225,7 +225,7 @@
     {
       "id": "MON-009",
       "title": "Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-03",
@@ -250,7 +250,9 @@
         "app/dashboard/properties/[id]/page.tsx",
         "lib/services/masterFinancialService.ts"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1337
+      ],
       "test": "tests/calculations/monthlyResolver.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
       "notes": "Generalises MON-001 (fortnightly-as-monthly) to a universal monthly resolver (lib/calculations/monthlyResolver.ts) read from transaction dates, used by the property engine + masterFinancialService buildPropertyMetrics + aggregate income (rental deduped). Rent pooled at property-stream level fixes the 4-record over-count. Source fix: create-income-from-transaction reuses an existing property rental stream. TAX (buildTaxSummary) intentionally NOT changed here — rental/CGT tax treatment is §12.14-sensitive; tracked as MON-010 follow-up. Status FIXING until Reza verifies on his data."

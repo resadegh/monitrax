@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**10 total** · 8 open · 🔵 1 · 🟡 6 · 🟠 1 · 🟢 0 · ✅ 2
+**10 total** · 8 open · 🔵 1 · 🟡 5 · 🟠 2 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -15,7 +15,7 @@
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
 | MON-007 | ✅ CLOSED | 🟡 | no | -$100,912 vs -$46,897 don't add up | #1333 | n/a |
 | MON-008 | 🟡 DIAGNOSED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | — | n/a |
-| MON-009 | 🟡 DIAGNOSED | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | — | ✅ |
+| MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
 
 ---
@@ -163,7 +163,7 @@ Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earl
 
 ### MON-009 — Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
 
 > **What was wrong:** A property's rent was shown at its typed-in 'monthly' amount even though the reconciled payments are fortnightly, and because reconciliation had split the one rental into 4 separate 'monthly' income records, the rent was added up 4 times — so the rental income (and the dashboard totals that use it) was far too high. The same 'read the typed frequency, not the real dates' weakness applied to expenses and loan repayments.
 >
@@ -174,6 +174,7 @@ Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earl
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:345`, `lib/services/masterFinancialService.ts:1114`, `app/dashboard/properties/[id]/page.tsx:681`
 - **Neomatrix:** `engine.monthlyResolver.resolveMonthly`, `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/page.tsx`, `app/dashboard/properties/[id]/page.tsx`, `lib/services/masterFinancialService.ts`
+- **Fix PR(s):** #1337
 - **Holistic test (§19.4):** `tests/calculations/monthlyResolver.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 
