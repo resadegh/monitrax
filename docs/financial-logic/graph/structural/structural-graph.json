@@ -1,17 +1,17 @@
 {
   "_meta": {
     "generator": "graphify 0.8.45 (code-only/offline, tree-sitter AST)",
-    "builtAtCommit": "62b8f0fd77f47134ddac1004fc730de4b65697d1",
+    "builtAtCommit": "432ffce28dc71ef63dbaf989f50a9294d1b49698",
     "roots": [
       "lib",
       "app"
     ],
     "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
     "counts": {
-      "files": 1079,
-      "filesOnDisk": 1081,
-      "nodes": 8723,
-      "edges": 15351,
+      "files": 1080,
+      "filesOnDisk": 1082,
+      "nodes": 8733,
+      "edges": 15380,
       "allowlisted": 3
     }
   },
@@ -720,6 +720,7 @@
     "lib/calculations/index.ts",
     "lib/calculations/loanAggregator.ts",
     "lib/calculations/moneyStoryTrend.ts",
+    "lib/calculations/monthlyResolver.ts",
     "lib/calculations/netWorthCalculator.ts",
     "lib/calculations/netWorthHistory.ts",
     "lib/calculations/propertyCashflow.ts",
@@ -11610,6 +11611,60 @@
       21
     ],
     [
+      "calculations_monthlyresolver",
+      "monthlyResolver.ts",
+      "lib/calculations/monthlyResolver.ts",
+      1
+    ],
+    [
+      "calculations_monthlyresolver_dayspanmonthlyaverage",
+      "daySpanMonthlyAverage()",
+      "lib/calculations/monthlyResolver.ts",
+      75
+    ],
+    [
+      "calculations_monthlyresolver_detectedfrequency",
+      "DetectedFrequency",
+      "lib/calculations/monthlyResolver.ts",
+      53
+    ],
+    [
+      "calculations_monthlyresolver_detectfrequency",
+      "detectFrequency()",
+      "lib/calculations/monthlyResolver.ts",
+      98
+    ],
+    [
+      "calculations_monthlyresolver_monthlyresolution",
+      "MonthlyResolution",
+      "lib/calculations/monthlyResolver.ts",
+      40
+    ],
+    [
+      "calculations_monthlyresolver_ms",
+      "ms()",
+      "lib/calculations/monthlyResolver.ts",
+      62
+    ],
+    [
+      "calculations_monthlyresolver_resolvemonthly",
+      "resolveMonthly()",
+      "lib/calculations/monthlyResolver.ts",
+      123
+    ],
+    [
+      "calculations_monthlyresolver_resolvemonthlyinput",
+      "ResolveMonthlyInput",
+      "lib/calculations/monthlyResolver.ts",
+      109
+    ],
+    [
+      "calculations_monthlyresolver_resolvertx",
+      "ResolverTx",
+      "lib/calculations/monthlyResolver.ts",
+      38
+    ],
+    [
       "calculations_networthcalculator",
       "netWorthCalculator.ts",
       "lib/calculations/netWorthCalculator.ts",
@@ -11754,64 +11809,58 @@
       1
     ],
     [
-      "calculations_propertycashflow_annualvalue",
-      "annualValue()",
-      "lib/calculations/propertyCashflow.ts",
-      76
-    ],
-    [
       "calculations_propertycashflow_cashflowexpense",
       "CashflowExpense",
       "lib/calculations/propertyCashflow.ts",
-      43
+      41
     ],
     [
       "calculations_propertycashflow_cashflowincome",
       "CashflowIncome",
       "lib/calculations/propertyCashflow.ts",
-      38
+      35
     ],
     [
       "calculations_propertycashflow_cashflowloan",
       "CashflowLoan",
       "lib/calculations/propertyCashflow.ts",
-      47
+      46
+    ],
+    [
+      "calculations_propertycashflow_cashflowtransaction",
+      "CashflowTransaction",
+      "lib/calculations/propertyCashflow.ts",
+      54
     ],
     [
       "calculations_propertycashflow_computepropertycashflow",
       "computePropertyCashflow()",
       "lib/calculations/propertyCashflow.ts",
-      81
-    ],
-    [
-      "calculations_propertycashflow_entityactuals",
-      "EntityActuals",
-      "lib/calculations/propertyCashflow.ts",
-      34
-    ],
-    [
-      "calculations_propertycashflow_freq",
-      "Freq",
-      "lib/calculations/propertyCashflow.ts",
-      31
-    ],
-    [
-      "calculations_propertycashflow_isactual",
-      "isActual()",
-      "lib/calculations/propertyCashflow.ts",
-      74
+      93
     ],
     [
       "calculations_propertycashflow_propertycashflow",
       "PropertyCashflow",
       "lib/calculations/propertyCashflow.ts",
-      59
+      68
     ],
     [
       "calculations_propertycashflow_propertycashflowinput",
       "PropertyCashflowInput",
       "lib/calculations/propertyCashflow.ts",
-      53
+      60
+    ],
+    [
+      "calculations_propertycashflow_rent_types",
+      "RENT_TYPES",
+      "lib/calculations/propertyCashflow.ts",
+      33
+    ],
+    [
+      "calculations_propertycashflow_txfor",
+      "txFor()",
+      "lib/calculations/propertyCashflow.ts",
+      90
     ],
     [
       "callback_route",
@@ -17397,43 +17446,43 @@
       "dashboard_properties_id_page_tsx_id_page_insightcard",
       "InsightCard()",
       "app/dashboard/properties/[id]/page.tsx",
-      825
+      847
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_minikpi",
       "MiniKpi()",
       "app/dashboard/properties/[id]/page.tsx",
-      558
+      560
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_polishedkpitile",
       "PolishedKpiTile()",
       "app/dashboard/properties/[id]/page.tsx",
-      615
+      617
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_recentactivitycard",
       "RecentActivityCard()",
       "app/dashboard/properties/[id]/page.tsx",
-      752
+      774
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_tile_accent_gradient",
       "TILE_ACCENT_GRADIENT",
       "app/dashboard/properties/[id]/page.tsx",
-      601
+      603
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_tile_badge_shadow",
       "TILE_BADGE_SHADOW",
       "app/dashboard/properties/[id]/page.tsx",
-      608
+      610
     ],
     [
       "dashboard_properties_id_page_tsx_id_page_tile_tint_bg",
       "TILE_TINT_BG",
       "app/dashboard/properties/[id]/page.tsx",
-      594
+      596
     ],
     [
       "dashboard_properties_id_strategy_page_tsx_strategy_page",
@@ -26673,37 +26722,37 @@
       "id_page_cashflowof",
       "cashflowOf()",
       "app/dashboard/properties/[id]/page.tsx",
-      148
+      150
     ],
     [
       "id_page_computeannualdepreciation",
       "computeAnnualDepreciation()",
       "app/dashboard/properties/[id]/page.tsx",
-      152
+      154
     ],
     [
       "id_page_computeequity",
       "computeEquity()",
       "app/dashboard/properties/[id]/page.tsx",
-      134
+      136
     ],
     [
       "id_page_computegainpercentage",
       "computeGainPercentage()",
       "app/dashboard/properties/[id]/page.tsx",
-      160
+      162
     ],
     [
       "id_page_computelvr",
       "computeLvr()",
       "app/dashboard/properties/[id]/page.tsx",
-      139
+      141
     ],
     [
       "id_page_computetotalloanbalance",
       "computeTotalLoanBalance()",
       "app/dashboard/properties/[id]/page.tsx",
-      156
+      158
     ],
     [
       "id_page_contributionscard",
@@ -26859,7 +26908,7 @@
       "id_page_linkedentitiescard",
       "LinkedEntitiesCard()",
       "app/dashboard/properties/[id]/page.tsx",
-      659
+      661
     ],
     [
       "id_page_listingdetail",
@@ -26907,7 +26956,7 @@
       "id_page_propertydetailpage",
       "PropertyDetailPage()",
       "app/dashboard/properties/[id]/page.tsx",
-      169
+      171
     ],
     [
       "id_page_realizedgains",
@@ -35769,7 +35818,7 @@
       "properties_page_empty_renewals",
       "EMPTY_RENEWALS",
       "app/dashboard/properties/page.tsx",
-      178
+      180
     ],
     [
       "properties_page_expense",
@@ -35793,13 +35842,13 @@
       "properties_page_propertiespage",
       "PropertiesPage()",
       "app/dashboard/properties/page.tsx",
-      1792
+      1795
     ],
     [
       "properties_page_propertiespagecontent",
       "PropertiesPageContent()",
       "app/dashboard/properties/page.tsx",
-      192
+      194
     ],
     [
       "properties_page_property",
@@ -35811,13 +35860,13 @@
       "properties_page_propertyformdata",
       "PropertyFormData",
       "app/dashboard/properties/page.tsx",
-      147
+      149
     ],
     [
       "properties_page_viewmode",
       "ViewMode",
       "app/dashboard/properties/page.tsx",
-      190
+      192
     ],
     [
       "properties_route",
@@ -43086,292 +43135,298 @@
       1
     ],
     [
+      "services_masterfinancialservice_adjustpropertyrentalincome",
+      "adjustPropertyRentalIncome()",
+      "lib/services/masterFinancialService.ts",
+      1003
+    ],
+    [
       "services_masterfinancialservice_applyscopefilter",
       "applyScopeFilter()",
       "lib/services/masterFinancialService.ts",
-      1443
+      1512
     ],
     [
       "services_masterfinancialservice_assertvalidviewercontext",
       "assertValidViewerContext()",
       "lib/services/masterFinancialService.ts",
-      1385
+      1454
     ],
     [
       "services_masterfinancialservice_budgetvariance",
       "BudgetVariance",
       "lib/services/masterFinancialService.ts",
-      110
+      111
     ],
     [
       "services_masterfinancialservice_buildemergencyfundmetrics",
       "buildEmergencyFundMetrics()",
       "lib/services/masterFinancialService.ts",
-      1287
+      1356
     ],
     [
       "services_masterfinancialservice_buildexpensebreakdown",
       "buildExpenseBreakdown()",
       "lib/services/masterFinancialService.ts",
-      858
+      864
     ],
     [
       "services_masterfinancialservice_buildhealthscore",
       "buildHealthScore()",
       "lib/services/masterFinancialService.ts",
-      1311
+      1380
     ],
     [
       "services_masterfinancialservice_buildincomebreakdown",
       "buildIncomeBreakdown()",
       "lib/services/masterFinancialService.ts",
-      989
+      1040
     ],
     [
       "services_masterfinancialservice_buildinvestmentmetrics",
       "buildInvestmentMetrics()",
       "lib/services/masterFinancialService.ts",
-      1164
+      1233
     ],
     [
       "services_masterfinancialservice_buildpropertymetrics",
       "buildPropertyMetrics()",
       "lib/services/masterFinancialService.ts",
-      1098
+      1152
     ],
     [
       "services_masterfinancialservice_buildtaxsummary",
       "buildTaxSummary()",
       "lib/services/masterFinancialService.ts",
-      1228
+      1297
     ],
     [
       "services_masterfinancialservice_calculateactualfromtransactions",
       "calculateActualFromTransactions()",
       "lib/services/masterFinancialService.ts",
-      806
+      812
     ],
     [
       "services_masterfinancialservice_calculateexpensebudgetvariance",
       "calculateExpenseBudgetVariance()",
       "lib/services/masterFinancialService.ts",
-      926
+      932
     ],
     [
       "services_masterfinancialservice_calculateincomebudgetvariance",
       "calculateIncomeBudgetVariance()",
       "lib/services/masterFinancialService.ts",
-      1035
+      1089
     ],
     [
       "services_masterfinancialservice_computeandpossiblyfilter",
       "computeAndPossiblyFilter()",
       "lib/services/masterFinancialService.ts",
-      1729
+      1798
     ],
     [
       "services_masterfinancialservice_computemasterfinancialsnapshot",
       "computeMasterFinancialSnapshot()",
       "lib/services/masterFinancialService.ts",
-      1752
+      1821
     ],
     [
       "services_masterfinancialservice_emergencyfundmetrics",
       "EmergencyFundMetrics",
       "lib/services/masterFinancialService.ts",
-      212
+      213
     ],
     [
       "services_masterfinancialservice_fetchalluserdata",
       "fetchAllUserData()",
       "lib/services/masterFinancialService.ts",
-      590
+      594
     ],
     [
       "services_masterfinancialservice_gethealthscore",
       "getHealthScore()",
       "lib/services/masterFinancialService.ts",
-      2046
+      2122
     ],
     [
       "services_masterfinancialservice_getinvestmentmetrics",
       "getInvestmentMetrics()",
       "lib/services/masterFinancialService.ts",
-      2070
+      2146
     ],
     [
       "services_masterfinancialservice_getmasterfinancialsnapshot",
       "getMasterFinancialSnapshot()",
       "lib/services/masterFinancialService.ts",
-      1704
+      1773
     ],
     [
       "services_masterfinancialservice_getmonthlyactualsmap",
       "getMonthlyActualsMap()",
       "lib/services/masterFinancialService.ts",
-      835
+      841
     ],
     [
       "services_masterfinancialservice_getmonthlycashflow",
       "getMonthlyCashflow()",
       "lib/services/masterFinancialService.ts",
-      2030
+      2106
     ],
     [
       "services_masterfinancialservice_getnetworth",
       "getNetWorth()",
       "lib/services/masterFinancialService.ts",
-      2022
+      2098
     ],
     [
       "services_masterfinancialservice_getpropertymetrics",
       "getPropertyMetrics()",
       "lib/services/masterFinancialService.ts",
-      2062
+      2138
     ],
     [
       "services_masterfinancialservice_getquickmetrics",
       "getQuickMetrics()",
       "lib/services/masterFinancialService.ts",
-      2038
+      2114
     ],
     [
       "services_masterfinancialservice_gettaxsummary",
       "getTaxSummary()",
       "lib/services/masterFinancialService.ts",
-      2054
+      2130
     ],
     [
       "services_masterfinancialservice_healthscoremetrics",
       "HealthScoreMetrics",
       "lib/services/masterFinancialService.ts",
-      224
+      225
     ],
     [
       "services_masterfinancialservice_investmentmetrics",
       "InvestmentMetrics",
       "lib/services/masterFinancialService.ts",
-      187
+      188
     ],
     [
       "services_masterfinancialservice_loadorganizationclient",
       "loadOrganizationClient()",
       "lib/services/masterFinancialService.ts",
-      1409
+      1478
     ],
     [
       "services_masterfinancialservice_logprodashboardview",
       "logProDashboardView()",
       "lib/services/masterFinancialService.ts",
-      1647
+      1716
     ],
     [
       "services_masterfinancialservice_masterexpensebreakdown",
       "MasterExpenseBreakdown",
       "lib/services/masterFinancialService.ts",
-      130
+      131
     ],
     [
       "services_masterfinancialservice_masterfinancialsnapshot",
       "MasterFinancialSnapshot",
       "lib/services/masterFinancialService.ts",
-      278
+      279
     ],
     [
       "services_masterfinancialservice_masterincomebreakdown",
       "MasterIncomeBreakdown",
       "lib/services/masterFinancialService.ts",
-      152
+      153
     ],
     [
       "services_masterfinancialservice_propertymetrics",
       "PropertyMetrics",
       "lib/services/masterFinancialService.ts",
-      168
+      169
     ],
     [
       "services_masterfinancialservice_rawaccount",
       "RawAccount",
       "lib/services/masterFinancialService.ts",
-      476
+      477
     ],
     [
       "services_masterfinancialservice_rawactualtransaction",
       "RawActualTransaction",
       "lib/services/masterFinancialService.ts",
-      558
+      562
     ],
     [
       "services_masterfinancialservice_rawasset",
       "RawAsset",
       "lib/services/masterFinancialService.ts",
-      533
+      534
     ],
     [
       "services_masterfinancialservice_rawexpense",
       "RawExpense",
       "lib/services/masterFinancialService.ts",
-      439
+      440
     ],
     [
       "services_masterfinancialservice_rawincome",
       "RawIncome",
       "lib/services/masterFinancialService.ts",
-      457
+      458
     ],
     [
       "services_masterfinancialservice_rawinvestmentholding",
       "RawInvestmentHolding",
       "lib/services/masterFinancialService.ts",
-      513
+      514
     ],
     [
       "services_masterfinancialservice_rawlinkedtransaction",
       "RawLinkedTransaction",
       "lib/services/masterFinancialService.ts",
-      542
+      543
     ],
     [
       "services_masterfinancialservice_rawloan",
       "RawLoan",
       "lib/services/masterFinancialService.ts",
-      489
+      490
     ],
     [
       "services_masterfinancialservice_rawproperty",
       "RawProperty",
       "lib/services/masterFinancialService.ts",
-      503
+      504
     ],
     [
       "services_masterfinancialservice_rawsuperannuation",
       "RawSuperannuation",
       "lib/services/masterFinancialService.ts",
-      524
+      525
     ],
     [
       "services_masterfinancialservice_rawuserdata",
       "RawUserData",
       "lib/services/masterFinancialService.ts",
-      566
+      570
     ],
     [
       "services_masterfinancialservice_stalenessmetadata",
       "StalenessMetadata",
       "lib/services/masterFinancialService.ts",
-      259
+      260
     ],
     [
       "services_masterfinancialservice_taxsummary",
       "TaxSummary",
       "lib/services/masterFinancialService.ts",
-      199
+      200
     ],
     [
       "services_masterfinancialservice_viewercontext",
       "ViewerContext",
       "lib/services/masterFinancialService.ts",
-      423
+      424
     ],
     [
       "services_moneyflowservice",
@@ -43977,13 +44032,13 @@
       "services_propertyactuals_enrichedproperty",
       "EnrichedProperty",
       "lib/services/propertyActuals.ts",
-      122
+      131
     ],
     [
       "services_propertyactuals_enrichpropertieswithactuals",
       "enrichPropertiesWithActuals()",
       "lib/services/propertyActuals.ts",
-      133
+      144
     ],
     [
       "services_propertyactuals_expenselike",
@@ -44002,6 +44057,12 @@
       "IncomeLike",
       "lib/services/propertyActuals.ts",
       112
+    ],
+    [
+      "services_propertyactuals_linkedtransaction",
+      "LinkedTransaction",
+      "lib/services/propertyActuals.ts",
+      123
     ],
     [
       "services_propertyactuals_loanlike",
@@ -72877,6 +72938,139 @@
       18
     ],
     [
+      "calls",
+      "calculations_monthlyresolver_dayspanmonthlyaverage",
+      "calculations_monthlyresolver_ms",
+      "lib/calculations/monthlyResolver.ts",
+      88
+    ],
+    [
+      "references",
+      "calculations_monthlyresolver_resolvemonthlyinput",
+      "types_prisma_enums_frequency",
+      "lib/calculations/monthlyResolver.ts",
+      113
+    ],
+    [
+      "references",
+      "calculations_monthlyresolver_resolvemonthlyinput",
+      "types_prisma_enums_repaymentfrequency",
+      "lib/calculations/monthlyResolver.ts",
+      113
+    ],
+    [
+      "calls",
+      "calculations_monthlyresolver_resolvemonthly",
+      "calculations_monthlyresolver_dayspanmonthlyaverage",
+      "lib/calculations/monthlyResolver.ts",
+      128
+    ],
+    [
+      "calls",
+      "calculations_monthlyresolver_resolvemonthly",
+      "calculations_monthlyresolver_detectfrequency",
+      "lib/calculations/monthlyResolver.ts",
+      136
+    ],
+    [
+      "calls",
+      "calculations_monthlyresolver_resolvemonthly",
+      "utils_frequencies_tomonthly",
+      "lib/calculations/monthlyResolver.ts",
+      145
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_dayspanmonthlyaverage",
+      "lib/calculations/monthlyResolver.ts",
+      75
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_detectedfrequency",
+      "lib/calculations/monthlyResolver.ts",
+      53
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_detectfrequency",
+      "lib/calculations/monthlyResolver.ts",
+      98
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_monthlyresolution",
+      "lib/calculations/monthlyResolver.ts",
+      40
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_ms",
+      "lib/calculations/monthlyResolver.ts",
+      62
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_resolvemonthlyinput",
+      "lib/calculations/monthlyResolver.ts",
+      109
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_resolvemonthly",
+      "lib/calculations/monthlyResolver.ts",
+      123
+    ],
+    [
+      "contains",
+      "calculations_monthlyresolver",
+      "calculations_monthlyresolver_resolvertx",
+      "lib/calculations/monthlyResolver.ts",
+      38
+    ],
+    [
+      "imports",
+      "calculations_monthlyresolver",
+      "types_prisma_enums_frequency",
+      "lib/calculations/monthlyResolver.ts",
+      33
+    ],
+    [
+      "imports",
+      "calculations_monthlyresolver",
+      "types_prisma_enums_repaymentfrequency",
+      "lib/calculations/monthlyResolver.ts",
+      33
+    ],
+    [
+      "imports_from",
+      "calculations_monthlyresolver",
+      "types_prisma_enums",
+      "lib/calculations/monthlyResolver.ts",
+      33
+    ],
+    [
+      "imports",
+      "calculations_monthlyresolver",
+      "utils_frequencies_tomonthly",
+      "lib/calculations/monthlyResolver.ts",
+      32
+    ],
+    [
+      "imports_from",
+      "calculations_monthlyresolver",
+      "utils_frequencies",
+      "lib/calculations/monthlyResolver.ts",
+      32
+    ],
+    [
       "references",
       "calculations_networthcalculator_assetsummarydecimal",
       "decimal_types_decimal",
@@ -73136,53 +73330,25 @@
       22
     ],
     [
-      "calls",
-      "calculations_propertycashflow_annualvalue",
-      "calculations_propertycashflow_isactual",
-      "lib/calculations/propertyCashflow.ts",
-      77
-    ],
-    [
-      "calls",
-      "calculations_propertycashflow_annualvalue",
-      "utils_frequencies_toannual",
-      "lib/calculations/propertyCashflow.ts",
-      78
-    ],
-    [
       "inherits",
-      "calculations_propertycashflow_cashflowexpense",
-      "calculations_propertycashflow_entityactuals",
+      "calculations_propertycashflow_cashflowtransaction",
+      "calculations_monthlyresolver_resolvertx",
       "lib/calculations/propertyCashflow.ts",
-      43
-    ],
-    [
-      "inherits",
-      "calculations_propertycashflow_cashflowincome",
-      "calculations_propertycashflow_entityactuals",
-      "lib/calculations/propertyCashflow.ts",
-      38
-    ],
-    [
-      "inherits",
-      "calculations_propertycashflow_cashflowloan",
-      "calculations_propertycashflow_entityactuals",
-      "lib/calculations/propertyCashflow.ts",
-      47
+      54
     ],
     [
       "calls",
       "calculations_propertycashflow_computepropertycashflow",
-      "calculations_propertycashflow_annualvalue",
+      "calculations_monthlyresolver_resolvemonthly",
       "lib/calculations/propertyCashflow.ts",
-      94
+      111
     ],
     [
       "calls",
       "calculations_propertycashflow_computepropertycashflow",
-      "calculations_propertycashflow_isactual",
+      "calculations_propertycashflow_txfor",
       "lib/calculations/propertyCashflow.ts",
-      96
+      128
     ],
     [
       "calls",
@@ -73192,11 +73358,46 @@
       119
     ],
     [
-      "contains",
-      "calculations_propertycashflow",
-      "calculations_propertycashflow_annualvalue",
+      "calls",
+      "calculations_propertycashflow_computepropertycashflow",
+      "utils_frequencies_tomonthly",
       "lib/calculations/propertyCashflow.ts",
-      76
+      126
+    ],
+    [
+      "references",
+      "calculations_propertycashflow_propertycashflow",
+      "calculations_monthlyresolver_detectedfrequency",
+      "lib/calculations/propertyCashflow.ts",
+      87
+    ],
+    [
+      "imports",
+      "calculations_propertycashflow",
+      "calculations_monthlyresolver_detectedfrequency",
+      "lib/calculations/propertyCashflow.ts",
+      31
+    ],
+    [
+      "imports",
+      "calculations_propertycashflow",
+      "calculations_monthlyresolver_resolvemonthly",
+      "lib/calculations/propertyCashflow.ts",
+      31
+    ],
+    [
+      "imports",
+      "calculations_propertycashflow",
+      "calculations_monthlyresolver_resolvertx",
+      "lib/calculations/propertyCashflow.ts",
+      31
+    ],
+    [
+      "imports_from",
+      "calculations_propertycashflow",
+      "calculations_monthlyresolver",
+      "lib/calculations/propertyCashflow.ts",
+      31
     ],
     [
       "contains",
@@ -73222,30 +73423,16 @@
     [
       "contains",
       "calculations_propertycashflow",
+      "calculations_propertycashflow_cashflowtransaction",
+      "lib/calculations/propertyCashflow.ts",
+      54
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
       "calculations_propertycashflow_computepropertycashflow",
       "lib/calculations/propertyCashflow.ts",
       81
-    ],
-    [
-      "contains",
-      "calculations_propertycashflow",
-      "calculations_propertycashflow_entityactuals",
-      "lib/calculations/propertyCashflow.ts",
-      34
-    ],
-    [
-      "contains",
-      "calculations_propertycashflow",
-      "calculations_propertycashflow_freq",
-      "lib/calculations/propertyCashflow.ts",
-      31
-    ],
-    [
-      "contains",
-      "calculations_propertycashflow",
-      "calculations_propertycashflow_isactual",
-      "lib/calculations/propertyCashflow.ts",
-      74
     ],
     [
       "contains",
@@ -73262,11 +73449,32 @@
       59
     ],
     [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_rent_types",
+      "lib/calculations/propertyCashflow.ts",
+      33
+    ],
+    [
+      "contains",
+      "calculations_propertycashflow",
+      "calculations_propertycashflow_txfor",
+      "lib/calculations/propertyCashflow.ts",
+      90
+    ],
+    [
       "imports",
       "calculations_propertycashflow",
       "utils_frequencies_toannual",
       "lib/calculations/propertyCashflow.ts",
       29
+    ],
+    [
+      "imports",
+      "calculations_propertycashflow",
+      "utils_frequencies_tomonthly",
+      "lib/calculations/propertyCashflow.ts",
+      30
     ],
     [
       "imports_from",
@@ -106934,6 +107142,13 @@
     [
       "calls",
       "id_page_linkedentitiescard",
+      "id_page_cashflowof",
+      "app/dashboard/properties/[id]/page.tsx",
+      684
+    ],
+    [
+      "calls",
+      "id_page_linkedentitiescard",
       "id_page_computeannualdepreciation",
       "app/dashboard/properties/[id]/page.tsx",
       725
@@ -138447,6 +138662,13 @@
     ],
     [
       "calls",
+      "services_masterfinancialservice_adjustpropertyrentalincome",
+      "calculations_propertycashflow_computepropertycashflow",
+      "lib/services/masterFinancialService.ts",
+      1019
+    ],
+    [
+      "calls",
       "services_masterfinancialservice_buildexpensebreakdown",
       "calculations_expenseaggregator_aggregateexpensesbycategory",
       "lib/services/masterFinancialService.ts",
@@ -138479,6 +138701,13 @@
       "services_masterfinancialservice_calculateincomebudgetvariance",
       "lib/services/masterFinancialService.ts",
       1025
+    ],
+    [
+      "calls",
+      "services_masterfinancialservice_buildpropertymetrics",
+      "calculations_propertycashflow_computepropertycashflow",
+      "lib/services/masterFinancialService.ts",
+      1185
     ],
     [
       "calls",
@@ -138626,6 +138855,13 @@
       "calculations_networthcalculator_calculatenetworth",
       "lib/services/masterFinancialService.ts",
       1767
+    ],
+    [
+      "calls",
+      "services_masterfinancialservice_computemasterfinancialsnapshot",
+      "services_masterfinancialservice_adjustpropertyrentalincome",
+      "lib/services/masterFinancialService.ts",
+      1831
     ],
     [
       "calls",
@@ -139041,6 +139277,20 @@
       45
     ],
     [
+      "imports",
+      "services_masterfinancialservice",
+      "calculations_propertycashflow_computepropertycashflow",
+      "lib/services/masterFinancialService.ts",
+      37
+    ],
+    [
+      "imports_from",
+      "services_masterfinancialservice",
+      "calculations_propertycashflow",
+      "lib/services/masterFinancialService.ts",
+      37
+    ],
+    [
       "imports_from",
       "services_masterfinancialservice",
       "db",
@@ -139116,6 +139366,13 @@
       "security_cdrauditcompliance",
       "lib/services/masterFinancialService.ts",
       40
+    ],
+    [
+      "contains",
+      "services_masterfinancialservice",
+      "services_masterfinancialservice_adjustpropertyrentalincome",
+      "lib/services/masterFinancialService.ts",
+      1003
     ],
     [
       "contains",
@@ -140803,6 +141060,13 @@
       "services_propertyactuals_incomelike",
       "lib/services/propertyActuals.ts",
       112
+    ],
+    [
+      "contains",
+      "services_propertyactuals",
+      "services_propertyactuals_linkedtransaction",
+      "lib/services/propertyActuals.ts",
+      123
     ],
     [
       "contains",

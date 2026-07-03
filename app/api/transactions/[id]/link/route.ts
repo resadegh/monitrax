@@ -398,11 +398,24 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               incomeData.isTaxable = body.isTaxable;
             }
 
-            const income = await prisma.income.create({
-              data: incomeData,
-            });
+            // MON-009: don't fragment a property's rental stream into one
+            // Income record per payment (the "4 monthly rows" bug). If this
+            // property already has a rental income record, LINK the transaction
+            // to it instead of minting a duplicate MONTHLY row. The canonical
+            // cashflow engine resolves the true cadence from the pooled
+            // transaction dates, so one stream stays one record.
+            const isRentalIncome = incomeData.type === 'RENT' || incomeData.type === 'RENTAL';
+            const existingRentalStream =
+              isRentalIncome && incomeData.propertyId
+                ? await prisma.income.findFirst({
+                    where: { userId, propertyId: incomeData.propertyId, type: { in: ['RENT', 'RENTAL'] } },
+                    orderBy: { createdAt: 'asc' },
+                  })
+                : null;
 
-            // Link transaction to new income
+            const income = existingRentalStream ?? (await prisma.income.create({ data: incomeData }));
+
+            // Link transaction to the (reused or new) income stream
             await prisma.unifiedTransaction.update({
               where: { id: transactionId },
               data: {

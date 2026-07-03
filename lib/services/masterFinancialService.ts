@@ -34,6 +34,7 @@
 
 import prisma from '@/lib/db';
 import { buildEntityBreakdown, type EntityPosition } from '@/lib/calculations/entityBreakdown';
+import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { createAuditLog } from '@/lib/security/auditLog';
@@ -546,6 +547,9 @@ interface RawLinkedTransaction {
   direction: string;
   incomeId: string | null;
   expenseId: string | null;
+  // MON-009: loan-linked rows so per-property loan repayments can be
+  // resolved actuals-first from the reconciled transaction dates.
+  loanId: string | null;
 }
 
 /**
@@ -733,6 +737,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         OR: [
           { incomeId: { not: null } },
           { expenseId: { not: null } },
+          { loanId: { not: null } },
         ],
       },
       select: {
@@ -742,6 +747,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         direction: true,
         incomeId: true,
         expenseId: true,
+        loanId: true,
       },
     }),
     // Phase 1 (cashflow-actuals) — ALL transactions in the trailing ~4 months,
@@ -986,10 +992,58 @@ function calculateExpenseBudgetVariance(
   };
 }
 
+/**
+ * MON-009: dedup a property's rental income that reconciliation fragmented
+ * across several Income records. Each property's rental rows are replaced by ONE
+ * synthetic MONTHLY row carrying the resolved (actuals-first, stream-level) rent
+ * — so aggregate income totals (and savings rate / health that read them) are
+ * not inflated by the "4 monthly rows" bug. Non-rental and non-property income
+ * passes through unchanged. Raw records are still used for budget variance.
+ */
+function adjustPropertyRentalIncome(
+  properties: RawProperty[],
+  income: RawIncome[],
+  linkedTransactions: RawLinkedTransaction[]
+): RawIncome[] {
+  const RENT = new Set(['RENT', 'RENTAL']);
+  const propertyIds = new Set(properties.map(p => p.id));
+  const isPropertyRental = (i: RawIncome) => !!i.propertyId && propertyIds.has(i.propertyId) && RENT.has(i.type);
+  const passthrough = income.filter(i => !isPropertyRental(i));
+
+  const synthetic: RawIncome[] = [];
+  for (const property of properties) {
+    const rentalRows = income.filter(i => i.propertyId === property.id && RENT.has(i.type));
+    if (rentalRows.length === 0) continue;
+    const incomeIds = new Set(rentalRows.map(r => r.id));
+    const rentalTx = linkedTransactions.filter(t => t.incomeId && incomeIds.has(t.incomeId));
+    const cf = computePropertyCashflow({
+      income: rentalRows.map(r => ({ id: r.id, type: r.type, amount: r.amount, frequency: r.frequency })),
+      transactions: rentalTx.map(t => ({ incomeId: t.incomeId, expenseId: t.expenseId, loanId: t.loanId, date: t.date, amount: t.amount })),
+    });
+    synthetic.push({
+      ...rentalRows[0],
+      id: `synthetic-rent-${property.id}`,
+      type: 'RENTAL',
+      amount: cf.monthlyRent,
+      frequency: 'MONTHLY',
+      netAmount: null,
+      grossAmount: null,
+      paygWithholding: null,
+      salaryType: null,
+      budgetedAmount: null,
+      lastReconciled: null,
+    });
+  }
+  return [...passthrough, ...synthetic];
+}
+
 function buildIncomeBreakdown(
   income: RawIncome[],
   targetFrequency: 'monthly' | 'annual',
-  linkedTransactions: RawLinkedTransaction[] = []
+  linkedTransactions: RawLinkedTransaction[] = [],
+  /** MON-009: source for the AGGREGATE totals (rental deduped). Budget variance
+   *  still uses the raw `income` so per-record actual matching is preserved. */
+  aggregateSource: RawIncome[] = income
 ): MasterIncomeBreakdown {
   const mapIncome = (i: RawIncome) => ({
     amount: i.amount,
@@ -1002,26 +1056,26 @@ function buildIncomeBreakdown(
     isTaxable: i.isTaxable,
   });
 
-  const all = aggregateIncome(income.map(mapIncome), targetFrequency);
+  const all = aggregateIncome(aggregateSource.map(mapIncome), targetFrequency);
 
   const primaryTypes = ['SALARY', 'WAGES'];
   const primary = aggregateIncome(
-    income.filter(i => primaryTypes.includes(i.type)).map(mapIncome),
+    aggregateSource.filter(i => primaryTypes.includes(i.type)).map(mapIncome),
     targetFrequency
   );
 
   const secondary = aggregateIncome(
-    income.filter(i => !primaryTypes.includes(i.type)).map(mapIncome),
+    aggregateSource.filter(i => !primaryTypes.includes(i.type)).map(mapIncome),
     targetFrequency
   );
 
   const passiveTypes = ['RENTAL', 'DIVIDEND', 'INTEREST', 'ROYALTY'];
   const passive = aggregateIncome(
-    income.filter(i => passiveTypes.includes(i.type)).map(mapIncome),
+    aggregateSource.filter(i => passiveTypes.includes(i.type)).map(mapIncome),
     targetFrequency
   );
 
-  // Phase 30: Calculate budget variance with transaction-based actuals
+  // Phase 30: Calculate budget variance with transaction-based actuals (raw records)
   const budgetVariance = calculateIncomeBudgetVariance(income, targetFrequency, linkedTransactions);
 
   return { all, primary, secondary, passive, budgetVariance };
@@ -1099,7 +1153,8 @@ function buildPropertyMetrics(
   properties: RawProperty[],
   loans: RawLoan[],
   income: RawIncome[],
-  expenses: RawExpense[]
+  expenses: RawExpense[],
+  linkedTransactions: RawLinkedTransaction[] = []
 ): PropertyMetrics[] {
   return properties.map(property => {
     // Get loans for this property
@@ -1110,32 +1165,46 @@ function buildPropertyMetrics(
     const equity = calculateEquity(property.currentValue, loanBalance);
     const lvr = calculateLVR(loanBalance, property.currentValue);
 
-    // Get rental income for this property
-    const rentalIncome = income.filter(i => i.propertyId === property.id);
-    const annualRentalIncome = rentalIncome.reduce((sum, i) => {
-      return sum + toAnnual(i.amount, i.frequency as Frequency);
-    }, 0);
-
-    // Calculate rental yield
-    const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
-
-    // Get expenses for this property
+    // MON-002 + MON-009: rent / expenses / loan repayment / cashflow come from
+    // the ONE canonical per-property engine — actuals-first (resolved from the
+    // reconciled transaction dates), rent pooled at the property-stream level so
+    // a rental fragmented across several Income records is counted once, and the
+    // loan cost never silently $0. This is the SAME engine the property page
+    // reads (§19.4 same number everywhere).
+    const propertyIncome = income.filter(i => i.propertyId === property.id);
     const propertyExpenses = expenses.filter(e => e.propertyId === property.id);
-    const monthlyExpenses = propertyExpenses.reduce((sum, e) => {
-      return sum + toMonthly(e.amount, e.frequency as Frequency);
-    }, 0);
-
-    // Monthly loan repayments
-    const monthlyLoanRepayments = propertyLoans.reduce((sum, l) => {
-      if (l.minRepayment && l.repaymentFrequency) {
-        return sum + toMonthly(l.minRepayment, l.repaymentFrequency as Frequency);
-      }
-      return sum;
-    }, 0);
-
-    // Monthly cashflow
-    const monthlyRentalIncome = annualRentalIncome / 12;
-    const monthlyCashflow = monthlyRentalIncome - monthlyExpenses - monthlyLoanRepayments;
+    const incomeIds = new Set(propertyIncome.map(i => i.id));
+    const expenseIds = new Set(propertyExpenses.map(e => e.id));
+    const loanIds = new Set(propertyLoans.map(l => l.id));
+    const propertyTx = linkedTransactions.filter(
+      t =>
+        (t.incomeId && incomeIds.has(t.incomeId)) ||
+        (t.expenseId && expenseIds.has(t.expenseId)) ||
+        (t.loanId && loanIds.has(t.loanId)),
+    );
+    const cf = computePropertyCashflow({
+      income: propertyIncome.map(i => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
+      expenses: propertyExpenses.map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency })),
+      loans: propertyLoans.map(l => ({
+        id: l.id,
+        principal: l.principal,
+        interestRateAnnual: l.interestRateAnnual,
+        minRepayment: l.minRepayment,
+        repaymentFrequency: l.repaymentFrequency,
+      })),
+      transactions: propertyTx.map(t => ({
+        incomeId: t.incomeId,
+        expenseId: t.expenseId,
+        loanId: t.loanId,
+        date: t.date,
+        amount: t.amount,
+      })),
+    });
+    const annualRentalIncome = cf.annualRent;
+    const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
+    const monthlyExpenses = cf.monthlyExpenses;
+    const monthlyLoanRepayments = cf.monthlyLoanRepayment;
+    const monthlyCashflow = cf.monthlyCashflow;
 
     // Capital growth
     const capitalGrowth = property.currentValue - property.purchasePrice;
@@ -1755,13 +1824,19 @@ async function computeMasterFinancialSnapshot(
   // Fetch all raw data
   const data = await fetchAllUserData(userId);
 
+  // MON-009: dedup property rental fragmented across Income records so aggregate
+  // income totals (and savings rate / health) match the property page. Tax
+  // (buildTaxSummary) intentionally keeps raw records — its rental/CGT treatment
+  // is §12.14-sensitive and handled separately (MON-010 follow-up).
+  const adjustedIncome = adjustPropertyRentalIncome(data.properties, data.income, data.linkedTransactions);
+
   // Build expense breakdowns (with transaction-based actuals)
   const monthlyExpenses = buildExpenseBreakdown(data.expenses, 'monthly', data.linkedTransactions);
   const annualExpenses = buildExpenseBreakdown(data.expenses, 'annual', data.linkedTransactions);
 
-  // Build income breakdowns (with transaction-based actuals)
-  const monthlyIncome = buildIncomeBreakdown(data.income, 'monthly', data.linkedTransactions);
-  const annualIncome = buildIncomeBreakdown(data.income, 'annual', data.linkedTransactions);
+  // Build income breakdowns (raw records for budget variance, deduped rental for totals)
+  const monthlyIncome = buildIncomeBreakdown(data.income, 'monthly', data.linkedTransactions, adjustedIncome);
+  const annualIncome = buildIncomeBreakdown(data.income, 'annual', data.linkedTransactions, adjustedIncome);
 
   // Calculate net worth using existing calculator
   const netWorth = calculateNetWorth(
@@ -1791,13 +1866,13 @@ async function computeMasterFinancialSnapshot(
     loans: data.loans,
     superannuation: data.superannuation,
     assets: data.assets,
-    income: data.income,
+    income: adjustedIncome,
     expenses: data.expenses,
   });
 
   // Calculate cashflow using existing orchestrator
   const cashflowInput = {
-    income: data.income.map(i => ({
+    income: adjustedIncome.map(i => ({
       amount: i.amount,
       frequency: i.frequency,
       type: i.type,
@@ -1836,7 +1911,8 @@ async function computeMasterFinancialSnapshot(
     data.properties,
     data.loans,
     data.income,
-    data.expenses
+    data.expenses,
+    data.linkedTransactions
   );
   const propertyPortfolioValue = propertyMetrics.reduce((sum, p) => sum + p.currentValue, 0);
   const propertyPortfolioEquity = propertyMetrics.reduce((sum, p) => sum + p.equity, 0);
