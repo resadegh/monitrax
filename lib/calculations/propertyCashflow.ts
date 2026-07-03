@@ -1,59 +1,68 @@
 /**
- * Canonical PER-PROPERTY cashflow (MON-002).
+ * Canonical PER-PROPERTY cashflow (MON-002 + MON-009).
  *
  * ONE source (CLAUDE.md §12.2.1) for a single property's rent / expenses /
- * loan cost / cashflow — replacing the inline computeCashflow helpers that
- * lived in both the property detail page and the property list page (which
- * disagreed and ignored actuals). Every property surface reads THIS.
+ * loan cost / cashflow. Every property surface reads THIS — the property list
+ * tile, the detail page, and (server-side) the master snapshot's per-property
+ * metrics.
  *
- * The rule (Reza directive 2026-07-03, §19.1): for each linked income / expense
- * / loan, use the ACTUAL reconciled figure when transactions exist, else the
- * user's declared/manual value. Sourced from the entity→property relationship;
- * the user enters each value once, and reconciled actuals override.
+ * The universal rule (Reza 2026-07-03, §19.1, via `monthlyResolver`): each
+ * money line is a TRUE MONTHLY figure read from its reconciled transaction
+ * dates — correct for any cadence (fortnightly rent, two loan repayments in a
+ * month, a quarterly water rate) — with the declared amount×frequency as the
+ * fallback only when there aren't enough transactions to read the cadence.
  *
- * Basis decision (Reza 2026-07-03): the headline "Cashflow / yr" is ACTUALS-FIRST
- * P&I (rent − expenses − repayment). The tax position uses INTEREST-ONLY
- * (principal × rate — the deductible figure). Both are returned.
+ *   • RENT is resolved at the PROPERTY-STREAM level: ALL of the property's
+ *     rental transactions are pooled into one stream, so a rental fragmented
+ *     across several Income records (the "4 monthly rows" bug) is counted once
+ *     and correctly, regardless of tenancy count.
+ *   • EXPENSES and LOANS resolve per record (genuinely distinct lines).
  *
- * Loan cost is NEVER silently $0: actual repayment when captured, else the
- * manual minRepayment, else the interest (principal × rate) as a floor.
- *
- * Actuals annualisation: the API supplies `monthlyAverageActual` — a true
- * monthly average derived from the transaction cadence (so fortnightly rent is
- * handled correctly). Annual actual = monthlyAverageActual × 12.
+ * Basis (Reza 2026-07-03): the headline "Cashflow / yr" is ACTUALS-FIRST P&I
+ * (rent − expenses − repayment). The tax position uses INTEREST-ONLY (principal
+ * × rate — the deductible figure). Both are returned. Loan cost is NEVER
+ * silently $0: actual repayment → manual minRepayment → interest floor.
  *
  * PURE: no DB, no fetch, no mutation. Modelled in the Neomatrix
  * (engine.propertyCashflow.computePropertyCashflow).
  */
 
-import { toAnnual } from '@/lib/utils/frequencies';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { resolveMonthly, type ResolverTx, type DetectedFrequency } from '@/lib/calculations/monthlyResolver';
 
-type Freq = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'ANNUAL';
+const RENT_TYPES = new Set(['RENT', 'RENTAL']);
 
-/** Per-entity actuals the API attaches (see lib/services/propertyActuals.ts). */
-export interface EntityActuals {
-  monthlyAverageActual?: number | null;
-  hasTransactions?: boolean;
-}
-export interface CashflowIncome extends EntityActuals {
+export interface CashflowIncome {
+  id?: string;
   type: string;
   amount: number;
   frequency: string;
 }
-export interface CashflowExpense extends EntityActuals {
+export interface CashflowExpense {
+  id?: string;
   amount: number;
   frequency: string;
 }
-export interface CashflowLoan extends EntityActuals {
+export interface CashflowLoan {
+  id?: string;
   principal: number;
   interestRateAnnual: number; // DECIMAL, e.g. 0.0649 = 6.49%
   minRepayment?: number | null;
   repaymentFrequency?: string | null;
 }
+/** A reconciled transaction linked to one of the property's income/expense/loan rows. */
+export interface CashflowTransaction extends ResolverTx {
+  incomeId?: string | null;
+  expenseId?: string | null;
+  loanId?: string | null;
+}
+
 export interface PropertyCashflowInput {
   income?: CashflowIncome[];
   expenses?: CashflowExpense[];
   loans?: CashflowLoan[];
+  /** Reconciled transactions for THIS property (actuals win over declared). */
+  transactions?: CashflowTransaction[];
 }
 
 export interface PropertyCashflow {
@@ -67,63 +76,90 @@ export interface PropertyCashflow {
   annualCashflow: number;
   /** Tax: rent − expenses − interest. */
   annualTaxCashflow: number;
+  // Monthly mirrors (everything is shown monthly — Reza 2026-07-03).
+  monthlyRent: number;
+  monthlyExpenses: number;
+  monthlyLoanRepayment: number;
+  monthlyCashflow: number;
   basis: 'actual' | 'declared' | 'mixed';
   usedActuals: { income: boolean; expenses: boolean; loans: boolean };
+  /** Cadence detected from the rental transactions, for display ("fortnightly"). */
+  detectedRentFrequency: DetectedFrequency | null;
 }
 
-const isActual = (a: EntityActuals): boolean => Boolean(a?.hasTransactions) && a?.monthlyAverageActual != null;
-/** Annual value for one entity: actual (monthly avg × 12) when present, else declared × frequency. */
-function annualValue(declaredAmount: number, frequency: string, a: EntityActuals): number {
-  if (isActual(a)) return (a.monthlyAverageActual as number) * 12;
-  return toAnnual(declaredAmount ?? 0, (frequency ?? 'MONTHLY') as Freq);
-}
+const txFor = (txs: CashflowTransaction[], pick: (t: CashflowTransaction) => string | null | undefined, id?: string) =>
+  id == null ? [] : txs.filter((t) => pick(t) === id);
 
 export function computePropertyCashflow(input: PropertyCashflowInput): PropertyCashflow {
   const income = input.income ?? [];
   const expenses = input.expenses ?? [];
   const loans = input.loans ?? [];
+  const txs = input.transactions ?? [];
 
-  // basis is over CONTRIBUTING entities only (an absent category doesn't make it 'mixed').
   let contributing = 0;
   let actualContributing = 0;
-
-  let annualRent = 0;
-  let incomeUsedActuals = false;
-  for (const i of income) {
-    if (i.type !== 'RENT' && i.type !== 'RENTAL') continue;
-    annualRent += annualValue(i.amount, i.frequency, i);
+  const bump = (usedActuals: boolean) => {
     contributing++;
-    if (isActual(i)) { incomeUsedActuals = true; actualContributing++; }
-  }
+    if (usedActuals) actualContributing++;
+  };
 
-  let annualExpenses = 0;
+  // ── RENT — resolved at the property-STREAM level (all rental tx pooled) ──
+  const rentalRows = income.filter((i) => RENT_TYPES.has(i.type));
+  const rentalIds = new Set(rentalRows.map((r) => r.id).filter(Boolean) as string[]);
+  const rentalTx = txs.filter((t) => t.incomeId != null && rentalIds.has(t.incomeId));
+  const declaredRentalMonthly = rentalRows.reduce((s, r) => s + toMonthly(r.amount, r.frequency as never), 0);
+  const rent = resolveMonthly({
+    declaredMonthly: declaredRentalMonthly,
+    cadenceHintFrequency: rentalRows[0]?.frequency ?? 'MONTHLY',
+    transactions: rentalTx,
+    isAdvance: true, // rent is paid in advance
+  });
+  const monthlyRent = rent.monthly;
+  const incomeUsedActuals = rent.usedActuals;
+  if (rentalRows.length > 0) bump(rent.usedActuals);
+
+  // ── EXPENSES — per record ──
+  let monthlyExpenses = 0;
   let expensesUsedActuals = false;
   for (const e of expenses) {
-    annualExpenses += annualValue(e.amount, e.frequency, e);
-    contributing++;
-    if (isActual(e)) { expensesUsedActuals = true; actualContributing++; }
+    const r = resolveMonthly({
+      declaredMonthly: toMonthly(e.amount, e.frequency as never),
+      cadenceHintFrequency: e.frequency,
+      transactions: txFor(txs, (t) => t.expenseId, e.id),
+    });
+    monthlyExpenses += r.monthly;
+    if (r.usedActuals) expensesUsedActuals = true;
+    bump(r.usedActuals);
   }
 
-  let annualLoanRepayment = 0;
+  // ── LOANS — per record; repayment never silently $0 ──
+  let monthlyLoanRepayment = 0;
   let annualLoanInterest = 0;
   let loansUsedActuals = false;
   for (const l of loans) {
-    const interest = Math.max(0, (l.principal ?? 0) * (l.interestRateAnnual ?? 0));
-    annualLoanInterest += interest;
-    contributing++;
-    if (isActual(l)) {
-      annualLoanRepayment += (l.monthlyAverageActual as number) * 12;
-      loansUsedActuals = true;
-      actualContributing++;
-    } else if ((l.minRepayment ?? 0) > 0) {
-      annualLoanRepayment += toAnnual(l.minRepayment as number, (l.repaymentFrequency ?? 'MONTHLY') as Freq);
-    } else {
-      // Never silently $0: fall back to interest as the minimum true cost.
-      annualLoanRepayment += interest;
-    }
+    const monthlyInterest = Math.max(0, (l.principal ?? 0) * (l.interestRateAnnual ?? 0)) / 12;
+    annualLoanInterest += monthlyInterest * 12;
+    const loanTx = txFor(txs, (t) => t.loanId, l.id);
+    const declaredRepayMonthly = (l.minRepayment ?? 0) > 0
+      ? toMonthly(l.minRepayment as number, (l.repaymentFrequency ?? 'MONTHLY') as never)
+      : 0;
+    const r = resolveMonthly({
+      declaredMonthly: declaredRepayMonthly,
+      cadenceHintFrequency: l.repaymentFrequency ?? 'MONTHLY',
+      transactions: loanTx,
+    });
+    // Never silently $0: if neither actuals nor a manual repayment exist, floor
+    // to interest (the minimum true cost of carrying the loan).
+    monthlyLoanRepayment += r.monthly > 0 ? r.monthly : monthlyInterest;
+    if (r.usedActuals) loansUsedActuals = true;
+    bump(r.usedActuals);
   }
 
-  const usedActuals = { income: incomeUsedActuals, expenses: expensesUsedActuals, loans: loansUsedActuals };
+  const monthlyCashflow = monthlyRent - monthlyExpenses - monthlyLoanRepayment;
+  const annualRent = monthlyRent * 12;
+  const annualExpenses = monthlyExpenses * 12;
+  const annualLoanRepayment = monthlyLoanRepayment * 12;
+
   const basis: PropertyCashflow['basis'] =
     actualContributing === 0 ? 'declared' : actualContributing === contributing ? 'actual' : 'mixed';
 
@@ -134,7 +170,12 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     annualLoanInterest,
     annualCashflow: annualRent - annualExpenses - annualLoanRepayment,
     annualTaxCashflow: annualRent - annualExpenses - annualLoanInterest,
+    monthlyRent,
+    monthlyExpenses,
+    monthlyLoanRepayment,
+    monthlyCashflow,
     basis,
-    usedActuals,
+    usedActuals: { income: incomeUsedActuals, expenses: expensesUsedActuals, loans: loansUsedActuals },
+    detectedRentFrequency: rent.detectedFrequency,
   };
 }

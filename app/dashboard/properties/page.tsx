@@ -133,6 +133,8 @@ interface Property {
   income?: Income[];
   expenses?: Expense[];
   depreciationSchedules?: DepreciationSchedule[];
+  /** Reconciled transactions for this property — feed the canonical cashflow engine (MON-009). */
+  linkedTransactions?: Array<{ date: string | Date; amount: number; incomeId: string | null; expenseId: string | null; loanId: string | null }>;
   // GRDCS fields
   _links?: {
     self: string;
@@ -466,6 +468,7 @@ function PropertiesPageContent() {
       income: property.income,
       expenses: property.expenses,
       loans: property.loans,
+      transactions: property.linkedTransactions,
     });
 
   const calculateRentalYield = (property: Property) => {

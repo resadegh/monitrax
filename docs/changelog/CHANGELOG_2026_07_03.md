@@ -88,3 +88,44 @@ Requirement: one canonical per-property cashflow, actuals-first, loan never $0, 
 ### PR
 - PR: (pending) — draft off this branch.
 - Status: Draft — MON-002 holds at FIXING until Reza verifies the numbers on his data.
+
+---
+
+## Session: eloquent-archimedes — MON-009 universal monthly resolver (rent/expenses/loans from dates)
+
+### Changes Made
+- **Type**: Fix (financial, number-changing) + Refactor (SSOT)
+- **Scope**: universal monthly resolution for rent / expenses / loan repayments, read from transaction dates; property pages + master snapshot (dashboard/net-worth/health); reconciliation source fix
+- **Root Cause**: per-property money lines were shown at their **declared frequency** (rent as "monthly" though paid fortnightly), and a rental **fragmented across 4 Income records** (reconciliation's "create income from transaction" hard-codes MONTHLY per payment — `link/route.ts:345`) was **summed 4×**. `masterFinancialService.buildPropertyMetrics` (`:1114`) + aggregate income summed declared records → dashboard/savings/health inflated.
+- **Solution (Reza directive 2026-07-03 — universal, shown monthly)**:
+  - New `lib/calculations/monthlyResolver.ts` → `resolveMonthly` — ONE rule for any money line: **day-span average from transaction DATES** (×30.4375/mo) when ≥2 tx (correct for fortnightly, twice-a-month, quarterly); actual amount × declared frequency when 1 tx; declared monthly when 0 tx.
+  - `computePropertyCashflow` rewired to the resolver; **RENT pooled at the property-stream level** (fragmentation counted once); expenses/loans per record; loan never $0; returns monthly + annual + detected cadence.
+  - `propertyActuals.enrichPropertiesWithActuals` now also attaches each property's `linkedTransactions`; both property APIs feed them to the engine.
+  - `masterFinancialService`: `buildPropertyMetrics` routed through the engine (added `loanId` to linked-tx fetch); aggregate income deduped via `adjustPropertyRentalIncome` (synthetic monthly rent per property) so income totals / savings rate / health match the property page. Tax left raw (§12.14 → MON-010).
+  - Display: property "Financial infrastructure" collapses the fragmented rental rows into ONE "Rental income" row with the detected cadence + monthly figure.
+  - Source fix: `create-income-from-transaction` reuses an existing property rental stream instead of minting a duplicate MONTHLY row.
+
+### Files Modified
+- `lib/calculations/monthlyResolver.ts` (NEW) · `lib/calculations/propertyCashflow.ts` (rewired) · `lib/services/propertyActuals.ts` (linkedTransactions) · `lib/services/masterFinancialService.ts` (engine + dedup) · `app/api/transactions/[id]/link/route.ts` (source fix) · `app/dashboard/properties/[id]/page.tsx` + `page.tsx` (transactions + collapse) · Neomatrix graph + `GENERATED_CORE.md` + structural · `tests/calculations/monthlyResolver.test.ts` + `propertyCashflow.test.ts` · `ISSUES.json`/`ISSUES.md` (MON-009 + MON-010) · this changelog.
+
+### §19.2 worked-example evidence
+- Fortnightly $1,195/14d → 1195/14 × 30.4375 ≈ **$2,598/mo** (~$31,176/yr), NOT declared-MONTHLY $14,340.
+- **4 fragmented rental records + pooled fortnightly tx** → rent counted ONCE (~$2,598/mo), not 4 × $1,195.
+- Quarterly $300/91d → 300/91 × 30.4375 ≈ **$100/mo**. Two repayments/month (~15d) → ~2× single. 1 quarterly tx → $300 × 4/12 = $100/mo (not $300).
+- Lot 1 −$100,910.56 cash / −$90,671.23 tax; Lot 2 loan floors to interest → +$2,518.2 (declared-only paths unchanged).
+
+### §19.4 downstream sweep (same number everywhere)
+Consumers of per-property rent/cashflow via Neomatrix lineage + grep: property **list tile**, property **detail hero + Tax + Linked-Entities**, and **masterFinancialService** (per-property metrics + portfolio rollups + aggregate income → quickMetrics.monthlyIncome/savingsRate/health/cashflow). All read the ONE engine (`number.propertyCashflow` ← `engine.propertyCashflow` ← `engine.monthlyResolver`, A3 convergence). Structural one-source test now asserts all three surfaces (both pages + master) read the engine. **Deliberately out of scope:** tax (`buildTaxSummary`, §12.14) → MON-010; the date-based `computeActualCashflow` headline tiles were already correct (real transactions).
+
+### Build Status
+- [x] `tests/calculations` + `tests/neomatrix` + `tests/issues` — 281 passed
+- [x] Full `vitest run` — 3624 passed / 69 skipped / **0 failed** (no master-snapshot regression)
+- [x] `neomatrix:check` green (251 nodes/340 edges, A3 holds, census 0 uncovered, 154/154 anchors)
+- [x] `issues:check` — 10 valid · `lint:financial-surfaces` — 0 new · `eslint` 0 errors · `tsc --noEmit` 0 errors
+- [ ] `next build` — Vercel preview
+
+### §20.4 self-review — 10/10 (financial build)
+Requirement: universal, cadence-agnostic, shown-monthly resolution for rent/expenses/loans, fragmentation-proof, same number on property pages AND dashboard. 3× review: v1 rent-only stream fix → v2 generalised to a shared resolver covering the quarterly/twice-a-month cases + 1-tx-declared-cadence edge → v3 flowed it through masterFinancialService (per-property + aggregate income dedup, budget-variance preserved) and added the source fix + collapsed display; scoped tax out honestly (MON-010) rather than risk a §12.14 change unverified. Every number traced to a §19.2 worked example. 10/10.
+
+### PR
+- PR: (pending) — draft. MON-009 holds at FIXING until Reza verifies on his data.

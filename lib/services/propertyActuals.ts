@@ -119,10 +119,21 @@ export interface EnrichableProperty {
   loans: LoanLike[];
 }
 
+/** A reconciled transaction linked to one of the property's income/expense/loan rows. */
+export interface LinkedTransaction {
+  date: Date;
+  amount: number;
+  incomeId: string | null;
+  expenseId: string | null;
+  loanId: string | null;
+}
+
 export type EnrichedProperty<P extends EnrichableProperty> = Omit<P, 'income' | 'expenses' | 'loans'> & {
   income: Array<P['income'][number] & ActualsFields>;
   expenses: Array<P['expenses'][number] & ActualsFields>;
   loans: Array<P['loans'][number] & ActualsFields>;
+  /** This property's reconciled transactions — feeds the canonical cashflow engine. */
+  linkedTransactions: LinkedTransaction[];
 };
 
 /**
@@ -168,12 +179,35 @@ export async function enrichPropertiesWithActuals<P extends EnrichableProperty>(
   const expenseMap = group(expenseTx, (t) => t.expenseId, currentMonthStart);
   const loanMap = group(loanTx, (t) => t.loanId, currentMonthStart);
 
-  return properties.map((p) => ({
-    ...p,
-    income: p.income.map((inc) =>
-      attach(inc, incomeMap.get(inc.id), inc.amount, inc.type === 'RENTAL' || inc.type === 'RENT'),
-    ),
-    expenses: p.expenses.map((exp) => attach(exp, expenseMap.get(exp.id), exp.amount, false)),
-    loans: p.loans.map((loan) => attach(loan, loanMap.get(loan.id), loan.minRepayment, false)),
-  })) as EnrichedProperty<P>[];
+  // Index the fetched transactions by their linking id so each property can
+  // collect its own reconciled transactions (fed to the cashflow engine).
+  const byIncome = new Map<string, LinkedTransaction[]>();
+  const byExpense = new Map<string, LinkedTransaction[]>();
+  const byLoan = new Map<string, LinkedTransaction[]>();
+  const push = (m: Map<string, LinkedTransaction[]>, key: string | null, tx: LinkedTransaction) => {
+    if (!key) return;
+    const arr = m.get(key) ?? [];
+    arr.push(tx);
+    m.set(key, arr);
+  };
+  for (const t of incomeTx) push(byIncome, t.incomeId, { date: t.date, amount: t.amount, incomeId: t.incomeId, expenseId: null, loanId: null });
+  for (const t of expenseTx) push(byExpense, t.expenseId, { date: t.date, amount: t.amount, incomeId: null, expenseId: t.expenseId, loanId: null });
+  for (const t of loanTx) push(byLoan, t.loanId, { date: t.date, amount: t.amount, incomeId: null, expenseId: null, loanId: t.loanId });
+
+  return properties.map((p) => {
+    const linkedTransactions: LinkedTransaction[] = [
+      ...p.income.flatMap((i) => byIncome.get(i.id) ?? []),
+      ...p.expenses.flatMap((e) => byExpense.get(e.id) ?? []),
+      ...p.loans.flatMap((l) => byLoan.get(l.id) ?? []),
+    ];
+    return {
+      ...p,
+      income: p.income.map((inc) =>
+        attach(inc, incomeMap.get(inc.id), inc.amount, inc.type === 'RENTAL' || inc.type === 'RENT'),
+      ),
+      expenses: p.expenses.map((exp) => attach(exp, expenseMap.get(exp.id), exp.amount, false)),
+      loans: p.loans.map((loan) => attach(loan, loanMap.get(loan.id), loan.minRepayment, false)),
+      linkedTransactions,
+    };
+  }) as EnrichedProperty<P>[];
 }

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**8 total** · 6 open · 🔵 0 · 🟡 5 · 🟠 1 · 🟢 0 · ✅ 2
+**10 total** · 8 open · 🔵 1 · 🟡 5 · 🟠 2 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -15,6 +15,8 @@
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
 | MON-007 | ✅ CLOSED | 🟡 | no | -$100,912 vs -$46,897 don't add up | #1333 | n/a |
 | MON-008 | 🟡 DIAGNOSED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | — | n/a |
+| MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
+| MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
 
 ---
 
@@ -158,4 +160,40 @@ Same hero tile before/after reassigning rentals; reconciles once the hidden loan
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9`
 
 Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field exists at LoanFormDialog:531.)
+
+### MON-009 — Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
+
+> **What was wrong:** A property's rent was shown at its typed-in 'monthly' amount even though the reconciled payments are fortnightly, and because reconciliation had split the one rental into 4 separate 'monthly' income records, the rent was added up 4 times — so the rental income (and the dashboard totals that use it) was far too high. The same 'read the typed frequency, not the real dates' weakness applied to expenses and loan repayments.
+>
+> **What changed:** One universal rule now powers rent, expenses and loan repayments: each is worked out as a true MONTHLY figure read from the actual transaction DATES (so fortnightly rent, two repayments in a month, or a quarterly water rate all come out right), falling back to your typed values only when there aren't enough transactions. Rent is pooled at the property level so a rental split across several records is counted ONCE. The same engine now feeds the property pages AND the dashboard/net-worth/health totals. Reconciling a rent payment now links to the property's existing rental instead of creating another 'monthly' record.
+>
+> **What you should see:** Open the property: rent shows as ONE 'Rental income' line with the real cadence (e.g. 'fortnightly'), at the correct monthly amount — not 4 monthly rows. The rent, cashflow, and the dashboard's income/savings/health reflect the true (lower) rent. A quarterly expense reads as ~1/3 per month; two loan repayments in a month read as the combined monthly cost.
+
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:345`, `lib/services/masterFinancialService.ts:1114`, `app/dashboard/properties/[id]/page.tsx:681`
+- **Neomatrix:** `engine.monthlyResolver.resolveMonthly`, `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/page.tsx`, `app/dashboard/properties/[id]/page.tsx`, `lib/services/masterFinancialService.ts`
+- **Fix PR(s):** #1337
+- **Holistic test (§19.4):** `tests/calculations/monthlyResolver.test.ts`
+- **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
+
+Generalises MON-001 (fortnightly-as-monthly) to a universal monthly resolver (lib/calculations/monthlyResolver.ts) read from transaction dates, used by the property engine + masterFinancialService buildPropertyMetrics + aggregate income (rental deduped). Rent pooled at property-stream level fixes the 4-record over-count. Source fix: create-income-from-transaction reuses an existing property rental stream. TAX (buildTaxSummary) intentionally NOT changed here — rental/CGT tax treatment is §12.14-sensitive; tracked as MON-010 follow-up. Status FIXING until Reza verifies on his data.
+
+### MON-010 — Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-03
+
+> **What was wrong:** The tax position still adds up rental income from the raw income records, so a rental fragmented across several records over-counts the taxable rental income (the cashflow/dashboard side is fixed in MON-009, but tax was deliberately left untouched).
+>
+> **What changed:** (planned) Feed the tax summary the same deduped, actuals-first property rental the rest of the app uses — done carefully because rental/CGT tax treatment is reform-sensitive (§12.14).
+>
+> **What you should see:** (after fix) The tax position reflects the true rental income, matching the property page and dashboard.
+
+- **Root cause:** `lib/services/masterFinancialService.ts:1848`
+- **Downstream consumers (§19.4):** `lib/services/masterFinancialService.ts`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
+
+Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block.
 

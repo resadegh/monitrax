@@ -125,6 +125,8 @@ interface Property {
   income?: IncomeItem[];
   expenses?: ExpenseItem[];
   depreciationSchedules?: DepreciationSchedule[];
+  /** Reconciled transactions for this property — feed the canonical cashflow engine (MON-009). */
+  linkedTransactions?: Array<{ date: string | Date; amount: number; incomeId: string | null; expenseId: string | null; loanId: string | null }>;
 }
 
 // =============================================================================
@@ -146,7 +148,7 @@ function computeLvr(p: Property): number {
 // (lib/calculations/propertyCashflow.ts) — actuals-first, loan never $0 — the
 // same engine the property list page reads. No inline re-derivation here.
 function cashflowOf(p: Property) {
-  return computePropertyCashflow({ income: p.income, expenses: p.expenses, loans: p.loans });
+  return computePropertyCashflow({ income: p.income, expenses: p.expenses, loans: p.loans, transactions: p.linkedTransactions });
 }
 
 function computeAnnualDepreciation(p: Property): number {
@@ -672,7 +674,27 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
     });
   });
 
-  (property.income ?? []).forEach((i) => {
+  // MON-009: a fortnightly rental reconciled into several Income records must
+  // NOT show as N "monthly" rows. Collapse all rental income into ONE stream row
+  // showing the true monthly figure + the cadence detected from the dates.
+  const incomeRows = property.income ?? [];
+  const rentalRows = incomeRows.filter((i) => i.type === 'RENT' || i.type === 'RENTAL');
+  const otherIncome = incomeRows.filter((i) => i.type !== 'RENT' && i.type !== 'RENTAL');
+  if (rentalRows.length > 0) {
+    const cf = cashflowOf(property);
+    const cadence = (cf.detectedRentFrequency ?? rentalRows[0].frequency).toLowerCase();
+    items.push({
+      id: 'inc-rental-stream',
+      icon: TrendingUp,
+      iconTone: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
+      title: 'Rental income',
+      subtitle: `${cadence} · from ${rentalRows.length} ${rentalRows.length === 1 ? 'source' : 'sources'}`,
+      amount: `+${formatCurrency(cf.monthlyRent)}/mo`,
+      amountTone: 'text-emerald-700 dark:text-emerald-300',
+      href: '/dashboard/income',
+    });
+  }
+  otherIncome.forEach((i) => {
     items.push({
       id: `inc-${i.id}`,
       icon: TrendingUp,

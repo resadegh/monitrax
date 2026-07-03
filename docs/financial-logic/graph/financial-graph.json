@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1704,
+      "line": 1773,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -5495,14 +5495,14 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 81,
+      "line": 93,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "Per-property annual rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow (rent − expenses − repayment) and tax cashflow (rent − expenses − interest). ONE source for both property surfaces.",
-      "formula": "annualRent = Σ rental income (actual monthlyAvg×12 when hasTransactions, else declared×freq); annualExpenses = Σ expenses (same rule); annualLoanInterest = Σ principal×interestRateAnnual; annualLoanRepayment = Σ (actual×12 | manual minRepayment×freq | interest floor — never $0); cashflow = rent − expenses − repayment; taxCashflow = rent − expenses − interest.",
+      "produces": "Per-property annual + MONTHLY rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow and tax cashflow, plus the rental cadence detected from the dates. ONE source for every property surface (list, detail, master snapshot).",
+      "formula": "Each line → true monthly via monthlyResolver (day-span from transaction dates when ≥2 tx, declared×freq otherwise). RENT pooled at the property-STREAM level (all rental tx) so records fragmented by reconciliation are counted once. loanRepayment = actual → manual → interest floor (never $0). annual = monthly×12; cashflow = rent−expenses−repayment; taxCashflow = rent−expenses−interest.",
       "authority": "Property cashflow = rent − holding costs − loan servicing. §19.1 actuals-first; interest-only is the deductible figure (principal is not deductible). Loan cost never silently $0.",
       "inputs": [
         {
@@ -5608,6 +5608,52 @@
       "astHash": null,
       "verifiedBy": "app/dashboard/properties/page.tsx:722",
       "workedExample": null,
+      "verifiedDate": "2026-07-03",
+      "status": "documented"
+    },
+    {
+      "id": "engine.monthlyResolver.resolveMonthly",
+      "kind": "engine",
+      "label": "Monthly resolver (actuals-first)",
+      "file": "lib/calculations/monthlyResolver.ts",
+      "line": 123,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "A TRUE monthly figure for any money line (rent / expense / loan repayment) read from its reconciled transaction dates — correct for any cadence (fortnightly, twice-a-month, quarterly) — with declared amount×frequency as the fallback.",
+      "formula": "≥2 tx → day-span average ×30.4375/month (cadence from dates); 1 tx → actual amount × declared frequency → monthly; 0 tx → declared monthly. isAdvance (rent) drops the trailing part-period.",
+      "authority": "CLAUDE.md §19.1 actuals-first; 30.4375 = 365.25/12 mean days per month. Reza directive 2026-07-03 (universal, shown monthly).",
+      "inputs": [
+        {
+          "name": "transaction.date",
+          "unit": "date",
+          "type": "Date",
+          "note": "per linked line/stream"
+        },
+        {
+          "name": "transaction.amount",
+          "unit": "AUD",
+          "type": "number",
+          "note": "abs; sign ignored"
+        },
+        {
+          "name": "declaredMonthly",
+          "unit": "AUD/month",
+          "type": "number",
+          "note": "fallback when 0 tx"
+        },
+        {
+          "name": "cadenceHintFrequency",
+          "unit": "enum",
+          "type": "string",
+          "note": "normalises a single actual payment"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/monthlyResolver.test.ts (fortnightly / twice-a-month / quarterly / 1-tx / declared)",
+      "workedExample": "fortnightly $1195 → 1195/14×30.4375 ≈ $2,598/mo; quarterly $300 → 300/91×30.4375 ≈ $100/mo",
       "verifiedDate": "2026-07-03",
       "status": "documented"
     }
@@ -8652,6 +8698,26 @@
       "fromUnit": "AUD",
       "toUnit": "AUD",
       "evidence": "PropertyTile metrics.cashflow (converged with detail)",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.UnifiedTransaction",
+      "to": "engine.monthlyResolver.resolveMonthly",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD/month",
+      "evidence": "monthlyResolver.ts:123 day-span from tx dates",
+      "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "engine.monthlyResolver.resolveMonthly",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts resolveMonthly per line (rent pooled at stream level)",
       "verifiedDate": "2026-07-03"
     }
   ]
