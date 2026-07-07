@@ -662,7 +662,7 @@
     {
       "id": "MON-024",
       "title": "\"High Discretionary Spending\" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-07",
@@ -684,7 +684,9 @@
         "app/api/dashboard/insights/route.ts",
         "lib/services/masterFinancialService.ts"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1341
+      ],
       "test": "tests/calculations/oneOffExpenses.test.ts",
       "tracker": "docs/issues/ISSUES.md",
       "notes": "Regression introduced by MON-023 (denominator switched to recurring.total while discretionary/essential slices stayed all-inclusive). Fix: (1) insights route derives essential/discretionary/total from the SAME recurring expenseDetails set; (2) buildExpenseBreakdown essential/discretionary slices now also filter isRecurring !== false so essential+discretionary==recurring total everywhere. Regression test asserts discretionary/total <= 100%. FIXING until Reza verifies."

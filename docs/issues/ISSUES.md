@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**24 total** · 21 open · 🔵 10 · 🟡 8 · 🟠 3 · 🟢 0 · ✅ 2
+**24 total** · 21 open · 🔵 10 · 🟡 7 · 🟠 4 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -30,7 +30,7 @@
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
-| MON-024 | 🟡 DIAGNOSED | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | — | ✅ |
+| MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 
 ---
 
@@ -442,7 +442,7 @@ Reza decision 2026-07-07: one-offs excluded from monthly recurring views, shown 
 
 ### MON-024 — "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-07
 
 > **What was wrong:** The dashboard warned 'High Discretionary Spending — 906% of your expenses are non-essential', which is impossible. After the one-off fix (MON-023) the 'total expenses' denominator counted RECURRING only, but the discretionary figure still included one-off purchases — so a one-off discretionary buy (a battery) was divided by a much smaller recurring total, giving 906%.
 >
@@ -453,6 +453,7 @@ Reza decision 2026-07-07: one-offs excluded from monthly recurring views, shown 
 - **Root cause:** `app/api/dashboard/insights/route.ts:242`, `lib/services/masterFinancialService.ts:892`
 - **Neomatrix:** `orchestrator.masterFinancialService.getMasterFinancialSnapshot`, `orchestrator.dashboardInsights.GET`
 - **Downstream consumers (§19.4):** `app/api/dashboard/insights/route.ts`, `lib/services/masterFinancialService.ts`
+- **Fix PR(s):** #1341
 - **Holistic test (§19.4):** `tests/calculations/oneOffExpenses.test.ts`
 - **Detail:** `docs/issues/ISSUES.md`
 
