@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**10 total** · 8 open · 🔵 1 · 🟡 5 · 🟠 2 · 🟢 0 · ✅ 2
+**22 total** · 20 open · 🔵 11 · 🟡 7 · 🟠 2 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -17,6 +17,18 @@
 | MON-008 | 🟡 DIAGNOSED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | — | n/a |
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
+| MON-011 | 🔵 OPEN | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | — | — |
+| MON-012 | 🔵 OPEN | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | — | — |
+| MON-013 | 🔵 OPEN | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | — | — |
+| MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles mix FIELDS per row — 'Monthly Cash Flow' column shows rent for some properties, cashflow for others | — | — |
+| MON-015 | 🔵 OPEN | 🟡 | yes | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist | — | — |
+| MON-016 | 🔵 OPEN | 🟡 | yes | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | — |
+| MON-017 | 🔵 OPEN | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | — | — |
+| MON-018 | 🟡 DIAGNOSED | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | — | — |
+| MON-019 | 🟡 DIAGNOSED | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | — | — |
+| MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323); /cashflow estimate omits Medicare (~$8,319); CFO deductions breakdown exceeds its own total and mixes a BENEFIT into DEDUCTIONS | — | — |
+| MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
+| MON-022 | 🔵 OPEN | 🟡 | yes | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | — |
 
 ---
 
@@ -55,7 +67,7 @@ Reconcile write paths never persist the detected cadence; property page annualis
 - **Holistic test (§19.4):** `tests/calculations/propertyCashflow.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-2`
 
-Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-first P&I headline, interest-only tax) + ONE shared actuals producer lib/services/propertyActuals.ts (batched into BOTH the list and detail APIs so tiles match the detail page — §19.4 same-number-everywhere). Modelled in the Neomatrix (engine.propertyCashflow.computePropertyCashflow + number.propertyCashflow, both surfaces converge on one engine — A3). Folds in MON-001 (fortnightly-as-monthly: actuals-first monthlyAverageActual fixes it) + MON-006 (cash-vs-tax basis: both returned explicitly). Status stays FIXING until Reza tests the numbers on his data.
+Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-first P&I headline, interest-only tax) + ONE shared actuals producer lib/services/propertyActuals.ts (batched into BOTH the list and detail APIs so tiles match the detail page — §19.4 same-number-everywhere). Modelled in the Neomatrix (engine.propertyCashflow.computePropertyCashflow + number.propertyCashflow, both surfaces converge on one engine — A3). Folds in MON-001 (fortnightly-as-monthly: actuals-first monthlyAverageActual fixes it) + MON-006 (cash-vs-tax basis: both returned explicitly). Status stays FIXING until Reza tests the numbers on his data. Prod-verification 2026-07-07: production deploy dpl_45wwUPDYKyKz86mEAhNPznYGbPji (2026-07-03 10:16:44 UTC) carries #1337 (merged 10:16:41 UTC), so the fix IS live — but Reza's 2026-07-07 capture shows property DETAIL pages correct while the Properties LIST still shows stale cashflow/yields (e.g. Lot 1 -$74,614) and Home tiles bind RENT into the cashflow column (Broadbeach +$5,461). Convergence is DETAIL-ONLY; list + Home tiles have NOT converged → MUST NOT advance to VERIFIED. Residual list/Home divergence tracked as MON-014.
 
 ### MON-003 — DEPRECIATION / YR always $0 (reads a field absent from the model)
 
@@ -178,7 +190,7 @@ Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earl
 - **Holistic test (§19.4):** `tests/calculations/monthlyResolver.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 
-Generalises MON-001 (fortnightly-as-monthly) to a universal monthly resolver (lib/calculations/monthlyResolver.ts) read from transaction dates, used by the property engine + masterFinancialService buildPropertyMetrics + aggregate income (rental deduped). Rent pooled at property-stream level fixes the 4-record over-count. Source fix: create-income-from-transaction reuses an existing property rental stream. TAX (buildTaxSummary) intentionally NOT changed here — rental/CGT tax treatment is §12.14-sensitive; tracked as MON-010 follow-up. Status FIXING until Reza verifies on his data.
+Generalises MON-001 (fortnightly-as-monthly) to a universal monthly resolver (lib/calculations/monthlyResolver.ts) read from transaction dates, used by the property engine + masterFinancialService buildPropertyMetrics + aggregate income (rental deduped). Rent pooled at property-stream level fixes the 4-record over-count. Source fix: create-income-from-transaction reuses an existing property rental stream. TAX (buildTaxSummary) intentionally NOT changed here — rental/CGT tax treatment is §12.14-sensitive; tracked as MON-010 follow-up. Status FIXING until Reza verifies on his data. Prod-verification 2026-07-07: #1337 IS live in production (dpl_45ww, 2026-07-03 10:16:44 UTC) but the Properties LIST + Home per-property tiles still diverge from the corrected detail pages (list/Home divergence is LIVE, not cache) → MUST NOT advance to VERIFIED. Home tile rent-in-cashflow binding tracked as MON-014.
 
 ### MON-010 — Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted
 
@@ -196,4 +208,213 @@ Generalises MON-001 (fortnightly-as-monthly) to a universal monthly resolver (li
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 
 Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block.
+
+### MON-011 — Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-07
+
+> **What was wrong:** Your total property equity is shown $37,076 too high on Home, My Guide and Balances. A property that owes more than it's worth (equity -$37,076) is clamped to $0 before the total is added up, so the negative never subtracts.
+>
+> **What changed:** (planned) Sum true signed equity for portfolio totals; keep the $0 floor only for per-property display if desired, clearly labelled.
+>
+> **What you should see:** (after fix) Portfolio equity reads $2,955,102 everywhere (matching the Properties page), not $2,992,178.
+
+- **Root cause:** `lib/utils/calculations.ts:25`
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `app/dashboard/cfo`, `app/dashboard/balances`, `lib/cfo/decisionSupport/propertyDecisionSupport.ts:248`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #1`
+
+Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactly (Lot 1's -37,076 floored). True sum = 2,955,102. Anchor verification 2026-07-07 (§19.2): the floor is calculateEquity = Math.max(0, propertyValue - loanBalance) at lib/utils/calculations.ts:25 (proposal cited :24 = the function signature; the defect line is :25). Consumer that sums floored per-property equity into the portfolio total to be pinned at diagnosis (suspect propertyDecisionSupport.ts:248 + the hidden-wealth/balances bucket builder that reads snapshot.propertyPortfolioEquity — feeds MON-012).
+
+### MON-012 — Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: balances · opened 2026-07-07
+
+> **What was wrong:** On Balances, Liquid + Accessible + Locked = $3,398,482 but net worth is $3,333,910 — a $64,572 hole. Three causes: the inflated equity (+37,076), the credit card -2,496 not netted from liquid cash, and the HECS -25,000 in no bucket at all.
+>
+> **What changed:** (planned) Buckets must sum to net worth: use signed equity, net credit against liquid, assign HECS to a bucket.
+>
+> **What you should see:** (after fix) The three buckets add exactly to the Net worth figure on the same page.
+
+- **Root cause:** `app/api/dashboard/hidden-wealth/route.ts:56`, `app/api/dashboard/hidden-wealth/route.ts:51`, `app/api/dashboard/hidden-wealth/route.ts:53`
+- **Downstream consumers (§19.4):** `app/dashboard/balances/page.tsx`, `app/api/dashboard/hidden-wealth/route.ts`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #2`
+
+64,572 = 37,076 + 2,496 + 25,000 exactly. Anchor verification 2026-07-07 (§19.2): the bucket builder is app/api/dashboard/hidden-wealth/route.ts — lockedLongTerm = propertyEquity + superannuation + personalAssets at :56 (propertyEquity = snapshot.propertyPortfolioEquity at :53, the floored/inflated value from MON-011); liquidToday = snapshot.quickMetrics.liquidCash at :51 (does NOT net the -2,496 credit card); HECS -25,000 is assigned to no bucket. Add a permanent reconciliation test: liquidToday + accessible + lockedLongTerm === netWorth.
+
+### MON-013 — Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets'
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: core · opened 2026-07-07
+
+> **What was wrong:** Your $67,871 sitting as cash in 6 investment accounts is missing from Net worth ($3,333,911) and Total assets ($5,393,808) — net worth is understated by $67,871. Yet the Home 'Assets $5.5M' tile DOES include it, so two screens disagree about what you own.
+>
+> **What changed:** (planned) Value an investment account as holdings (units×price) PLUS cash balance in the one canonical net-worth engine; delete the second assets producer.
+>
+> **What you should see:** (after fix) Net worth rises ~$67,871 and Assets/Total assets/Net worth agree across Home, Balances and Investments.
+
+- **Root cause:** `lib/calculations/netWorthCalculator.ts:217`, `lib/calculations/assetValuation.ts:44`
+- **Neomatrix:** `number.netWorth`
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `app/dashboard/balances`, `lib/services/masterFinancialService.ts`, `lib/calculations/entityBreakdown.ts`, `lib/services/netWorthSnapshotRecorder.ts`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #3`
+
+Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (investments contribute $0: units×price with 0 holdings). Assets tile 5.5M ~= 5,393,808+67,871. §12.2.1 duplicate source + valuation gap. Anchor verification 2026-07-07 (§19.2): holdingMarketValue = units × (currentPrice || averagePrice) at lib/calculations/assetValuation.ts:44 (no cash term); the canonical calculateNetWorth at lib/calculations/netWorthCalculator.ts:217 aggregates via calculateTotalAssets and never adds investment-account cash. Stored NetWorthSnapshot history carries the old basis — note it, don't rewrite history silently.
+
+### MON-014 — Home per-property tiles mix FIELDS per row — 'Monthly Cash Flow' column shows rent for some properties, cashflow for others
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: dashboard · opened 2026-07-07
+
+> **What was wrong:** On the Home property tiles, the 'Monthly Cash Flow' number is true cashflow for some properties (Lot 1: -$3,908 correct) but the RENTAL INCOME for others (Broadbeach shows +$5,461 = its rent; real cashflow ~+$4,190). Same column, different meaning per row.
+>
+> **What changed:** (planned) Bind the tile to number.propertyCashflow (computePropertyCashflow) for every property — same source as the detail page.
+>
+> **What you should see:** (after fix) Each Home tile's monthly figure × 12 equals the property detail page's Cashflow/yr.
+
+- **Root cause:** `components/dashboard/tiles/DashboardPropertyTile.tsx:156`
+- **Neomatrix:** `number.propertyCashflow`, `engine.propertyCashflow.computePropertyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `app/dashboard/properties/page.tsx`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #4`
+
+Anchor verification 2026-07-07 (§19.2): the Home tile renders property.cashflow.monthlyNet under the 'Monthly Cash Flow' label at components/dashboard/tiles/DashboardPropertyTile.tsx:156 (label :147); the value is produced upstream in masterFinancialService buildPropertyMetrics and, for some rows, equals the rent rather than the cashflow. Prod-verification 2026-07-07: #1337 IS live in production (dpl_45ww, 2026-07-03 10:16:44 UTC) yet the Properties LIST also still diverges from the corrected detail pages (e.g. Lot 1 -$74,614, stale yields) — so this is LIVE, not cache, and blocks MON-002/MON-009 from VERIFIED. This issue captures the Home tile rent-in-cashflow binding + the residual list divergence; fix binds every surface to the one computePropertyCashflow source (§19.4).
+
+### MON-015 — Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: dashboard · opened 2026-07-07
+
+> **What was wrong:** The widget says -$17,121/yr total but its own lines (-13,149 + 27,358 - 30,675) add to -$16,466 — $655 unexplained. It also says '12 entities' when the universe has 9.
+>
+> **What changed:** (planned) Make the total the sum of the displayed components (or display the missing component), and count entities from the one entity source.
+>
+> **What you should see:** (after fix) The lines add up to the total, and the entity count matches My Structure.
+
+- **Root cause:** `lib/calculations/entityBreakdown.ts:86`
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #5`
+
+Anchor verification 2026-07-07 (§19.2): buildEntityBreakdown at lib/calculations/entityBreakdown.ts:86 partitions rows by owning entity and omits entities with no holdings (see :80-85 comment) — a candidate cause of both the count mismatch (9 shown vs '12') and the additivity gap if the widget total and the displayed lines are sourced differently. Widget composer (app/dashboard/page.tsx) to be pinned at diagnosis. Additivity test candidate: sum(displayed components) === displayed total.
+
+### MON-016 — Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: dashboard · opened 2026-07-07
+
+> **What was wrong:** Debt quality shows Good $1,657,076 + Bad $25,000 = $1,682,076, but total debt is $2,059,898 — the $377,822 home loan is in the total but classified as neither.
+>
+> **What changed:** (planned) Every loan gets a classification; buckets must sum to total debt.
+>
+> **What you should see:** (after fix) Good + Bad (+ any 'Neutral/Home') = total debt exactly.
+
+- **Root cause:** `components/dashboard/DebtQualityWidget.tsx:370`
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #6`
+
+1,657,076 = the three investment Bankwests exactly; 25,000 = HECS. Anchor verification 2026-07-07 (§19.2): calculateDebtQuality (components/dashboard/DebtQualityWidget.tsx:340) DOES map type==='HOME' -> neutral and type STUDENT/PERSONAL/etc -> bad (switch at :370), and the widget renders a neutral bar/legend (:222-223, :243-248). So the $377,822 home loan should land in NEUTRAL, not vanish. Root cause is therefore NOT a missing branch — it is either (a) the Guildford loan's stored type is not 'HOME' (falls to default -> bad, but bad=25,000=HECS only, so it is instead dropped upstream / filtered before the widget), or (b) the total-debt figure includes a loan not passed to the classifier. Confirm the loan's type + the loans[] passed in at diagnosis — do NOT guess a fix (§19.2). Buckets must sum to total (good+neutral+bad===totalDebt) — add that as the propagation test.
+
+### MON-017 — Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: safety-net · opened 2026-07-07
+
+> **What was wrong:** Safety Net awards 100/100 including 15/15 for 'Positive Cashflow' while every cashflow surface is negative (-$6,073/mo). 'Recovery ~1 month' after a $3,000 shock is impossible with a negative surplus — invented number. 30/30 for bills is credit for 0 tracked bills. Home says 6-month target, this page says 3 months, same 11.7 figure.
+>
+> **What changed:** (planned) Score cashflow from the canonical monthly cashflow (fail when negative); recovery = cost ÷ actual surplus, shown as 'not recovering' when surplus <= 0; bills neutral at 0 tracked; ONE emergency-target source.
+>
+> **What you should see:** (after fix) With negative cashflow the score drops below 100, recovery shows honestly, and the target months read the same on Home and Safety Net.
+
+- **Root cause:** `app/api/safety-net/route.ts:85`, `app/api/safety-net/route.ts:52`, `app/api/safety-net/route.ts:82`
+- **Neomatrix:** `number.monthlyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/safety-net/page.tsx`, `app/dashboard/page.tsx`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #7`
+
+§0.3 no-invented-numbers. Anchor verification 2026-07-07 (§19.2), all in app/api/safety-net/route.ts: cashflowScore = monthlySurplus > 0 ? 15 : monthlySurplus > -200 ? 8 : 0 at :85 (awards 15/15 only if monthlySurplus reads POSITIVE — i.e. monthlySurplus is sourced declared, not the canonical negative actuals — the §19.1 root); targetMonths = 3 HARDCODED at :52 (contradicts Home's 6-month target — one-source fix); billsScore = totalBills > 0 ? (billsOnTime/totalBills)*30 : 30 at :82 (0/0 bills scores full 30/30); recoveryWeeks guards monthlySurplus>0 at :100/:106/:112 (shows a real figure only because monthlySurplus reads positive — same declared-source root). Also 4 colliding scores (Safety 100 / Health 56 / CFO 48 / Cashflow-health 75) need distinct labels.
+
+### MON-018 — CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend
+
+**🟡 DIAGNOSED** · 🔴 critical · changes numbers: **yes** · area: cfo · opened 2026-07-07
+
+> **What was wrong:** My Guide shows 'Net worth change $64,638 (+2%)' every month — computed against last-month = this-month × 0.98, a placeholder in code, not your history. Real trend from stored snapshots is +0.2% over 2 months.
+>
+> **What changed:** (planned) Point monthly progress at the canonical NetWorthSnapshot history (netWorthHistory.ts) and delete the local placeholder net-worth copy.
+>
+> **What you should see:** (after fix) My Guide's monthly change matches the Home Net Worth trend tile.
+
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:176`
+- **Neomatrix:** `number.netWorthTrendDelta`, `engine.intelligenceEngine.calculateMonthlyProgressNetWorth`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #8`
+
+Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (§19.2): the placeholder is lastMonthNetWorth = currentNetWorth * 0.98 at lib/cfo/intelligenceEngine.ts:176 (inside calculateMonthlyProgress; netWorthChange :177, percent :178) — NOT :377, which the proposal cited but is the Decimal sibling calculateMonthlyProgressNetWorthDecimal whose own JSDoc (:374) points AT this ×0.98 placeholder. Canonical replacement: netWorthHistory.getNetWorthHistory over stored NetWorthSnapshot. Savings rate -39.1% on the same card disagrees with the -30.5% KPI — include in the downstream sweep.
+
+### MON-019 — 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: cfo · opened 2026-07-07
+
+> **What was wrong:** Loan opportunities says extra repayments 'save 69 years'. The engine returns 999 months as code for 'this interest-only loan never pays off at the current payment'; the screen subtracts 999 - ~168 = 831 months = 69 years as if real. Benefit also shows negative (-$270,328), and it recommends refinancing a 104% LVR loan no lender would write.
+>
+> **What changed:** (planned) Treat 999 as 'not currently amortising' (never do arithmetic on it); fix the benefit sign; suppress/flag refinance recs above ~95% LVR.
+>
+> **What you should see:** (after fix) IO loans show 'doesn't amortise at current payment' instead of years-saved; benefit positive; no refinance suggestion on the 104% loan.
+
+- **Root cause:** `lib/cfo/decisionSupport/loanDecisionSupport.ts:635`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #9`
+
+999-168 = 831mo = 69.25yr matches the display exactly. Anchor verification 2026-07-07 (§19.2): calculatePayoffMonths at lib/cfo/decisionSupport/loanDecisionSupport.ts:635 returns the 999 sentinel when monthlyPayment <= 0 (:640) or when the payment doesn't cover interest (:646-647, interest-only) — an IO loan therefore returns 999 and the downstream 'years saved' arithmetic subtracts it as if it were a real payoff horizon. Fix: treat 999 as UNCOMPUTED ('not amortising'), never subtract it; correct the benefit sign; suppress refinance recs above ~95% LVR (§0 financial-adviser lens).
+
+### MON-020 — Two tax engines disagree ($153,278 vs $104,323); /cashflow estimate omits Medicare (~$8,319); CFO deductions breakdown exceeds its own total and mixes a BENEFIT into DEDUCTIONS
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-07
+
+> **What was wrong:** Cashflow page estimates $153,278 annual tax; My Guide estimates $104,323 — same person, same year. The cashflow figure back-solves to income tax with NO Medicare levy (~$8,319 missing). My Guide's deductions card says total $230,820 but its lines (Property $229,500 + Neg-gearing benefit $96,267) sum to $325,767 — and a tax BENEFIT ($ saved) sits inside DEDUCTIONS ($ off income).
+>
+> **What changed:** (planned) One tax estimate: every surface routes through the master tax position (incl. Medicare); deductions card shows only deductions, benefit separately in $-saved terms.
+>
+> **What you should see:** (after fix) Cashflow and My Guide show the same estimated tax, and the deductions lines add to the deductions total.
+
+- **Root cause:** `app/api/cashflow/intelligence/route.ts:457`, `lib/cfo/decisionSupport/taxIntegration.ts:293`
+- **Neomatrix:** `number.taxPayable`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo`, `app/api/cashflow/intelligence/route.ts`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #10`
+
+Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. Anchor verification 2026-07-07 (§19.2): the /cashflow estimate is estimatedTax = calculateIncomeTax(taxableIncome).taxPayable at app/api/cashflow/intelligence/route.ts:457 — income tax only, no Medicare levy added (the ~$8,319 gap); this is a SECOND tax producer parallel to the master tax position (§12.2.1 duplicate). calculateNegativeGearingBenefit at lib/cfo/decisionSupport/taxIntegration.ts:293 returns a tax BENEFIT ($ saved) that the CFO deductions card mixes into DEDUCTIONS ($ off income) and lets the lines exceed the stated total. Fix routes every surface through the master tax position and separates benefit from deduction.
+
+### MON-021 — /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cashflow · opened 2026-07-07
+
+> **What was wrong:** The same page says Money In $0 (real transactions this month) and, in another widget, In +$43,736 (typed plan) — no label saying which is which. My Guide projects month-end $262,672 while Cashflow's 30-day forecast says $301,639.
+>
+> **What changed:** (planned) Every flow figure routes through the canonical resolver with its basis labelled ('actual'/'plan'); one forecast producer.
+>
+> **What you should see:** (after fix) The two widgets agree or are explicitly labelled Actual vs Plan; My Guide and Cashflow show the same month-end projection.
+
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:255`
+- **Neomatrix:** `number.monthlyCashflow`, `number.canonicalCashflow.monthlyInflow`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo`, `app/api/cashflow/intelligence/route.ts`, `app/dashboard/cashflow`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #11`
+
+§19.1. Anchor verification 2026-07-07 (§19.2): the My Guide month-end forecast is projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining) at lib/cfo/intelligenceEngine.ts:255 (rounded + returned :266) — a SECOND forecast producer parallel to Cashflow's 30-day forecast (the $39K disagreement). Proposal cited :354, which is the Decimal sibling calculateProjectedMonthEndBalanceDecimal, not the Float path actually rendered. The /cashflow unlabelled actual-vs-declared money-flow producer (In $0 vs In +$43,736) to be pinned at diagnosis. Related: Home mixes trailing-actual income ($239K) with declared ($484K) on one screen; '+1048.2% YoY' near-zero-baseline artifact to suppress; Activity 'keep 0%' vs components summing 173% same family.
+
+### MON-022 — Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: data-quality · opened 2026-07-07
+
+> **What was wrong:** Several typed records look wrong and poison every total: a battery system booked $11,385 EVERY month (~$137K/yr — likely a one-off; it alone drives most of Laguna's -$184,660/yr), Renew Group's $15,000/mo ATO tax counted as household spending, purchase price $0 showing '+0.0% gain', owner-occupied homes showing rental yields, counts drifting (26 vs 24 holdings, 9 vs 12 entities).
+>
+> **What changed:** (planned) Validation + review surface: flag implausible recurring amounts, one-off vs recurring toggle at entry, suppress gain% when purchase unknown, suppress yield on owner-occupied, one count source.
+>
+> **What you should see:** (after fix) The app flags the battery entry for review; Laguna's cashflow normalises; no '+0.0%' on unknown purchase; no yield on your home.
+
+- **Downstream consumers (§19.4):** `all cashflow/expense surfaces`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `chat audit 2026-07-07 #12`
+
+Product/validation gap (no single code defect): rootCause deliberately left EMPTY — these are missing input-validation + review affordances, not a wrong line (§19.2 never guess an anchor). Freedom hero's -$20,590/mo net-passive matches no visible combination of property cashflows — anchor its inputs during the sweep. '3 producing income' label vs on-screen signs also here. Fix is Stitch-first for any new review surface (§18.2.1).
 
