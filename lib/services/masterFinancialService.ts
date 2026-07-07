@@ -889,13 +889,17 @@ function buildExpenseBreakdown(
     targetFrequency
   );
 
+  // MON-023: essential + discretionary are ONGOING monthly slices, so they
+  // exclude one-offs (same basis as `recurring`). This keeps essential +
+  // discretionary == recurring total, so a one-off discretionary purchase can
+  // never read as ">100% of expenses". One-offs live in `nonRecurring`.
   const essential = aggregateExpenses(
-    expenses.filter(e => e.isEssential === true).map(mapExpense),
+    expenses.filter(e => e.isEssential === true && e.isRecurring !== false).map(mapExpense),
     targetFrequency
   );
 
   const discretionary = aggregateExpenses(
-    expenses.filter(e => e.isEssential !== true).map(mapExpense),
+    expenses.filter(e => e.isEssential !== true && e.isRecurring !== false).map(mapExpense),
     targetFrequency
   );
 

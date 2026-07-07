@@ -41,6 +41,27 @@ describe('one-off expenses excluded from ongoing monthly spend', () => {
     expect(recurring.total).toBeLessThan(1000);
   });
 
+  it('essential + discretionary (recurring only) == recurring total — never >100% (the 906% bug)', () => {
+    const rows: Row[] = [
+      { amount: 1028, frequency: 'MONTHLY', isRecurring: true }, // insurance (essential)
+      { amount: 88, frequency: 'MONTHLY', isRecurring: true }, // other (discretionary)
+      { amount: 10105, frequency: 'MONTHLY', isRecurring: false }, // one-off discretionary (battery-ish)
+    ];
+    const essentialFlags = [true, false, false];
+    const withFlags = rows.map((r, i) => ({ ...r, isEssential: essentialFlags[i] }));
+    const agg = (rs: Array<Row & { isEssential: boolean }>) =>
+      aggregateExpenses(rs.map((e) => ({ amount: e.amount, frequency: e.frequency })), 'monthly').total;
+
+    const recurringTotal = agg(withFlags.filter((e) => e.isRecurring !== false));
+    const essential = agg(withFlags.filter((e) => e.isEssential && e.isRecurring !== false));
+    const discretionary = agg(withFlags.filter((e) => !e.isEssential && e.isRecurring !== false));
+
+    expect(essential + discretionary).toBeCloseTo(recurringTotal, 2); // partition holds
+    // the one-off $10,105 does NOT inflate discretionary → ratio ≤ 100% (was 906%)
+    expect((discretionary / recurringTotal) * 100).toBeLessThanOrEqual(100);
+    expect(discretionary).toBeCloseTo(88, 2);
+  });
+
   it('with no one-offs, recurring total equals the full total (no behaviour change)', () => {
     const rows: Row[] = [
       { amount: 200, frequency: 'MONTHLY', isRecurring: true },
@@ -63,9 +84,19 @@ describe('§19.4 one-source — ongoing monthly surfaces exclude one-offs', () =
     expect(src).toMatch(/isRecurring !== false/);
   });
 
-  it('dashboard insights tiles filter one-offs and total from recurring', () => {
+  it('dashboard insights tiles filter one-offs; essential/discretionary/total share one recurring base', () => {
     const src = readFileSync(resolve(ROOT, 'app/api/dashboard/insights/route.ts'), 'utf8');
+    // one-offs excluded from the monthly views
     expect(src).toMatch(/isRecurring !== false/);
-    expect(src).toMatch(/snapshot\.expenses\.monthly\.recurring\.total/);
+    // essential + discretionary + total all derived from the same recurring
+    // `expenseDetails` set (so a one-off can't push discretionary >100%)
+    expect(src).toMatch(/expenseDetails\.filter\(\(e\) => e\.isEssential\)/);
+    expect(src).toMatch(/expenseDetails\.filter\(\(e\) => !e\.isEssential\)/);
+  });
+
+  it('masterFinancialService essential/discretionary slices exclude one-offs', () => {
+    const src = readFileSync(resolve(ROOT, 'lib/services/masterFinancialService.ts'), 'utf8');
+    expect(src).toMatch(/isEssential === true && e\.isRecurring !== false/);
+    expect(src).toMatch(/isEssential !== true && e\.isRecurring !== false/);
   });
 });

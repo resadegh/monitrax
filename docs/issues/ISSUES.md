@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**23 total** · 20 open · 🔵 10 · 🟡 7 · 🟠 3 · 🟢 0 · ✅ 2
+**24 total** · 21 open · 🔵 10 · 🟡 8 · 🟠 3 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -30,6 +30,7 @@
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
+| MON-024 | 🟡 DIAGNOSED | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | — | ✅ |
 
 ---
 
@@ -438,4 +439,22 @@ Product/validation gap (no single code defect): rootCause deliberately left EMPT
 - **Detail:** `docs/issues/ISSUES.md`
 
 Reza decision 2026-07-07: one-offs excluded from monthly recurring views, shown as actual in-month. Fix: (1) insights moneyBleeding + byCategory filter isRecurring !== false + denominator = snapshot recurring total; (2) masterFinancialService quickMetrics.monthlyExpenses/health/freeCashDays/emergency-fallback + cashflow(savings) use recurring only; (3) link/route expense create reuses an existing matching expense (name+scope) instead of duplicating. The actuals path already showed one-offs correctly in-month. FIXING until Reza verifies.
+
+### MON-024 — "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-07
+
+> **What was wrong:** The dashboard warned 'High Discretionary Spending — 906% of your expenses are non-essential', which is impossible. After the one-off fix (MON-023) the 'total expenses' denominator counted RECURRING only, but the discretionary figure still included one-off purchases — so a one-off discretionary buy (a battery) was divided by a much smaller recurring total, giving 906%.
+>
+> **What changed:** Essential, discretionary and the total are now all measured on the SAME recurring basis (one-offs excluded from every slice), so essential + discretionary always equals the recurring total and the share can never exceed 100%.
+>
+> **What you should see:** The 'High Discretionary Spending' percentage is now sensible (0–100%). Essential + discretionary add up to your recurring monthly spend; a one-off purchase no longer distorts the split.
+
+- **Root cause:** `app/api/dashboard/insights/route.ts:242`, `lib/services/masterFinancialService.ts:892`
+- **Neomatrix:** `orchestrator.masterFinancialService.getMasterFinancialSnapshot`, `orchestrator.dashboardInsights.GET`
+- **Downstream consumers (§19.4):** `app/api/dashboard/insights/route.ts`, `lib/services/masterFinancialService.ts`
+- **Holistic test (§19.4):** `tests/calculations/oneOffExpenses.test.ts`
+- **Detail:** `docs/issues/ISSUES.md`
+
+Regression introduced by MON-023 (denominator switched to recurring.total while discretionary/essential slices stayed all-inclusive). Fix: (1) insights route derives essential/discretionary/total from the SAME recurring expenseDetails set; (2) buildExpenseBreakdown essential/discretionary slices now also filter isRecurring !== false so essential+discretionary==recurring total everywhere. Regression test asserts discretionary/total <= 100%. FIXING until Reza verifies.
 
