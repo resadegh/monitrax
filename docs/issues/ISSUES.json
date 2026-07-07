@@ -617,7 +617,7 @@
     {
       "id": "MON-023",
       "title": "One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-07",
@@ -641,7 +641,9 @@
         "lib/services/masterFinancialService.ts",
         "app/api/transactions/[id]/link/route.ts"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1340
+      ],
       "test": "tests/calculations/oneOffExpenses.test.ts",
       "tracker": "docs/issues/ISSUES.md",
       "notes": "Reza decision 2026-07-07: one-offs excluded from monthly recurring views, shown as actual in-month. Fix: (1) insights moneyBleeding + byCategory filter isRecurring !== false + denominator = snapshot recurring total; (2) masterFinancialService quickMetrics.monthlyExpenses/health/freeCashDays/emergency-fallback + cashflow(savings) use recurring only; (3) link/route expense create reuses an existing matching expense (name+scope) instead of duplicating. The actuals path (computeActualCashflow, date-based) already showed one-offs correctly in-month. isRecurring already defaults false on reconcile-create; the bug was display/aggregation ignoring it. FIXING until Reza verifies."

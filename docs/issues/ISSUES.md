@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**23 total** · 21 open · 🔵 11 · 🟡 8 · 🟠 2 · 🟢 0 · ✅ 2
+**23 total** · 21 open · 🔵 11 · 🟡 7 · 🟠 3 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -29,7 +29,7 @@
 | MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323); /cashflow estimate omits Medicare (~$8,319); CFO deductions breakdown exceeds its own total and mixes a BENEFIT into DEDUCTIONS | — | — |
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
 | MON-022 | 🔵 OPEN | 🟡 | yes | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | — |
-| MON-023 | 🟡 DIAGNOSED | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | — | ✅ |
+| MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 
 ---
 
@@ -421,7 +421,7 @@ Product/validation gap (no single code defect): rootCause deliberately left EMPT
 
 ### MON-023 — One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-07
 
 > **What was wrong:** One-off purchases (a battery, an ATO tax payment) showed as '$X/mo' on the dashboard — 'Where your money goes' and 'Spending by category' treated them as monthly recurring costs, inflating your spending, category chart and health/savings. And reconciling the same payment kept ADDING duplicate expense records instead of updating (three 'Battery' rows), worse when you unreconciled and reconciled again.
 >
@@ -432,6 +432,7 @@ Product/validation gap (no single code defect): rootCause deliberately left EMPT
 - **Root cause:** `app/api/dashboard/insights/route.ts:278`, `lib/calculations/expenseAggregator.ts:94`, `app/api/transactions/[id]/link/route.ts:589`
 - **Neomatrix:** `orchestrator.masterFinancialService.getMasterFinancialSnapshot`, `orchestrator.dashboardInsights.GET`
 - **Downstream consumers (§19.4):** `app/api/dashboard/insights/route.ts`, `lib/services/masterFinancialService.ts`, `app/api/transactions/[id]/link/route.ts`
+- **Fix PR(s):** #1340
 - **Holistic test (§19.4):** `tests/calculations/oneOffExpenses.test.ts`
 - **Detail:** `docs/issues/ISSUES.md`
 
