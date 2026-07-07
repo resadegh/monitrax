@@ -586,11 +586,27 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // Set isRecurring based on the checkbox - defaults to false for one-off/discretionary
             expenseData.isRecurring = body.isRecurring ?? false;
 
-            const expense = await prisma.expense.create({
-              data: expenseData,
+            // MON-011: don't duplicate an expense on re-reconcile. If an expense
+            // with the same name + linking scope already exists (e.g. an orphan
+            // left after an earlier unlink, or the record this transaction was
+            // reconciled to before), LINK the transaction to it instead of
+            // minting a second "Battery" row. The unlink action reverts the
+            // amount but doesn't delete the expense, so without this a
+            // reconcile→unreconcile→reconcile cycle stacks up duplicates.
+            const existingExpense = await prisma.expense.findFirst({
+              where: {
+                userId,
+                name: expenseData.name,
+                propertyId: expenseData.propertyId ?? null,
+                loanId: expenseData.loanId ?? null,
+                assetId: expenseData.assetId ?? null,
+              },
+              orderBy: { createdAt: 'asc' },
             });
 
-            // Link transaction to new expense
+            const expense = existingExpense ?? (await prisma.expense.create({ data: expenseData }));
+
+            // Link transaction to the (reused or new) expense
             await prisma.unifiedTransaction.update({
               where: { id: transactionId },
               data: {

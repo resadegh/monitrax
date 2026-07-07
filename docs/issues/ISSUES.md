@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**22 total** · 19 open · 🔵 10 · 🟡 7 · 🟠 2 · 🟢 0 · ✅ 2
+**23 total** · 20 open · 🔵 10 · 🟡 7 · 🟠 3 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -29,6 +29,7 @@
 | MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | — | — |
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
+| MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 
 ---
 
@@ -418,4 +419,23 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 - **Detail:** `chat audit 2026-07-07 #12`
 
 Product/validation gap (no single code defect): rootCause deliberately left EMPTY — these are missing input-validation + review affordances, not a wrong line (§19.2 never guess an anchor). Freedom hero's -$20,590/mo net-passive matches no visible combination of property cashflows — anchor its inputs during the sweep. '3 producing income' label vs on-screen signs also here. Fix is Stitch-first for any new review surface (§18.2.1). VALIDATED 2026-07-07 — split into TWO REAL display bugs (now anchored) + DATA/PRODUCT-GAP items: (i) owner-occupied HOME shows a rental yield — the tile correctly gates yield behind isInvestment (PropertyTile.tsx:396) but the DETAIL page renders MiniKpi 'Yield' gated only by !isRental (app/dashboard/properties/[id]/page.tsx:443/447), so a PRIMARY RESIDENCE shows 'Yield 0.00%'; fix = gate on isInvestment to match the tile. (ii) $0 purchase -> '+0.0% gain' — the claimed divide-by-zero is a MISREAD (all gain% producers guard purchasePrice>0: masterFinancialService.ts:1211, properties/page.tsx:447, [id]/page.tsx:163), BUT PropertyTile.tsx:343-350 renders the gain% + green TrendingUp UNCONDITIONALLY, so a $0-purchase property shows a fabricated '+0.0%'; the detail page correctly suppresses (page.tsx:432, gainPct!==0); fix = suppress on tile when purchase unknown. changesNumbers=false (both are render suppressions). The battery $11,385/mo, company ATO-as-household-spend, and count drift (26 vs 24 / 9 vs 12) are DATA-ENTRY + missing-validation product gaps (not code defects) — the company-ATO one MAY be a real entity-scoping aggregation bug and needs its own investigation. gain%/yield are UNMODELLED (§21.5) — model when fixing.
+
+### MON-023 — One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-07
+
+> **What was wrong:** One-off purchases (a battery, an ATO tax payment) showed as '$X/mo' on the dashboard — 'Where your money goes' and 'Spending by category' treated them as monthly recurring costs, inflating your spending, category chart and health/savings. And reconciling the same payment kept ADDING duplicate expense records instead of updating (three 'Battery' rows), worse when you unreconciled and reconciled again.
+>
+> **What changed:** The monthly spending views now count RECURRING expenses only — a one-off contributes $0/mo and instead shows as real spend in the month it happened (Activity already does this). And reconciling a payment now links to an existing matching expense instead of minting a duplicate, so re-reconciling no longer stacks up rows.
+>
+> **What you should see:** On the dashboard, the battery and the ATO tax no longer appear as '$X/mo' — 'Where your money goes', the category chart, and your savings/health reflect only ongoing recurring bills. Those one-offs still show as actual spend on their dates in Activity. Re-reconciling a payment updates the same expense rather than adding another.
+
+- **Root cause:** `app/api/dashboard/insights/route.ts:278`, `lib/calculations/expenseAggregator.ts:94`, `app/api/transactions/[id]/link/route.ts:589`
+- **Neomatrix:** `orchestrator.masterFinancialService.getMasterFinancialSnapshot`, `orchestrator.dashboardInsights.GET`
+- **Downstream consumers (§19.4):** `app/api/dashboard/insights/route.ts`, `lib/services/masterFinancialService.ts`, `app/api/transactions/[id]/link/route.ts`
+- **Fix PR(s):** #1340
+- **Holistic test (§19.4):** `tests/calculations/oneOffExpenses.test.ts`
+- **Detail:** `docs/issues/ISSUES.md`
+
+Reza decision 2026-07-07: one-offs excluded from monthly recurring views, shown as actual in-month. Fix: (1) insights moneyBleeding + byCategory filter isRecurring !== false + denominator = snapshot recurring total; (2) masterFinancialService quickMetrics.monthlyExpenses/health/freeCashDays/emergency-fallback + cashflow(savings) use recurring only; (3) link/route expense create reuses an existing matching expense (name+scope) instead of duplicating. The actuals path already showed one-offs correctly in-month. FIXING until Reza verifies.
 
