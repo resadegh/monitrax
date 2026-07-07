@@ -15,6 +15,7 @@ import {
 } from '@/lib/grdcs';
 import { getNetAnnualIncome } from '@/lib/income/netIncomeCalculator';
 import { calculateLVR, calculateRentalYield } from '@/lib/utils/calculations';
+import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
@@ -514,7 +515,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const userId = auth.userId;
 
       // Fetch all user data in parallel with full relational includes
-      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets] = await Promise.all([
+      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets, superannuation] = await Promise.all([
         prisma.property.findMany({
           where: { userId },
           include: {
@@ -596,6 +597,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
             },
           },
         }),
+        // MON-013 — superannuation, so net worth / total assets here match the
+        // canonical master engine (previously omitted → Home vs Balances drift).
+        prisma.superannuationAccount.findMany({
+          where: { userId },
+          select: { currentBalance: true, fundType: true, ownerEntityId: true },
+        }),
       ]);
 
       // ============================================================================
@@ -615,18 +622,33 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // ============================================================================
       // CALCULATE FINANCIAL TOTALS
       // ============================================================================
-      const totalPropertyValue = properties.reduce((sum: number, p: any) => sum + p.currentValue, 0);
-      const totalAccountBalances = accounts.reduce((sum: number, a: any) => sum + a.currentBalance, 0);
-      // Investment value = holdings value + cash balances in investment accounts
-      const holdingsValue = holdings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
-      const investmentCashBalances = investmentAccounts.reduce((sum: number, a: any) => sum + (a.cashBalance || 0), 0);
-      const totalInvestmentValue = holdingsValue + investmentCashBalances;
-      // Phase 21: Include active assets in total value
+      // MON-013 / §12.2.1 / §19.4 — compute net worth + total assets via the ONE
+      // canonical engine (identical to the master snapshot) so Home and Balances
+      // agree. This route previously inlined its own totals which (a) OMITTED
+      // superannuation, (b) valued holdings at COST (averagePrice) not market
+      // price, and (c) — now aligned — counts investment-account cash + only
+      // ACTIVE personal assets. All four are now sourced from calculateNetWorth.
       const activeAssets = assets.filter((a: any) => a.status === 'ACTIVE');
-      const totalAssetValue = activeAssets.reduce((sum: number, a: any) => sum + a.currentValue, 0);
-      const totalAssets = totalPropertyValue + totalAccountBalances + totalInvestmentValue + totalAssetValue;
-      const totalLiabilities = loans.reduce((sum: number, l: any) => sum + l.principal, 0);
-      const netWorth = totalAssets - totalLiabilities;
+      const nw = calculateNetWorth(
+        properties.map((p: any) => ({ currentValue: p.currentValue })),
+        accounts.map((a: any) => ({ currentBalance: a.currentBalance, type: a.type })),
+        holdings.map((h: any) => ({ units: h.units, currentPrice: h.currentPrice ?? undefined, averagePrice: h.averagePrice })),
+        loans.map((l: any) => ({ principal: l.principal, type: l.type, propertyId: l.propertyId })),
+        superannuation.map((s: any) => ({ balance: s.currentBalance, fundType: s.fundType })),
+        activeAssets.map((a: any) => ({ currentValue: a.currentValue })),
+        investmentAccounts.map((a: any) => ({ cashBalance: a.cashBalance ?? 0, ownerEntityId: a.ownerEntityId })),
+      );
+      const totalPropertyValue = nw.assets.properties;
+      const totalAccountBalances = nw.assets.accounts;
+      const investmentCashBalances = investmentAccounts.reduce((sum: number, a: any) => sum + (a.cashBalance || 0), 0);
+      // Holdings at MARKET value (currentPrice || averagePrice) — matches master.
+      const holdingsValue = nw.assets.investments - investmentCashBalances;
+      const totalInvestmentValue = nw.assets.investments; // holdings (market) + cash
+      const totalSuperValue = nw.assets.superannuation;
+      const totalAssetValue = nw.assets.personalAssets;
+      const totalAssets = nw.assets.total;
+      const totalLiabilities = nw.liabilities.total;
+      const netWorth = nw.netWorth;
 
       // Cashflow calculations with tax-adjusted income
       // Gross income (before tax) - uses stored grossAmount for NET entries
@@ -945,6 +967,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
           investments: {
             count: investmentAccounts.length,
             totalValue: totalInvestmentValue,
+          },
+          // MON-013 — superannuation now included so the breakdown sums to
+          // totalAssets (previously omitted here, diverging from master).
+          superannuation: {
+            count: superannuation.length,
+            totalValue: totalSuperValue,
           },
           // Phase 21: Personal assets (vehicles, electronics, etc.)
           personalAssets: {

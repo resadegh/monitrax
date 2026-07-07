@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1777,
+      "line": 1804,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -32,7 +32,7 @@
       "kind": "engine",
       "label": "Net worth",
       "file": "lib/calculations/netWorthCalculator.ts",
-      "line": 217,
+      "line": 239,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -249,7 +249,7 @@
       "kind": "engine",
       "label": "Per-entity position breakdown (additive view)",
       "file": "lib/calculations/entityBreakdown.ts",
-      "line": 86,
+      "line": 89,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -615,6 +615,27 @@
       "verifiedBy": "docs/financial-logic/01_CORE_CALCULATIONS.md §1",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "input.InvestmentAccount.cashBalance",
+      "kind": "input-field",
+      "label": "Investment account cash balance",
+      "file": "prisma/schema.prisma",
+      "line": 2168,
+      "layer": "db",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Un-invested cash held in an investment account (InvestmentAccount.cashBalance). A real asset independent of holdings.",
+      "formula": null,
+      "authority": "prisma/schema.prisma — InvestmentAccount.cashBalance Float @default(0)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "MON-013; tests/calculations/netWorthInvestmentCash.test.ts",
+      "workedExample": "6 accounts holding $67,871 cash → added to total assets / net worth (previously omitted from master).",
+      "verifiedDate": "2026-07-07",
       "status": "documented"
     },
     {
@@ -2528,7 +2549,7 @@
       "kind": "orchestrator",
       "label": "Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)",
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 512,
+      "line": 513,
       "layer": "route",
       "domain": "intelligence",
       "trailStage": null,
@@ -8719,6 +8740,16 @@
       "toUnit": "AUD",
       "evidence": "propertyCashflow.ts resolveMonthly per line (rent pooled at stream level)",
       "verifiedDate": "2026-07-03"
+    },
+    {
+      "from": "input.InvestmentAccount.cashBalance",
+      "to": "engine.netWorthCalculator.calculateNetWorth",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "netWorthCalculator.ts calculateTotalAssets adds Σ investmentAccounts.cashBalance (MON-013)",
+      "verifiedDate": "2026-07-07"
     }
   ]
 }

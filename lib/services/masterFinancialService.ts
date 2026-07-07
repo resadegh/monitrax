@@ -535,6 +535,8 @@ interface RawAsset {
   id: string;
   ownerEntityId: string;
   currentValue: number;
+  /** MON-013 — SOLD / WRITTEN_OFF assets must NOT count in net worth. */
+  status: string;
 }
 
 /**
@@ -567,6 +569,17 @@ interface RawActualTransaction {
   isTransfer: boolean | null;
 }
 
+/**
+ * MON-013 — an investment ACCOUNT's cash balance is a real asset not captured
+ * by its holdings (`units × price`). Fetched so the canonical net-worth engine
+ * counts it (previously omitted from master net worth / total assets).
+ */
+interface RawInvestmentAccount {
+  id: string;
+  ownerEntityId: string | null;
+  cashBalance: number;
+}
+
 interface RawUserData {
   /** Phase 47 C1 — entity refs for the byEntity breakdown. */
   entities: Array<{ id: string; name: string; type: string }>;
@@ -576,6 +589,8 @@ interface RawUserData {
   loans: RawLoan[];
   properties: RawProperty[];
   investmentHoldings: RawInvestmentHolding[];
+  /** MON-013 — investment-account cash (holdings-independent). */
+  investmentAccounts: RawInvestmentAccount[];
   superannuation: RawSuperannuation[];
   assets: RawAsset[];
   linkedTransactions: RawLinkedTransaction[];
@@ -600,6 +615,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     loans,
     properties,
     investmentHoldings,
+    investmentAccounts,
     superannuation,
     assets,
     linkedTransactions,
@@ -709,6 +725,15 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         type: true,
       },
     }),
+    // MON-013 — investment-account cash (holdings-independent asset).
+    prisma.investmentAccount.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        ownerEntityId: true,
+        cashBalance: true,
+      },
+    }),
     prisma.superannuationAccount.findMany({
       where: { userId },
       select: {
@@ -724,6 +749,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         id: true,
         ownerEntityId: true,
         currentValue: true,
+        status: true,
       },
     }),
     // Phase 30: Fetch linked transactions for actual calculation
@@ -781,6 +807,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     loans,
     properties,
     investmentHoldings,
+    investmentAccounts,
     superannuation,
     assets,
     linkedTransactions,
@@ -1842,6 +1869,10 @@ async function computeMasterFinancialSnapshot(
   const monthlyIncome = buildIncomeBreakdown(data.income, 'monthly', data.linkedTransactions, adjustedIncome);
   const annualIncome = buildIncomeBreakdown(data.income, 'annual', data.linkedTransactions, adjustedIncome);
 
+  // MON-013 — exclude SOLD / WRITTEN_OFF personal assets from net worth (the
+  // portfolio/snapshot route already did; master previously counted them).
+  const activePersonalAssets = data.assets.filter(a => a.status === 'ACTIVE');
+
   // Calculate net worth using existing calculator
   const netWorth = calculateNetWorth(
     data.properties.map(p => ({ currentValue: p.currentValue })),
@@ -1857,7 +1888,9 @@ async function computeMasterFinancialSnapshot(
       propertyId: l.propertyId,
     })),
     data.superannuation.map(s => ({ balance: s.currentBalance, fundType: s.fundType })),
-    data.assets.map(a => ({ currentValue: a.currentValue }))
+    activePersonalAssets.map(a => ({ currentValue: a.currentValue })),
+    // MON-013 — investment-account cash now counted in net worth / total assets.
+    data.investmentAccounts.map(a => ({ cashBalance: a.cashBalance, ownerEntityId: a.ownerEntityId }))
   );
 
   // Phase 47 C1 — additive per-entity breakdown (same rows, same
@@ -1867,9 +1900,10 @@ async function computeMasterFinancialSnapshot(
     properties: data.properties,
     accounts: data.accounts,
     investmentHoldings: data.investmentHoldings,
+    investmentAccounts: data.investmentAccounts,
     loans: data.loans,
     superannuation: data.superannuation,
-    assets: data.assets,
+    assets: activePersonalAssets,
     income: adjustedIncome,
     expenses: data.expenses,
   });

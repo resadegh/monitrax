@@ -50,6 +50,9 @@ export interface EntityBreakdownInput {
     currentPrice?: number | null;
     averagePrice: number;
   }>;
+  /** MON-013 — investment-account cash, attributed to the owning entity.
+   *  Optional (default []) so existing callers that predate MON-013 still work. */
+  investmentAccounts?: Array<OwnedRow & { cashBalance: number }>;
   loans: Array<OwnedRow & { principal: number; type: string; propertyId?: string | null }>;
   superannuation: Array<OwnedRow & { currentBalance: number; fundType?: string }>;
   assets: Array<OwnedRow & { currentValue: number }>;
@@ -90,6 +93,7 @@ export function buildEntityBreakdown(input: EntityBreakdownInput): EntityPositio
     properties: EntityBreakdownInput['properties'];
     accounts: EntityBreakdownInput['accounts'];
     holdings: EntityBreakdownInput['investmentHoldings'];
+    investmentAccounts: NonNullable<EntityBreakdownInput['investmentAccounts']>;
     loans: EntityBreakdownInput['loans'];
     superannuation: EntityBreakdownInput['superannuation'];
     assets: EntityBreakdownInput['assets'];
@@ -104,6 +108,7 @@ export function buildEntityBreakdown(input: EntityBreakdownInput): EntityPositio
         properties: [],
         accounts: [],
         holdings: [],
+        investmentAccounts: [],
         loans: [],
         superannuation: [],
         assets: [],
@@ -120,6 +125,7 @@ export function buildEntityBreakdown(input: EntityBreakdownInput): EntityPositio
   for (const h of input.investmentHoldings) {
     bucket(h.investmentAccount?.ownerEntityId ?? UNATTRIBUTED_ENTITY_ID).holdings.push(h);
   }
+  for (const ia of input.investmentAccounts ?? []) bucket(ownerOf(ia)).investmentAccounts.push(ia);
   for (const l of input.loans) bucket(ownerOf(l)).loans.push(l);
   for (const s of input.superannuation) bucket(ownerOf(s)).superannuation.push(s);
   for (const a of input.assets) bucket(ownerOf(a)).assets.push(a);
@@ -145,6 +151,7 @@ export function buildEntityBreakdown(input: EntityBreakdownInput): EntityPositio
         fundType: s.fundType as 'INDUSTRY' | 'RETAIL' | 'SMSF' | undefined,
       })),
       b.assets.map(a => ({ currentValue: a.currentValue })),
+      b.investmentAccounts.map(a => ({ cashBalance: a.cashBalance, ownerEntityId: a.ownerEntityId })),
     );
     const monthlyIncome = b.income.reduce(
       (sum, i) => sum + toMonthly(i.amount, i.frequency as Parameters<typeof toMonthly>[1]),

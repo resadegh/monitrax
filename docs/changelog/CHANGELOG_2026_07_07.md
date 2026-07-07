@@ -62,3 +62,49 @@ No destructive write. Self-review 10/10: v1 fixed the insights ratio → v2 also
 
 ### PR
 - PR: (pending) — draft. Follow-up to MON-023 (#1340, merged).
+---
+## Session: chat-audit-findings-issues-m9518i
+
+### MON-013 — investment-account cash in net worth + Home/Balances convergence (full unify)
+
+- **Type**: Fix (financial — net worth / total assets)
+- **Scope**: canonical net-worth engine, master snapshot, `/api/portfolio/snapshot`, per-entity breakdown
+- **Root cause (verified §19.2)**: `calculateTotalAssets` valued an investment account as ONLY its holdings (`units × price`) and ignored `InvestmentAccount.cashBalance` (`prisma/schema.prisma:2168`). The master snapshot (Balances) therefore understated net worth / total assets by the un-invested cash. Separately, `/api/portfolio/snapshot` (the Home "Assets" tile + net-worth) computed its own inline totals that diverged from master on THREE terms: it INCLUDED cash but OMITTED superannuation (never fetched), valued holdings at COST (`averagePrice`) not market, and filtered ACTIVE assets while master counted SOLD/WRITTEN_OFF too.
+- **Fix (full unify — §12.2.1 / §19.4)**: one engine. `calculateNetWorth`/`calculateTotalAssets` (+ Decimal siblings) take an optional `investmentAccounts` (cash) param. BOTH master and `/api/portfolio/snapshot` now feed the SAME engine the SAME inputs — holdings at market, super included, ACTIVE personal assets only, investment-account cash included — so Home, Balances and Investments converge on identical net worth / total assets. Master also now excludes SOLD/WRITTEN_OFF assets (was a latent over-count).
+
+### §19.2 worked example (verified)
+
+Property 500,000; account (SAVINGS) 50,000; holding 100u × market $20 = 2,000 (cost $15 ignored); investment-account cash 8,000; super (RETAIL) 120,000; personal assets ACTIVE car 30,000 + SOLD boat 40,000 (excluded); loans HOME 300,000 + credit card 2,000.
+→ investments = 2,000 + 8,000 = **10,000**; total assets = 500,000+50,000+10,000+120,000+30,000 = **710,000**; liabilities = **302,000**; **net worth = 408,000**. Without the cash param net worth = **400,000** (delta = exactly the **8,000** cash). Float/Decimal parity holds.
+
+### §19.4 downstream sweep (every consumer of net worth / total assets)
+
+- `lib/calculations/netWorthCalculator.ts` — engine (Float + Decimal) — cash param added.
+- `lib/services/masterFinancialService.ts` — master snapshot (Balances, My Guide, hidden-wealth, entity breakdown) — passes cash + ACTIVE assets.
+- `app/api/portfolio/snapshot/route.ts` — Home dashboard net worth + Assets tile + asset-allocation — now via `calculateNetWorth`.
+- `lib/calculations/entityBreakdown.ts` — per-entity net worth — cash threaded per owning entity.
+- Guarded by `tests/calculations/netWorthInvestmentCash.test.ts` (worked example + Float/Decimal parity + cross-surface convergence + SSOT drift guard).
+
+### Files Modified
+
+- `lib/calculations/netWorthCalculator.ts` — `InvestmentAccountInput`; cash param on `calculateTotalAssets`/`calculateNetWorth` (+ Decimal).
+- `lib/services/masterFinancialService.ts` — fetch investment-account cash; pass cash + ACTIVE-only assets to the engine + entity breakdown.
+- `app/api/portfolio/snapshot/route.ts` — fetch super; compute net worth/total assets via `calculateNetWorth`; add super category to the assets breakdown.
+- `lib/calculations/entityBreakdown.ts` — accept + attribute investment-account cash per entity.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — new `input.InvestmentAccount.cashBalance` node + edge to `calculateNetWorth`; 4 drifted anchors re-pinned.
+- `tests/calculations/netWorthInvestmentCash.test.ts` — new holistic test.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-013 → FIXING.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — 0 errors in changed files (only a pre-existing `baseUrl` tsconfig deprecation).
+- [x] `npm run neomatrix:check` — OK (schema valid, invariants hold, coverage complete).
+- [x] `npm run issues:check` — 22 issues valid.
+- [x] §19.2 worked example independently verified (net worth 408,000; cash delta 8,000).
+- [ ] `npm run test` / `lint:financial-surfaces` — run in CI (local ts-node/vitest unavailable in this container).
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: the cash sitting un-invested in your investment accounts wasn't counted in your net worth, and the Home "Assets" tile and Balances disagreed (Home missed your super; Balances missed the cash).
+- **Changed**: one calculation now powers every screen and counts your investment-account cash, your super, and your holdings at market value.
+- **You'll see**: net worth rises by your investment-account cash (~$67,871), and Home, Balances and Investments show the SAME net worth and total assets. (The Home "Assets" tile now also includes super, so it moves up.)
