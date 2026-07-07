@@ -6,28 +6,28 @@
       "line": 1473,
       "pattern": "FREQUENCY_CONVERSION",
       "reason": "UI-only display formatting (annual→monthly per-expense)",
-      "recordedAt": "2026-07-03T09:47:32.277Z"
+      "recordedAt": "2026-07-07T05:27:48.850Z"
     },
     {
       "file": "app/api/dashboard/insights/route.ts",
-      "line": 449,
+      "line": 457,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "declared-plan lifestyle fallback when no trailing actuals (§19.1)",
-      "recordedAt": "2026-07-03T09:47:32.277Z"
+      "recordedAt": "2026-07-07T05:27:48.851Z"
     },
     {
       "file": "app/api/dashboard/insights/route.ts",
-      "line": 548,
+      "line": 556,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "declared outgoings context for the tile delta subtext (app/api; §19.1 plan side)",
-      "recordedAt": "2026-07-03T09:47:32.277Z"
+      "recordedAt": "2026-07-07T05:27:48.851Z"
     },
     {
       "file": "app/api/dashboard/insights/route.ts",
-      "line": 550,
+      "line": 558,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "declared outgoings context for the tile delta subtext (app/api; §19.1 plan side)",
-      "recordedAt": "2026-07-03T09:47:32.277Z"
+      "recordedAt": "2026-07-07T05:27:48.851Z"
     }
   ]
 }

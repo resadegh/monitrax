@@ -1879,11 +1879,16 @@ async function computeMasterFinancialSnapshot(
       salaryType: i.salaryType,
       netAmount: i.netAmount,
     })),
-    expenses: data.expenses.map(e => ({
-      amount: e.amount,
-      frequency: e.frequency,
-      isEssential: e.isEssential,
-    })),
+    // MON-011: savings rate reflects ongoing recurring spend — one-off
+    // purchases don't count against the monthly surplus (they show as actual
+    // spend in the month they happened).
+    expenses: data.expenses
+      .filter(e => e.isRecurring !== false)
+      .map(e => ({
+        amount: e.amount,
+        frequency: e.frequency,
+        isEssential: e.isEssential,
+      })),
     loans: data.loans
       .filter(l => l.minRepayment && l.repaymentFrequency)
       .map(l => ({
@@ -1982,7 +1987,7 @@ async function computeMasterFinancialSnapshot(
   // transactions exist; fall back to declared only when there are none.
   const emergencyFundMonthlyOutflow = actualCashflow.hasActualData
     ? actualCashflow.avgMonthlyOutflow
-    : monthlyExpenses.all.total;
+    : monthlyExpenses.recurring.total; // MON-011: one-offs aren't an ongoing burn
   const emergencyFund = buildEmergencyFundMetrics(
     liquidCash,
     emergencyFundMonthlyOutflow
@@ -1991,7 +1996,7 @@ async function computeMasterFinancialSnapshot(
   // Build health score
   const healthScore = buildHealthScore(
     monthlyIncome.all.netTotal,
-    monthlyExpenses.all.total,
+    monthlyExpenses.recurring.total, // MON-011: recurring monthly spend only
     debtSummary.totalRepayments,
     debtSummary.totalPrincipal,
     emergencyFund.monthsCovered,
@@ -2047,7 +2052,10 @@ async function computeMasterFinancialSnapshot(
     quickMetrics: {
       monthlyIncome: monthlyIncome.all.netTotal,
       monthlyGrossIncome: cashflow.monthlyGrossIncome,
-      monthlyExpenses: monthlyExpenses.all.total,
+      // MON-011: "monthly expenses" = ongoing recurring spend; one-off purchases
+      // (a battery, an ATO tax payment) are $0/mo here and show as actual spend
+      // in the month they occurred (the actuals/activity view).
+      monthlyExpenses: monthlyExpenses.recurring.total,
       monthlyCashflow: cashflow.monthlyCashflow,
       monthlyLoanRepayments: debtSummary.totalRepayments,
       totalAssets: netWorth.assets.total,
@@ -2066,8 +2074,8 @@ async function computeMasterFinancialSnapshot(
             100
           : 0,
       freeCashDays:
-        monthlyExpenses.all.total > 0
-          ? liquidCash / (monthlyExpenses.all.total / 30)
+        monthlyExpenses.recurring.total > 0
+          ? liquidCash / (monthlyExpenses.recurring.total / 30)
           : 0,
 
       // Phase 1 (cashflow-actuals) — ACTUAL transaction-based fields. Read

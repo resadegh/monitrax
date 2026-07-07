@@ -36,6 +36,7 @@ interface ExpenseDetail {
   amount: number;
   frequency: string;
   isEssential: boolean;
+  isRecurring: boolean;
 }
 
 interface CategorySpending {
@@ -218,7 +219,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       // Fetch expense details for item-level breakdowns
       // (snapshot has totals, but we need individual items for category/money bleeding views)
-      const expenseDetails = await prisma.expense.findMany({
+      const allExpenseDetails = await prisma.expense.findMany({
         where: { userId },
         select: {
           id: true,
@@ -227,11 +228,18 @@ export const GET = withPermission('report.read', async (request, auth) => {
           amount: true,
           frequency: true,
           isEssential: true,
+          isRecurring: true,
         },
       }) as ExpenseDetail[];
 
-      // Use snapshot values for consistent totals
-      const totalMonthlyExpenses = snapshot.expenses.monthly.all.total;
+      // MON-011: "Where your money goes" + "Spending by category" show ONGOING
+      // recurring spend. One-off purchases (a battery, an ATO tax payment) are
+      // not a monthly cost — they're excluded here and appear as actual spend in
+      // the month they happened (the actuals/activity view).
+      const expenseDetails = allExpenseDetails.filter((e) => e.isRecurring !== false);
+
+      // Use snapshot values for consistent totals (recurring only — matches the rows above)
+      const totalMonthlyExpenses = snapshot.expenses.monthly.recurring.total;
       const essentialExpenses = snapshot.expenses.monthly.essential.total;
       const discretionaryExpenses = snapshot.expenses.monthly.discretionary.total;
       const totalMonthlyIncome = snapshot.income.monthly.all.netTotal;
