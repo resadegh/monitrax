@@ -238,10 +238,14 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // the month they happened (the actuals/activity view).
       const expenseDetails = allExpenseDetails.filter((e) => e.isRecurring !== false);
 
-      // Use snapshot values for consistent totals (recurring only — matches the rows above)
-      const totalMonthlyExpenses = snapshot.expenses.monthly.recurring.total;
-      const essentialExpenses = snapshot.expenses.monthly.essential.total;
-      const discretionaryExpenses = snapshot.expenses.monthly.discretionary.total;
+      // MON-023: essential + discretionary + total are all derived from the SAME
+      // recurring set, so their shares are coherent. (Regression guard: mixing a
+      // recurring total with all-inclusive discretionary/essential slices made a
+      // one-off discretionary purchase read as ">100% of expenses" — e.g. 906%.)
+      const monthlyOf = (e: ExpenseDetail) => toMonthly(e.amount, e.frequency as Frequency);
+      const totalMonthlyExpenses = expenseDetails.reduce((s, e) => s + monthlyOf(e), 0);
+      const essentialExpenses = expenseDetails.filter((e) => e.isEssential).reduce((s, e) => s + monthlyOf(e), 0);
+      const discretionaryExpenses = expenseDetails.filter((e) => !e.isEssential).reduce((s, e) => s + monthlyOf(e), 0);
       const totalMonthlyIncome = snapshot.income.monthly.all.netTotal;
       const monthlyLoanPayments = snapshot.quickMetrics.monthlyLoanRepayments;
       const liquidCash = snapshot.quickMetrics.liquidCash;

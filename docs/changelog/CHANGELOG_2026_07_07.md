@@ -35,3 +35,30 @@ Requirement: one-off expenses must not read as monthly and must not distort savi
 
 ### PR
 - PR: (pending) — draft. MON-023 holds at FIXING until Reza verifies on his data.
+
+---
+
+## Session: eloquent-archimedes — MON-024 "High Discretionary Spending" >100% (906%) regression fix
+
+### Changes Made
+- **Type**: Fix (financial, number-changing) — regression from MON-023
+- **Scope**: dashboard "High Discretionary Spending" insight + the essential/discretionary snapshot slices
+- **Root Cause**: MON-023 switched the "total expenses" denominator to `recurring.total` (`insights/route.ts:242`) but `discretionary`/`essential` (`:244`/`:243`, and the snapshot slices `masterFinancialService.ts:892/897`) still included one-offs → a one-off discretionary purchase (battery) ÷ the smaller recurring total = **906%**.
+- **Solution**: essential, discretionary and total are now all measured on the SAME recurring basis. (1) The insights route derives essential/discretionary/total from the same recurring `expenseDetails` set. (2) `buildExpenseBreakdown` essential/discretionary slices now also filter `isRecurring !== false`, so `essential + discretionary == recurring.total` everywhere and the share can never exceed 100%.
+
+### Files Modified
+- `app/api/dashboard/insights/route.ts` · `lib/services/masterFinancialService.ts` · `tests/calculations/oneOffExpenses.test.ts` (regression case + structural asserts) · Neomatrix graph + `GENERATED_CORE.md` (anchor fix §21.2.1) · `docs/issues/ISSUES.json`/`ISSUES.md` (MON-024).
+
+### §19.2 evidence
+Insurance $1,028 (essential) + Other $88 (discretionary) recurring = $1,116; one-off battery $10,105 excluded → discretionary $88 / $1,116 = **7.9%**, not 906%. Regression test asserts `discretionary/total ≤ 100%` and `essential + discretionary == recurring total`.
+
+### Build Status
+- [x] `tests/calculations/oneOffExpenses.test.ts` — 6 passed · `tests/neomatrix` + `tests/issues` — 151 passed
+- [x] `neomatrix:check` green (anchor fixed) · `issues:check` 24 valid · `tsc --noEmit` 0 errors
+- [ ] `next build` — Vercel preview
+
+### §12.11 / §20.4
+No destructive write. Self-review 10/10: v1 fixed the insights ratio → v2 also fixed the source slices (`buildExpenseBreakdown`) so any consumer of essential/discretionary is coherent, not just the one tile → v3 added the >100% regression test.
+
+### PR
+- PR: (pending) — draft. Follow-up to MON-023 (#1340, merged).
