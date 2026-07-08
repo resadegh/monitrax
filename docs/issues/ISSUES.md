@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**24 total** · 21 open · 🔵 9 · 🟡 7 · 🟠 5 · 🟢 0 · ✅ 2
+**24 total** · 21 open · 🔵 9 · 🟡 6 · 🟠 6 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -24,7 +24,7 @@
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
 | MON-017 | 🔵 OPEN | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | — | — |
-| MON-018 | 🟡 DIAGNOSED | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | — | — |
+| MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟡 DIAGNOSED | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | — | — |
 | MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | — | — |
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
@@ -336,7 +336,7 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 
 ### MON-018 — CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend
 
-**🟡 DIAGNOSED** · 🔴 critical · changes numbers: **yes** · area: cfo · opened 2026-07-07
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: cfo · opened 2026-07-07
 
 > **What was wrong:** My Guide shows 'Net worth change $64,638 (+2%)' every month — computed against last-month = this-month × 0.98, a placeholder in code, not your history. Real trend from stored snapshots is +0.2% over 2 months.
 >
@@ -344,13 +344,14 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 >
 > **What you should see:** (after fix) My Guide's monthly change matches the Home Net Worth trend tile.
 
-- **Root cause:** `lib/cfo/intelligenceEngine.ts:176`
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:117`
 - **Neomatrix:** `number.netWorthTrendDelta`, `engine.intelligenceEngine.calculateMonthlyProgressNetWorth`
-- **Downstream consumers (§19.4):** `app/dashboard/cfo`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `lib/cfo/intelligenceEngine.ts`, `app/api/dashboard/charts/route.ts`, `lib/calculations/netWorthHistory.ts`
+- **Fix PR(s):** #1343
+- **Holistic test (§19.4):** `tests/cfo/monthlyProgressCanonical.test.ts`
 - **Detail:** `chat audit 2026-07-07 #8`
 
-Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (§19.2): the placeholder is lastMonthNetWorth = currentNetWorth * 0.98 at lib/cfo/intelligenceEngine.ts:176 (inside calculateMonthlyProgress; netWorthChange :177, percent :178) — NOT :377, which the proposal cited but is the Decimal sibling calculateMonthlyProgressNetWorthDecimal whose own JSDoc (:374) points AT this ×0.98 placeholder. Canonical replacement: netWorthHistory.getNetWorthHistory over stored NetWorthSnapshot. Savings rate -39.1% on the same card disagrees with the -30.5% KPI — include in the downstream sweep. VALIDATED 2026-07-07 CONFIRMED-REAL: algebra proves (currentNetWorth - 0.98·currentNetWorth)/(0.98·currentNetWorth)×100 = +2.0408% for EVERY user regardless of data (:176-180); rendered at app/dashboard/cfo/page.tsx:1107. Canonical history exists + is unused (lib/calculations/netWorthHistory.ts getNetWorthHistory + NetWorthSnapshot + netWorthSnapshotRecorder.ts). Same file carries MORE placeholders: savingsRateChange: 0.5 // Simulated, debtReduction = totalDebt * 0.005 // Assume. Savings-rate discrepancy = §12.2.1 duplicate: :183-191 re-derives from DECLARED raw prisma rows vs the KPI's qm.savingsRate (masterFinancialService.ts:2056, net/actuals-aware). calculateMonthlyProgress is UNMODELLED (§21.5). Fix: feed monthly progress from netWorthHistory; delete the placeholders.
+Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (§19.2): the placeholder is lastMonthNetWorth = currentNetWorth * 0.98 at lib/cfo/intelligenceEngine.ts:176 (inside calculateMonthlyProgress; netWorthChange :177, percent :178) — NOT :377, which the proposal cited but is the Decimal sibling calculateMonthlyProgressNetWorthDecimal whose own JSDoc (:374) points AT this ×0.98 placeholder. Canonical replacement: netWorthHistory.getNetWorthHistory over stored NetWorthSnapshot. Savings rate -39.1% on the same card disagrees with the -30.5% KPI — include in the downstream sweep. VALIDATED 2026-07-07 CONFIRMED-REAL: algebra proves (currentNetWorth - 0.98·currentNetWorth)/(0.98·currentNetWorth)×100 = +2.0408% for EVERY user regardless of data (:176-180); rendered at app/dashboard/cfo/page.tsx:1107. Canonical history exists + is unused (lib/calculations/netWorthHistory.ts getNetWorthHistory + NetWorthSnapshot + netWorthSnapshotRecorder.ts). Same file carries MORE placeholders: savingsRateChange: 0.5 // Simulated, debtReduction = totalDebt * 0.005 // Assume. Savings-rate discrepancy = §12.2.1 duplicate: :183-191 re-derives from DECLARED raw prisma rows vs the KPI's qm.savingsRate (masterFinancialService.ts:2056, net/actuals-aware). calculateMonthlyProgress is UNMODELLED (§21.5). Fix: feed monthly progress from netWorthHistory; delete the placeholders. FIX SHIPPED (PR #1343, FIXING — pending Reza data-verify): calculateMonthlyProgress (now intelligenceEngine.ts:117) reads getNetWorthHistory(userId,2) for net-worth Δ + debt reduction (same canonical reader as the Home trend tile → converge) + snapshot.quickMetrics.savingsRate for the KPI-matching savings rate; savingsRateChange → null (UI hides sub-line); removed the ×0.98/0.5/0.005 placeholders + inline net-worth calc + 5 dead record types. Neomatrix: new ui.cfo.monthlyProgress node (semanticKey netWorthTrend, A3 convergence with ui.dashboard.netWorthTrendTile) + edge from number.netWorthTrendDelta; neomatrix:check green. Holistic guard tests/cfo/monthlyProgressCanonical.test.ts. Builds on MON-013 (net worth correct at source).
 
 ### MON-019 — 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan
 
