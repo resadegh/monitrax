@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**24 total** · 21 open · 🔵 9 · 🟡 7 · 🟠 5 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 9 · 🟡 8 · 🟠 5 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -31,6 +31,7 @@
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
+| MON-025 | 🟡 DIAGNOSED | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | — | — |
 
 ---
 
@@ -459,4 +460,22 @@ Reza decision 2026-07-07: one-offs excluded from monthly recurring views, shown 
 - **Detail:** `docs/issues/ISSUES.md`
 
 Regression introduced by MON-023 (denominator switched to recurring.total while discretionary/essential slices stayed all-inclusive). Fix: (1) insights route derives essential/discretionary/total from the SAME recurring expenseDetails set; (2) buildExpenseBreakdown essential/discretionary slices now also filter isRecurring !== false so essential+discretionary==recurring total everywhere. Regression test asserts discretionary/total <= 100%. FIXING until Reza verifies.
+
+### MON-025 — Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-07-08
+
+> **What was wrong:** An annual payment (QBE car insurance, paid once a year) shows as $216/mo instead of ~$18/mo. Reason: reconcile defaults the frequency to MONTHLY and the dashboard trusts that stored value; nothing reads the real cadence from the transaction dates. The AI mass-categorisation only sets the CATEGORY — it never classifies recurring vs one-off or the frequency. There's no way to pick or confirm a frequency, and the same insurer split into two records (different spellings) with two different frequencies.
+>
+> **What changed:** (planned) 1) 'Where your money goes' + monthly totals run each expense through the canonical monthly resolver so cadence is read from the transaction dates (multi-payment auto-corrects); 2) a frequency picker at reconcile + a confirm/change control on auto-detected recurring transactions (suggest-and-confirm, never silent); 3) wire the existing cadence detector to propose the frequency; 4) fuzzy merchant dedup so spelling variants map to one record.
+>
+> **What you should see:** (after fix) An annual expense reads at its true monthly (~$18/mo), you can set/confirm a frequency on any recurring transaction, and the same insurer no longer appears as two records with two frequencies.
+
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:345`, `app/api/dashboard/insights/route.ts:245`, `lib/bank/aiCategorisation.ts:248`, `app/api/transactions/[id]/link/route.ts:596`
+- **Neomatrix:** `engine.monthlyResolver.resolveMonthly`, `orchestrator.dashboardInsights.GET`
+- **Downstream consumers (§19.4):** `app/api/dashboard/insights/route.ts`, `app/api/transactions/[id]/link/route.ts`, `lib/bank/recurringExpenseDetection.ts`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/issues/ISSUES.md`
+
+Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/route.ts:345), insights uses stored declared frequency verbatim (insights:245), AI cascade hard-codes isRecurring:false/suggestedFrequency:null (aiCategorisation:248-250), good detector recurringExpenseDetection.ts is DEAD CODE (no importers), exact-name dedup misses spelling variants (link:596-607). Reza requirements 2026-07-08: (a) frequency picker at reconcile, (b) confirm/correct auto-detected recurring frequency, suggest-and-confirm not silent. UI pieces are Stitch-first (§18.2.1). Multi-PR workstream.
 
