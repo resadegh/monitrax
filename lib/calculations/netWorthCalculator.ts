@@ -85,6 +85,19 @@ export interface AssetInput {
   ownerEntityId?: string | null;
 }
 
+/**
+ * MON-013: an investment ACCOUNT holds cash alongside its holdings
+ * (`InvestmentAccount.cashBalance`). That cash is a real asset and MUST be
+ * counted in total assets / net worth — it is NOT captured by the per-holding
+ * `units × price` term. Optional everywhere (default `[]`) so existing callers
+ * are unaffected; the master snapshot + portfolio/snapshot + entity breakdowns
+ * pass it so every surface converges on ONE engine (§12.2.1 / §19.4).
+ */
+export interface InvestmentAccountInput {
+  cashBalance: number;
+  ownerEntityId?: string | null;
+}
+
 export interface LoanInput {
   principal: number;
   type?: string;
@@ -110,6 +123,7 @@ export function calculateTotalAssets(
   superannuation: SuperInput[] = [],
   personalAssets: AssetInput[] = [],
   ownerEntityId?: string,
+  investmentAccounts: InvestmentAccountInput[] = [],
 ): AssetSummary {
   const matchEntity = <T extends { ownerEntityId?: string | null }>(items: T[]): T[] =>
     ownerEntityId ? items.filter((x) => x.ownerEntityId === ownerEntityId) : items;
@@ -124,11 +138,19 @@ export function calculateTotalAssets(
     0
   );
 
-  const investmentTotal = matchEntity(investments).reduce((sum, i) => {
+  // Investment value = holdings (units × market price) + account cash balances
+  // (MON-013). Cash is entity-filtered like every other asset so per-entity
+  // breakdowns attribute it to the owning entity.
+  const holdingsTotal = matchEntity(investments).reduce((sum, i) => {
     const price = Number(i.currentPrice || i.averagePrice || 0);
     const units = Number(i.units || 0);
     return sum + units * price;
   }, 0);
+  const investmentCashTotal = matchEntity(investmentAccounts).reduce(
+    (sum, a) => sum + Number(a.cashBalance || 0),
+    0
+  );
+  const investmentTotal = holdingsTotal + investmentCashTotal;
 
   // Phase 39.5: exclude SMSF member accounts — their wealth is represented by
   // the SMSF LegalEntity's owned assets (already summed above), so adding the
@@ -220,14 +242,17 @@ export function calculateNetWorth(
   investments: InvestmentInput[],
   loans: LoanInput[],
   superannuation: SuperInput[] = [],
-  personalAssets: AssetInput[] = []
+  personalAssets: AssetInput[] = [],
+  investmentAccounts: InvestmentAccountInput[] = []
 ): NetWorthResult {
   const assets = calculateTotalAssets(
     properties,
     accounts,
     investments,
     superannuation,
-    personalAssets
+    personalAssets,
+    undefined,
+    investmentAccounts
   );
 
   const liabilities = calculateTotalLiabilities(loans);
@@ -314,6 +339,7 @@ export function calculateTotalAssetsDecimal(
   superannuation: SuperInput[] = [],
   personalAssets: AssetInput[] = [],
   ownerEntityId?: string,
+  investmentAccounts: InvestmentAccountInput[] = [],
 ): AssetSummaryDecimal {
   const matchEntity = <T extends { ownerEntityId?: string | null }>(items: T[]): T[] =>
     ownerEntityId ? items.filter((x) => x.ownerEntityId === ownerEntityId) : items;
@@ -326,13 +352,18 @@ export function calculateTotalAssetsDecimal(
     matchEntity(accounts).map((a) => toDecimal(a.currentBalance)),
   );
 
-  const investmentTotal = sumDecimal(
+  // Investment value = holdings (units × market price) + account cash (MON-013).
+  const holdingsTotal = sumDecimal(
     matchEntity(investments).map((i) => {
       const price = toDecimal(i.currentPrice ?? i.averagePrice ?? 0) ?? new Decimal(0);
       const units = toDecimal(i.units) ?? new Decimal(0);
       return units.times(price);
     }),
   );
+  const investmentCashTotal = sumDecimal(
+    matchEntity(investmentAccounts).map((a) => toDecimal(a.cashBalance)),
+  );
+  const investmentTotal = holdingsTotal.plus(investmentCashTotal);
 
   // Phase 39.5: exclude SMSF member accounts (same rule as Float path).
   const superTotal = sumDecimal(
@@ -404,6 +435,7 @@ export function calculateNetWorthDecimal(
   loans: LoanInput[],
   superannuation: SuperInput[] = [],
   personalAssets: AssetInput[] = [],
+  investmentAccounts: InvestmentAccountInput[] = [],
 ): NetWorthResultDecimal {
   const assets = calculateTotalAssetsDecimal(
     properties,
@@ -411,6 +443,8 @@ export function calculateNetWorthDecimal(
     investments,
     superannuation,
     personalAssets,
+    undefined,
+    investmentAccounts,
   );
 
   const liabilities = calculateTotalLiabilitiesDecimal(loans);

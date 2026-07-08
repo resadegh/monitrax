@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**24 total** · 21 open · 🔵 10 · 🟡 7 · 🟠 4 · 🟢 0 · ✅ 2
+**24 total** · 21 open · 🔵 9 · 🟡 7 · 🟠 5 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -19,7 +19,7 @@
 | MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
 | MON-011 | 🔵 OPEN | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | — | — |
 | MON-012 | 🔵 OPEN | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | — | — |
-| MON-013 | 🔵 OPEN | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | — | — |
+| MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
 | MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | — |
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
@@ -247,7 +247,7 @@ Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactl
 
 ### MON-013 — Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets'
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: core · opened 2026-07-07
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: core · opened 2026-07-07
 
 > **What was wrong:** Your $67,871 sitting as cash in 6 investment accounts is missing from Net worth ($3,333,911) and Total assets ($5,393,808) — net worth is understated by $67,871. Yet the Home 'Assets $5.5M' tile DOES include it, so two screens disagree about what you own.
 >
@@ -255,13 +255,14 @@ Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactl
 >
 > **What you should see:** (after fix) Net worth rises ~$67,871 and Assets/Total assets/Net worth agree across Home, Balances and Investments.
 
-- **Root cause:** `lib/calculations/netWorthCalculator.ts:217`, `lib/calculations/assetValuation.ts:44`
+- **Root cause:** `lib/calculations/netWorthCalculator.ts:239`, `lib/calculations/assetValuation.ts:44`
 - **Neomatrix:** `number.netWorth`
-- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `app/dashboard/balances`, `lib/services/masterFinancialService.ts`, `lib/calculations/entityBreakdown.ts`, `lib/services/netWorthSnapshotRecorder.ts`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `app/dashboard/balances`, `app/api/portfolio/snapshot/route.ts`, `lib/services/masterFinancialService.ts`, `lib/calculations/entityBreakdown.ts`, `lib/services/netWorthSnapshotRecorder.ts`
+- **Fix PR(s):** #1342
+- **Holistic test (§19.4):** `tests/calculations/netWorthInvestmentCash.test.ts`
 - **Detail:** `chat audit 2026-07-07 #3`
 
-Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (investments contribute $0: units×price with 0 holdings). Assets tile 5.5M ~= 5,393,808+67,871. §12.2.1 duplicate source + valuation gap. Anchor verification 2026-07-07 (§19.2): holdingMarketValue = units × (currentPrice || averagePrice) at lib/calculations/assetValuation.ts:44 (no cash term); the canonical calculateNetWorth at lib/calculations/netWorthCalculator.ts:217 aggregates via calculateTotalAssets and never adds investment-account cash. Stored NetWorthSnapshot history carries the old basis — note it, don't rewrite history silently. VALIDATED 2026-07-07 CONFIRMED-REAL: schema field EXISTS — InvestmentAccount.cashBalance Float @default(0) at prisma/schema.prisma:2168 (+cashBalanceDecimal :2169), so the premise holds. Master path EXCLUDES it (calculateTotalAssets investment term = Sigma units×price only, netWorthCalculator.ts:127-131; investments.totalValue also holdings-only, masterFinancialService.ts:1233-1266). The SECOND producer app/api/portfolio/snapshot/route.ts:622-629 INCLUDES it (investmentCashBalances = Sigma cashBalance -> totalInvestmentValue -> totalAssets/netWorth), and the Home 'Assets' tile reads THAT producer (page.tsx:409 fetch + :732 render) — hence the ~$67,871 divergence. Two producers of 'total assets' = §12.2.1; the portfolio/snapshot re-aggregation is an UNMODELLED Neomatrix blind spot (§21.5), which is why A3 convergence never fired. Fix: value an investment account as holdings + cashBalance in the ONE canonical engine, delete/repoint the second producer.
+Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (investments contribute $0: units×price with 0 holdings). Assets tile 5.5M ~= 5,393,808+67,871. §12.2.1 duplicate source + valuation gap. Anchor verification 2026-07-07 (§19.2): holdingMarketValue = units × (currentPrice || averagePrice) at lib/calculations/assetValuation.ts:44 (no cash term); the canonical calculateNetWorth at lib/calculations/netWorthCalculator.ts:217 aggregates via calculateTotalAssets and never adds investment-account cash. Stored NetWorthSnapshot history carries the old basis — note it, don't rewrite history silently. VALIDATED 2026-07-07 CONFIRMED-REAL: schema field EXISTS — InvestmentAccount.cashBalance Float @default(0) at prisma/schema.prisma:2168 (+cashBalanceDecimal :2169), so the premise holds. Master path EXCLUDES it (calculateTotalAssets investment term = Sigma units×price only, netWorthCalculator.ts:127-131; investments.totalValue also holdings-only, masterFinancialService.ts:1233-1266). The SECOND producer app/api/portfolio/snapshot/route.ts:622-629 INCLUDES it (investmentCashBalances = Sigma cashBalance -> totalInvestmentValue -> totalAssets/netWorth), and the Home 'Assets' tile reads THAT producer (page.tsx:409 fetch + :732 render) — hence the ~$67,871 divergence. Two producers of 'total assets' = §12.2.1; the portfolio/snapshot re-aggregation is an UNMODELLED Neomatrix blind spot (§21.5), which is why A3 convergence never fired. Fix: value an investment account as holdings + cashBalance in the ONE canonical engine, delete/repoint the second producer. FIX SHIPPED (PR #1342, FIXING — pending Reza data-verify): full unify — calculateNetWorth/calculateTotalAssets (+Decimal) take an optional investmentAccounts cash param; BOTH master (masterFinancialService.ts) and portfolio/snapshot route now feed the ONE engine the SAME inputs (holdings@market, super, ACTIVE assets only, cash) so Home/Balances/Investments converge; master also excludes SOLD/WRITTEN_OFF assets (latent over-count). Also fixed the divergences due-diligence found: portfolio/snapshot previously OMITTED super + valued holdings at COST. Holistic test tests/calculations/netWorthInvestmentCash.test.ts (worked example nw=408,000; cash delta=8,000; Float/Decimal parity; cross-surface convergence; SSOT drift guard) + the existing invariants.test.ts (entity-sum == household net worth) still holds. Neomatrix: input.InvestmentAccount.cashBalance node+edge; neomatrix:check green.
 
 ### MON-014 — Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337
 

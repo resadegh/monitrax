@@ -343,7 +343,7 @@
     {
       "id": "MON-013",
       "title": "Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets'",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-07",
@@ -354,7 +354,7 @@
         "check": "(after fix) Net worth rises ~$67,871 and Assets/Total assets/Net worth agree across Home, Balances and Investments."
       },
       "rootCause": [
-        "lib/calculations/netWorthCalculator.ts:217",
+        "lib/calculations/netWorthCalculator.ts:239",
         "lib/calculations/assetValuation.ts:44"
       ],
       "semanticKeys": [
@@ -363,14 +363,17 @@
       "downstreamConsumers": [
         "app/dashboard/page.tsx",
         "app/dashboard/balances",
+        "app/api/portfolio/snapshot/route.ts",
         "lib/services/masterFinancialService.ts",
         "lib/calculations/entityBreakdown.ts",
         "lib/services/netWorthSnapshotRecorder.ts"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        1342
+      ],
+      "test": "tests/calculations/netWorthInvestmentCash.test.ts",
       "tracker": "chat audit 2026-07-07 #3",
-      "notes": "Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (investments contribute $0: units×price with 0 holdings). Assets tile 5.5M ~= 5,393,808+67,871. §12.2.1 duplicate source + valuation gap. Anchor verification 2026-07-07 (§19.2): holdingMarketValue = units × (currentPrice || averagePrice) at lib/calculations/assetValuation.ts:44 (no cash term); the canonical calculateNetWorth at lib/calculations/netWorthCalculator.ts:217 aggregates via calculateTotalAssets and never adds investment-account cash. Stored NetWorthSnapshot history carries the old basis — note it, don't rewrite history silently. VALIDATED 2026-07-07 CONFIRMED-REAL: schema field EXISTS — InvestmentAccount.cashBalance Float @default(0) at prisma/schema.prisma:2168 (+cashBalanceDecimal :2169), so the premise holds. Master path EXCLUDES it (calculateTotalAssets investment term = Sigma units×price only, netWorthCalculator.ts:127-131; investments.totalValue also holdings-only, masterFinancialService.ts:1233-1266). The SECOND producer app/api/portfolio/snapshot/route.ts:622-629 INCLUDES it (investmentCashBalances = Sigma cashBalance -> totalInvestmentValue -> totalAssets/netWorth), and the Home 'Assets' tile reads THAT producer (page.tsx:409 fetch + :732 render) — hence the ~$67,871 divergence. Two producers of 'total assets' = §12.2.1; the portfolio/snapshot re-aggregation is an UNMODELLED Neomatrix blind spot (§21.5), which is why A3 convergence never fired. Fix: value an investment account as holdings + cashBalance in the ONE canonical engine, delete/repoint the second producer."
+      "notes": "Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (investments contribute $0: units×price with 0 holdings). Assets tile 5.5M ~= 5,393,808+67,871. §12.2.1 duplicate source + valuation gap. Anchor verification 2026-07-07 (§19.2): holdingMarketValue = units × (currentPrice || averagePrice) at lib/calculations/assetValuation.ts:44 (no cash term); the canonical calculateNetWorth at lib/calculations/netWorthCalculator.ts:217 aggregates via calculateTotalAssets and never adds investment-account cash. Stored NetWorthSnapshot history carries the old basis — note it, don't rewrite history silently. VALIDATED 2026-07-07 CONFIRMED-REAL: schema field EXISTS — InvestmentAccount.cashBalance Float @default(0) at prisma/schema.prisma:2168 (+cashBalanceDecimal :2169), so the premise holds. Master path EXCLUDES it (calculateTotalAssets investment term = Sigma units×price only, netWorthCalculator.ts:127-131; investments.totalValue also holdings-only, masterFinancialService.ts:1233-1266). The SECOND producer app/api/portfolio/snapshot/route.ts:622-629 INCLUDES it (investmentCashBalances = Sigma cashBalance -> totalInvestmentValue -> totalAssets/netWorth), and the Home 'Assets' tile reads THAT producer (page.tsx:409 fetch + :732 render) — hence the ~$67,871 divergence. Two producers of 'total assets' = §12.2.1; the portfolio/snapshot re-aggregation is an UNMODELLED Neomatrix blind spot (§21.5), which is why A3 convergence never fired. Fix: value an investment account as holdings + cashBalance in the ONE canonical engine, delete/repoint the second producer. FIX SHIPPED (PR #1342, FIXING — pending Reza data-verify): full unify — calculateNetWorth/calculateTotalAssets (+Decimal) take an optional investmentAccounts cash param; BOTH master (masterFinancialService.ts) and portfolio/snapshot route now feed the ONE engine the SAME inputs (holdings@market, super, ACTIVE assets only, cash) so Home/Balances/Investments converge; master also excludes SOLD/WRITTEN_OFF assets (latent over-count). Also fixed the divergences due-diligence found: portfolio/snapshot previously OMITTED super + valued holdings at COST. Holistic test tests/calculations/netWorthInvestmentCash.test.ts (worked example nw=408,000; cash delta=8,000; Float/Decimal parity; cross-surface convergence; SSOT drift guard) + the existing invariants.test.ts (entity-sum == household net worth) still holds. Neomatrix: input.InvestmentAccount.cashBalance node+edge; neomatrix:check green."
     },
     {
       "id": "MON-014",
