@@ -38,8 +38,8 @@ describe('MON-017: computeSafetyScore reflects reality', () => {
     expect(s.grade).toBe('FRAGILE');
   });
 
-  it('negative cashflow scores the cashflow dimension 0 (was 15/15)', () => {
-    expect(computeSafetyScore({ monthsCovered: 6, targetMonths: 6, billsOnTime: 0, totalBills: 0, monthlyCashflow: -1 }).positiveCashflow.score).toBe(0);
+  it('a real deficit (≤ −$200) scores the cashflow dimension 0 (was 15/15)', () => {
+    expect(computeSafetyScore({ monthsCovered: 6, targetMonths: 6, billsOnTime: 0, totalBills: 0, monthlyCashflow: -6073 }).positiveCashflow.score).toBe(0);
   });
 
   it('marginal deficit (−$200 < cashflow ≤ 0) scores 8; positive scores 15', () => {
