@@ -8,9 +8,9 @@
     ],
     "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
     "counts": {
-      "files": 1080,
+      "files": 1081,
       "filesOnDisk": 1082,
-      "nodes": 8733,
+      "nodes": 8736,
       "edges": 15380,
       "allowlisted": 3
     }
@@ -627,6 +627,7 @@
     "lib/bank/index.ts",
     "lib/bank/mccCatalog.ts",
     "lib/bank/merchantNoise.ts",
+    "lib/bank/merchantNormalize.ts",
     "lib/bank/normalisation.ts",
     "lib/bank/parsers/csv.ts",
     "lib/bank/parsers/qif.ts",
@@ -53495,6 +53496,24 @@
       ".constructor()",
       "lib/integrations/xero/tokenRefresh.ts",
       34
+    ],
+    [
+      "bank_merchantnormalize",
+      "merchantNormalize.ts",
+      "lib/bank/merchantNormalize.ts",
+      1
+    ],
+    [
+      "bank_merchantnormalize_normalizeMerchant",
+      "normalizeMerchant",
+      "lib/bank/merchantNormalize.ts",
+      25
+    ],
+    [
+      "bank_merchantnormalize_sameMerchant",
+      "sameMerchant",
+      "lib/bank/merchantNormalize.ts",
+      40
     ]
   ],
   "edges": [

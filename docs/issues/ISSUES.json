@@ -698,6 +698,41 @@
       "test": "tests/calculations/oneOffExpenses.test.ts",
       "tracker": "docs/issues/ISSUES.md",
       "notes": "Regression introduced by MON-023 (denominator switched to recurring.total while discretionary/essential slices stayed all-inclusive). Fix: (1) insights route derives essential/discretionary/total from the SAME recurring expenseDetails set; (2) buildExpenseBreakdown essential/discretionary slices now also filter isRecurring !== false so essential+discretionary==recurring total everywhere. Regression test asserts discretionary/total <= 100%. FIXING until Reza verifies."
+    },
+    {
+      "id": "MON-025",
+      "title": "Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing",
+      "status": "FIXING",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-08",
+      "area": "bookkeeping",
+      "plain": {
+        "issue": "An annual payment (QBE car insurance, paid once a year) shows as $216/mo instead of ~$18/mo. Reason: reconcile defaults the frequency to MONTHLY and the dashboard trusts that stored value; nothing reads the real cadence from the transaction dates. The AI mass-categorisation only sets the CATEGORY — it never classifies recurring vs one-off or the frequency. There's no way to pick or confirm a frequency, and the same insurer split into two records (different spellings) with two different frequencies.",
+        "fix": "(planned) 1) 'Where your money goes' + monthly totals run each expense through the canonical monthly resolver so cadence is read from the transaction dates (multi-payment auto-corrects); 2) a frequency picker at reconcile + a confirm/change control on auto-detected recurring transactions (suggest-and-confirm, never silent); 3) wire the existing cadence detector to propose the frequency; 4) fuzzy merchant dedup so spelling variants map to one record.",
+        "check": "(after fix) An annual expense reads at its true monthly (~$18/mo), you can set/confirm a frequency on any recurring transaction, and the same insurer no longer appears as two records with two frequencies."
+      },
+      "rootCause": [
+        "app/api/transactions/[id]/link/route.ts:345",
+        "app/api/dashboard/insights/route.ts:245",
+        "lib/bank/aiCategorisation.ts:248",
+        "app/api/transactions/[id]/link/route.ts:596"
+      ],
+      "semanticKeys": [
+        "engine.monthlyResolver.resolveMonthly",
+        "orchestrator.dashboardInsights.GET"
+      ],
+      "downstreamConsumers": [
+        "app/api/dashboard/insights/route.ts",
+        "app/api/transactions/[id]/link/route.ts",
+        "lib/bank/recurringExpenseDetection.ts"
+      ],
+      "fixPRs": [
+        1345
+      ],
+      "test": "tests/bank/merchantNormalize.test.ts",
+      "tracker": "docs/issues/ISSUES.md",
+      "notes": "Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/route.ts:345), insights uses stored declared frequency verbatim (insights:245), AI cascade hard-codes isRecurring:false/suggestedFrequency:null (aiCategorisation:248-250), good detector recurringExpenseDetection.ts is DEAD CODE (no importers), exact-name dedup misses spelling variants (link:596-607). Reza requirements 2026-07-08: (a) frequency picker at reconcile, (b) confirm/correct auto-detected recurring frequency, suggest-and-confirm not silent. UI pieces are Stitch-first (§18.2.1). Multi-PR workstream."
     }
   ]
 }
