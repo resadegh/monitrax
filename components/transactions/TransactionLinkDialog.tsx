@@ -366,6 +366,15 @@ export function TransactionLinkDialog({
       setLearnedCategory(data.learnedCategory || null);
       // Phase 30: Store transaction pattern for reconciliation
       setTransactionPattern(data.transactionPattern || null);
+      // MON-025: suggest-and-confirm — pre-fill the frequency from the cadence
+      // detected in the transaction dates (≥2 same-vendor payments), and
+      // pre-tick "recurring". The user still confirms/overrides. This stops the
+      // MONTHLY default from mislabelling an annual payment (e.g. QBE) as monthly.
+      const tp = data.transactionPattern;
+      if (tp?.detectedFrequency && (tp.count ?? 0) >= 2) {
+        setNewFrequency(tp.detectedFrequency);
+        setIsRecurringExpense(true);
+      }
       // Phase 51.2: structural resolution matches (loan repayment / transfer)
       setResolution(data.resolution ?? { loanRepayments: [], transfers: [] });
       // Phase 51 redesign — start collapsed (one clear action) on every open.
@@ -1791,6 +1800,16 @@ export function TransactionLinkDialog({
                       </p>
                       <div className="space-y-2 ml-6">
                         <Label>Frequency</Label>
+                        {/* MON-025: detected-cadence nudge (suggest-and-confirm). We
+                            worked out the cadence from the transaction dates; the
+                            picker below is pre-filled with it and the user confirms. */}
+                        {transactionPattern?.detectedFrequency && (transactionPattern.count ?? 0) >= 2 && (
+                          <p className="flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-300">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+                            Detected {transactionPattern.detectedFrequency.toLowerCase().replace('_', '-')} from{' '}
+                            {transactionPattern.count} payments — change below if this isn&apos;t right.
+                          </p>
+                        )}
                         <Select value={newFrequency} onValueChange={setNewFrequency}>
                           <SelectTrigger>
                             <SelectValue />

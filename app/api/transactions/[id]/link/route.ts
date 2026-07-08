@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { sameMerchant } from '@/lib/bank/merchantNormalize';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
@@ -593,16 +594,21 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // minting a second "Battery" row. The unlink action reverts the
             // amount but doesn't delete the expense, so without this a
             // reconcile→unreconcile→reconcile cycle stacks up duplicates.
-            const existingExpense = await prisma.expense.findFirst({
+            // MON-025: match on the NORMALISED merchant, not an exact string, so
+            // the same insurer under two bank spellings ("QBE Insurance
+            // (Australia) Limited" vs "Qbe Insurance (australia) Limited Abn…")
+            // reuses one record instead of minting a second.
+            const scopeExpenses = await prisma.expense.findMany({
               where: {
                 userId,
-                name: expenseData.name,
                 propertyId: expenseData.propertyId ?? null,
                 loanId: expenseData.loanId ?? null,
                 assetId: expenseData.assetId ?? null,
               },
               orderBy: { createdAt: 'asc' },
             });
+            const existingExpense =
+              scopeExpenses.find((e) => sameMerchant(e.name, expenseData.name)) ?? null;
 
             const expense = existingExpense ?? (await prisma.expense.create({ data: expenseData }));
 
