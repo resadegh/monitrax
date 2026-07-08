@@ -90,7 +90,7 @@ interface MonthlyProgress {
   netWorthChange: number;
   netWorthChangePercent: number;
   savingsRate: number;
-  savingsRateChange: number;
+  savingsRateChange: number | null;
   debtReduction: number;
   topImprovements: string[];
   emergingRisks: string[];
@@ -1110,9 +1110,11 @@ export default function CFODashboardPage() {
               <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Savings Rate</div>
                 <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{monthlyProgress.savingsRate}%</div>
-                <div className="text-xs text-emerald-600 dark:text-emerald-400">
-                  +{monthlyProgress.savingsRateChange}% vs last month
-                </div>
+                {monthlyProgress.savingsRateChange !== null && (
+                  <div className={`text-xs ${monthlyProgress.savingsRateChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {monthlyProgress.savingsRateChange >= 0 ? '+' : ''}{monthlyProgress.savingsRateChange}% vs last month
+                  </div>
+                )}
               </div>
             </div>
 

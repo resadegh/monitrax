@@ -422,7 +422,9 @@ export interface MonthlyProgress {
   netWorthChange: number;
   netWorthChangePercent: number;
   savingsRate: number;
-  savingsRateChange: number;
+  /** MON-018 — null when there is no stored history to compare against
+   *  (was a fabricated constant 0.5). The UI hides the sub-line when null. */
+  savingsRateChange: number | null;
   debtReduction: number;
   topImprovements: string[];
   emergingRisks: string[];
