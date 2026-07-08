@@ -39,7 +39,9 @@ describe('MON-018: monthly-progress reads canonical history, not placeholders', 
 
   it('calculateMonthlyProgress sources from the canonical reader + master snapshot', () => {
     const start = engine.indexOf('async function calculateMonthlyProgress');
-    const body = engine.slice(start, start + 1600);
+    // Window must span the whole function (the leading JSDoc is ~1KB, so keep
+    // this generous enough to reach the debtReduction + savingsRate lines).
+    const body = engine.slice(start, start + 3200);
     expect(body).toContain('getNetWorthHistory(userId, 2)');
     expect(body).toContain('getMasterFinancialSnapshot(userId)');
     // Δ + debt come from the stored snapshots; savings rate from the snapshot KPI.
