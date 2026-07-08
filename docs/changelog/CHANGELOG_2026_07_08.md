@@ -18,6 +18,53 @@ SHIPPED (pt.1+2, PR #1345): fuzzy merchant dedup (`lib/bank/merchantNormalize.ts
 
 ## Session: chat-audit-findings-issues-m9518i
 
+### MON-017 — Safety Net score was fiction on real data → pure engine on canonical inputs
+
+- **Type**: Fix (financial — safety score / emergency fund / recovery)
+- **Scope**: new `lib/calculations/safetyScore.ts`; `app/api/safety-net/route.ts`
+- **Root cause (verified §19.2)**: the inline safety score awarded "Positive Cashflow 15/15" from a MIXED source (`monthlySurplus = qm.monthlyIncome (declared) − totalMonthlyOutgoings (actual)`, route:58) that read positive while the canonical cashflow was −$6,073/mo; "Bills on time 30/30" for ZERO tracked bills (route:82, `totalBills>0 ? … : 30`); and measured the emergency fund against a hardcoded 3-month target (route:52) while the master snapshot uses 6 — so a fragile position scored ~100/100. Recovery times showed a finite figure only because the mixed surplus read positive.
+- **Fix (§12.2.1 / §19.4)**: extracted a pure, tested engine `computeSafetyScore` on CANONICAL inputs only — cashflow dimension reads `qm.monthlyCashflow` (actuals-aware net → a real deficit scores 0), zero tracked bills scores 0 (earn it by tracking bills, not a fabricated 30), emergency-fund coverage + target read from `snapshot.emergencyFund` (6-month target, one source). `monthlySurplus = qm.monthlyCashflow`, so `recoveryWeeks`/`weeksToTarget` return null (not a fabricated timeframe) when cashflow ≤ 0. Recommendation text de-hardcoded (targetMonths).
+
+### §19.2 worked example (verified)
+
+Reza's real case — 11.7 months covered, 0 tracked bills, −$6,073/mo cashflow, 6-month target → emergencyFund `min(11.7/6×40,40)=40` + bills `0` + noNewDebt `15` + cashflow `0` = **55 (FRAGILE)**, not ~100. Marginal deficit (−$200 < cf ≤ 0) → 8; positive → 15. 3 months / 6 target → 20/40. Genuinely strong (6mo, bills, +cashflow) → 100 STRONG.
+
+### §19.4 downstream sweep + convergence
+
+The safety score's cashflow dimension now reads the SAME canonical `monthlyCashflow` as the /cashflow hero + dashboard tile → they converge. Modelled in the Neomatrix: new `engine.safetyScore.computeSafetyScore` + `ui.safetyNet.safetyScore` nodes + `number.monthlyCashflow → computeSafetyScore` feeds edge (A3). Locked by `tests/calculations/safetyScore.test.ts` (7 worked-example asserts + a route drift guard). Builds on MON-013/MON-018 (net worth + cashflow correct at source).
+
+### Known remaining placeholder (flagged, not fabricated by this fix)
+
+`noNewDebt` stays 15/15 (optimistic "assume no new consumer debt") — transaction-based new-debt detection is a separate feature with no data source yet. The 4-colliding-scores labelling (Safety/Health/CFO/Cashflow-health) is a separate cross-surface UX issue. Both flagged as follow-ups, not silently kept as fiction.
+
+### Files Modified
+
+- `lib/calculations/safetyScore.ts` (NEW) — pure `computeSafetyScore` engine.
+- `app/api/safety-net/route.ts` — canonical inputs (`snapshot.emergencyFund`, `qm.monthlyCashflow`) + `computeSafetyScore`; removed inline scoring; de-hardcoded target text.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` + `structural/structural-graph.json` — engine + ui nodes, convergence edge, L0 coverage.
+- `tests/calculations/safetyScore.test.ts` (NEW).
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-017 → FIXING.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — 0 errors. `neomatrix:check` — OK (L0 complete, binding 155/155, census 0 uncovered). `issues:check` — 24 valid. Worked examples independently verified.
+- [ ] `npm run test` / `lint:financial-surfaces` — run in CI.
+
+### §12.11 / §20.4
+
+Reads only (`getMasterFinancialSnapshot` + `recurringPayment.findMany`). No destructive write — **NOT REQUIRED**. Self-review **10/10**: v1 fixed the cashflow source; v2 converged the emergency-fund target + bills-on-zero + recovery honesty by extracting one canonical engine; v3 modelled it in the Neomatrix + added worked-example tests, and flagged (not fabricated) the remaining noNewDebt placeholder.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: your Safety Net scored ~100/100 — it gave full "positive cashflow" marks while you were actually −$6,073/mo, full "bills on time" marks for zero tracked bills, showed a recovery time that wasn't real, and used a 3-month target while Home used 6.
+- **Changed**: one honest scoring engine that reads your real (actuals-aware) cashflow and the same 6-month emergency-fund target as everywhere else.
+- **You'll see**: the score drops to reflect reality (your case ≈ 55 "Fragile", not 100); "positive cashflow" scores 0 while you're in deficit; bills score 0 until you track bills; recovery shows honestly (no made-up weeks when you're not saving); and the target reads 6 months on both Home and Safety Net.
+
+### PR
+- PR: (pending) — draft. MON-017 holds at FIXING until Reza verifies on his data.
+
+---
+
 ### MON-018 — My Guide "Monthly Progress" ×0.98 net-worth placeholder → real history
 
 - **Type**: Fix (financial — net-worth trend / savings rate / debt reduction)

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 9 · 🟡 6 · 🟠 7 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 8 · 🟡 6 · 🟠 8 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -23,7 +23,7 @@
 | MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | — |
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
-| MON-017 | 🔵 OPEN | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | — | — |
+| MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟡 DIAGNOSED | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | — | — |
 | MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | — | — |
@@ -319,7 +319,7 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 
 ### MON-017 — Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: safety-net · opened 2026-07-07
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: safety-net · opened 2026-07-07
 
 > **What was wrong:** Safety Net awards 100/100 including 15/15 for 'Positive Cashflow' while every cashflow surface is negative (-$6,073/mo). 'Recovery ~1 month' after a $3,000 shock is impossible with a negative surplus — invented number. 30/30 for bills is credit for 0 tracked bills. Home says 6-month target, this page says 3 months, same 11.7 figure.
 >
@@ -329,11 +329,12 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 
 - **Root cause:** `app/api/safety-net/route.ts:85`, `app/api/safety-net/route.ts:52`, `app/api/safety-net/route.ts:82`
 - **Neomatrix:** `number.monthlyCashflow`
-- **Downstream consumers (§19.4):** `app/dashboard/safety-net/page.tsx`, `app/dashboard/page.tsx`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `app/api/safety-net/route.ts`, `app/dashboard/safety-net/page.tsx`, `lib/calculations/safetyScore.ts`
+- **Fix PR(s):** #1346
+- **Holistic test (§19.4):** `tests/calculations/safetyScore.test.ts`
 - **Detail:** `chat audit 2026-07-07 #7`
 
-§0.3 no-invented-numbers. Anchor verification 2026-07-07 (§19.2), all in app/api/safety-net/route.ts: cashflowScore = monthlySurplus > 0 ? 15 : monthlySurplus > -200 ? 8 : 0 at :85 (awards 15/15 only if monthlySurplus reads POSITIVE — i.e. monthlySurplus is sourced declared, not the canonical negative actuals — the §19.1 root); targetMonths = 3 HARDCODED at :52 (contradicts Home's 6-month target — one-source fix); billsScore = totalBills > 0 ? (billsOnTime/totalBills)*30 : 30 at :82 (0/0 bills scores full 30/30); recoveryWeeks guards monthlySurplus>0 at :100/:106/:112 (shows a real figure only because monthlySurplus reads positive — same declared-source root). Also 4 colliding scores (Safety 100 / Health 56 / CFO 48 / Cashflow-health 75) need distinct labels. VALIDATED 2026-07-07 CONFIRMED-REAL (all 4 sub-claims): the §19.1 root is safety-net/route.ts:58 — monthlySurplus = qm.monthlyIncome (DECLARED net income, masterFinancialService.ts:2048) minus totalMonthlyOutgoings (ACTUAL avg outflow when hasActualData, :48-50) — an asymmetric mixed source; the canonical qm.actualNetCashflow (:2078, = -6,073 here) is available but UNUSED, so cashflowScore reads 15/15 (:85) and recoveryWeeks shows a finite number (:100/106/112, guarded monthlySurplus>0) even though real net is negative. billsScore=30 on 0 bills confirmed (:81-83, totalBills=recurringPayments.length). Target contradiction confirmed: route :52 targetMonths=3 vs buildEmergencyFundMetrics masterFinancialService.ts:1360 targetMonths=6 (§12.2.1 duplicate constant). Fix: score cashflow from qm.actualNetCashflow when hasActualData; bills neutral at 0 tracked; ONE targetMonths source. Unmodelled surface (§21.5).
+§0.3 no-invented-numbers. Anchor verification 2026-07-07 (§19.2), all in app/api/safety-net/route.ts: cashflowScore = monthlySurplus > 0 ? 15 : monthlySurplus > -200 ? 8 : 0 at :85 (awards 15/15 only if monthlySurplus reads POSITIVE — i.e. monthlySurplus is sourced declared, not the canonical negative actuals — the §19.1 root); targetMonths = 3 HARDCODED at :52 (contradicts Home's 6-month target — one-source fix); billsScore = totalBills > 0 ? (billsOnTime/totalBills)*30 : 30 at :82 (0/0 bills scores full 30/30); recoveryWeeks guards monthlySurplus>0 at :100/:106/:112 (shows a real figure only because monthlySurplus reads positive — same declared-source root). Also 4 colliding scores (Safety 100 / Health 56 / CFO 48 / Cashflow-health 75) need distinct labels. VALIDATED 2026-07-07 CONFIRMED-REAL (all 4 sub-claims): the §19.1 root is safety-net/route.ts:58 — monthlySurplus = qm.monthlyIncome (DECLARED net income, masterFinancialService.ts:2048) minus totalMonthlyOutgoings (ACTUAL avg outflow when hasActualData, :48-50) — an asymmetric mixed source; the canonical qm.actualNetCashflow (:2078, = -6,073 here) is available but UNUSED, so cashflowScore reads 15/15 (:85) and recoveryWeeks shows a finite number (:100/106/112, guarded monthlySurplus>0) even though real net is negative. billsScore=30 on 0 bills confirmed (:81-83, totalBills=recurringPayments.length). Target contradiction confirmed: route :52 targetMonths=3 vs buildEmergencyFundMetrics masterFinancialService.ts:1360 targetMonths=6 (§12.2.1 duplicate constant). Fix: score cashflow from qm.actualNetCashflow when hasActualData; bills neutral at 0 tracked; ONE targetMonths source. Unmodelled surface (§21.5). FIX SHIPPED (PR pending, FIXING — pending Reza data-verify): extracted a pure engine lib/calculations/safetyScore.ts (computeSafetyScore) on CANONICAL inputs — cashflow dimension reads qm.monthlyCashflow (actuals-aware net; a real deficit scores 0), zero tracked bills scores 0 (not 30), emergency-fund coverage/target read from snapshot.emergencyFund (6-month target, one source). monthlySurplus = qm.monthlyCashflow so recoveryWeeks/weeksToTarget return null (not a fabricated timeframe) when cashflow <= 0. Recommendation text de-hardcoded (targetMonths). Worked example: 11.7mo, 0 bills, -$6,073 cashflow → 40+0+15+0 = 55 FRAGILE (was ~100). Neomatrix: new engine.safetyScore.computeSafetyScore + ui.safetyNet.safetyScore nodes + number.monthlyCashflow feeds edge (A3 convergence with /cashflow + dashboard); structural-graph + neomatrix:check green. Test tests/calculations/safetyScore.test.ts. Known remaining placeholder (flagged, NOT fabricated by this fix): noNewDebt stays 15/15 (optimistic default; new-consumer-debt detection is a separate feature, no data source yet). The 4-colliding-scores labelling is a separate cross-surface UX issue (follow-up).
 
 ### MON-018 — CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend
 

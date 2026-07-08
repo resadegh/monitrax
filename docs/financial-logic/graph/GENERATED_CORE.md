@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 253 · **Edges:** 342
-- **By kind:** orchestrator 9 · engine 142 · input-field 29 · number 12 · ui-surface 15 · law 39 · verification 7
-- **By status:** documented 253
-- **Edge provenance:** verified 342 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/163 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 255 · **Edges:** 344
+- **By kind:** orchestrator 9 · engine 143 · input-field 29 · number 12 · ui-surface 16 · law 39 · verification 7
+- **By status:** documented 255
+- **Edge provenance:** verified 344 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/164 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -169,6 +169,7 @@
 | **Reconciled monthly average (actuals)** | `lib/services/propertyActuals.ts:43` | engine | core | A true monthly average for a linked income/expense/loan from its reconciled-transaction cadence — so fortnightly rent annualises correctly (×26/12), not as if monthly. | Day-span averaging over the actual transaction cadence (§19.1 actuals-first). 30.44 = mean days/month. | tests/calculations/propertyCashflow.test.ts (actuals-first cadence example) | documented |
 | **Per-property cashflow** | `lib/calculations/propertyCashflow.ts:93` | engine | core | Per-property annual + MONTHLY rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow and tax cashflow, plus the rental cadence detected from the dates. ONE source for every property surface (list, detail, master snapshot). | Property cashflow = rent − holding costs − loan servicing. §19.1 actuals-first; interest-only is the deductible figure (principal is not deductible). Loan cost never silently $0. | tests/calculations/propertyCashflow.test.ts (§19.2 worked examples + §19.4 one-source proof) | documented |
 | **Monthly resolver (actuals-first)** | `lib/calculations/monthlyResolver.ts:123` | engine | core | A TRUE monthly figure for any money line (rent / expense / loan repayment) read from its reconciled transaction dates — correct for any cadence (fortnightly, twice-a-month, quarterly) — with declared amount×frequency as the fallback. | CLAUDE.md §19.1 actuals-first; 30.4375 = 365.25/12 mean days per month. Reza directive 2026-07-03 (universal, shown monthly). | tests/calculations/monthlyResolver.test.ts (fortnightly / twice-a-month / quarterly / 1-tx / declared) | documented |
+| **Safety Net score (Anchor)** | `lib/calculations/safetyScore.ts:57` | engine | health | 0-100 safety score: emergencyFund(40)+billsOnTime(30)+noNewDebt(15)+positiveCashflow(15), + grade. MON-017 — pure engine on CANONICAL inputs (was inline fiction). | lib/calculations/safetyScore.ts computeSafetyScore; inputs from snapshot.emergencyFund + quickMetrics.monthlyCashflow | tests/calculations/safetyScore.test.ts | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -195,6 +196,7 @@
 | **Reconciled monthly average (actuals)** | fortnightly $1195 → monthlyAvg ≈ 1195×26/12 = 2588.3 → ×12 ≈ $31,060/yr (not $14,340) |
 | **Per-property cashflow** | Lot 1: rent 14,340 − expenses 43,546 − P&I 71,704.56 = −100,910.56 cash (tax −90,671.23 using interest 61,465.23) |
 | **Monthly resolver (actuals-first)** | fortnightly $1195 → 1195/14×30.4375 ≈ $2,598/mo; quarterly $300 → 300/91×30.4375 ≈ $100/mo |
+| **Safety Net score (Anchor)** | 11.7mo,target6,0 bills,-$6,073 cashflow → 40+0+15+0 = 55 FRAGILE (was ~100) |
 
 ## Number lineage — how each displayed number is born
 
@@ -615,6 +617,8 @@
 | Monthly resolver (actuals-first) | → | Per-property cashflow | feeds | AUD/month→AUD | verified | propertyCashflow.ts resolveMonthly per line (rent pooled at stream level) |
 | Investment account cash balance | → | Net worth | feeds | AUD→AUD | verified | netWorthCalculator.ts calculateTotalAssets adds Σ investmentAccounts.cashBalance (MON-013) |
 | Net-worth trend Δ / Δ% (displayed) | → | My Guide — Monthly Progress card | rendered-at | — | verified | intelligenceEngine.ts calculateMonthlyProgress reads getNetWorthHistory(userId,2) → deltaAbsolute/deltaPct (MON-018) |
+| Monthly cash flow (this month) | → | Safety Net score (Anchor) | feeds | AUD/month→AUD/month | verified | safety-net/route.ts monthlySurplus=qm.monthlyCashflow → computeSafetyScore (MON-017 cashflow dimension) |
+| Safety Net score (Anchor) | → | My Safety Net — safety score | rendered-at | — | verified | app/api/safety-net/route.ts safetyScore response |
 
 ---
 
