@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 9 · 🟡 6 · 🟠 7 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 8 · 🟡 6 · 🟠 8 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -23,7 +23,7 @@
 | MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | — |
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
-| MON-017 | 🔵 OPEN | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | — | ✅ |
+| MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟡 DIAGNOSED | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | — | — |
 | MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | — | — |
@@ -319,7 +319,7 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 
 ### MON-017 — Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: safety-net · opened 2026-07-07
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: safety-net · opened 2026-07-07
 
 > **What was wrong:** Safety Net awards 100/100 including 15/15 for 'Positive Cashflow' while every cashflow surface is negative (-$6,073/mo). 'Recovery ~1 month' after a $3,000 shock is impossible with a negative surplus — invented number. 30/30 for bills is credit for 0 tracked bills. Home says 6-month target, this page says 3 months, same 11.7 figure.
 >
@@ -330,6 +330,7 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 - **Root cause:** `app/api/safety-net/route.ts:85`, `app/api/safety-net/route.ts:52`, `app/api/safety-net/route.ts:82`
 - **Neomatrix:** `number.monthlyCashflow`
 - **Downstream consumers (§19.4):** `app/api/safety-net/route.ts`, `app/dashboard/safety-net/page.tsx`, `lib/calculations/safetyScore.ts`
+- **Fix PR(s):** #1346
 - **Holistic test (§19.4):** `tests/calculations/safetyScore.test.ts`
 - **Detail:** `chat audit 2026-07-07 #7`
 

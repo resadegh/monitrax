@@ -119,19 +119,13 @@
     },
     {
       "file": "app/api/safety-net/route.ts",
-      "line": 47,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "qm.monthlyExpenses + qm.monthlyLoanRepayments"
-    },
-    {
-      "file": "app/api/safety-net/route.ts",
-      "line": 70,
+      "line": 72,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 4"
     },
     {
       "file": "app/api/safety-net/route.ts",
-      "line": 74,
+      "line": 76,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount / 12"
     },
