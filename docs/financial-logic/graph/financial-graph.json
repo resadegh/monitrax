@@ -245,6 +245,27 @@
       "status": "documented"
     },
     {
+      "id": "ui.cfo.monthlyProgress",
+      "kind": "ui-surface",
+      "label": "My Guide — Monthly Progress card",
+      "file": "app/dashboard/cfo/page.tsx",
+      "line": 1102,
+      "layer": "ui",
+      "domain": "cfo",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "netWorthTrend",
+      "produces": "Renders month-over-month net-worth change + debt reduction from the stored NetWorthSnapshot history (MON-018 — was a ×0.98 placeholder); savings rate from the canonical master snapshot.",
+      "formula": null,
+      "authority": "lib/cfo/intelligenceEngine.ts calculateMonthlyProgress → getNetWorthHistory(userId,2) + getMasterFinancialSnapshot",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/cfo/monthlyProgressCanonical.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-08",
+      "status": "documented"
+    },
+    {
       "id": "engine.entityBreakdown.buildEntityBreakdown",
       "kind": "engine",
       "label": "Per-entity position breakdown (additive view)",
@@ -4075,7 +4096,7 @@
       "kind": "engine",
       "label": "CFO: projected month-end balance",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 354,
+      "line": 310,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -4096,13 +4117,13 @@
       "kind": "engine",
       "label": "CFO: monthly-progress net worth (local)",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 377,
+      "line": 334,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "Net worth for the intelligence-engine monthly-progress composition.",
+      "produces": "LEGACY parity helper (MON-018): the live CFO monthly-progress no longer computes net worth inline — it reads getNetWorthHistory. Retained only as a Float/Decimal calc-audit fixture; NOT on the live path.",
       "formula": "netWorth = Σ accountBalances + Σ propertyValues + Σ(units×averagePrice) − totalDebt.",
       "authority": "Accounting identity (assets − liabilities). LOCAL helper — the canonical net-worth engine is lib/calculations/netWorthCalculator.calculateNetWorth (this simplified copy exists for local composition; downstream uses a ×0.98 placeholder, per source comment). Noted for Reza (§12.2.1).",
       "inputs": [],
@@ -8750,6 +8771,14 @@
       "toUnit": "AUD",
       "evidence": "netWorthCalculator.ts calculateTotalAssets adds Σ investmentAccounts.cashBalance (MON-013)",
       "verifiedDate": "2026-07-07"
+    },
+    {
+      "from": "number.netWorthTrendDelta",
+      "to": "ui.cfo.monthlyProgress",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "intelligenceEngine.ts calculateMonthlyProgress reads getNetWorthHistory(userId,2) → deltaAbsolute/deltaPct (MON-018)",
+      "verifiedDate": "2026-07-08"
     }
   ]
 }

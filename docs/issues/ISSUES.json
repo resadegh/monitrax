@@ -490,7 +490,7 @@
     {
       "id": "MON-018",
       "title": "CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-07",
@@ -501,19 +501,24 @@
         "check": "(after fix) My Guide's monthly change matches the Home Net Worth trend tile."
       },
       "rootCause": [
-        "lib/cfo/intelligenceEngine.ts:176"
+        "lib/cfo/intelligenceEngine.ts:117"
       ],
       "semanticKeys": [
         "number.netWorthTrendDelta",
         "engine.intelligenceEngine.calculateMonthlyProgressNetWorth"
       ],
       "downstreamConsumers": [
-        "app/dashboard/cfo"
+        "app/dashboard/cfo/page.tsx",
+        "lib/cfo/intelligenceEngine.ts",
+        "app/api/dashboard/charts/route.ts",
+        "lib/calculations/netWorthHistory.ts"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        1343
+      ],
+      "test": "tests/cfo/monthlyProgressCanonical.test.ts",
       "tracker": "chat audit 2026-07-07 #8",
-      "notes": "Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (§19.2): the placeholder is lastMonthNetWorth = currentNetWorth * 0.98 at lib/cfo/intelligenceEngine.ts:176 (inside calculateMonthlyProgress; netWorthChange :177, percent :178) — NOT :377, which the proposal cited but is the Decimal sibling calculateMonthlyProgressNetWorthDecimal whose own JSDoc (:374) points AT this ×0.98 placeholder. Canonical replacement: netWorthHistory.getNetWorthHistory over stored NetWorthSnapshot. Savings rate -39.1% on the same card disagrees with the -30.5% KPI — include in the downstream sweep. VALIDATED 2026-07-07 CONFIRMED-REAL: algebra proves (currentNetWorth - 0.98·currentNetWorth)/(0.98·currentNetWorth)×100 = +2.0408% for EVERY user regardless of data (:176-180); rendered at app/dashboard/cfo/page.tsx:1107. Canonical history exists + is unused (lib/calculations/netWorthHistory.ts getNetWorthHistory + NetWorthSnapshot + netWorthSnapshotRecorder.ts). Same file carries MORE placeholders: savingsRateChange: 0.5 // Simulated, debtReduction = totalDebt * 0.005 // Assume. Savings-rate discrepancy = §12.2.1 duplicate: :183-191 re-derives from DECLARED raw prisma rows vs the KPI's qm.savingsRate (masterFinancialService.ts:2056, net/actuals-aware). calculateMonthlyProgress is UNMODELLED (§21.5). Fix: feed monthly progress from netWorthHistory; delete the placeholders."
+      "notes": "Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (§19.2): the placeholder is lastMonthNetWorth = currentNetWorth * 0.98 at lib/cfo/intelligenceEngine.ts:176 (inside calculateMonthlyProgress; netWorthChange :177, percent :178) — NOT :377, which the proposal cited but is the Decimal sibling calculateMonthlyProgressNetWorthDecimal whose own JSDoc (:374) points AT this ×0.98 placeholder. Canonical replacement: netWorthHistory.getNetWorthHistory over stored NetWorthSnapshot. Savings rate -39.1% on the same card disagrees with the -30.5% KPI — include in the downstream sweep. VALIDATED 2026-07-07 CONFIRMED-REAL: algebra proves (currentNetWorth - 0.98·currentNetWorth)/(0.98·currentNetWorth)×100 = +2.0408% for EVERY user regardless of data (:176-180); rendered at app/dashboard/cfo/page.tsx:1107. Canonical history exists + is unused (lib/calculations/netWorthHistory.ts getNetWorthHistory + NetWorthSnapshot + netWorthSnapshotRecorder.ts). Same file carries MORE placeholders: savingsRateChange: 0.5 // Simulated, debtReduction = totalDebt * 0.005 // Assume. Savings-rate discrepancy = §12.2.1 duplicate: :183-191 re-derives from DECLARED raw prisma rows vs the KPI's qm.savingsRate (masterFinancialService.ts:2056, net/actuals-aware). calculateMonthlyProgress is UNMODELLED (§21.5). Fix: feed monthly progress from netWorthHistory; delete the placeholders. FIX SHIPPED (PR #1343, FIXING — pending Reza data-verify): calculateMonthlyProgress (now intelligenceEngine.ts:117) reads getNetWorthHistory(userId,2) for net-worth Δ + debt reduction (same canonical reader as the Home trend tile → converge) + snapshot.quickMetrics.savingsRate for the KPI-matching savings rate; savingsRateChange → null (UI hides sub-line); removed the ×0.98/0.5/0.005 placeholders + inline net-worth calc + 5 dead record types. Neomatrix: new ui.cfo.monthlyProgress node (semanticKey netWorthTrend, A3 convergence with ui.dashboard.netWorthTrendTile) + edge from number.netWorthTrendDelta; neomatrix:check green. Holistic guard tests/cfo/monthlyProgressCanonical.test.ts. Builds on MON-013 (net worth correct at source)."
     },
     {
       "id": "MON-019",

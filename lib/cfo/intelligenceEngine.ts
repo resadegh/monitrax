@@ -4,6 +4,8 @@
  */
 
 import { prisma } from '@/lib/db';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { getNetWorthHistory } from '@/lib/calculations/netWorthHistory';
 import { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
@@ -39,38 +41,10 @@ interface AccountRecord {
   currentBalance: number;
 }
 
-interface LoanRecord {
-  id: string;
-  userId: string;
-  principal: number;
-  minRepayment: number;
-  repaymentFrequency: string;
-}
-
-interface PropertyRecord {
-  id: string;
-  userId: string;
-  currentValue: number;
-}
-
-interface HoldingRecord {
-  id: string;
-  units: number;
-  averagePrice: number;
-}
-
-interface InvestmentAccountRecord {
-  id: string;
-  userId: string;
-  holdings: HoldingRecord[];
-}
-
-interface IncomeRecord {
-  id: string;
-  userId: string;
-  amount: number;
-  frequency: string;
-}
+// MON-018: LoanRecord / PropertyRecord / HoldingRecord / InvestmentAccountRecord
+// / IncomeRecord removed — they were only used by the old inline net-worth
+// aggregation in calculateMonthlyProgress, now replaced by getNetWorthHistory +
+// the canonical master snapshot.
 
 interface ExpenseRecord {
   id: string;
@@ -141,63 +115,45 @@ export async function getCFODashboardData(userId: string): Promise<CFODashboardD
 // ============================================================================
 
 async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress> {
-  // Fetch current and previous month data
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-  const [
-    accounts,
-    loans,
-    properties,
-    investments,
-    incomes,
-    expenses,
-  ] = await Promise.all([
-    prisma.account.findMany({ where: { userId } }),
-    prisma.loan.findMany({ where: { userId } }),
-    prisma.property.findMany({ where: { userId } }),
-    prisma.investmentAccount.findMany({ where: { userId }, include: { holdings: true } }),
-    prisma.income.findMany({ where: { userId } }),
-    prisma.expense.findMany({ where: { userId } }),
+  // MON-018 — real month-over-month progress from CANONICAL sources (§12.2.1 /
+  // §19.4). The prior implementation FABRICATED this card: it simulated last
+  // month's net worth as `currentNetWorth × 0.98` (algebraically a constant
+  // +2.04% every month regardless of the user's data), computed `currentNetWorth`
+  // inline (omitting investment-account cash + super, valuing holdings at cost),
+  // and hardcoded `savingsRateChange = 0.5` + `debtReduction = totalDebt × 0.005`.
+  //
+  // Now: net-worth Δ + debt-reduction come from the stored `NetWorthSnapshot`
+  // history via the ONE canonical reader (getNetWorthHistory, §12.2) — the same
+  // source as the Home Net Worth Trend tile, so the two converge — and the
+  // savings rate comes from the canonical master snapshot (actuals-aware), so it
+  // matches the dashboard KPI instead of the old declared-records figure.
+  const [snapshot, history] = await Promise.all([
+    getMasterFinancialSnapshot(userId),
+    getNetWorthHistory(userId, 2), // this month vs last month
   ]);
 
-  // Calculate current net worth
-  const accountBalances = accounts.reduce((sum: number, a: AccountRecord) => sum + a.currentBalance, 0);
-  const propertyValues = properties.reduce((sum: number, p: PropertyRecord) => sum + p.currentValue, 0);
-  const investmentValues = investments.reduce((sum: number, inv: InvestmentAccountRecord) => {
-    return sum + inv.holdings.reduce((h: number, hold: HoldingRecord) => h + hold.units * hold.averagePrice, 0);
-  }, 0);
-  const totalDebt = loans.reduce((sum: number, l: LoanRecord) => sum + l.principal, 0);
+  // Real Δ from stored snapshots — honest 0 when <2 months of history (never a
+  // placeholder curve; matches the getNetWorthHistory empty-state contract).
+  const netWorthChange = history.deltaAbsolute;
+  const netWorthChangePercent = history.deltaPct;
 
-  const currentNetWorth = accountBalances + propertyValues + investmentValues - totalDebt;
+  // Debt paid down this month = last month's liabilities − this month's, read
+  // from the same two snapshots. Honest 0 without a prior month to compare.
+  const debtReduction =
+    history.trend.length >= 2
+      ? history.trend[0].totalLiabilities - history.trend[history.trend.length - 1].totalLiabilities
+      : 0;
 
-  // For demo purposes, simulate last month's net worth (in production, this would be from history)
-  const lastMonthNetWorth = currentNetWorth * 0.98; // Assume 2% growth
-  const netWorthChange = currentNetWorth - lastMonthNetWorth;
-  const netWorthChangePercent = lastMonthNetWorth > 0
-    ? (netWorthChange / lastMonthNetWorth) * 100
-    : 0;
-
-  // Calculate savings rate (including loan repayments)
-  const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
-  const monthlyLoanRepayments = loans.reduce(
-    (sum: number, l: LoanRecord) => sum + toMonthly(l.minRepayment, l.repaymentFrequency as Frequency),
-    0
-  );
-  const savingsRate = monthlyIncome > 0
-    ? ((monthlyIncome - monthlyExpenses - monthlyLoanRepayments) / monthlyIncome) * 100
-    : 0;
-
-  // Calculate debt reduction this month (simulated)
-  const debtReduction = totalDebt * 0.005; // Assume 0.5% paydown
+  // Savings rate from the ONE canonical snapshot (actuals-aware) — matches the KPI.
+  const savingsRate = snapshot.quickMetrics.savingsRate;
 
   return {
     netWorthChange: Math.round(netWorthChange),
-    netWorthChangePercent: Math.round(netWorthChangePercent * 10) / 10,
+    netWorthChangePercent, // already rounded to 0.1 by getNetWorthHistory
     savingsRate: Math.round(savingsRate * 10) / 10,
-    savingsRateChange: 0.5, // Simulated improvement
+    // No stored savings-rate history to compare against → null, not a fabricated
+    // "+0.5%". The UI hides the "vs last month" line when this is null.
+    savingsRateChange: null,
     debtReduction: Math.round(debtReduction),
     topImprovements: generateTopImprovements(savingsRate, netWorthChangePercent),
     emergingRisks: generateEmergingRisks(savingsRate, netWorthChangePercent),
@@ -367,12 +323,13 @@ export function calculateProjectedMonthEndBalanceDecimal(
  * `calculateMonthlyProgress`. Mirrors the inline math bit-for-bit:
  * `accountBalances + propertyValues + investmentValues − totalDebt`.
  *
- * Note: a more comprehensive net-worth engine already ships in PR 2.A
- * (`netWorthCalculator.calculateNetWorthDecimal` — includes proper
- * liability classification + cost-base costs). This helper exists for
- * the intelligence-engine local composition only, where the simulated
- * `lastMonthNetWorth = currentNetWorth × 0.98` placeholder downstream
- * makes the canonical engine's extra precision moot.
+ * MON-018 (2026-07-08): the live `calculateMonthlyProgress` NO LONGER computes
+ * net worth inline — it now reads the stored `NetWorthSnapshot` history via
+ * `getNetWorthHistory` (the ×0.98 placeholder is gone). This Decimal helper is
+ * retained ONLY as a Float/Decimal parity fixture (lib/calc-audit +
+ * tests/cfo/actions-ai-intel.decimal.test.ts); it is not on the live path.
+ * The canonical net-worth engine is `netWorthCalculator.calculateNetWorthDecimal`
+ * (proper liability classification, cost base, investment-account cash — MON-013).
  */
 export function calculateMonthlyProgressNetWorthDecimal(input: {
   accountBalances: ReadonlyArray<{ currentBalance: number | string | Decimal }>;
