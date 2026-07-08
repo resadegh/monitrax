@@ -24,7 +24,8 @@ import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
 import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 import { computeFinancialIndependence } from '@/lib/calculations/financialIndependence';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
-import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { resolveMonthly } from '@/lib/calculations/monthlyResolver';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 
@@ -238,11 +239,44 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // the month they happened (the actuals/activity view).
       const expenseDetails = allExpenseDetails.filter((e) => e.isRecurring !== false);
 
+      // MON-025: read each expense's TRUE monthly from its transaction DATES
+      // (the MON-009 resolver) — so an annual payment seen ≥2× reads at its real
+      // monthly (~$18/mo), not the stored/defaulted MONTHLY frequency ($216/mo).
+      // The declared frequency is the fallback only when there aren't enough
+      // transactions to detect the cadence.
+      const recurringIds = expenseDetails.map((e) => e.id);
+      const expenseTx = recurringIds.length
+        ? await prisma.unifiedTransaction.findMany({
+            where: { userId, expenseId: { in: recurringIds } },
+            select: { expenseId: true, date: true, amount: true },
+            orderBy: { date: 'asc' },
+          })
+        : [];
+      const txByExpense = new Map<string, Array<{ date: Date; amount: number }>>();
+      for (const t of expenseTx) {
+        if (!t.expenseId) continue;
+        const arr = txByExpense.get(t.expenseId) ?? [];
+        arr.push({ date: t.date, amount: t.amount });
+        txByExpense.set(t.expenseId, arr);
+      }
+      const resolvedMonthlyById = new Map<string, number>();
+      for (const e of expenseDetails) {
+        resolvedMonthlyById.set(
+          e.id,
+          resolveMonthly({
+            declaredMonthly: toMonthly(e.amount, e.frequency as Frequency),
+            cadenceHintFrequency: e.frequency,
+            transactions: txByExpense.get(e.id) ?? [],
+          }).monthly,
+        );
+      }
+
       // MON-023: essential + discretionary + total are all derived from the SAME
       // recurring set, so their shares are coherent. (Regression guard: mixing a
       // recurring total with all-inclusive discretionary/essential slices made a
       // one-off discretionary purchase read as ">100% of expenses" — e.g. 906%.)
-      const monthlyOf = (e: ExpenseDetail) => toMonthly(e.amount, e.frequency as Frequency);
+      const monthlyOf = (e: ExpenseDetail) =>
+        resolvedMonthlyById.get(e.id) ?? toMonthly(e.amount, e.frequency as Frequency);
       const totalMonthlyExpenses = expenseDetails.reduce((s, e) => s + monthlyOf(e), 0);
       const essentialExpenses = expenseDetails.filter((e) => e.isEssential).reduce((s, e) => s + monthlyOf(e), 0);
       const discretionaryExpenses = expenseDetails.filter((e) => !e.isEssential).reduce((s, e) => s + monthlyOf(e), 0);
@@ -253,8 +287,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Build category spending breakdown using expense details
       const expensesByCategory: Record<string, CategorySpending> = {};
       expenseDetails.forEach((expense) => {
-        const monthlyAmount = toMonthly(expense.amount, expense.frequency as Frequency);
-        const annualAmount = toAnnual(expense.amount, expense.frequency as Frequency);
+        const monthlyAmount = monthlyOf(expense); // MON-025: cadence from dates
+        const annualAmount = monthlyAmount * 12;
 
         const category = expense.category || 'Uncategorized';
         if (!expensesByCategory[category]) {
@@ -287,8 +321,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Money bleeding - top expenses as percentage of income
       const moneyBleeding = expenseDetails
         .map((expense) => {
-          const monthlyAmount = toMonthly(expense.amount, expense.frequency as Frequency);
-          const annualAmount = toAnnual(expense.amount, expense.frequency as Frequency);
+          const monthlyAmount = monthlyOf(expense); // MON-025: cadence from dates
+          const annualAmount = monthlyAmount * 12;
           const percentageOfIncome = totalMonthlyIncome > 0
             ? (monthlyAmount / totalMonthlyIncome) * 100
             : 0;

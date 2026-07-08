@@ -4,7 +4,7 @@
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
-  "lastReviewed": "2026-07-07",
+  "lastReviewed": "2026-07-08",
   "nodes": [
     {
       "id": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
@@ -2528,7 +2528,7 @@
       "kind": "orchestrator",
       "label": "Dashboard insights composer",
       "file": "app/api/dashboard/insights/route.ts",
-      "line": 187,
+      "line": 188,
       "layer": "route",
       "domain": "core",
       "trailStage": null,
