@@ -697,7 +697,7 @@
     {
       "id": "MON-025",
       "title": "Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-08",
@@ -722,8 +722,10 @@
         "app/api/transactions/[id]/link/route.ts",
         "lib/bank/recurringExpenseDetection.ts"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        1345
+      ],
+      "test": "tests/bank/merchantNormalize.test.ts",
       "tracker": "docs/issues/ISSUES.md",
       "notes": "Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/route.ts:345), insights uses stored declared frequency verbatim (insights:245), AI cascade hard-codes isRecurring:false/suggestedFrequency:null (aiCategorisation:248-250), good detector recurringExpenseDetection.ts is DEAD CODE (no importers), exact-name dedup misses spelling variants (link:596-607). Reza requirements 2026-07-08: (a) frequency picker at reconcile, (b) confirm/correct auto-detected recurring frequency, suggest-and-confirm not silent. UI pieces are Stitch-first (§18.2.1). Multi-PR workstream."
     }
