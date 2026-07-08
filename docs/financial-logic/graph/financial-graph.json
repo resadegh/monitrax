@@ -5698,6 +5698,73 @@
       "workedExample": "fortnightly $1195 → 1195/14×30.4375 ≈ $2,598/mo; quarterly $300 → 300/91×30.4375 ≈ $100/mo",
       "verifiedDate": "2026-07-03",
       "status": "documented"
+    },
+    {
+      "id": "engine.safetyScore.computeSafetyScore",
+      "kind": "engine",
+      "label": "Safety Net score (Anchor)",
+      "file": "lib/calculations/safetyScore.ts",
+      "line": 57,
+      "layer": "engine",
+      "domain": "health",
+      "trailStage": "A",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "0-100 safety score: emergencyFund(40)+billsOnTime(30)+noNewDebt(15)+positiveCashflow(15), + grade. MON-017 — pure engine on CANONICAL inputs (was inline fiction).",
+      "formula": "emergencyFund=min(monthsCovered/targetMonths×40,40); bills=totalBills>0?billsOnTime/totalBills×30:0 (0 for no tracked bills, not 30); cashflow=monthlyCashflow>0?15:>-200?8:0 (canonical actuals-aware net); noNewDebt=15 (placeholder).",
+      "authority": "lib/calculations/safetyScore.ts computeSafetyScore; inputs from snapshot.emergencyFund + quickMetrics.monthlyCashflow",
+      "inputs": [
+        {
+          "name": "monthsCovered",
+          "unit": "months",
+          "type": "number",
+          "note": "snapshot.emergencyFund.monthsCovered"
+        },
+        {
+          "name": "targetMonths",
+          "unit": "months",
+          "type": "number",
+          "note": "snapshot.emergencyFund.targetMonths (6)"
+        },
+        {
+          "name": "monthlyCashflow",
+          "unit": "AUD/month",
+          "type": "number",
+          "note": "quickMetrics.monthlyCashflow (canonical, actuals-aware)"
+        },
+        {
+          "name": "billsOnTime/totalBills",
+          "unit": "count",
+          "type": "number",
+          "note": "active vs total tracked recurring bills"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/safetyScore.test.ts",
+      "workedExample": "11.7mo,target6,0 bills,-$6,073 cashflow → 40+0+15+0 = 55 FRAGILE (was ~100)",
+      "verifiedDate": "2026-07-08",
+      "status": "documented"
+    },
+    {
+      "id": "ui.safetyNet.safetyScore",
+      "kind": "ui-surface",
+      "label": "My Safety Net — safety score",
+      "file": "app/api/safety-net/route.ts",
+      "line": null,
+      "layer": "ui",
+      "domain": "health",
+      "trailStage": "A",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Renders the 0-100 safety score + grade + dimension breakdown from computeSafetyScore on canonical inputs (MON-017).",
+      "formula": null,
+      "authority": "app/api/safety-net/route.ts → computeSafetyScore",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/safetyScore.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-08",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -8778,6 +8845,24 @@
       "type": "rendered-at",
       "source": "verified",
       "evidence": "intelligenceEngine.ts calculateMonthlyProgress reads getNetWorthHistory(userId,2) → deltaAbsolute/deltaPct (MON-018)",
+      "verifiedDate": "2026-07-08"
+    },
+    {
+      "from": "number.monthlyCashflow",
+      "to": "engine.safetyScore.computeSafetyScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD/month",
+      "evidence": "safety-net/route.ts monthlySurplus=qm.monthlyCashflow → computeSafetyScore (MON-017 cashflow dimension)",
+      "verifiedDate": "2026-07-08"
+    },
+    {
+      "from": "engine.safetyScore.computeSafetyScore",
+      "to": "ui.safetyNet.safetyScore",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "app/api/safety-net/route.ts safetyScore response",
       "verifiedDate": "2026-07-08"
     }
   ]

@@ -725,6 +725,7 @@
     "lib/calculations/netWorthCalculator.ts",
     "lib/calculations/netWorthHistory.ts",
     "lib/calculations/propertyCashflow.ts",
+    "lib/calculations/safetyScore.ts",
     "lib/cashflow-intelligence/geminiSummary.ts",
     "lib/cashflow-intelligence/healthScoreAggregator.ts",
     "lib/cashflow-intelligence/index.ts",

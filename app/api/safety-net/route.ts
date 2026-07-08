@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { computeSafetyScore } from '@/lib/calculations/safetyScore';
 
 export const GET = withPermission('report.read', async (request, auth) => {
   try {
@@ -36,26 +37,27 @@ export const GET = withPermission('report.read', async (request, auth) => {
     ]);
 
     const qm = snapshot.quickMetrics;
+    const ef = snapshot.emergencyFund;
     const liquidCash = qm.liquidCash;
 
-    // Survival burn rate = ACTUAL trailing-3-month average outflow when we have
-    // real transaction data (it already includes loan repayments + the
-    // uncategorised spend the declared path dropped). Falls back to declared
-    // expenses + loan repayments for a user with no transaction history. Using
-    // the actual average makes "how many months could I survive?" honest —
-    // declared records understate it.
-    const declaredOutgoings = qm.monthlyExpenses + qm.monthlyLoanRepayments;
-    const totalMonthlyOutgoings = qm.hasActualData
-      ? qm.actualAvgMonthlyOutflow
-      : declaredOutgoings;
-
-    const targetMonths = 3;
-    const monthsCovered = totalMonthlyOutgoings > 0 ? liquidCash / totalMonthlyOutgoings : 0;
+    // MON-017 — emergency-fund figures come from the ONE canonical source
+    // (snapshot.emergencyFund, §12.2.1). This route previously RE-DERIVED them
+    // with a hardcoded 3-month target, contradicting the master's 6-month target
+    // for the same monthsCovered. `ef.monthlyExpenses` IS the survival burn rate
+    // the master already computed (actual trailing-avg outflow when transactions
+    // exist; declared expenses + loans otherwise).
+    const totalMonthlyOutgoings = ef.monthlyExpenses;
+    const targetMonths = ef.targetMonths;
+    const monthsCovered = ef.monthsCovered;
     const targetAmount = targetMonths * totalMonthlyOutgoings;
-    const gap = Math.max(0, targetAmount - liquidCash);
+    const gap = ef.gap;
 
-    const totalMonthlyIncome = qm.monthlyIncome;
-    const monthlySurplus = totalMonthlyIncome - totalMonthlyOutgoings;
+    // MON-017 — "money left over each month" = the CANONICAL actuals-aware net
+    // cashflow (qm.monthlyCashflow), NOT declared income − actual outflow (a
+    // mixed source that read POSITIVE while the real cashflow was negative).
+    // Drives recovery honesty + the cashflow score, so a real deficit is never
+    // dressed up as a surplus.
+    const monthlySurplus = qm.monthlyCashflow;
     const weeksToTarget = monthlySurplus > 0 && gap > 0
       ? Math.ceil((gap / monthlySurplus) * 4.33)
       : gap <= 0 ? 0 : null;
@@ -76,20 +78,19 @@ export const GET = withPermission('report.read', async (request, auth) => {
       }
     }, 0);
 
-    // Safety score (0-100)
-    const emergencyFundScore = Math.min((monthsCovered / targetMonths) * 40, 40);
-    const billsScore = totalBills > 0
-      ? ((billsOnTime / totalBills) * 30)
-      : 30;
-    const noNewDebtScore = 15; // TODO: detect new consumer debt from recent transactions
-    const cashflowScore = monthlySurplus > 0 ? 15 : monthlySurplus > -200 ? 8 : 0;
-    const safetyScore = Math.round(emergencyFundScore + billsScore + noNewDebtScore + cashflowScore);
-
-    let safetyGrade: string;
-    if (safetyScore >= 80) safetyGrade = 'STRONG';
-    else if (safetyScore >= 60) safetyGrade = 'BUILDING';
-    else if (safetyScore >= 40) safetyGrade = 'FRAGILE';
-    else safetyGrade = 'AT RISK';
+    // Safety score (0-100) — MON-017: one pure, tested engine on CANONICAL inputs.
+    // Fixes the fiction: cashflow dimension reads the actuals-aware net cashflow
+    // (a real deficit scores 0), zero tracked bills scores 0 (not 30), and the
+    // emergency-fund dimension uses the canonical target (6 months, not 3).
+    const score = computeSafetyScore({
+      monthsCovered,
+      targetMonths,
+      billsOnTime,
+      totalBills,
+      monthlyCashflow: monthlySurplus,
+    });
+    const safetyScore = score.total;
+    const safetyGrade = score.grade;
 
     // What-if scenarios
     const scenarios = [
@@ -116,10 +117,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
     // Guide recommendations for Anchor stage
     const recommendations: string[] = [];
     if (monthsCovered < 3) {
-      const suggestedTransfer = Math.min(Math.round(monthlySurplus * 0.5), Math.round(gap / 6));
+      const suggestedTransfer = Math.min(Math.round(monthlySurplus * 0.5), Math.round(gap / targetMonths));
       if (suggestedTransfer > 0) {
         recommendations.push(
-          `Set up automatic transfer of $${suggestedTransfer}/month to your emergency savings. You'll reach 3 months in ${weeksToTarget ? Math.ceil(weeksToTarget / 4.33) + ' months' : 'time'}.`
+          `Set up automatic transfer of $${suggestedTransfer}/month to your emergency savings. You'll reach your ${targetMonths}-month target in ${weeksToTarget ? Math.ceil(weeksToTarget / 4.33) + ' months' : 'time'}.`
         );
       }
     }
@@ -170,10 +171,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
           total: safetyScore,
           grade: safetyGrade,
           breakdown: {
-            emergencyFund: { score: Math.round(emergencyFundScore), max: 40 },
-            billsOnTime: { score: Math.round(billsScore), max: 30 },
-            noNewDebt: { score: noNewDebtScore, max: 15 },
-            positiveCashflow: { score: cashflowScore, max: 15 },
+            emergencyFund: score.emergencyFund,
+            billsOnTime: score.billsOnTime,
+            noNewDebt: score.noNewDebt,
+            positiveCashflow: score.positiveCashflow,
           },
         },
         scenarios,
