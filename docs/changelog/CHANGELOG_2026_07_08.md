@@ -277,3 +277,21 @@ Pure calc guards + presentational render. No update/upsert/delete. **NOT REQUIRE
 
 ### PR
 - PR: (pending) — draft. MON-019 holds at FIXING until Reza verifies on his data.
+
+---
+
+### Build fix — externalize pdfkit/fontkit (intermittent cold-build `iconv-lite` failure)
+
+- **Type**: Fix (build/infrastructure)
+- **Scope**: `next.config.ts` `serverExternalPackages`
+- **Root cause**: `pdfkit → fontkit → restructure` does an optional `require('iconv-lite')`. Webpack bundling it fails intermittently on cold builds (`Module not found: Can't resolve 'iconv-lite' in node_modules/restructure/src`) → Vercel deploy ERROR. Surfaced on PR #1348's cold preview build (unrelated to the MON-019 diff — main built the same files clean on a warm cache; #1347 prod = READY).
+- **Fix**: added `pdfkit` + `fontkit` to `serverExternalPackages` so they load via native runtime `require` (the optional require is a guarded try/catch there) — deterministic builds. pdfkit/fontkit are server-only (tax-pack export route); they should never be webpack-bundled.
+
+### Files Modified
+
+- `next.config.ts` — `serverExternalPackages: [..., 'pdfkit', 'fontkit']`.
+- `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` — §10a (server-only native packages) + revision-history row (§16.3 doc-sync).
+
+### Doc-sync (CLAUDE.md §16)
+
+- [x] deployment / build → `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §10a.

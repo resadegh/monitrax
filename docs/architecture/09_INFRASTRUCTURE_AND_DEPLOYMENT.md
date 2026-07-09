@@ -552,11 +552,30 @@ npx prisma db pull
 
 ---
 
+## 10a. Build: server-only native packages (`serverExternalPackages`)
+
+`next.config.ts` marks server-only packages as external so Next does **not**
+webpack-bundle them. Current list: `@prisma/client`, `prisma`, `pdfkit`,
+`fontkit`.
+
+- **Why `pdfkit`/`fontkit` (added 2026-07-08):** the tax-pack PDF export route
+  (`app/api/bookkeeping/tax-pack/export/route.ts` → `lib/bookkeeping/taxPack/pdfExporter.ts`)
+  pulls `pdfkit → fontkit → restructure`, which does an **optional**
+  `require('iconv-lite')`. When webpack tries to bundle it, cold builds
+  intermittently fail with `Module not found: Can't resolve 'iconv-lite' in
+  node_modules/restructure/src`, erroring the Vercel deploy. Externalizing
+  loads them via native `require` at runtime, where the optional require is a
+  guarded try/catch — builds become deterministic.
+- **Rule:** any new server-only package that (a) is never imported by client
+  components and (b) does optional/native requires webpack can't resolve should
+  be added here rather than bundled.
+
 ## 11. Revision History
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2025-12-04 | Initial document creation | Claude |
+| 2026-07-08 | Externalized `pdfkit`/`fontkit` (`serverExternalPackages`) — fixes intermittent cold-build `iconv-lite` resolution failure (§10a) | Claude |
 
 ---
 
