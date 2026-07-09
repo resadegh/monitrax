@@ -3886,7 +3886,7 @@
       "kind": "engine",
       "label": "Loan: monthly P&I payment",
       "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
-      "line": 615,
+      "line": 667,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "R",
@@ -3907,20 +3907,20 @@
       "kind": "engine",
       "label": "Loan: months to payoff",
       "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
-      "line": 635,
+      "line": 687,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "R",
       "regime": null,
       "semanticKey": null,
-      "produces": "Number of months to fully repay a loan at a given monthly payment (999 if payment ≤ interest; capped at 600).",
+      "produces": "Number of months to fully repay a loan at a given monthly payment. Returns the NEVER_AMORTISES sentinel (999) when payment ≤ interest (interest-only); capped at 600. MON-019: the sentinel is NOT a payoff horizon — consumers (calculateExtraRepaymentImpact) MUST guard it before any arithmetic (subtracting it produced the bogus 'save 69 years').",
       "formula": "monthlyRate = annualRate/12; n = ceil( −log(1 − P·r/M) / log(1+r) ), min(n, 600); returns 999 if M ≤ P·r.",
       "authority": "Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas.",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit engine cfo.loanDecisionSupport.calculatePayoffMonths (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:635",
       "workedExample": null,
-      "verifiedDate": "2026-06-26",
+      "verifiedDate": "2026-07-08",
       "status": "documented"
     },
     {
@@ -3928,7 +3928,7 @@
       "kind": "engine",
       "label": "Loan: total interest over term",
       "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
-      "line": 661,
+      "line": 714,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "R",
@@ -7987,42 +7987,42 @@
       "to": "engine.loanDecisionSupport.calculateMonthlyPayment",
       "type": "feeds",
       "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:347 — calculateMonthlyPayment(loan.principal, loan.interestRateAnnual, 240)"
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:381 — calculateMonthlyPayment(loan.principal, loan.interestRateAnnual, 240)"
     },
     {
       "from": "engine.loanDecisionSupport.calculateMonthlyPayment",
       "to": "law.standard.loanInterest",
       "type": "governed-by",
       "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:615-629 — standard P&I amortisation"
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:667-681 — standard P&I amortisation"
     },
     {
       "from": "input.Loan.principal",
       "to": "engine.loanDecisionSupport.calculatePayoffMonths",
       "type": "feeds",
       "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:449 — calculatePayoffMonths(targetLoan.principal, targetLoan.interestRateAnnual, …)"
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:483 — calculatePayoffMonths(targetLoan.principal, targetLoan.interestRateAnnual, …)"
     },
     {
       "from": "engine.loanDecisionSupport.calculatePayoffMonths",
       "to": "law.standard.loanInterest",
       "type": "governed-by",
       "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:635-657 — standard P&I amortisation"
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:687-709 — standard P&I amortisation"
     },
     {
       "from": "input.Loan.principal",
       "to": "engine.loanDecisionSupport.calculateTotalInterest",
       "type": "feeds",
       "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:465 — calculateTotalInterest(targetLoan.principal, targetLoan.interestRateAnnual, …)"
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:511 — calculateTotalInterest(targetLoan.principal, targetLoan.interestRateAnnual, …)"
     },
     {
       "from": "engine.loanDecisionSupport.calculateTotalInterest",
       "to": "law.standard.loanInterest",
       "type": "governed-by",
       "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:661-668 — standard P&I amortisation"
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:714-721 — standard P&I amortisation"
     },
     {
       "from": "input.Income.declared",

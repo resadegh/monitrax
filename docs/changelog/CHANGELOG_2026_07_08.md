@@ -220,3 +220,60 @@ Pure engine + read-only route + presentational component. No update/upsert/delet
 
 ### PR
 - PR: (pending) — draft. MON-012 holds at FIXING until Reza verifies on his data.
+
+---
+
+### MON-019 — "Save 69 years" (999 payoff sentinel leaking into UI arithmetic) + refinance on a 104% LVR loan
+
+- **Type**: Fix (financial — CFO loan opportunities)
+- **Scope**: `lib/cfo/decisionSupport/loanDecisionSupport.ts`; `app/dashboard/cfo/page.tsx`
+- **Root cause (verified §19.2)**: `calculatePayoffMonths` returns `999` when payment ≤ interest (interest-only loan never pays off at the current payment). `calculateExtraRepaymentImpact` then did `timeReduced = currentPayoffMonths − newPayoffMonths` → `999 − 168 = 831 mo`, rendered `Math.round(831/12) = 69` → **"Save 69 years"**. `calculateTotalInterest(…, 999)` computed interest over a phantom 999-month horizon → a **negative** benefit. Separately, `calculateRefinanceOpportunities` had **no LVR gate** — a 104% LVR loan (no lender writes it) was still recommended.
+- **Fix (§0 financial-adviser + architect)**:
+  1. Named the sentinel `NEVER_AMORTISES` and **guarded every consumer**. `calculateExtraRepaymentImpact` now returns `timeReduced`/`interestSaved` **null** when the loan isn't amortising, plus `amortisingNow` / `startsAmortising` / `newPayoffMonths` so the UI says "**Starts paying down — clears it in ~N yrs**" instead of subtracting the sentinel.
+  2. `interestSaved` is only computed when **both** scenarios amortise → never negative.
+  3. Added `MAX_REFINANCE_LVR = 0.95`; threaded `properties` into `calculateRefinanceOpportunities`; a property loan above the ceiling is not `worthRefinancing`.
+
+### §19.2 worked examples (verified via node)
+
+- **Interest-only** loan (P 800k @ 6%, payment = 4,000 = interest): `currentPayoffMonths = 999` (sentinel), `newPayoffMonths = 221` → `amortisingNow=false`, `timeReduced=null`, `interestSaved=null`, `startsAmortising=true`. **No "69 years."**
+- **Amortising** loan (P 300k @ 5%, payment 2,000): `timeReduced = 145 mo`, `interestSaved = +$108,000` (positive).
+- **Refinance**: 520k/500k = **104% LVR** → `worthRefinancing=false`; 400k/800k = 50% LVR above market → `true`; non-property PERSONAL loan → not LVR-gated.
+
+### §19.4 downstream + hard test
+
+- The only consumer of these fields is the CFO Loan Opportunities tile (`app/dashboard/cfo/page.tsx`), rewired to the guarded fields. Exported the two pure helpers; holistic test `tests/cfo/loanDecisionSupportGuards.test.ts` (13 assertions: IO no-arithmetic, amortising real+positive, LVR gate on/off, non-property exempt) — all verified via node.
+
+### Files Modified
+
+- `lib/cfo/decisionSupport/loanDecisionSupport.ts` — `NEVER_AMORTISES` + `MAX_REFINANCE_LVR` constants; sentinel guard in `calculateExtraRepaymentImpact` (new `amortisingNow`/`startsAmortising`/`newPayoffMonths`, nullable `timeReduced`/`interestSaved`/dates); LVR gate in `calculateRefinanceOpportunities` (properties threaded); exported both helpers.
+- `app/dashboard/cfo/page.tsx` — render destructures the guarded fields; "Starts paying down" copy for IO loans; (removes the `extraRepaymentImpact.timeReduced/12` frequency-lint false positive — baseline entry deleted).
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — `calculatePayoffMonths` node documents the sentinel guard; 3 anchors re-pinned (615/635/661 → 667/687/714) + edge evidence lines.
+- `.audit/financial-math-baseline.json` — removed the now-resolved cfo/page:916 false positive.
+- `tests/cfo/loanDecisionSupportGuards.test.ts` — NEW guard test.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-019 → FIXING.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — 0 errors.
+- [x] `npm run neomatrix:check` — OK (binding 157/157, census 0 uncovered).
+- [x] `npm run issues:check` — 25 valid.
+- [x] All 13 test assertions verified via node.
+- [x] `lint:financial-surfaces` — false positive removed; no new pattern (engine layer skips arithmetic; render uses clean identifiers).
+- [ ] `npm run test` — runs in CI.
+
+### §12.11 destructive-write check
+
+Pure calc guards + presentational render. No update/upsert/delete. **NOT REQUIRED.**
+
+### §20.4 self-review — 10/10 (financial build)
+
+3× against requirement (stop the 999 leak; honest benefit; no unrefinanceable recs): v1 guarded the sentinel + LVR gate; v2 made `interestSaved` null (not negative) unless both amortise and added the "starts paying down" qualitative path; v3 destructured the render (killing a lint false positive), re-pinned the Neomatrix, added the 13-assertion guard test. Every number verified via node.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: Loan Opportunities said extra repayments "save 69 years" — the engine's "999 = never pays off at this payment" code was being subtracted as if real — the benefit showed negative, and it suggested refinancing a 104% LVR loan no lender would write.
+- **Changed**: 999 is treated as "not currently paying down" (never used in arithmetic); the benefit is only a dollar figure when the loan actually amortises; refinancing is suppressed above 95% LVR.
+- **You'll see**: an interest-only loan shows "Starts paying down — clears it in ~N yrs" (not "Save 69 years"); the benefit is positive; no refinance suggestion on the 104% loan.
+
+### PR
+- PR: (pending) — draft. MON-019 holds at FIXING until Reza verifies on his data.
