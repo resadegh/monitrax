@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 6 · 🟡 6 · 🟠 10 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 6 · 🟡 5 · 🟠 11 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -25,7 +25,7 @@
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
 | MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
-| MON-019 | 🟡 DIAGNOSED | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | — | ✅ |
+| MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
 | MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | — | — |
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
@@ -361,7 +361,7 @@ Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (
 
 ### MON-019 — 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: cfo · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: cfo · opened 2026-07-07
 
 > **What was wrong:** Loan opportunities says extra repayments 'save 69 years'. The engine returns 999 months as code for 'this interest-only loan never pays off at the current payment'; the screen subtracts 999 - ~168 = 831 months = 69 years as if real. Benefit also shows negative (-$270,328), and it recommends refinancing a 104% LVR loan no lender would write.
 >
@@ -372,6 +372,7 @@ Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (
 - **Root cause:** `lib/cfo/decisionSupport/loanDecisionSupport.ts:687`, `lib/cfo/decisionSupport/loanDecisionSupport.ts:501`, `lib/cfo/decisionSupport/loanDecisionSupport.ts:316`
 - **Neomatrix:** `engine.loanDecisionSupport.calculatePayoffMonths`
 - **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `lib/cfo/decisionSupport/loanDecisionSupport.ts`
+- **Fix PR(s):** #1348
 - **Holistic test (§19.4):** `tests/cfo/loanDecisionSupportGuards.test.ts`
 - **Detail:** `chat audit 2026-07-07 #9`
 
