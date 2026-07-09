@@ -26,7 +26,10 @@ const loan = (o: Record<string, unknown>) => ({
   rateType: 'VARIABLE',
   fixedExpiry: null,
   propertyId: null,
-  repaymentFrequency: 'monthly',
+  // Must be the canonical enum value — toMonthly() matches `case 'MONTHLY'`
+  // (uppercase); a lowercase 'monthly' falls through to the annual default and
+  // silently divides the repayment by 12.
+  repaymentFrequency: 'MONTHLY',
   termMonthsRemaining: 300,
   ...o,
 });

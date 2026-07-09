@@ -295,3 +295,21 @@ Pure calc guards + presentational render. No update/upsert/delete. **NOT REQUIRE
 ### Doc-sync (CLAUDE.md §16)
 
 - [x] deployment / build → `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §10a.
+
+---
+
+### MON-019 follow-up — CI fixes (duplicate-type drift + test frequency + build externalization)
+
+Three CI failures on the first #1348 push, all fixed:
+
+1. **Type error** (`next build`): `app/dashboard/cfo/page.tsx` kept a **local duplicate** `interface ExtraRepaymentImpact` (§12.2.1) missing the new sentinel-guard fields → `Property 'startsAmortising' does not exist`. Fixed by importing the canonical type (`import type { ExtraRepaymentImpact } from '@/lib/cfo/decisionSupport/loanDecisionSupport'`) and deleting the local copy. A **second** parallel duplicate (`CFOExtraRepaymentImpact` in `lib/cfo/types.ts`, which types `CFODashboardData.loanInsights`) was updated to the same nullable shape so the `calculateCFOLoanInsights` return stays assignable.
+2. **vitest**: the guard test used `repaymentFrequency: 'monthly'` — `toMonthly` matches `case 'MONTHLY'` (uppercase), so the lowercase value fell through to the annual default (÷12), dropping the amortising loan's payment below its interest. Fixed to `'MONTHLY'`.
+3. **Build (`iconv-lite`)**: externalized `pdfkit`/`fontkit` (documented above).
+
+**Process note**: local `npx tsc`/vitest are unavailable in this container (tsc aborts on the `baseUrl` deprecation before type-checking; vitest toolchain broken). Verification now traces the *real* code path (e.g. `toMonthly`'s enum switch) rather than a reimplemented sim, and relies on CI as the type/test gate.
+
+### Files Modified (this round)
+
+- `app/dashboard/cfo/page.tsx` — import canonical `ExtraRepaymentImpact`; delete local duplicate.
+- `lib/cfo/types.ts` — `CFOExtraRepaymentImpact` matched to the canonical nullable shape.
+- `tests/cfo/loanDecisionSupportGuards.test.ts` — `repaymentFrequency: 'MONTHLY'`.

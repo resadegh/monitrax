@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+// MON-019: import the canonical type instead of duplicating it locally (§12.2.1).
+// `import type` is fully erased — no server-only code (prisma) reaches this
+// client bundle. The prior local copy drifted (missing the new sentinel-guard
+// fields) and broke the build.
+import type { ExtraRepaymentImpact } from '@/lib/cfo/decisionSupport/loanDecisionSupport';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -142,13 +147,6 @@ interface RateAlert {
   daysUntil?: number;
   impact: number;
   action: string;
-}
-
-interface ExtraRepaymentImpact {
-  extraMonthly: number;
-  interestSaved: number;
-  timeReduced: number;
-  targetLoanName: string;
 }
 
 interface LoanInsights {
