@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 256 · **Edges:** 345
-- **By kind:** orchestrator 9 · engine 143 · input-field 29 · number 13 · ui-surface 16 · law 39 · verification 7
-- **By status:** documented 256
-- **Edge provenance:** verified 345 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/165 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 259 · **Edges:** 348
+- **By kind:** orchestrator 9 · engine 144 · input-field 29 · number 13 · ui-surface 17 · law 40 · verification 7
+- **By status:** documented 259
+- **Edge provenance:** verified 348 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/166 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -170,6 +170,7 @@
 | **Per-property cashflow** | `lib/calculations/propertyCashflow.ts:93` | engine | core | Per-property annual + MONTHLY rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow and tax cashflow, plus the rental cadence detected from the dates. ONE source for every property surface (list, detail, master snapshot). | Property cashflow = rent − holding costs − loan servicing. §19.1 actuals-first; interest-only is the deductible figure (principal is not deductible). Loan cost never silently $0. | tests/calculations/propertyCashflow.test.ts (§19.2 worked examples + §19.4 one-source proof) | documented |
 | **Monthly resolver (actuals-first)** | `lib/calculations/monthlyResolver.ts:123` | engine | core | A TRUE monthly figure for any money line (rent / expense / loan repayment) read from its reconciled transaction dates — correct for any cadence (fortnightly, twice-a-month, quarterly) — with declared amount×frequency as the fallback. | CLAUDE.md §19.1 actuals-first; 30.4375 = 365.25/12 mean days per month. Reza directive 2026-07-03 (universal, shown monthly). | tests/calculations/monthlyResolver.test.ts (fortnightly / twice-a-month / quarterly / 1-tx / declared) | documented |
 | **Safety Net score (Anchor)** | `lib/calculations/safetyScore.ts:57` | engine | health | 0-100 safety score: emergencyFund(40)+billsOnTime(30)+noNewDebt(15)+positiveCashflow(15), + grade. MON-017 — pure engine on CANONICAL inputs (was inline fiction). | lib/calculations/safetyScore.ts computeSafetyScore; inputs from snapshot.emergencyFund + quickMetrics.monthlyCashflow | tests/calculations/safetyScore.test.ts | documented |
+| **Hidden Wealth — accessibility buckets** | `lib/calculations/accessibilityBuckets.ts:73` | engine | core | Partitions net worth into liquidToday / accessible / lockedLongTerm — buckets ALWAYS sum to net worth (MON-012). Was a §21.5 blind spot; before the fix buckets overstated net worth (credit card + HECS netted nowhere, non-liquid cash dropped, floored equity via MON-011). | lib/calculations/accessibilityBuckets.ts computeAccessibilityBuckets; every input a canonical NetWorthResult field (§12.2.1) | tests/calculations/accessibilityBuckets.test.ts | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -197,6 +198,7 @@
 | **Per-property cashflow** | Lot 1: rent 14,340 − expenses 43,546 − P&I 71,704.56 = −100,910.56 cash (tax −90,671.23 using interest 61,465.23) |
 | **Monthly resolver (actuals-first)** | fortnightly $1195 → 1195/14×30.4375 ≈ $2,598/mo; quarterly $300 → 300/91×30.4375 ≈ $100/mo |
 | **Safety Net score (Anchor)** | 11.7mo,target6,0 bills,-$6,073 cashflow → 40+0+15+0 = 55 FRAGILE (was ~100) |
+| **Hidden Wealth — accessibility buckets** | reported shape: liquid 47,504 + accessible 100,000 + locked 1,715,000 = 1,862,504 = netWorth; old gross-ish sum overstated by exactly 27,496 (cc 2,496 + HECS 25,000) |
 
 ## Number lineage — how each displayed number is born
 
@@ -259,6 +261,7 @@
 | **ITAA 1936 Div 6 — trust net income distribution (s95/s97)** | ITAA 1936 Div 6 — trust net income distribution (s95/s97) | ITAA 1936 Div 6, s95 (net income), s97 (present entitlement → beneficiary assessment) | Trust net income distribution (Div 6) |
 | **Merchant-noise denoising (time-strip + verified alias expansion)** | ONE shared denoise applied identically by BOTH merchant-identity producers (per-user normaliseMerchantName + shared-KB scrubToSignature) so they never drift (§12.2.1): (1) strip clock-times — HH:MM(:SS) anywhere AND a LEADING time whose colon became a space at import ('14 44hjs' → 'hjs', 54.2e), so existing ledger rows de-noise too; (2) expand EVIDENCE-GATED whole-token AU abbreviations to the canonical merchant name; (3) P2 — strip identifying NUMERIC noise (BSB / card masks / reference tails / long free-standing digit runs) while NEVER stripping location words. So same-vendor rows differing only by time/store-number/ref collapse to one key; different-location rows stay distinct (over-merge would misstate spend-by-category, §19). Aliases are never populated speculatively (§19). | Phase 54.1 — docs/blueprint/PHASE_54_NEOBRAIN.md §16; CLAUDE.md §12.2.1 + §19 | Merchant identity normaliser (per-user standardised name), De-identifier (PII scrub) |
 | **AI proposes, the user confirms (AI never auto-files)** | A categorisation with source==='AI' is NEVER written straight to the ledger, regardless of confidence — it is always parked in the review queue for a human confirm. This upholds the KB echo-chamber-safety rule (only human confirmations graduate patterns) and keeps an AI guess from silently becoming a user's spend fact (§19). Deterministic sources (RULE/USER/KB/transfer) may auto-file. | Phase 54.2 — docs/blueprint/PHASE_54_NEOBRAIN.md §17; CLAUDE.md §19 + Phase 52 echo-chamber safety | Confidence-band classifier |
+| **Accessibility buckets sum to net worth** | liquidToday + accessible + lockedLongTerm = netWorth | Derived from the accounting identity (law.accountingIdentity) — every asset and liability lands in exactly one bucket. | Hidden Wealth — accessibility buckets |
 
 ## Assurance — the Trust Engine (what proves each number correct)
 
@@ -621,6 +624,9 @@
 | Monthly cash flow (this month) | → | Safety Net score (Anchor) | feeds | AUD/month→AUD/month | verified | safety-net/route.ts monthlySurplus=qm.monthlyCashflow → computeSafetyScore (MON-017 cashflow dimension) |
 | Safety Net score (Anchor) | → | My Safety Net — safety score | rendered-at | — | verified | app/api/safety-net/route.ts safetyScore response |
 | Property equity | → | Property portfolio equity | feeds | AUD→AUD | verified | masterFinancialService.ts:1961 Σ per-property signed equity (MON-011) |
+| Net worth | → | Hidden Wealth — accessibility buckets | feeds | AUD→AUD | verified | hidden-wealth/route.ts computeAccessibilityBuckets(snapshot.netWorth, liquidCash) — every bucket input is a canonical NetWorthResult field |
+| Hidden Wealth — accessibility buckets | → | Balances — Hidden Wealth lens | rendered-at | — | verified | app/api/dashboard/hidden-wealth/route.ts response → HiddenWealthLens |
+| Hidden Wealth — accessibility buckets | → | Accessibility buckets sum to net worth | governed-by | — | verified | Σ buckets = assets.total − liabilities.total = netWorth (proof in accessibilityBuckets.ts JSDoc + fuzz test) |
 
 ---
 

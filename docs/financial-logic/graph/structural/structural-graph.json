@@ -709,6 +709,7 @@
     "lib/calc-audit/userAudit/index.ts",
     "lib/calc-audit/userAudit/registry.ts",
     "lib/calc-audit/userAudit/types.ts",
+    "lib/calculations/accessibilityBuckets.ts",
     "lib/calculations/actualCashflow.ts",
     "lib/calculations/assetValuation.ts",
     "lib/calculations/canonicalCashflow.ts",

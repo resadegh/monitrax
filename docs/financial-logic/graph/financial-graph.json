@@ -5786,6 +5786,82 @@
       "workedExample": null,
       "verifiedDate": "2026-07-08",
       "status": "documented"
+    },
+    {
+      "id": "engine.accessibilityBuckets.computeAccessibilityBuckets",
+      "kind": "engine",
+      "label": "Hidden Wealth — accessibility buckets",
+      "file": "lib/calculations/accessibilityBuckets.ts",
+      "line": 73,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": "T",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Partitions net worth into liquidToday / accessible / lockedLongTerm — buckets ALWAYS sum to net worth (MON-012). Was a §21.5 blind spot; before the fix buckets overstated net worth (credit card + HECS netted nowhere, non-liquid cash dropped, floored equity via MON-011).",
+      "formula": "liquidToday = min(liquidCash,accounts) − creditCards; accessible = investments + (accounts − min(liquidCash,accounts)); lockedLongTerm = (properties − mortgages) + super + personalAssets − personalLoans. Σ = assets.total − liabilities.total = netWorth.",
+      "authority": "lib/calculations/accessibilityBuckets.ts computeAccessibilityBuckets; every input a canonical NetWorthResult field (§12.2.1)",
+      "inputs": [
+        {
+          "name": "netWorth",
+          "unit": "AUD",
+          "type": "NetWorthResult",
+          "note": "snapshot.netWorth (canonical)"
+        },
+        {
+          "name": "liquidCash",
+          "unit": "AUD",
+          "type": "number",
+          "note": "snapshot.quickMetrics.liquidCash (LIQUID_ACCOUNT_TYPES subset)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts",
+      "workedExample": "reported shape: liquid 47,504 + accessible 100,000 + locked 1,715,000 = 1,862,504 = netWorth; old gross-ish sum overstated by exactly 27,496 (cc 2,496 + HECS 25,000)",
+      "verifiedDate": "2026-07-08",
+      "status": "documented"
+    },
+    {
+      "id": "ui.balances.hiddenWealth",
+      "kind": "ui-surface",
+      "label": "Balances — Hidden Wealth lens",
+      "file": "app/api/dashboard/hidden-wealth/route.ts",
+      "line": 47,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": "T",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Renders the three accessibility buckets (liquid/accessible/locked) + net-worth-proportioned bar + Inside-Locked drill-down, from computeAccessibilityBuckets (MON-012).",
+      "formula": null,
+      "authority": "app/api/dashboard/hidden-wealth/route.ts → computeAccessibilityBuckets → components/balances/HiddenWealthLens.tsx",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-08",
+      "status": "documented"
+    },
+    {
+      "id": "law.accessibilityTieOut",
+      "kind": "law",
+      "label": "Accessibility buckets sum to net worth",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Tie-out invariant governing the Hidden Wealth lens.",
+      "formula": "liquidToday + accessible + lockedLongTerm = netWorth",
+      "authority": "Derived from the accounting identity (law.accountingIdentity) — every asset and liability lands in exactly one bucket.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-08",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -8894,6 +8970,32 @@
       "fromUnit": "AUD",
       "toUnit": "AUD",
       "evidence": "masterFinancialService.ts:1961 Σ per-property signed equity (MON-011)",
+      "verifiedDate": "2026-07-08"
+    },
+    {
+      "from": "engine.netWorthCalculator.calculateNetWorth",
+      "to": "engine.accessibilityBuckets.computeAccessibilityBuckets",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "hidden-wealth/route.ts computeAccessibilityBuckets(snapshot.netWorth, liquidCash) — every bucket input is a canonical NetWorthResult field",
+      "verifiedDate": "2026-07-08"
+    },
+    {
+      "from": "engine.accessibilityBuckets.computeAccessibilityBuckets",
+      "to": "ui.balances.hiddenWealth",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "app/api/dashboard/hidden-wealth/route.ts response → HiddenWealthLens",
+      "verifiedDate": "2026-07-08"
+    },
+    {
+      "from": "engine.accessibilityBuckets.computeAccessibilityBuckets",
+      "to": "law.accessibilityTieOut",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "Σ buckets = assets.total − liabilities.total = netWorth (proof in accessibilityBuckets.ts JSDoc + fuzz test)",
       "verifiedDate": "2026-07-08"
     }
   ]

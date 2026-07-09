@@ -5,11 +5,13 @@
  *
  * Translates Jason Andrew's *"the balance sheet is where all the cash is
  * hiding"* (Stark Naked Numbers) into a personal-finance accessibility
- * view: splits the user's total assets by **how soon they can spend it**.
+ * view: splits the user's NET WORTH by **how soon they can spend it**.
+ * Each bucket nets the debt of its own horizon, so the three ALWAYS sum to
+ * net worth (MON-012 — computeAccessibilityBuckets).
  *
- *   • Liquid Today      — cash + offsets (24-hour access)
- *   • Accessible        — shares / ETFs / managed funds (~days)
- *   • Locked Long-Term  — property equity, super, personal assets
+ *   • Liquid Today      — liquid cash − credit cards (24-hour access)
+ *   • Accessible        — investments + term deposits (~days)
+ *   • Locked Long-Term  — property equity + super + personal assets − HECS/loans
  *
  * Why this surface exists (the user with $500k net worth and $2k
  * accessible — the rule, not the exception, for the AU property-investor
@@ -52,23 +54,26 @@ import { formatCurrency } from '@/lib/utils/formatters';
 import { appleEase, useReducedMotionSafe } from '@/components/shell';
 
 export interface HiddenWealthLensProps {
-  /** Sum of cash + offsets — accessible within 24h. */
+  /** Liquid cash − credit cards — spendable within 24h (may be negative). */
   liquidToday: number;
-  /** Investments market value — sellable within ~days. */
+  /** Investments + non-liquid cash (term deposits) — sellable within ~days. */
   accessible: number;
-  /** Property equity + super + personal assets — long-term. */
+  /** Property equity + super + personal assets − HECS/personal loans. */
   lockedLongTerm: number;
-  /** For the contextual subhead ("$X net worth · $Y in assets"). */
+  /** The three buckets sum to this; drives the proportional bar. */
   netWorth: number;
-  /** Sum of the three buckets — used for proportions + sanity. */
+  /** For the contextual subhead ("$X net worth · $Y in assets"). */
   totalAssets: number;
-  /** Optional drill-down rows under each bucket. */
+  /** Optional drill-down rows under Locked. */
   breakdown?: {
     cash: number;
     investments: number;
     propertyEquity: number;
     superannuation: number;
     personalAssets: number;
+    creditCards?: number;
+    /** Long-term non-mortgage debt (HECS, personal loans) netted from Locked. */
+    longTermDebt?: number;
   };
 }
 
@@ -118,10 +123,15 @@ export function HiddenWealthLens({
 
   if (totalAssets <= 0) return null;
 
-  // Clamp percentages defensively. Sum should be 100; rounding noise
-  // is absorbed into the largest segment so the dotted labels reconcile.
-  const liquidPct = (liquidToday / totalAssets) * 100;
-  const accessiblePct = (accessible / totalAssets) * 100;
+  // The buckets sum to net worth (MON-012), so the bar is proportioned
+  // against net worth. Fall back to totalAssets only if net worth is
+  // non-positive (heavily indebted) so the bar never divides by ≤ 0.
+  // Segment widths are clamped to [0, 100]; the row amounts always show the
+  // true (possibly negative) value — honesty over a tidy bar.
+  const denom = netWorth > 0 ? netWorth : totalAssets;
+  const clampPct = (v: number) => Math.max(0, Math.min(100, v));
+  const liquidPct = clampPct((liquidToday / denom) * 100);
+  const accessiblePct = clampPct((accessible / denom) * 100);
   const lockedPct = Math.max(0, 100 - liquidPct - accessiblePct);
 
   const buckets: Bucket[] = [
@@ -236,8 +246,13 @@ export function HiddenWealthLens({
               { label: 'Property equity', value: breakdown.propertyEquity },
               { label: 'Superannuation', value: breakdown.superannuation },
               { label: 'Personal assets', value: breakdown.personalAssets },
+              // Net the long-term non-mortgage debt (HECS / personal loans) so
+              // "Inside Locked" reconciles to the Locked total (MON-012).
+              ...(breakdown.longTermDebt && breakdown.longTermDebt > 0
+                ? [{ label: 'Less HECS / loans', value: -breakdown.longTermDebt }]
+                : []),
             ]
-              .filter((row) => row.value > 0)
+              .filter((row) => row.value !== 0)
               .map((row) => (
                 <li
                   key={row.label}

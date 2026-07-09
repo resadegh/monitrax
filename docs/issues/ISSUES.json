@@ -328,23 +328,26 @@
       "area": "balances",
       "plain": {
         "issue": "On Balances, Liquid + Accessible + Locked = $3,398,482 but net worth is $3,333,910 — a $64,572 hole. Three causes: the inflated equity (+37,076), the credit card -2,496 not netted from liquid cash, and the HECS -25,000 in no bucket at all.",
-        "fix": "(planned) Buckets must sum to net worth: use signed equity, net credit against liquid, assign HECS to a bucket.",
-        "check": "(after fix) The three buckets add exactly to the Net worth figure on the same page."
+        "fix": "The buckets now partition net worth: credit cards net from Liquid, HECS/personal loans net from Locked, term deposits move to Accessible, and property equity uses the canonical (unfloored) net-worth basis. One engine (computeAccessibilityBuckets) sourced entirely from the net-worth result, so the three ALWAYS sum to net worth.",
+        "check": "On Balances, Liquid + Accessible + Locked now add up EXACTLY to the Net worth figure on the same page (the $64,572 hole is gone). 'Inside Locked' shows a 'Less HECS / loans' line."
       },
       "rootCause": [
-        "app/api/dashboard/hidden-wealth/route.ts:56",
-        "app/api/dashboard/hidden-wealth/route.ts:51",
-        "app/api/dashboard/hidden-wealth/route.ts:53"
+        "app/api/dashboard/hidden-wealth/route.ts:47",
+        "lib/calculations/accessibilityBuckets.ts:73"
       ],
-      "semanticKeys": [],
+      "semanticKeys": [
+        "engine.accessibilityBuckets.computeAccessibilityBuckets",
+        "ui.balances.hiddenWealth"
+      ],
       "downstreamConsumers": [
         "app/dashboard/balances/page.tsx",
+        "components/balances/HiddenWealthLens.tsx",
         "app/api/dashboard/hidden-wealth/route.ts"
       ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/calculations/accessibilityBuckets.test.ts",
       "tracker": "chat audit 2026-07-07 #2",
-      "notes": "64,572 = 37,076 + 2,496 + 25,000 exactly. Anchor verification 2026-07-07 (§19.2): the bucket builder is app/api/dashboard/hidden-wealth/route.ts — lockedLongTerm = propertyEquity + superannuation + personalAssets at :56 (propertyEquity = snapshot.propertyPortfolioEquity at :53, the floored/inflated value from MON-011); liquidToday = snapshot.quickMetrics.liquidCash at :51 (does NOT net the -2,496 credit card); HECS -25,000 is assigned to no bucket. Add a permanent reconciliation test: liquidToday + accessible + lockedLongTerm === netWorth."
+      "notes": "64,572 = 37,076 + 2,496 + 25,000 exactly. Anchor verification 2026-07-07 (§19.2): the bucket builder is app/api/dashboard/hidden-wealth/route.ts — lockedLongTerm = propertyEquity + superannuation + personalAssets at :56 (propertyEquity = snapshot.propertyPortfolioEquity at :53, the floored/inflated value from MON-011); liquidToday = snapshot.quickMetrics.liquidCash at :51 (does NOT net the -2,496 credit card); HECS -25,000 is assigned to no bucket. Add a permanent reconciliation test: liquidToday + accessible + lockedLongTerm === netWorth. FIX SHIPPED 2026-07-08 (PR pending): extracted pure engine lib/calculations/accessibilityBuckets.ts (computeAccessibilityBuckets) that partitions net worth — liquidToday=min(liquidCash,accounts)−creditCards; accessible=investments+nonLiquidCash(term deposits); lockedLongTerm=(properties−mortgages)+super+personalAssets−personalLoans. Σ = assets.total − liabilities.total = netWorth BY CONSTRUCTION (proof in JSDoc + 200-portfolio fuzz test). Route rewired to call the engine (was inline, un-netted). Component bar now proportions against netWorth (was totalAssets) + 'Inside Locked' nets long-term debt. Sources every value from the canonical NetWorthResult (§12.2.1) — uses breakdown.propertyEquity (unfloored global), so the equity component is correct independent of MON-011. §19.4 downstream: balances page + HiddenWealthLens read only this route. Neomatrix: modelled engine.accessibilityBuckets.computeAccessibilityBuckets + ui.balances.hiddenWealth + law.accessibilityTieOut (was a §21.5 blind spot); feeds edge from calculateNetWorth; neomatrix:check green (binding 157/157). Holistic test tests/calculations/accessibilityBuckets.test.ts (reported shape + term deposit + cc/HECS netting + underwater + calculateNetWorth end-to-end + 200-fuzz tie-out) — all 20 assertions verified via node. §20.4 10/10."
     },
     {
       "id": "MON-013",

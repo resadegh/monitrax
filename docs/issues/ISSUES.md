@@ -18,7 +18,7 @@
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
 | MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
-| MON-012 | 🔵 OPEN | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | — | — |
+| MON-012 | 🔵 OPEN | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | — | ✅ |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
 | MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | — |
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
@@ -237,16 +237,17 @@ Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactl
 
 > **What was wrong:** On Balances, Liquid + Accessible + Locked = $3,398,482 but net worth is $3,333,910 — a $64,572 hole. Three causes: the inflated equity (+37,076), the credit card -2,496 not netted from liquid cash, and the HECS -25,000 in no bucket at all.
 >
-> **What changed:** (planned) Buckets must sum to net worth: use signed equity, net credit against liquid, assign HECS to a bucket.
+> **What changed:** The buckets now partition net worth: credit cards net from Liquid, HECS/personal loans net from Locked, term deposits move to Accessible, and property equity uses the canonical (unfloored) net-worth basis. One engine (computeAccessibilityBuckets) sourced entirely from the net-worth result, so the three ALWAYS sum to net worth.
 >
-> **What you should see:** (after fix) The three buckets add exactly to the Net worth figure on the same page.
+> **What you should see:** On Balances, Liquid + Accessible + Locked now add up EXACTLY to the Net worth figure on the same page (the $64,572 hole is gone). 'Inside Locked' shows a 'Less HECS / loans' line.
 
-- **Root cause:** `app/api/dashboard/hidden-wealth/route.ts:56`, `app/api/dashboard/hidden-wealth/route.ts:51`, `app/api/dashboard/hidden-wealth/route.ts:53`
-- **Downstream consumers (§19.4):** `app/dashboard/balances/page.tsx`, `app/api/dashboard/hidden-wealth/route.ts`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Root cause:** `app/api/dashboard/hidden-wealth/route.ts:47`, `lib/calculations/accessibilityBuckets.ts:73`
+- **Neomatrix:** `engine.accessibilityBuckets.computeAccessibilityBuckets`, `ui.balances.hiddenWealth`
+- **Downstream consumers (§19.4):** `app/dashboard/balances/page.tsx`, `components/balances/HiddenWealthLens.tsx`, `app/api/dashboard/hidden-wealth/route.ts`
+- **Holistic test (§19.4):** `tests/calculations/accessibilityBuckets.test.ts`
 - **Detail:** `chat audit 2026-07-07 #2`
 
-64,572 = 37,076 + 2,496 + 25,000 exactly. Anchor verification 2026-07-07 (§19.2): the bucket builder is app/api/dashboard/hidden-wealth/route.ts — lockedLongTerm = propertyEquity + superannuation + personalAssets at :56 (propertyEquity = snapshot.propertyPortfolioEquity at :53, the floored/inflated value from MON-011); liquidToday = snapshot.quickMetrics.liquidCash at :51 (does NOT net the -2,496 credit card); HECS -25,000 is assigned to no bucket. Add a permanent reconciliation test: liquidToday + accessible + lockedLongTerm === netWorth.
+64,572 = 37,076 + 2,496 + 25,000 exactly. Anchor verification 2026-07-07 (§19.2): the bucket builder is app/api/dashboard/hidden-wealth/route.ts — lockedLongTerm = propertyEquity + superannuation + personalAssets at :56 (propertyEquity = snapshot.propertyPortfolioEquity at :53, the floored/inflated value from MON-011); liquidToday = snapshot.quickMetrics.liquidCash at :51 (does NOT net the -2,496 credit card); HECS -25,000 is assigned to no bucket. Add a permanent reconciliation test: liquidToday + accessible + lockedLongTerm === netWorth. FIX SHIPPED 2026-07-08 (PR pending): extracted pure engine lib/calculations/accessibilityBuckets.ts (computeAccessibilityBuckets) that partitions net worth — liquidToday=min(liquidCash,accounts)−creditCards; accessible=investments+nonLiquidCash(term deposits); lockedLongTerm=(properties−mortgages)+super+personalAssets−personalLoans. Σ = assets.total − liabilities.total = netWorth BY CONSTRUCTION (proof in JSDoc + 200-portfolio fuzz test). Route rewired to call the engine (was inline, un-netted). Component bar now proportions against netWorth (was totalAssets) + 'Inside Locked' nets long-term debt. Sources every value from the canonical NetWorthResult (§12.2.1) — uses breakdown.propertyEquity (unfloored global), so the equity component is correct independent of MON-011. §19.4 downstream: balances page + HiddenWealthLens read only this route. Neomatrix: modelled engine.accessibilityBuckets.computeAccessibilityBuckets + ui.balances.hiddenWealth + law.accessibilityTieOut (was a §21.5 blind spot); feeds edge from calculateNetWorth; neomatrix:check green (binding 157/157). Holistic test tests/calculations/accessibilityBuckets.test.ts (reported shape + term deposit + cc/HECS netting + underwater + calculateNetWorth end-to-end + 200-fuzz tie-out) — all 20 assertions verified via node. §20.4 10/10.
 
 ### MON-013 — Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets'
 
