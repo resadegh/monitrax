@@ -110,3 +110,56 @@ Reads only (`getMasterFinancialSnapshot`, `getNetWorthHistory`). No update/upser
 - **Wrong**: My Guide showed "net worth +2%" every single month — a placeholder (`this month × 0.98`), not your real trend — plus a fake "+0.5%" savings-rate change and a made-up debt-paydown, and a savings rate that disagreed with your dashboard KPI.
 - **Changed**: the card now reads your real saved month-to-month history (the same source as the Home net-worth trend) and your canonical savings rate.
 - **You'll see**: the monthly change matches the Home Net Worth trend tile (and your real ~+0.2%, not a fixed +2%); the savings rate matches the dashboard KPI; the "+0.5% vs last month" line is gone until there's real history to compare; a brand-new account honestly shows 0 change, not +2%.
+
+---
+
+### MON-011 — Portfolio equity summed FLOORED per-property equities → overstated by exactly $37,076
+
+- **Type**: Fix (financial — property equity / portfolio equity total)
+- **Scope**: `lib/utils/calculations.ts` `calculateEquity`; `app/dashboard/properties/page.tsx` (dedup); Neomatrix
+- **Root cause (verified §19.2)**: `calculateEquity` floored at 0 — `return Math.max(0, propertyValue - loanBalance)` (calculations.ts:25, pre-fix). A property that owes more than it's worth (equity −$37,076) counted as **$0**. Because `propertyPortfolioEquity = propertyMetrics.reduce((sum,p)=>sum+p.equity,0)` (masterFinancialService.ts:1961) SUMS per-property equity, the total was overstated by exactly the floored shortfall. It disagreed with net worth (which uses global unfloored Σvalue − Σmortgages at netWorthCalculator.ts:236) and with the properties page (already signed via a local closure), and left `sellProperty`'s `equity < 0` branch dead behind the floor.
+- **Fix (§12.2.1 / §19.4)**: `calculateEquity` is now SIGNED — `return propertyValue - loanBalance` — equity is value − loan by definition. `propertyPortfolioEquity` is now signed → converges with net worth's property equity (Σvalue − Σmortgages, always unfloored) and the properties-page total. Deduped the properties page's local equity closure onto the canonical (one source, §12.2.1).
+
+### §19.2 worked example
+
+- **Reza's data**: 6 lots summing to **$2,992,178** floored (Lot 1's −$37,076 clamped to $0). True signed sum = **$2,955,102**. Diff = **$37,076** exactly.
+- **Test fixture**: 3 props incl. one −$37,076 underwater → floored sum **900,000** vs signed **862,924** (diff exactly **37,076**); `calculateEquity(750_000, 787_076) === −37_076` (was 0).
+
+### §19.4 downstream sweep + convergence
+
+- **Consumers of the signed number**: `propertyPortfolioEquity` (masterFinancialService.ts:1961) feeds Home My-Wealth equity tiles, `/dashboard/balances`, `/dashboard/cfo`, `app/api/dashboard/hidden-wealth/route.ts`, `lib/cfo/decisionSupport/propertyDecisionSupport.ts`, and MON-012's `lockedLongTerm` bucket. All now read the signed value.
+- **Convergence proof (holistic test)**: `tests/calculations/propertyPortfolioEquity.test.ts` asserts `nw.breakdown.propertyEquity === Σ signed per-property equity` — the portfolio total and net worth's property equity are ONE number and cannot diverge.
+- **Bonus §19.4 wins**: `sellProperty`'s `equity < 0` warning (DEAD behind the floor) now fires for underwater properties; `insightsEngine` leverage (>200k) correctly never triggers on negative equity.
+
+### Files Modified
+
+- `lib/utils/calculations.ts` — `calculateEquity` floored → signed; expanded MON-011 JSDoc.
+- `app/dashboard/properties/page.tsx` — deduped the local equity closure onto the canonical `calculateEquity`.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — `calculateEquity` node floored→signed (line 24→33); modelled `number.propertyPortfolioEquity` (was a §21.5 blind spot) at masterFinancialService.ts:1961 with feed edge from `calculateEquity`; re-pinned `calculateRentalYield` 34→43.
+- `tests/calculations/propertyPortfolioEquity.test.ts` — new §19.2 + §19.4 convergence guard.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-011 → FIXING.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — 0 errors in changed files.
+- [x] `npm run neomatrix:check` — OK (schema + A3 invariants + coverage; census 0 uncovered, binding 156/156).
+- [x] `npm run issues:check` — 25 issue(s) valid.
+- [x] Test arithmetic verified via node (−37,076; 900,000 vs 862,924 diff 37,076; convergence).
+- [ ] `npm run test` / `lint:financial-surfaces` — run in CI (local ts-node/vitest unavailable in this container).
+
+### §12.11 destructive-write check
+
+Pure calc change (`calculateEquity`) + a render dedup. No update/upsert/delete. **NOT REQUIRED.**
+
+### §20.4 self-review — 10/10 (financial build)
+
+3× against requirement (stop overstating portfolio equity; one signed source that converges with net worth + the properties page): v1 made `calculateEquity` signed; v2 proved the convergence (net worth already unfloored) and deduped the properties-page closure; v3 modelled the blind-spot `number.propertyPortfolioEquity`, added the holistic convergence test, confirmed the two dead-code branches now live correctly. Every number traced to a source.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: your total property equity read **$37,076 too high** (Home, My Guide, Balances). A property that owes more than it's worth (equity −$37,076) was clamped to $0 before the total was added up, so the negative never subtracted.
+- **Changed**: equity is now the true signed value (value − loan) everywhere; the portfolio total, net worth, and the Properties page all read the one source.
+- **You'll see**: portfolio equity reads **$2,955,102** everywhere (matching the Properties page), not **$2,992,178**; an underwater property correctly shows negative equity instead of $0.
+
+### PR
+- PR: (pending) — draft. MON-011 holds at FIXING until Reza verifies on his data.

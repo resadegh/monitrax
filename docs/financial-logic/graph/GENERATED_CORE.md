@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 255 · **Edges:** 344
-- **By kind:** orchestrator 9 · engine 143 · input-field 29 · number 12 · ui-surface 16 · law 39 · verification 7
-- **By status:** documented 255
-- **Edge provenance:** verified 344 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/164 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 256 · **Edges:** 345
+- **By kind:** orchestrator 9 · engine 143 · input-field 29 · number 13 · ui-surface 16 · law 39 · verification 7
+- **By status:** documented 256
+- **Edge provenance:** verified 345 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/165 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -93,8 +93,8 @@
 | **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
 | **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
 | **LVR — loan-to-value ratio** | `lib/utils/calculations.ts:9` | engine | core | LVR as a percentage (0–100). | Loan-to-value ratio (standard lending metric). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.LVR' fixture) | documented |
-| **Property equity** | `lib/utils/calculations.ts:24` | engine | core | Equity amount (AUD), floored at 0. | Equity = asset value less secured debt, floored at 0. | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.equity' fixture) | documented |
-| **Rental yield (annual)** | `lib/utils/calculations.ts:34` | engine | core | Gross annual rental yield as a percentage. | Gross rental yield (annual rent ÷ value). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.rentalYield' fixture) | documented |
+| **Property equity** | `lib/utils/calculations.ts:33` | engine | core | Property equity (AUD), SIGNED = value − loan (MON-011: was floored at 0, which overstated propertyPortfolioEquity and hid underwater properties). | Equity = asset value less secured debt, floored at 0. | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.equity' fixture) | documented |
+| **Rental yield (annual)** | `lib/utils/calculations.ts:43` | engine | core | Gross annual rental yield as a percentage. | Gross rental yield (annual rent ÷ value). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.rentalYield' fixture) | documented |
 | **What-if: sell a property** | `lib/cfo/scenarios/sellProperty.ts:35` | engine | cfo | ScenarioResult — cash freed, cashflow delta and net-worth delta of disposing a property at its recorded value. CGT is flagged, not computed (the canonical CGT lives in lib/tax-engine — §12.2 SSOT). | Monitrax what-if methodology (dispose at currentValue; selling costs as % of gross; CGT delegated to the tax engine). | calc-audit engine cfo.scenarios.sellProperty (proven) + lib/cfo/scenarios/sellProperty.ts:35 | documented |
 | **What-if: extra loan repayments** | `lib/cfo/scenarios/payDownLoan.ts:19` | engine | cfo | ScenarioResult — interest saved and months reduced from adding an extra monthly repayment, plus the monthly cashflow impact. | Standard amortisation (M = P·r(1+r)ⁿ/((1+r)ⁿ−1)); interest per period via the canonical lib/utils/calculations primitive. | calc-audit engine cfo.scenarios.payDownLoan (proven) + lib/cfo/scenarios/payDownLoan.ts:19 | documented |
 | **What-if: park cash in offset** | `lib/cfo/scenarios/redirectToOffset.ts:22` | engine | cfo | ScenarioResult — annual interest saved by adding cash to a loan offset account (liquidity preserved — offset still counts as liquid). | Offset mechanics (effective principal = principal − offset) + Monitrax what-if annualisation (annual = monthly × 12). | calc-audit engine cfo.scenarios.redirectToOffset (proven) + lib/cfo/scenarios/redirectToOffset.ts:22 | documented |
@@ -213,6 +213,7 @@
 | **Monthly inflow (canonical, actuals-aware)** (`monthlyInflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), LVR — loan-to-value ratio, Property equity, Rental yield (annual), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual income KPI tile | resolveCanonicalCashflow().inflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 | **Monthly outflow (canonical, actuals-aware)** (`monthlyOutflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), LVR — loan-to-value ratio, Property equity, Rental yield (annual), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual outgoings KPI tile | resolveCanonicalCashflow().outflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 | **Cashflow-intelligence tax estimate (canonical)** (`—`) | Income tax (marginal brackets), FY tax thresholds (canonical) |  | calculateIncomeTax(annualGrossIncome − deductibleExpenses).taxPayable | CLAUDE.md §12.2.1 — sources tax from the ONE canonical engine (was a stale inline FY23-24 bracket table, W0 fix 2026-06-25) |
+| **Property portfolio equity** (`propertyPortfolioEquity`) | Property equity, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) |  | Σ (property.currentValue − property loanBalance), signed | lib/services/masterFinancialService.ts propertyMetrics.reduce((s,p)=>s+p.equity,0) |
 | **Per-property cashflow (displayed)** (`propertyCashflow`) | Per-property cashflow, Reconciled monthly average (actuals), Monthly resolver (actuals-first), Review-queue confirm (SSOT), Transfer auto-pairer, Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) | Property detail — cashflow hero, Property list — tile cashflow | = computePropertyCashflow(property).annualCashflow | CLAUDE.md §12.2.1 one-source / §19.4 full-flow. |
 
 ## Governing laws / authorities (B6)
@@ -619,6 +620,7 @@
 | Net-worth trend Δ / Δ% (displayed) | → | My Guide — Monthly Progress card | rendered-at | — | verified | intelligenceEngine.ts calculateMonthlyProgress reads getNetWorthHistory(userId,2) → deltaAbsolute/deltaPct (MON-018) |
 | Monthly cash flow (this month) | → | Safety Net score (Anchor) | feeds | AUD/month→AUD/month | verified | safety-net/route.ts monthlySurplus=qm.monthlyCashflow → computeSafetyScore (MON-017 cashflow dimension) |
 | Safety Net score (Anchor) | → | My Safety Net — safety score | rendered-at | — | verified | app/api/safety-net/route.ts safetyScore response |
+| Property equity | → | Property portfolio equity | feeds | AUD→AUD | verified | masterFinancialService.ts:1961 Σ per-property signed equity (MON-011) |
 
 ---
 

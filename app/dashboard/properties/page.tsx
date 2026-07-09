@@ -34,6 +34,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { calculateEquity as calcPropertyEquity } from '@/lib/utils/calculations';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -454,9 +455,13 @@ function PropertiesPageContent() {
     return (totalLoans / property.currentValue) * 100;
   };
 
+  // MON-011 / §12.2.1: equity comes from the ONE canonical (signed) engine, so
+  // the per-property tiles + the page total agree with the master snapshot's
+  // propertyPortfolioEquity + net worth. (This local closure was already signed;
+  // it now delegates so it can never drift.)
   const calculateEquity = (property: Property) => {
     const totalLoans = property.loans?.reduce((sum, loan) => sum + loan.principal, 0) || 0;
-    return property.currentValue - totalLoans;
+    return calcPropertyEquity(property.currentValue, totalLoans);
   };
 
   // ONE source of per-property cashflow (CLAUDE.md §12.2.1 / §19.4): every
