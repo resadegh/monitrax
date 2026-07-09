@@ -16,13 +16,22 @@ export function calculateLVR(loanBalance: number, propertyValue: number): number
 }
 
 /**
- * Calculate property equity
+ * Calculate property equity — SIGNED (value − loan).
+ *
+ * MON-011: this previously floored at 0 (`Math.max(0, …)`), which HID negative
+ * equity (a property that owes more than it's worth) and — because the portfolio
+ * total `propertyPortfolioEquity` sums per-property equity — OVERSTATED total
+ * equity by the floored shortfall (e.g. a −$37,076 property counted as $0). It
+ * also disagreed with net worth (which uses global unfloored Σvalue − Σmortgages)
+ * and with the properties page (already signed), and left `sellProperty`'s
+ * `equity < 0` branch dead. Equity is value − loan by definition and is signed.
+ *
  * @param propertyValue Current property value
  * @param loanBalance Total loan balance
- * @returns Equity amount
+ * @returns Equity amount (may be negative when the property is underwater)
  */
 export function calculateEquity(propertyValue: number, loanBalance: number): number {
-  return Math.max(0, propertyValue - loanBalance);
+  return propertyValue - loanBalance;
 }
 
 /**

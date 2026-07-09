@@ -110,3 +110,113 @@ Reads only (`getMasterFinancialSnapshot`, `getNetWorthHistory`). No update/upser
 - **Wrong**: My Guide showed "net worth +2%" every single month — a placeholder (`this month × 0.98`), not your real trend — plus a fake "+0.5%" savings-rate change and a made-up debt-paydown, and a savings rate that disagreed with your dashboard KPI.
 - **Changed**: the card now reads your real saved month-to-month history (the same source as the Home net-worth trend) and your canonical savings rate.
 - **You'll see**: the monthly change matches the Home Net Worth trend tile (and your real ~+0.2%, not a fixed +2%); the savings rate matches the dashboard KPI; the "+0.5% vs last month" line is gone until there's real history to compare; a brand-new account honestly shows 0 change, not +2%.
+
+---
+
+### MON-011 — Portfolio equity summed FLOORED per-property equities → overstated by exactly $37,076
+
+- **Type**: Fix (financial — property equity / portfolio equity total)
+- **Scope**: `lib/utils/calculations.ts` `calculateEquity`; `app/dashboard/properties/page.tsx` (dedup); Neomatrix
+- **Root cause (verified §19.2)**: `calculateEquity` floored at 0 — `return Math.max(0, propertyValue - loanBalance)` (calculations.ts:25, pre-fix). A property that owes more than it's worth (equity −$37,076) counted as **$0**. Because `propertyPortfolioEquity = propertyMetrics.reduce((sum,p)=>sum+p.equity,0)` (masterFinancialService.ts:1961) SUMS per-property equity, the total was overstated by exactly the floored shortfall. It disagreed with net worth (which uses global unfloored Σvalue − Σmortgages at netWorthCalculator.ts:236) and with the properties page (already signed via a local closure), and left `sellProperty`'s `equity < 0` branch dead behind the floor.
+- **Fix (§12.2.1 / §19.4)**: `calculateEquity` is now SIGNED — `return propertyValue - loanBalance` — equity is value − loan by definition. `propertyPortfolioEquity` is now signed → converges with net worth's property equity (Σvalue − Σmortgages, always unfloored) and the properties-page total. Deduped the properties page's local equity closure onto the canonical (one source, §12.2.1).
+
+### §19.2 worked example
+
+- **Reza's data**: 6 lots summing to **$2,992,178** floored (Lot 1's −$37,076 clamped to $0). True signed sum = **$2,955,102**. Diff = **$37,076** exactly.
+- **Test fixture**: 3 props incl. one −$37,076 underwater → floored sum **900,000** vs signed **862,924** (diff exactly **37,076**); `calculateEquity(750_000, 787_076) === −37_076` (was 0).
+
+### §19.4 downstream sweep + convergence
+
+- **Consumers of the signed number**: `propertyPortfolioEquity` (masterFinancialService.ts:1961) feeds Home My-Wealth equity tiles, `/dashboard/balances`, `/dashboard/cfo`, `app/api/dashboard/hidden-wealth/route.ts`, `lib/cfo/decisionSupport/propertyDecisionSupport.ts`, and MON-012's `lockedLongTerm` bucket. All now read the signed value.
+- **Convergence proof (holistic test)**: `tests/calculations/propertyPortfolioEquity.test.ts` asserts `nw.breakdown.propertyEquity === Σ signed per-property equity` — the portfolio total and net worth's property equity are ONE number and cannot diverge.
+- **Bonus §19.4 wins**: `sellProperty`'s `equity < 0` warning (DEAD behind the floor) now fires for underwater properties; `insightsEngine` leverage (>200k) correctly never triggers on negative equity.
+
+### Files Modified
+
+- `lib/utils/calculations.ts` — `calculateEquity` floored → signed; expanded MON-011 JSDoc.
+- `app/dashboard/properties/page.tsx` — deduped the local equity closure onto the canonical `calculateEquity`.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — `calculateEquity` node floored→signed (line 24→33); modelled `number.propertyPortfolioEquity` (was a §21.5 blind spot) at masterFinancialService.ts:1961 with feed edge from `calculateEquity`; re-pinned `calculateRentalYield` 34→43.
+- `tests/calculations/propertyPortfolioEquity.test.ts` — new §19.2 + §19.4 convergence guard.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-011 → FIXING.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — 0 errors in changed files.
+- [x] `npm run neomatrix:check` — OK (schema + A3 invariants + coverage; census 0 uncovered, binding 156/156).
+- [x] `npm run issues:check` — 25 issue(s) valid.
+- [x] Test arithmetic verified via node (−37,076; 900,000 vs 862,924 diff 37,076; convergence).
+- [ ] `npm run test` / `lint:financial-surfaces` — run in CI (local ts-node/vitest unavailable in this container).
+
+### §12.11 destructive-write check
+
+Pure calc change (`calculateEquity`) + a render dedup. No update/upsert/delete. **NOT REQUIRED.**
+
+### §20.4 self-review — 10/10 (financial build)
+
+3× against requirement (stop overstating portfolio equity; one signed source that converges with net worth + the properties page): v1 made `calculateEquity` signed; v2 proved the convergence (net worth already unfloored) and deduped the properties-page closure; v3 modelled the blind-spot `number.propertyPortfolioEquity`, added the holistic convergence test, confirmed the two dead-code branches now live correctly. Every number traced to a source.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: your total property equity read **$37,076 too high** (Home, My Guide, Balances). A property that owes more than it's worth (equity −$37,076) was clamped to $0 before the total was added up, so the negative never subtracted.
+- **Changed**: equity is now the true signed value (value − loan) everywhere; the portfolio total, net worth, and the Properties page all read the one source.
+- **You'll see**: portfolio equity reads **$2,955,102** everywhere (matching the Properties page), not **$2,992,178**; an underwater property correctly shows negative equity instead of $0.
+
+### PR
+- PR: (pending) — draft. MON-011 holds at FIXING until Reza verifies on his data.
+
+---
+
+### MON-012 — Balances liquidity buckets failed net-worth tie-out by $64,572 → one engine, structural tie-out
+
+- **Type**: Fix (financial — Hidden Wealth accessibility buckets)
+- **Scope**: NEW `lib/calculations/accessibilityBuckets.ts`; `app/api/dashboard/hidden-wealth/route.ts`; `components/balances/HiddenWealthLens.tsx`; Neomatrix
+- **Root cause (verified §19.2)**: the route summed `liquidCash + investments + (propertyPortfolioEquity + super + personalAssets)` — mortgages were netted (inside property equity) but **credit cards (−$2,496) and HECS/personal loans (−$25,000) were netted nowhere**, non-liquid cash (term deposits) was **dropped entirely**, and property equity read the **floored** `propertyPortfolioEquity` (+$37,076, MON-011). So the three buckets overstated net worth by exactly **$64,572 = 37,076 + 2,496 + 25,000**. The component compounded it — the proportional bar scaled to `totalAssets` while the amounts (with a net-of-mortgage Locked) summed toward net worth.
+- **Fix (§12.2.1 / §12.3 / §19.4)**: extracted a pure engine `computeAccessibilityBuckets(netWorth, liquidCash)` that **partitions net worth**, netting each liability against its time-horizon bucket and sourcing every value from the canonical `NetWorthResult`:
+  - `liquidToday = min(liquidCash, accounts) − creditCards`
+  - `accessible = investments + nonLiquidCash` (term deposits → accessible, not liquid)
+  - `lockedLongTerm = (properties − mortgages) + super + personalAssets − personalLoans`
+  - Σ = `assets.total − liabilities.total = netWorth` **by construction**. Route is now a thin caller; the bar proportions against net worth; "Inside Locked" shows a "Less HECS / loans" reconciliation row. Uses `breakdown.propertyEquity` (unfloored global) so the equity component is correct **independent of MON-011**.
+
+### §19.2 worked example
+
+- **Reported**: buckets $3,398,482 vs net worth $3,333,910 (gap $64,572). MON-011 removes $37,076; this fix removes the remaining $27,496 (credit card + HECS) and any dropped term-deposit cash.
+- **Fixture (reported shape)**: liquid `50,000 − 2,496 = 47,504` + accessible `100,000` + locked `1,500,000 + 200,000 + 40,000 − 25,000 = 1,715,000` = **1,862,504 = net worth**; the old gross-ish sum overstated by exactly **27,496**.
+
+### §19.4 downstream sweep + hard test
+
+- Consumers of the buckets: `app/api/dashboard/hidden-wealth/route.ts` → `app/dashboard/balances/page.tsx` → `components/balances/HiddenWealthLens.tsx`. All read the ONE engine.
+- Hard automated test `tests/calculations/accessibilityBuckets.test.ts`: reported-shape tie-out, term-deposit routing, credit-card + HECS netting, underwater-property tie-out, end-to-end composition with the real `calculateNetWorth`, and a **200-portfolio fuzz** asserting `liquid + accessible + locked === netWorth`. All 20 assertions verified via node.
+
+### Files Modified
+
+- `lib/calculations/accessibilityBuckets.ts` — NEW pure engine (partition-of-net-worth, tie-out proof in JSDoc).
+- `app/api/dashboard/hidden-wealth/route.ts` — rewired to the engine; response gains `creditCards` + `longTermDebt`.
+- `components/balances/HiddenWealthLens.tsx` — bar proportions against net worth; net-model JSDoc; "Inside Locked" nets long-term debt; negative-value-safe.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` + `structural/structural-graph.json` — modelled `engine.accessibilityBuckets.computeAccessibilityBuckets` + `ui.balances.hiddenWealth` + `law.accessibilityTieOut` (was a §21.5 blind spot); feed edge from `calculateNetWorth`; binding 157/157.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-012 → FIXING.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — 0 errors.
+- [x] `npm run neomatrix:check` — OK (binding 157/157, census 0 uncovered, L0 complete).
+- [x] `npm run issues:check` — 25 valid.
+- [x] All 20 test assertions verified via node.
+- [x] `lint:financial-surfaces` — no new pattern (engine layer skips arithmetic; route/component clean).
+- [ ] `npm run test` — runs in CI (local vitest unavailable).
+
+### §12.11 destructive-write check
+
+Pure engine + read-only route + presentational component. No update/upsert/delete. **NOT REQUIRED.**
+
+### §20.4 self-review — 10/10 (financial build)
+
+3× against requirement (buckets must tie out to net worth): v1 netted credit card + HECS; v2 surfaced + fixed a latent 4th gap (term deposits dropped) and made tie-out structural via a pure partition-of-net-worth engine sourced entirely from `NetWorthResult`; v3 fixed the component bar denominator + drill-down reconciliation, modelled the blind spot in the Neomatrix, added the 200-portfolio fuzz proof, decoupled from MON-011 via `breakdown.propertyEquity`. Every number traced to source.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: on Balances, Liquid + Accessible + Locked = $3,398,482 but net worth was $3,333,910 — a $64,572 hole (inflated equity, credit card not netted, HECS in no bucket).
+- **Changed**: the three buckets now split your net worth — credit cards come off Liquid, HECS/loans come off Locked, term deposits move to Accessible — so they always add up to net worth.
+- **You'll see**: Liquid + Accessible + Locked now equals the Net worth figure on the same page (hole gone); "Inside Locked" shows a "Less HECS / loans" line.
+
+### PR
+- PR: (pending) — draft. MON-012 holds at FIXING until Reza verifies on his data.
