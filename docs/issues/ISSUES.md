@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 8 · 🟡 6 · 🟠 8 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 7 · 🟡 6 · 🟠 9 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -17,7 +17,7 @@
 | MON-008 | 🟡 DIAGNOSED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | — | n/a |
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
-| MON-011 | 🔵 OPEN | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | — | ✅ |
+| MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
 | MON-012 | 🔵 OPEN | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | — | — |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
 | MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | — |
@@ -214,21 +214,22 @@ Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw re
 
 ### MON-011 — Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-07
 
 > **What was wrong:** Your total property equity is shown $37,076 too high on Home, My Guide and Balances. A property that owes more than it's worth (equity -$37,076) is clamped to $0 before the total is added up, so the negative never subtracts.
 >
-> **What changed:** (planned) Sum true signed equity for portfolio totals; keep the $0 floor only for per-property display if desired, clearly labelled.
+> **What changed:** calculateEquity is now SIGNED (value − loan) — one source; the portfolio total, net worth's property equity, and the Properties page all read it. Per-property display can still floor to $0 if wanted, but totals sum the true signed value.
 >
-> **What you should see:** (after fix) Portfolio equity reads $2,955,102 everywhere (matching the Properties page), not $2,992,178.
+> **What you should see:** Portfolio equity reads $2,955,102 everywhere (matching the Properties page), not $2,992,178; an underwater property shows negative equity, not $0.
 
 - **Root cause:** `lib/utils/calculations.ts:33`, `lib/services/masterFinancialService.ts:1961`
 - **Neomatrix:** `number.propertyPortfolioEquity`
 - **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `app/dashboard/cfo`, `app/dashboard/balances`, `app/dashboard/properties/page.tsx`, `app/api/dashboard/hidden-wealth/route.ts`, `lib/cfo/decisionSupport/propertyDecisionSupport.ts`, `lib/cfo/scenarios/sellProperty.ts`
+- **Fix PR(s):** #1347
 - **Holistic test (§19.4):** `tests/calculations/propertyPortfolioEquity.test.ts`
 - **Detail:** `chat audit 2026-07-07 #1`
 
-Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactly (Lot 1's -37,076 floored). True sum = 2,955,102. Anchor verification 2026-07-07 (§19.2): the floor is calculateEquity = Math.max(0, propertyValue - loanBalance) at lib/utils/calculations.ts:25 (proposal cited :24 = the function signature; the defect line is :25). Consumer that sums floored per-property equity into the portfolio total to be pinned at diagnosis (suspect propertyDecisionSupport.ts:248 + the hidden-wealth/balances bucket builder that reads snapshot.propertyPortfolioEquity — feeds MON-012). VALIDATED 2026-07-07 CONFIRMED-REAL: producer chain proven — calculateEquity floor (calculations.ts:25) -> per-property equity at masterFinancialService.ts:1165 -> Sigma of FLOORED per-property equities at :1918 (propertyPortfolioEquity = propertyMetrics.reduce((sum,p)=>sum+p.equity,0)). SCOPE CORRECTION: the floor overstates propertyPortfolioEquity and every surface reading it (MON-012 buckets, My Wealth equity tiles) but does NOT overstate headline NET WORTH — calculateNetWorth computes property equity globally + unfloored (netWorthCalculator.ts:236, Sigma values - Sigma mortgages). Neomatrix anchor DRIFT: graph cites masterFinancialService.ts:1110 for the equity feed; real call is :1165 — correct in the §21.2.1 update. Fix sums signed equity for portfolio totals (floor only per-tile display if wanted). FIX SHIPPED (PR pending, will move to FIXING — pending Reza data-verify): made the canonical calculateEquity SIGNED (removed the Math.max(0,...) floor) at lib/utils/calculations.ts:33 — equity is value − loan by definition. propertyPortfolioEquity (masterFinancialService.ts:1961, Σ p.equity) is now signed → converges with net worth's property equity (Σvalue − Σmortgages, always unfloored) and the properties-page total. Deduped the properties page's local equity closure onto the canonical (§12.2.1). Bonus §19.4 wins: sellProperty's `equity < 0` warning (was DEAD behind the floor) now fires for underwater properties; insightsEngine leverage (>200k) correctly never triggers on negative equity. Neomatrix: modelled number.propertyPortfolioEquity (was a §21.5 blind spot) + calculateEquity node updated floored→signed; 2 anchors re-pinned; neomatrix:check green. Worked example: 3 props incl. one −$37,076 underwater → floored sum 900,000 vs signed 862,924 (diff exactly 37,076); nw.breakdown.propertyEquity === signed sum. Test tests/calculations/propertyPortfolioEquity.test.ts. Also partially helps MON-012 (its lockedLongTerm bucket reads the now-correct signed propertyPortfolioEquity).
+Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactly (Lot 1's -37,076 floored). True sum = 2,955,102. Anchor verification 2026-07-07 (§19.2): the floor is calculateEquity = Math.max(0, propertyValue - loanBalance) at lib/utils/calculations.ts:25 (proposal cited :24 = the function signature; the defect line is :25). Consumer that sums floored per-property equity into the portfolio total to be pinned at diagnosis (suspect propertyDecisionSupport.ts:248 + the hidden-wealth/balances bucket builder that reads snapshot.propertyPortfolioEquity — feeds MON-012). VALIDATED 2026-07-07 CONFIRMED-REAL: producer chain proven — calculateEquity floor (calculations.ts:25) -> per-property equity at masterFinancialService.ts:1165 -> Sigma of FLOORED per-property equities at :1918 (propertyPortfolioEquity = propertyMetrics.reduce((sum,p)=>sum+p.equity,0)). SCOPE CORRECTION: the floor overstates propertyPortfolioEquity and every surface reading it (MON-012 buckets, My Wealth equity tiles) but does NOT overstate headline NET WORTH — calculateNetWorth computes property equity globally + unfloored (netWorthCalculator.ts:236, Sigma values - Sigma mortgages). Neomatrix anchor DRIFT: graph cites masterFinancialService.ts:1110 for the equity feed; real call is :1165 — correct in the §21.2.1 update. Fix sums signed equity for portfolio totals (floor only per-tile display if wanted). FIX SHIPPED (PR #1347 draft, at FIXING — pending Reza data-verify): made the canonical calculateEquity SIGNED (removed the Math.max(0,...) floor) at lib/utils/calculations.ts:33 — equity is value − loan by definition. propertyPortfolioEquity (masterFinancialService.ts:1961, Σ p.equity) is now signed → converges with net worth's property equity (Σvalue − Σmortgages, always unfloored) and the properties-page total. Deduped the properties page's local equity closure onto the canonical (§12.2.1). Bonus §19.4 wins: sellProperty's `equity < 0` warning (was DEAD behind the floor) now fires for underwater properties; insightsEngine leverage (>200k) correctly never triggers on negative equity. Neomatrix: modelled number.propertyPortfolioEquity (was a §21.5 blind spot) + calculateEquity node updated floored→signed; 2 anchors re-pinned; neomatrix:check green. Worked example: 3 props incl. one −$37,076 underwater → floored sum 900,000 vs signed 862,924 (diff exactly 37,076); nw.breakdown.propertyEquity === signed sum. Test tests/calculations/propertyPortfolioEquity.test.ts. Also partially helps MON-012 (its lockedLongTerm bucket reads the now-correct signed propertyPortfolioEquity).
 
 ### MON-012 — Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS)
 
