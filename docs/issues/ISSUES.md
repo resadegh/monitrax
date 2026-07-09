@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 7 · 🟡 6 · 🟠 9 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 6 · 🟡 6 · 🟠 10 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
 | MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
-| MON-012 | 🔵 OPEN | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | — | ✅ |
+| MON-012 | 🟠 FIXING | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | #1347 | ✅ |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
 | MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | — |
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
@@ -233,7 +233,7 @@ Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactl
 
 ### MON-012 — Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: balances · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: balances · opened 2026-07-07
 
 > **What was wrong:** On Balances, Liquid + Accessible + Locked = $3,398,482 but net worth is $3,333,910 — a $64,572 hole. Three causes: the inflated equity (+37,076), the credit card -2,496 not netted from liquid cash, and the HECS -25,000 in no bucket at all.
 >
@@ -244,6 +244,7 @@ Arithmetic proof: 1,072,178+380,000+0+750,000+418,000+372,000 = 2,992,178 exactl
 - **Root cause:** `app/api/dashboard/hidden-wealth/route.ts:47`, `lib/calculations/accessibilityBuckets.ts:73`
 - **Neomatrix:** `engine.accessibilityBuckets.computeAccessibilityBuckets`, `ui.balances.hiddenWealth`
 - **Downstream consumers (§19.4):** `app/dashboard/balances/page.tsx`, `components/balances/HiddenWealthLens.tsx`, `app/api/dashboard/hidden-wealth/route.ts`
+- **Fix PR(s):** #1347
 - **Holistic test (§19.4):** `tests/calculations/accessibilityBuckets.test.ts`
 - **Detail:** `chat audit 2026-07-07 #2`
 
