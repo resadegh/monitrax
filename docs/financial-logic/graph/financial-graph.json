@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1804,
+      "line": 1816,
       "layer": "service",
       "domain": "core",
       "trailStage": null,

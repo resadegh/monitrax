@@ -269,27 +269,37 @@
     {
       "id": "MON-010",
       "title": "Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted",
-      "status": "OPEN",
+      "status": "DIAGNOSED",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-03",
       "area": "tax",
       "plain": {
-        "issue": "The tax position still adds up rental income from the raw income records, so a rental fragmented across several records over-counts the taxable rental income (the cashflow/dashboard side is fixed in MON-009, but tax was deliberately left untouched).",
-        "fix": "(planned) Feed the tax summary the same deduped, actuals-first property rental the rest of the app uses — done carefully because rental/CGT tax treatment is reform-sensitive (§12.14).",
-        "check": "(after fix) The tax position reflects the true rental income, matching the property page and dashboard."
+        "issue": "When a rental was split across several income records (e.g. reconciliation created 4 'monthly' rows for one lease), the TAX estimate added them all up — so the taxable rental income was counted several times and your tax looked too high. The dashboard/cashflow side was already fixed (MON-009); the tax side was still on the raw records.",
+        "fix": "The tax summary now reads the SAME deduped rental the dashboard uses: a property's rent is pooled into ONE figure from the actual payment dates (falling back to your typed amount only when there are no transactions), so it is counted once.",
+        "check": "Your tax estimate's rental income (and the tax payable that follows from it) should drop to the true single-rental figure and match the property page + dashboard — no more multiplied-up rental in the tax number."
       },
       "rootCause": [
-        "lib/services/masterFinancialService.ts:1848"
+        "lib/services/masterFinancialService.ts:1984"
       ],
-      "semanticKeys": [],
+      "semanticKeys": [
+        "orchestrator.masterFinancialService.getMasterFinancialSnapshot"
+      ],
       "downstreamConsumers": [
-        "lib/services/masterFinancialService.ts"
+        "lib/services/masterFinancialService.ts:1984 buildTaxSummary (snapshot.tax)",
+        "components/portal/clients/ClientCanonicalDashboard.tsx (Tax card: taxable income / tax payable / deductions / refund)",
+        "components/bookkeeping/ConsumerMoneyFlowSankey.tsx (estimatedTaxPayable)",
+        "app/api/cfo/scenarios/run/route.ts:249 (userMarginalRate from snapshot.tax.marginalTaxRate)",
+        "lib/cfo/aiAdvisor.ts:480-485 (CFO AI advisor tax context)",
+        "lib/neobrain/factPack.ts:285 (FactPack tax fact)"
       ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/tax/rentalTaxDedup.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
-      "notes": "Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block."
+      "notes": "Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block. | 2026-07-10: fixed by feeding buildTaxSummary the MON-009 adjustedIncome (adjustPropertyRentalIncome), the same deduped array buildIncomeBreakdown reads → passive-rental total and taxable-rental basis converge. No new tax math (delegates to reform-aware calculateTaxPosition, §12.14 outcome b). Test tests/tax/rentalTaxDedup.test.ts.",
+      "holisticTests": [
+        "tests/tax/rentalTaxDedup.test.ts"
+      ]
     },
     {
       "id": "MON-011",

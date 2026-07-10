@@ -180,3 +180,55 @@ Touches `lib/tax-engine/position/userTaxPosition.ts`. The change re-routes the d
 
 ### PR
 - PR: (pending) — draft. MON-003 + MON-026 hold at FIXING until Reza verifies on his data.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i — MON-010 (tax summary over-counted fragmented rental)
+
+### Changes Made
+- **Type**: Fix (financial correctness)
+- **Scope**: Master tax summary — taxable rental income now counted ONCE via the one rental-dedup source.
+- **Root cause (verified, §19.2)**: `computeMasterFinancialSnapshot` called `buildTaxSummary(data.income, …)` with the RAW income rows (`masterFinancialService.ts:1984`). When reconciliation had split one lease into several "monthly" `Income` records, `buildTaxSummary` → `calculateTaxPosition` summed every row → taxable RENTAL income counted N times. MON-009 (PR #1337) already deduped this for the aggregate income breakdown via `adjustPropertyRentalIncome` (pooling a property's rental into ONE synthetic `RENTAL` record at the true monthly rent, actuals-first), but the tax path was deliberately left on raw records — so the dashboard rental and the tax rental disagreed, and taxable rental was over-counted.
+
+### The fix (§12.2.1 SSOT)
+- `buildTaxSummary(adjustedIncome, data.expenses)` — the tax summary now reads the SAME deduped array (`adjustedIncome = adjustPropertyRentalIncome(...)`) that `buildIncomeBreakdown` reads for the aggregate totals. One rental-dedup source → the passive-rental total and the taxable-rental basis converge by construction.
+- The pooling itself is the ONE canonical `computePropertyCashflow` (`monthlyRent`, actuals-first, gross rent) — no new rental math, no second source.
+
+### §19.2 worked example (verified against the resolver)
+- One lease fragmented into 4 `RENTAL` rows each declaring $2,000/mo, with 12 monthly $2,000 reconciled payments: `computePropertyCashflow` pools all 12 (isAdvance → 11 payments over ~305 days) → `monthlyRent ≈ (22,000 / 335.5) × 30.4375 ≈ $1,996/mo`, counted ONCE. The old raw tax path summed all four rows = **$8,000/mo** — a 4× over-count.
+
+### §19.4 downstream sweep + hard test
+- Downstream consumers of `snapshot.tax` (all now inherit the correct single-count rental automatically — one source, six surfaces): `buildTaxSummary` itself; the portal client "Tax" card (`ClientCanonicalDashboard.tsx`); the money-flow Sankey (`ConsumerMoneyFlowSankey.tsx`); CFO scenarios' `userMarginalRate` (`cfo/scenarios/run/route.ts:249`); the CFO AI advisor tax context (`aiAdvisor.ts:480-485`); the FactPack tax fact (`factPack.ts:285`).
+- **Test** `tests/tax/rentalTaxDedup.test.ts` (NEW): (1) the pooling number via the pure `computePropertyCashflow` — 4 fragmented $2,000 rows + 12 monthly txns → ~$1,996/mo, `< $4,000`, NOT the $8,000 raw sum; (2) declared-fallback pools the property stream; (3) source-lock — tax reads `buildTaxSummary(adjustedIncome`, NOT `buildTaxSummary(data.income`, and both the income breakdown + tax read the one `adjustPropertyRentalIncome` array.
+
+### §12.14 reform-awareness
+Touches `lib/services/masterFinancialService.ts` (NOT `lib/tax-engine/*`). No new tax math — `buildTaxSummary` still delegates to the reform-aware `calculateTaxPosition`; this only changes WHICH income rows it sums (deduped gross rental instead of raw duplicates). `buildTaxSummary` passes `depreciations: []` and computes assessable income − deductions → tax; it does not compute negative gearing or CGT (those reform-gated branches live in the CFO engines). Outcome **(b)**: no reform interaction.
+
+### §21.2 Neomatrix
+Internal input-repoint within the already-modelled `orchestrator.masterFinancialService.getMasterFinancialSnapshot` (buildTaxSummary/adjustPropertyRentalIncome are below the graph's current node granularity, same as the income breakdown's internal aggregation). Re-pinned the master orchestrator anchor 1804→1816 (comment additions shifted the symbol). `neomatrix:check` green (263 nodes, binding 159/159, census 0). Finer tax-rental / passive-rental number nodes (with a shared semanticKey to enforce A3 convergence) noted as an N4 coverage backfill.
+
+### Files Modified
+- `lib/services/masterFinancialService.ts` — `buildTaxSummary(adjustedIncome, …)`; expanded the MON-009 comment to cover MON-010; clarified the `adjustPropertyRentalIncome` JSDoc as the one dedup source.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — re-pinned master orchestrator anchor 1804→1816.
+- `tests/tax/rentalTaxDedup.test.ts` — NEW.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-010 → DIAGNOSED (rootCause, semanticKeys, downstream sweep, holistic test, plain trio).
+
+### Build status
+- [x] `npm run neomatrix:check` — OK (anchor re-pinned; census 0 uncovered).
+- [x] `npm run issues:check` — 26 valid.
+- [x] §19.2 worked example traced to the resolver (`daySpanMonthlyAverage`).
+- [ ] `npx tsc` / `npm run test` / `lint:financial-surfaces` — **CI-verified** (local toolchain unavailable). The change is a one-argument repoint to an existing, tested deduped array.
+
+### §12.11 destructive-write check
+Read-only + pure engine. No update/upsert/delete. **NOT REQUIRED.**
+
+### §20.4 self-review — 10/10 (financial build)
+3× against requirement (taxable rental counted once + convergence with dashboard): v1 repoint `buildTaxSummary` to `adjustedIncome`; v2 verified `computePropertyCashflow().monthlyRent` is the correct gross taxable rent + swept the 6 downstream `snapshot.tax` consumers; v3 wrote the pooling-number + source-lock test (chose the pure-engine import over the DB-coupled master service to avoid a `server-only` module-load failure), re-pinned the drifted Neomatrix anchor.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+- **Wrong**: when a rental was split across several income records, the tax estimate added them all up — so taxable rental income was counted several times and your tax looked too high. (The dashboard was already fixed; tax wasn't.)
+- **Changed**: the tax summary now reads the same deduped rental the dashboard uses — a property's rent is pooled into one figure from the actual payment dates and counted once.
+- **You'll see**: your tax estimate's rental income (and the tax payable that follows) drops to the true single-rental figure and matches the property page + dashboard.
+
+### PR
+- PR: (pending) — draft. MON-010 holds at FIXING until Reza verifies on his data.
