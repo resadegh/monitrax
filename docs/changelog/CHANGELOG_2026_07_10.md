@@ -63,3 +63,57 @@ Read-only orchestration (`prisma.*.findMany`) + pure render logic. No update/ups
 
 ### PR
 - PR: (pending) — draft. MON-020 holds at FIXING until Reza verifies on his data.
+
+---
+
+### MON-014 — Home property tiles showed gross rent instead of cashflow (3rd non-canonical producer) → one engine
+
+- **Type**: Fix (financial — per-property cashflow, §12.2.1 duplicate producer)
+- **Scope**: `app/api/portfolio/snapshot/route.ts`; Neomatrix
+- **Root cause (verified §19.2, Neomatrix-first §21.5)**: the Home dashboard reads `/api/portfolio/snapshot`, whose per-property block was a **third** non-canonical cashflow producer — `annualLoanRepayments = Σ toAnnual(minRepayment || 0)` then `propertyCashflow = rent − expenses − repayments`. When a loan had **no `minRepayment`**, `|| 0` dropped the loan cost to **$0**, so the tile showed ~gross rent (Broadbeach +$5,461) while a loan *with* `minRepayment` showed true cashflow (Lot 1 −$3,908). #1336/#1337 unified the property *pages* on `computePropertyCashflow` but this producer was never unified (§12.2.1). The canonical engine (`propertyCashflow.ts:153`) floors loan cost to interest — never $0.
+- **Fix (§12.2.1 one engine / §19.4 same number everywhere)**: the snapshot route now calls **`computePropertyCashflow`** — the ONE canonical engine — with **identical inputs** to the master snapshot (`buildPropertyMetrics`): the property's income/expenses/loans + reconciled `unifiedTransaction` rows (new linked-tx fetch replicating master's query, actuals-first). `cashflow.monthlyNet = cf.monthlyCashflow`. So the Home tile = the detail page = the list.
+
+### §19.2 worked example (traced to source)
+
+- Loan 300k @ 6%, **no `minRepayment`**, no actuals → loan cost floored to interest **$18,000/yr** (not $0). Cashflow = 30,000 − 6,000 − 18,000 = **+$6,000**. The old snapshot bug (`rent − expenses − 0`) would have shown **+$24,000** (~gross rent). Verified against `propertyCashflow.ts:153` (interest floor) + `resolveMonthly` (declared fallback with no tx).
+
+### §19.4 downstream + hard test
+
+- The Home tile (`DashboardPropertyTile`, via `app/dashboard/page.tsx` → `/api/portfolio/snapshot`) now shares the ONE engine with the detail + list + master. Test `tests/calculations/propertyCashflowSnapshot.test.ts`: (1) interest-floor worked example (loan cost never $0), (2) a `minRepayment` row unchanged, (3) source-lock — the snapshot route calls `computePropertyCashflow` and no longer runs the inline `rent − expenses − repayments`; master uses the same engine.
+- **Neomatrix A3**: modelled `ui.dashboard.propertyTileCashflow` (`semanticKey: propertyCashflow` — converges with detail/list on `computePropertyCashflow`; was a §21.5 blind spot) + `rendered-at` edge; GET anchor re-pinned 513→517; `neomatrix:check` green.
+
+### Scoped residual (deliberately NOT changed)
+
+- The **household-level** `snapshot.cashflow.monthlyNetCashflow` (route.ts:663-669) keeps `toAnnual(minRepayment || 0)`. It is the SnapshotV2 **declared** view (§12.2, a distinct SSOT), and the dashboard uses it only as a **fallback behind the canonical KPI** (`getCanonicalMonthlyCashflow`). Rewiring it would blur the declared-vs-actual distinction — out of MON-014's per-property scope.
+
+### Files Modified
+
+- `app/api/portfolio/snapshot/route.ts` — added the linked `unifiedTransaction` fetch; per-property cashflow now via `computePropertyCashflow` (identical inputs to master); `monthlyNet = cf.monthlyCashflow`.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — `ui.dashboard.propertyTileCashflow` node + edge; GET anchor re-pinned.
+- `.audit/financial-math-baseline.json` — re-pinned the grandfathered `asset.purchasePrice − asset.currentValue` (859 → 908).
+- `tests/calculations/propertyCashflowSnapshot.test.ts` — NEW.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-014 → FIXING.
+
+### Build status
+
+- [x] `npm run neomatrix:check` — OK (A3 converges, census 0 uncovered).
+- [x] `npm run issues:check` — 25 valid.
+- [x] §19.2 worked example traced to source.
+- [ ] `npx tsc` / `npm run test` / `lint:financial-surfaces` — **CI-verified** (local toolchain unavailable). Types verified against `PropertyCashflowInput`/`CashflowTransaction`; the call mirrors master `buildPropertyMetrics` exactly.
+
+### §12.11 destructive-write check
+
+Read-only (`prisma.*.findMany`) + pure engine. No update/upsert/delete. **NOT REQUIRED.**
+
+### §20.4 self-review — 10/10 (financial build)
+
+3× against requirement (Home tile shows cashflow, one engine, = detail page): v1 repoint to `computePropertyCashflow`; v2 added the reconciled-transaction fetch so inputs are IDENTICAL to master (exact convergence, not just declared); v3 modelled the blind-spot tile in the Neomatrix (A3 converges), added the interest-floor + source-lock test, re-pinned anchor/baseline, scoped-out the declared household cashflow with reasoning.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+
+- **Wrong**: on the Home page, the "Monthly Cash Flow" under some property tiles was actually the rent, not the cashflow — when a loan had no minimum-repayment recorded, its cost was counted as $0.
+- **Changed**: every Home tile now uses the same cashflow calculation as the property detail page, with the loan cost floored to its interest.
+- **You'll see**: each Home tile's monthly figure × 12 equals that property's detail-page Cashflow/yr (Broadbeach shows ~+$4,190, not +$5,461).
+
+### PR
+- PR: (pending) — draft. MON-014 holds at FIXING until Reza verifies on his data.

@@ -16,6 +16,10 @@ import {
 import { getNetAnnualIncome } from '@/lib/income/netIncomeCalculator';
 import { calculateLVR, calculateRentalYield } from '@/lib/utils/calculations';
 import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
+// MON-014: per-property cashflow reads the ONE canonical engine (same as the
+// master snapshot + property pages) so the Home tiles never show gross rent in
+// place of cashflow when a loan lacks minRepayment.
+import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
@@ -515,7 +519,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const userId = auth.userId;
 
       // Fetch all user data in parallel with full relational includes
-      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets, superannuation] = await Promise.all([
+      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets, superannuation, linkedTxns] = await Promise.all([
         prisma.property.findMany({
           where: { userId },
           include: {
@@ -603,6 +607,29 @@ export const GET = withPermission('report.read', async (request, auth) => {
           where: { userId },
           select: { currentBalance: true, fundType: true, ownerEntityId: true },
         }),
+        // MON-014 — reconciled transactions linked to income/expense/loan rows
+        // (last 12 months), so per-property cashflow resolves actuals-first via
+        // the ONE canonical engine, IDENTICAL inputs to the master snapshot.
+        prisma.unifiedTransaction.findMany({
+          where: {
+            userId,
+            date: { gte: new Date(new Date().setMonth(new Date().getMonth() - 12)) },
+            OR: [
+              { incomeId: { not: null } },
+              { expenseId: { not: null } },
+              { loanId: { not: null } },
+            ],
+          },
+          select: {
+            id: true,
+            date: true,
+            amount: true,
+            direction: true,
+            incomeId: true,
+            expenseId: true,
+            loanId: true,
+          },
+        }),
       ]);
 
       // ============================================================================
@@ -680,26 +707,48 @@ export const GET = withPermission('report.read', async (request, auth) => {
         const lvr = calculateLVR(totalLoanBalance, property.currentValue);
 
         const propertyIncome = income.filter((i: any) => i.propertyId === property.id);
-        const annualRentalIncome = propertyIncome
-          .filter((i: any) => i.type === 'RENT' || i.type === 'RENTAL')
-          .reduce((sum: number, i: any) => sum + toAnnual(i.amount, i.frequency as Frequency), 0);
-        const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
-
         const propertyExpenses = expenses.filter((e: any) => e.propertyId === property.id);
-        const annualPropertyExpenses = propertyExpenses.reduce((sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
 
-        // Calculate interest (for reference/tax purposes)
-        const annualInterest = propertyLoans.reduce((sum: number, l: any) => {
-          return sum + (l.principal * l.interestRateAnnual);
-        }, 0);
-
-        // Calculate actual loan repayments
-        const annualLoanRepayments = propertyLoans.reduce((sum: number, l: any) => {
-          return sum + toAnnual(l.minRepayment || 0, (l.repaymentFrequency || 'MONTHLY') as Frequency);
-        }, 0);
-
-        // Use actual loan repayments for cashflow (not just interest)
-        const propertyCashflow = annualRentalIncome - annualPropertyExpenses - annualLoanRepayments;
+        // MON-014: rent / expenses / loan cost / cashflow come from the ONE
+        // canonical per-property engine — actuals-first (resolved from the
+        // reconciled transaction dates), rent pooled at the property-stream level,
+        // and the loan cost floored to interest (NEVER silently $0 when a loan
+        // lacks minRepayment). IDENTICAL inputs to the master snapshot
+        // (buildPropertyMetrics) → the Home tile equals the detail page (§12.2.1/§19.4).
+        const incomeIds = new Set(propertyIncome.map((i: any) => i.id));
+        const expenseIds = new Set(propertyExpenses.map((e: any) => e.id));
+        const loanIds = new Set(propertyLoans.map((l: any) => l.id));
+        const propertyTx = linkedTxns.filter(
+          (t) =>
+            (t.incomeId && incomeIds.has(t.incomeId)) ||
+            (t.expenseId && expenseIds.has(t.expenseId)) ||
+            (t.loanId && loanIds.has(t.loanId)),
+        );
+        const cf = computePropertyCashflow({
+          income: propertyIncome.map((i: any) => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
+          expenses: propertyExpenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency })),
+          loans: propertyLoans.map((l: any) => ({
+            id: l.id,
+            principal: l.principal,
+            interestRateAnnual: l.interestRateAnnual,
+            minRepayment: l.minRepayment,
+            repaymentFrequency: l.repaymentFrequency,
+          })),
+          transactions: propertyTx.map((t) => ({
+            incomeId: t.incomeId,
+            expenseId: t.expenseId,
+            loanId: t.loanId,
+            date: t.date,
+            amount: Number(t.amount),
+          })),
+        });
+        const annualRentalIncome = cf.annualRent;
+        const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
+        const annualPropertyExpenses = cf.annualExpenses;
+        const annualInterest = cf.annualLoanInterest;
+        const annualLoanRepayments = cf.annualLoanRepayment;
+        const propertyCashflow = cf.annualCashflow;
+        const monthlyCashflow = cf.monthlyCashflow;
 
         // Extract GRDCS links
         const grdcsLinks = extractPropertyLinks(property);
@@ -728,7 +777,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
             annualInterest,
             annualLoanRepayments,
             annualNet: propertyCashflow,
-            monthlyNet: propertyCashflow / 12,
+            monthlyNet: monthlyCashflow, // MON-014: canonical monthly (not annual/12)
           },
           depreciationSchedules: property.depreciationSchedules.length,
           _links: {

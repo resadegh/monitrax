@@ -2570,7 +2570,7 @@
       "kind": "orchestrator",
       "label": "Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)",
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 513,
+      "line": 517,
       "layer": "route",
       "domain": "intelligence",
       "trailStage": null,
@@ -5890,6 +5890,27 @@
       "workedExample": null,
       "verifiedDate": "2026-07-10",
       "status": "documented"
+    },
+    {
+      "id": "ui.dashboard.propertyTileCashflow",
+      "kind": "ui-surface",
+      "label": "Home — property tile cashflow",
+      "file": "components/dashboard/tiles/DashboardPropertyTile.tsx",
+      "line": 156,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "propertyCashflow",
+      "produces": "Renders the Home property tile 'Monthly Cash Flow' from the portfolio/snapshot per-property cashflow — now the ONE canonical computePropertyCashflow (MON-014), so it equals the detail page (was gross rent when a loan lacked minRepayment).",
+      "formula": null,
+      "authority": "app/api/portfolio/snapshot/route.ts computePropertyCashflow(property).monthlyCashflow → DashboardPropertyTile",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/propertyCashflowSnapshot.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-10",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -9048,6 +9069,14 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "taxIntegration.ts calculateCFOTaxInsights reads getUserTaxPosition → My Guide tax surface",
+      "verifiedDate": "2026-07-10"
+    },
+    {
+      "from": "engine.propertyCashflow.computePropertyCashflow",
+      "to": "ui.dashboard.propertyTileCashflow",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "portfolio/snapshot route.ts computePropertyCashflow → per-property cashflow.monthlyNet → DashboardPropertyTile (MON-014)",
       "verifiedDate": "2026-07-10"
     }
   ]
