@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 5 · 🟡 5 · 🟠 12 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 4 · 🟡 5 · 🟠 13 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -20,7 +20,7 @@
 | MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
 | MON-012 | 🟠 FIXING | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | #1347 | ✅ |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
-| MON-014 | 🔵 OPEN | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | — | ✅ |
+| MON-014 | 🟠 FIXING | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | #1351 | ✅ |
 | MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
 | MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
@@ -271,7 +271,7 @@ Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (in
 
 ### MON-014 — Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: dashboard · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: dashboard · opened 2026-07-07
 
 > **What was wrong:** On the Home property tiles, the 'Monthly Cash Flow' number is true cashflow for some properties (Lot 1: -$3,908 correct) but the RENTAL INCOME for others (Broadbeach shows +$5,461 = its rent; real cashflow ~+$4,190). Same column, different meaning per row.
 >
@@ -282,6 +282,7 @@ Proof: 5,393,808 = property 4,990,000 + cash 301,808 + other 102,000 exactly (in
 - **Root cause:** `app/api/portfolio/snapshot/route.ts:727`, `components/dashboard/tiles/DashboardPropertyTile.tsx:156`
 - **Neomatrix:** `number.propertyCashflow`, `engine.propertyCashflow.computePropertyCashflow`, `ui.dashboard.propertyTileCashflow`
 - **Downstream consumers (§19.4):** `app/dashboard/page.tsx`, `components/dashboard/tiles/DashboardPropertyTile.tsx`, `app/api/portfolio/snapshot/route.ts`
+- **Fix PR(s):** #1351
 - **Holistic test (§19.4):** `tests/calculations/propertyCashflowSnapshot.test.ts`
 - **Detail:** `chat audit 2026-07-07 #4`
 
