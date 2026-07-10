@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**26 total** · 23 open · 🔵 4 · 🟡 4 · 🟠 15 · 🟢 0 · ✅ 2
+**26 total** · 23 open · 🔵 3 · 🟡 4 · 🟠 16 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -16,7 +16,7 @@
 | MON-007 | ✅ CLOSED | 🟡 | no | -$100,912 vs -$46,897 don't add up | #1333 | n/a |
 | MON-008 | 🟡 DIAGNOSED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | — | n/a |
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
-| MON-010 | 🔵 OPEN | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | — | — |
+| MON-010 | 🟠 FIXING | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | #1353 | ✅ |
 | MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
 | MON-012 | 🟠 FIXING | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | #1347 | ✅ |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
@@ -200,20 +200,22 @@ Generalises MON-001 (fortnightly-as-monthly) to a universal monthly resolver (li
 
 ### MON-010 — Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-03
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-03
 
-> **What was wrong:** The tax position still adds up rental income from the raw income records, so a rental fragmented across several records over-counts the taxable rental income (the cashflow/dashboard side is fixed in MON-009, but tax was deliberately left untouched).
+> **What was wrong:** When a rental was split across several income records (e.g. reconciliation created 4 'monthly' rows for one lease), the TAX estimate added them all up — so the taxable rental income was counted several times and your tax looked too high. The dashboard/cashflow side was already fixed (MON-009); the tax side was still on the raw records.
 >
-> **What changed:** (planned) Feed the tax summary the same deduped, actuals-first property rental the rest of the app uses — done carefully because rental/CGT tax treatment is reform-sensitive (§12.14).
+> **What changed:** The tax summary now reads the SAME deduped rental the dashboard uses: a property's rent is pooled into ONE figure from the actual payment dates (falling back to your typed amount only when there are no transactions), so it is counted once.
 >
-> **What you should see:** (after fix) The tax position reflects the true rental income, matching the property page and dashboard.
+> **What you should see:** Your tax estimate's rental income (and the tax payable that follows from it) should drop to the true single-rental figure and match the property page + dashboard — no more multiplied-up rental in the tax number.
 
-- **Root cause:** `lib/services/masterFinancialService.ts:1848`
-- **Downstream consumers (§19.4):** `lib/services/masterFinancialService.ts`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Root cause:** `lib/services/masterFinancialService.ts:1984`
+- **Neomatrix:** `orchestrator.masterFinancialService.getMasterFinancialSnapshot`
+- **Downstream consumers (§19.4):** `lib/services/masterFinancialService.ts:1984 buildTaxSummary (snapshot.tax)`, `components/portal/clients/ClientCanonicalDashboard.tsx (Tax card: taxable income / tax payable / deductions / refund)`, `components/bookkeeping/ConsumerMoneyFlowSankey.tsx (estimatedTaxPayable)`, `app/api/cfo/scenarios/run/route.ts:249 (userMarginalRate from snapshot.tax.marginalTaxRate)`, `lib/cfo/aiAdvisor.ts:480-485 (CFO AI advisor tax context)`, `lib/neobrain/factPack.ts:285 (FactPack tax fact)`
+- **Fix PR(s):** #1353
+- **Holistic test (§19.4):** `tests/tax/rentalTaxDedup.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 
-Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block.
+Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block. | 2026-07-10: fixed by feeding buildTaxSummary the MON-009 adjustedIncome (adjustPropertyRentalIncome), the same deduped array buildIncomeBreakdown reads → passive-rental total and taxable-rental basis converge. No new tax math (delegates to reform-aware calculateTaxPosition, §12.14 outcome b). Test tests/tax/rentalTaxDedup.test.ts.
 
 ### MON-011 — Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076
 

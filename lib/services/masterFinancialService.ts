@@ -1031,6 +1031,18 @@ function calculateExpenseBudgetVariance(
  * not inflated by the "4 monthly rows" bug. Non-rental and non-property income
  * passes through unchanged. Raw records are still used for budget variance.
  */
+/**
+ * Pool a property's rental income at the STREAM level so a rental fragmented
+ * across several Income records (e.g. reconciliation split one lease into 4
+ * "monthly" rows) is counted ONCE, at the true monthly rent resolved from the
+ * actual transaction dates (declared fallback). Non-property-rental income
+ * passes through unchanged.
+ *
+ * The ONE rental-dedup source: both the aggregate income breakdown AND the tax
+ * summary read the array it returns, so the passive-rental total and the taxable-
+ * rental basis converge by construction (§12.2.1). The pooling itself is the pure
+ * canonical `computePropertyCashflow` — see tests/tax/rentalTaxDedup.test.ts.
+ */
 function adjustPropertyRentalIncome(
   properties: RawProperty[],
   income: RawIncome[],
@@ -1855,10 +1867,13 @@ async function computeMasterFinancialSnapshot(
   // Fetch all raw data
   const data = await fetchAllUserData(userId);
 
-  // MON-009: dedup property rental fragmented across Income records so aggregate
-  // income totals (and savings rate / health) match the property page. Tax
-  // (buildTaxSummary) intentionally keeps raw records — its rental/CGT treatment
-  // is §12.14-sensitive and handled separately (MON-010 follow-up).
+  // MON-009 + MON-010: dedup property rental fragmented across Income records so
+  // BOTH the aggregate income totals (savings rate / health) AND the tax summary
+  // (taxable rental) count a fragmented rental ONCE, at the true monthly rent. The
+  // one deduped array feeds buildIncomeBreakdown AND buildTaxSummary, so the
+  // passive-rental total and the taxable-rental basis converge by construction
+  // (§12.2.1). No new tax math — buildTaxSummary still delegates to the reform-aware
+  // calculateTaxPosition (§12.14); this only changes WHICH income rows it sums.
   const adjustedIncome = adjustPropertyRentalIncome(data.properties, data.income, data.linkedTransactions);
 
   // Build expense breakdowns (with transaction-based actuals)
@@ -1963,8 +1978,10 @@ async function computeMasterFinancialSnapshot(
   // Build investment metrics
   const investmentMetrics = buildInvestmentMetrics(data.investmentHoldings);
 
-  // Build tax summary
-  const taxSummary = buildTaxSummary(data.income, data.expenses);
+  // Build tax summary — MON-010: read the rental-deduped income (adjustedIncome),
+  // NOT raw data.income, so a rental fragmented across several records is counted
+  // ONCE in taxable rental (same source the income breakdown uses → they converge).
+  const taxSummary = buildTaxSummary(adjustedIncome, data.expenses);
 
   // Calculate liquid cash using centralized LIQUID_ACCOUNT_TYPES (single source of truth)
   const liquidCash = data.accounts
