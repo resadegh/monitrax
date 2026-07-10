@@ -70,6 +70,9 @@ describe('MON-003/MON-026: every surface reads the ONE depreciation engine (§19
   it('the property detail page uses the engine, not the phantom annualClaim field', () => {
     const src = read('app/dashboard/properties/[id]/page.tsx');
     expect(src).toContain('calculateDepreciationAnnual(');
-    expect(src).not.toContain('annualClaim');
+    // The real bug was the property access `d.annualClaim` (a field the API never
+    // returns). Match the access pattern, not the bare word — the fix comment may
+    // still mention the removed field by name.
+    expect(src).not.toMatch(/\.annualClaim\b/);
   });
 });

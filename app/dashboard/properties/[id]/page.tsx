@@ -158,8 +158,8 @@ function cashflowOf(p: Property) {
 
 function computeAnnualDepreciation(p: Property): number {
   // MON-003: the API returns the raw schedule (cost/rate/method) — the old code
-  // summed a non-existent `annualClaim` field → always $0. Compute via the ONE
-  // canonical engine (rate is a %, handled internally; method-aware).
+  // summed a phantom per-schedule claim field the API never returns → always $0.
+  // Compute via the ONE canonical engine (rate is a %, handled internally; method-aware).
   return (p.depreciationSchedules ?? []).reduce(
     (sum, d) => sum + calculateDepreciationAnnual(d as never).annualDepreciation,
     0,
