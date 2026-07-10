@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 6 · 🟡 5 · 🟠 11 · 🟢 0 · ✅ 2
+**25 total** · 22 open · 🔵 5 · 🟡 5 · 🟠 12 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -26,7 +26,7 @@
 | MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
-| MON-020 | 🔵 OPEN | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | — | ✅ |
+| MON-020 | 🟠 FIXING | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | #1349 | ✅ |
 | MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
@@ -380,7 +380,7 @@ Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (
 
 ### MON-020 — Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes]
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-07
 
 > **What was wrong:** Cashflow page estimates $153,278 annual tax; My Guide estimates $104,323 — same person, same year. The cashflow figure back-solves to income tax with NO Medicare levy (~$8,319 missing). My Guide's deductions card says total $230,820 but its lines (Property $229,500 + Neg-gearing benefit $96,267) sum to $325,767 — and a tax BENEFIT ($ saved) sits inside DEDUCTIONS ($ off income).
 >
@@ -391,6 +391,7 @@ Neomatrix already flags the ×0.98 placeholder. Anchor verification 2026-07-07 (
 - **Root cause:** `app/api/cashflow/intelligence/route.ts:421`, `lib/tax-engine/position/userTaxPosition.ts:50`
 - **Neomatrix:** `number.taxPayable`, `number.cashflowIntelligence.estimatedTax`
 - **Downstream consumers (§19.4):** `app/api/cashflow/intelligence/route.ts`, `lib/cfo/decisionSupport/taxIntegration.ts`, `app/dashboard/cfo`
+- **Fix PR(s):** #1349
 - **Holistic test (§19.4):** `tests/tax/userTaxPositionConvergence.test.ts`
 - **Detail:** `chat audit 2026-07-07 #10`
 
