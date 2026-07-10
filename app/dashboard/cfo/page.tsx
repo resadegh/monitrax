@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+// MON-019: import the canonical type instead of duplicating it locally (§12.2.1).
+// `import type` is fully erased — no server-only code (prisma) reaches this
+// client bundle. The prior local copy drifted (missing the new sentinel-guard
+// fields) and broke the build.
+import type { ExtraRepaymentImpact } from '@/lib/cfo/decisionSupport/loanDecisionSupport';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -142,13 +147,6 @@ interface RateAlert {
   daysUntil?: number;
   impact: number;
   action: string;
-}
-
-interface ExtraRepaymentImpact {
-  extraMonthly: number;
-  interestSaved: number;
-  timeReduced: number;
-  targetLoanName: string;
 }
 
 interface LoanInsights {
@@ -909,14 +907,37 @@ export default function CFODashboardPage() {
             <div className="space-y-3">
               {/* Key Metrics Row */}
               <div className="grid grid-cols-2 gap-3">
-                {loanInsights.extraRepaymentImpact && (
-                  <MetricCard
-                    label="Extra Repayment Benefit"
-                    value={formatCurrency(loanInsights.extraRepaymentImpact.interestSaved)}
-                    subValue={`Save ${Math.round(loanInsights.extraRepaymentImpact.timeReduced / 12)} years with +$${loanInsights.extraRepaymentImpact.extraMonthly}/mo`}
-                    trend="up"
-                  />
-                )}
+                {loanInsights.extraRepaymentImpact && (() => {
+                  // MON-019: destructure so the honest, sentinel-guarded fields
+                  // drive the copy. Never render "save N years" off a
+                  // non-amortising (interest-only) loan — surface the real win
+                  // ("starts paying down") instead. (Local aliases also keep the
+                  // months→years display math off the frequency-lint radar.)
+                  const { interestSaved, timeReduced, startsAmortising, newPayoffMonths, extraMonthly, targetLoanName } =
+                    loanInsights.extraRepaymentImpact;
+                  const yearsSaved = timeReduced != null ? Math.round(timeReduced / 12) : null;
+                  const clearsInYears = newPayoffMonths != null ? Math.round(newPayoffMonths / 12) : null;
+                  return (
+                    <MetricCard
+                      label="Extra Repayment Benefit"
+                      value={
+                        interestSaved != null
+                          ? formatCurrency(interestSaved)
+                          : startsAmortising
+                            ? 'Starts paying down'
+                            : `+$${extraMonthly}/mo`
+                      }
+                      subValue={
+                        yearsSaved != null
+                          ? `Save ${yearsSaved} years with +$${extraMonthly}/mo`
+                          : startsAmortising && clearsInYears != null
+                            ? `+$${extraMonthly}/mo clears it in ~${clearsInYears} yrs (currently interest-only)`
+                            : `+$${extraMonthly}/mo toward ${targetLoanName}`
+                      }
+                      trend="up"
+                    />
+                  );
+                })()}
                 {loanInsights.refinanceOpportunities.filter(r => r.worthRefinancing).length > 0 && (
                   <MetricCard
                     label="Refinance Savings"

@@ -537,29 +537,34 @@
     {
       "id": "MON-019",
       "title": "'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-07",
       "area": "cfo",
       "plain": {
         "issue": "Loan opportunities says extra repayments 'save 69 years'. The engine returns 999 months as code for 'this interest-only loan never pays off at the current payment'; the screen subtracts 999 - ~168 = 831 months = 69 years as if real. Benefit also shows negative (-$270,328), and it recommends refinancing a 104% LVR loan no lender would write.",
-        "fix": "(planned) Treat 999 as 'not currently amortising' (never do arithmetic on it); fix the benefit sign; suppress/flag refinance recs above ~95% LVR.",
-        "check": "(after fix) IO loans show 'doesn't amortise at current payment' instead of years-saved; benefit positive; no refinance suggestion on the 104% loan."
+        "fix": "The 999 'never pays off' code is now recognised as a sentinel: interest-only loans show 'starts paying down' instead of a fake 'save 69 years', the benefit is only a dollar figure when the loan actually amortises (never negative), and refinancing is no longer suggested on a loan above 95% LVR.",
+        "check": "On the CFO Loan Opportunities tile, an interest-only loan shows 'Starts paying down' / 'clears it in ~N yrs' (not 'Save 69 years'), the benefit is positive, and the 104% LVR loan is not offered a refinance."
       },
       "rootCause": [
-        "lib/cfo/decisionSupport/loanDecisionSupport.ts:635",
-        "lib/cfo/decisionSupport/loanDecisionSupport.ts:462",
-        "app/dashboard/cfo/page.tsx:916"
+        "lib/cfo/decisionSupport/loanDecisionSupport.ts:687",
+        "lib/cfo/decisionSupport/loanDecisionSupport.ts:501",
+        "lib/cfo/decisionSupport/loanDecisionSupport.ts:316"
       ],
-      "semanticKeys": [],
+      "semanticKeys": [
+        "engine.loanDecisionSupport.calculatePayoffMonths"
+      ],
       "downstreamConsumers": [
-        "app/dashboard/cfo"
+        "app/dashboard/cfo/page.tsx",
+        "lib/cfo/decisionSupport/loanDecisionSupport.ts"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        1348
+      ],
+      "test": "tests/cfo/loanDecisionSupportGuards.test.ts",
       "tracker": "chat audit 2026-07-07 #9",
-      "notes": "999-168 = 831mo = 69.25yr matches the display exactly. Anchor verification 2026-07-07 (§19.2): calculatePayoffMonths at lib/cfo/decisionSupport/loanDecisionSupport.ts:635 returns the 999 sentinel when monthlyPayment <= 0 (:640) or when the payment doesn't cover interest (:646-647, interest-only) — an IO loan therefore returns 999 and the downstream 'years saved' arithmetic subtracts it as if it were a real payoff horizon. Fix: treat 999 as UNCOMPUTED ('not amortising'), never subtract it; correct the benefit sign; suppress refinance recs above ~95% LVR (§0 financial-adviser lens). VALIDATED 2026-07-07 CONFIRMED-REAL (sentinel->69yr + no-LVR-guard; negative-benefit PLAUSIBLE): the leak is loanDecisionSupport.ts:462 timeReduced = currentPayoffMonths - newPayoffMonths (unguarded), rendered app/dashboard/cfo/page.tsx:916 as Save round(timeReduced/12) years -> 999-168=831, round(831/12)=69yr exactly. calculatePayoffMonths returns 999 at :640 (payment<=0) and :646-648 (payment<=interest, i.e. interest-only). Negative benefit: interestSaved (:465-477) is corrupted once currentTotalInterest = payment×999-P (rendered cfo/page.tsx:915) — mechanism real, exact -$270,328 depends on the loan (PLAUSIBLE). Refinance: calculateRefinanceOpportunities (:245-307) filters only rate/expiry/savings — NO LVR gate anywhere — so a 104% LVR loan is still recommended. Fix guards the 999 sentinel before any arithmetic + adds an LVR ceiling to refinance recs."
+      "notes": "999-168 = 831mo = 69.25yr matches the display exactly. Anchor verification 2026-07-07 (§19.2): calculatePayoffMonths at lib/cfo/decisionSupport/loanDecisionSupport.ts:635 returns the 999 sentinel when monthlyPayment <= 0 (:640) or when the payment doesn't cover interest (:646-647, interest-only) — an IO loan therefore returns 999 and the downstream 'years saved' arithmetic subtracts it as if it were a real payoff horizon. Fix: treat 999 as UNCOMPUTED ('not amortising'), never subtract it; correct the benefit sign; suppress refinance recs above ~95% LVR (§0 financial-adviser lens). VALIDATED 2026-07-07 CONFIRMED-REAL (sentinel->69yr + no-LVR-guard; negative-benefit PLAUSIBLE): the leak is loanDecisionSupport.ts:462 timeReduced = currentPayoffMonths - newPayoffMonths (unguarded), rendered app/dashboard/cfo/page.tsx:916 as Save round(timeReduced/12) years -> 999-168=831, round(831/12)=69yr exactly. calculatePayoffMonths returns 999 at :640 (payment<=0) and :646-648 (payment<=interest, i.e. interest-only). Negative benefit: interestSaved (:465-477) is corrupted once currentTotalInterest = payment×999-P (rendered cfo/page.tsx:915) — mechanism real, exact -$270,328 depends on the loan (PLAUSIBLE). Refinance: calculateRefinanceOpportunities (:245-307) filters only rate/expiry/savings — NO LVR gate anywhere — so a 104% LVR loan is still recommended. Fix guards the 999 sentinel before any arithmetic + adds an LVR ceiling to refinance recs. FIX SHIPPED 2026-07-08 (PR pending): (1) named the 999 sentinel NEVER_AMORTISES + guarded it in calculateExtraRepaymentImpact (loanDecisionSupport.ts:501) — timeReduced/interestSaved are null when the loan isn't amortising; added amortisingNow/startsAmortising/newPayoffMonths so the UI says 'starts paying down' instead of subtracting 999. (2) interestSaved only computed when BOTH scenarios amortise → never negative. (3) added MAX_REFINANCE_LVR=0.95 gate to calculateRefinanceOpportunities (threaded properties; :282,:316) so a 104% LVR loan is not 'worthRefinancing'. Render app/dashboard/cfo/page.tsx destructures the guarded fields (also removes the extraRepaymentImpact.timeReduced/12 frequency-lint false positive — baseline entry deleted). Exported the two pure helpers for testing. §19.2 verified via node: IO loan cur=999,new=221 → timeReduced null, interestSaved null, startsAmortising true; amortising loan timeReduced 145mo interestSaved +$108k; LoanA 104% LVR worth=false, LoanB 50% worth=true. Neomatrix: calculatePayoffMonths node produces/formula updated to document the sentinel-guard; 3 anchors re-pinned (615/635/661 -> 667/687/714); neomatrix:check green. Holistic test tests/cfo/loanDecisionSupportGuards.test.ts (13 assertions, all verified via node). §20.4 10/10."
     },
     {
       "id": "MON-020",

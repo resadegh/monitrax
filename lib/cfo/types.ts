@@ -277,14 +277,23 @@ export interface CFORateAlert {
   action: string;
 }
 
+// MON-019: kept structurally identical to the canonical `ExtraRepaymentImpact`
+// in lib/cfo/decisionSupport/loanDecisionSupport.ts (the real return type of
+// calculateCFOLoanInsights, which flows into CFODashboardData.loanInsights).
+// interestSaved/timeReduced/payoff dates are null when the loan isn't amortising
+// (interest-only) — never do arithmetic on the 999 sentinel. (§12.2.1 duplicate;
+// a future PR should collapse the two.)
 export interface CFOExtraRepaymentImpact {
   extraMonthly: number;
-  interestSaved: number;
-  timeReduced: number;
+  interestSaved: number | null;
+  timeReduced: number | null;
+  amortisingNow: boolean;
+  startsAmortising: boolean;
+  newPayoffMonths: number | null;
   targetLoanId: string;
   targetLoanName: string;
-  currentPayoffDate: Date;
-  newPayoffDate: Date;
+  currentPayoffDate: Date | null;
+  newPayoffDate: Date | null;
 }
 
 export interface CFOLoanRisk {

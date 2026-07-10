@@ -4,8 +4,14 @@ const nextConfig: NextConfig = {
   // The @ alias is handled by tsconfig.json paths
   // No custom webpack config needed for basic aliasing
 
-  // Ensure Prisma works properly with serverless/edge
-  serverExternalPackages: ['@prisma/client', 'prisma'],
+  // Ensure Prisma works properly with serverless/edge.
+  // pdfkit/fontkit are server-only (tax-pack PDF export route) and must NOT be
+  // webpack-bundled — fontkit → restructure does an OPTIONAL `require('iconv-lite')`
+  // that intermittently fails module resolution on cold builds ("Can't resolve
+  // 'iconv-lite' in node_modules/restructure/src"), erroring the deploy. Marking
+  // them external loads them via native require at runtime, where the optional
+  // require is a guarded try/catch — deterministic builds.
+  serverExternalPackages: ['@prisma/client', 'prisma', 'pdfkit', 'fontkit'],
 
   // Lint is a separate, explicit CI gate (`npm run lint` + the security-audit
   // workflow's lint step), NOT a build blocker. `next build` runs ESLint

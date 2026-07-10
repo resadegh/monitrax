@@ -89,12 +89,20 @@ export type RateAlertType =
 
 export interface ExtraRepaymentImpact {
   extraMonthly: number;
-  interestSaved: number;
-  timeReduced: number; // months
+  /** Interest saved — null when the loan isn't amortising now (no honest baseline). */
+  interestSaved: number | null;
+  /** Months shaved off the payoff — null when the loan isn't amortising now (MON-019). */
+  timeReduced: number | null;
+  /** false = interest-only / payment ≤ interest (the loan isn't paying down). */
+  amortisingNow: boolean;
+  /** true = the extra payment makes a currently-interest-only loan start paying down. */
+  startsAmortising: boolean;
+  /** Finite months to clear the loan WITH the extra payment — null if it still won't amortise. */
+  newPayoffMonths: number | null;
   targetLoanId: string;
   targetLoanName: string;
-  currentPayoffDate: Date;
-  newPayoffDate: Date;
+  currentPayoffDate: Date | null;
+  newPayoffDate: Date | null;
 }
 
 export interface LoanRisk {
@@ -136,6 +144,16 @@ const MARKET_RATES = {
 const REFINANCE_MIN_RATE_GAP = 0.003; // 0.3% minimum rate difference
 const REFINANCE_MIN_SAVINGS = 500; // $500/year minimum savings
 const REFINANCE_MAX_BREAKEVEN = 24; // 24 months max break-even
+// MON-019: no lender refinances a property loan above ~95% LVR (LMI territory
+// well before this). Recommending a refinance on a 104% LVR loan is not
+// actionable advice (§0 financial-adviser lens) — gate it out.
+const MAX_REFINANCE_LVR = 0.95;
+
+// MON-019: sentinel returned by `calculatePayoffMonths` when a loan is NOT
+// amortising (payment ≤ interest, i.e. interest-only). It is NOT a real payoff
+// horizon — never do arithmetic on it (subtracting it produced the bogus
+// "save 69 years": 999 − 168 = 831 months). Guard every consumer.
+const NEVER_AMORTISES = 999;
 
 // ============================================================================
 // Loan Insights Calculator
@@ -191,8 +209,8 @@ export async function calculateCFOLoanInsights(userId: string): Promise<CFOLoanI
   const aggregation = aggregateLoanRepayments(loanInputs, 'monthly');
   const debtMetrics = calculateDebtMetrics(loanInputs, monthlyIncome);
 
-  // Calculate refinance opportunities
-  const refinanceOpportunities = calculateRefinanceOpportunities(loans);
+  // Calculate refinance opportunities (properties threaded for the LVR gate — MON-019)
+  const refinanceOpportunities = calculateRefinanceOpportunities(loans, properties);
   const totalRefinanceSavings = refinanceOpportunities.reduce(
     (sum, opp) => sum + (opp.worthRefinancing ? opp.annualSavings : 0),
     0
@@ -242,13 +260,27 @@ export async function calculateCFOLoanInsights(userId: string): Promise<CFOLoanI
 // Refinance Analysis
 // ============================================================================
 
-function calculateRefinanceOpportunities(loans: any[]): RefinanceOpportunity[] {
+export function calculateRefinanceOpportunities(
+  loans: any[],
+  properties: any[] = [],
+): RefinanceOpportunity[] {
   const opportunities: RefinanceOpportunity[] = [];
 
   for (const loan of loans) {
     // Skip fixed rate loans that haven't expired
     if (loan.rateType === 'FIXED' && loan.fixedExpiry && new Date(loan.fixedExpiry) > new Date()) {
       continue;
+    }
+
+    // MON-019: a property loan above ~95% LVR cannot be refinanced (no lender
+    // writes it — LMI territory well before). Don't recommend it. Non-property
+    // loans (no propertyId) have no LVR gate.
+    let overMaxLvr = false;
+    if (loan.propertyId) {
+      const property = properties.find((p) => p.id === loan.propertyId);
+      if (property && property.currentValue > 0) {
+        overMaxLvr = loan.principal / property.currentValue > MAX_REFINANCE_LVR;
+      }
     }
 
     const currentRate = loan.interestRateAnnual;
@@ -278,8 +310,10 @@ function calculateRefinanceOpportunities(loans: any[]): RefinanceOpportunity[] {
     // Total lifetime savings
     const totalLifetimeSavings = (monthlySavings * remainingMonths) - estimatedCosts;
 
-    // Determine if worth refinancing
+    // Determine if worth refinancing (MON-019: never above the LVR ceiling —
+    // an unrefinanceable loan is not an "opportunity").
     const worthRefinancing =
+      !overMaxLvr &&
       rateDifference >= REFINANCE_MIN_RATE_GAP &&
       annualSavings >= REFINANCE_MIN_SAVINGS &&
       breakEvenMonths <= REFINANCE_MAX_BREAKEVEN &&
@@ -418,7 +452,7 @@ function generateRateAlerts(loans: any[], properties: any[]): RateAlert[] {
 // Extra Repayment Impact
 // ============================================================================
 
-function calculateExtraRepaymentImpact(
+export function calculateExtraRepaymentImpact(
   loans: any[],
   monthlyIncome: number
 ): ExtraRepaymentImpact | null {
@@ -459,34 +493,52 @@ function calculateExtraRepaymentImpact(
     currentMonthlyPayment + suggestedExtra
   );
 
-  const timeReduced = currentPayoffMonths - newPayoffMonths;
+  // MON-019: `calculatePayoffMonths` returns the NEVER_AMORTISES sentinel for an
+  // interest-only loan (payment ≤ interest). That is NOT a payoff horizon —
+  // subtracting it produced "save 69 years" (999 − 168 = 831 mo) and corrupted
+  // the interest figure. Guard it: only compute time/interest saved when BOTH
+  // the current and the extra-payment scenarios genuinely amortise.
+  const amortisingNow = currentPayoffMonths < NEVER_AMORTISES;
+  const newAmortises = newPayoffMonths < NEVER_AMORTISES;
+  const startsAmortising = !amortisingNow && newAmortises;
 
-  // Calculate interest saved
-  const currentTotalInterest = calculateTotalInterest(
-    targetLoan.principal,
-    targetLoan.interestRateAnnual,
-    currentMonthlyPayment,
-    currentPayoffMonths
-  );
-  const newTotalInterest = calculateTotalInterest(
-    targetLoan.principal,
-    targetLoan.interestRateAnnual,
-    currentMonthlyPayment + suggestedExtra,
-    newPayoffMonths
-  );
-  const interestSaved = currentTotalInterest - newTotalInterest;
+  const bothAmortise = amortisingNow && newAmortises;
+
+  const timeReduced = bothAmortise ? currentPayoffMonths - newPayoffMonths : null;
+
+  let interestSaved: number | null = null;
+  if (bothAmortise) {
+    const currentTotalInterest = calculateTotalInterest(
+      targetLoan.principal,
+      targetLoan.interestRateAnnual,
+      currentMonthlyPayment,
+      currentPayoffMonths
+    );
+    const newTotalInterest = calculateTotalInterest(
+      targetLoan.principal,
+      targetLoan.interestRateAnnual,
+      currentMonthlyPayment + suggestedExtra,
+      newPayoffMonths
+    );
+    interestSaved = Math.round(currentTotalInterest - newTotalInterest);
+  }
 
   const now = new Date();
-  const currentPayoffDate = new Date(now);
-  currentPayoffDate.setMonth(currentPayoffDate.getMonth() + currentPayoffMonths);
-
-  const newPayoffDate = new Date(now);
-  newPayoffDate.setMonth(newPayoffDate.getMonth() + newPayoffMonths);
+  const addMonths = (m: number) => {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + m);
+    return d;
+  };
+  const currentPayoffDate = amortisingNow ? addMonths(currentPayoffMonths) : null;
+  const newPayoffDate = newAmortises ? addMonths(newPayoffMonths) : null;
 
   return {
     extraMonthly: suggestedExtra,
-    interestSaved: Math.round(interestSaved),
+    interestSaved,
     timeReduced,
+    amortisingNow,
+    startsAmortising,
+    newPayoffMonths: newAmortises ? newPayoffMonths : null,
     targetLoanId: targetLoan.id,
     targetLoanName: targetLoan.name,
     currentPayoffDate,
@@ -637,14 +689,15 @@ function calculatePayoffMonths(
   annualRate: number,
   monthlyPayment: number
 ): number {
-  if (monthlyPayment <= 0) return 999;
+  if (monthlyPayment <= 0) return NEVER_AMORTISES;
 
   const monthlyRate = annualRate / 12;
   const monthlyInterest = principal * monthlyRate;
 
-  // If payment doesn't cover interest, loan will never be paid off
+  // If payment doesn't cover interest, loan will never be paid off.
+  // Returns the NEVER_AMORTISES sentinel — consumers MUST guard it (MON-019).
   if (monthlyPayment <= monthlyInterest) {
-    return 999;
+    return NEVER_AMORTISES;
   }
 
   // Use formula: n = -log(1 - (P*r)/M) / log(1 + r)
