@@ -2717,20 +2717,20 @@
       "kind": "number",
       "label": "Cashflow-intelligence tax estimate (canonical)",
       "file": "app/api/cashflow/intelligence/route.ts",
-      "line": 456,
+      "line": 421,
       "layer": "route",
       "domain": "tax",
       "trailStage": null,
       "regime": null,
-      "semanticKey": null,
-      "produces": "The annual income-tax estimate behind the cashflow-intelligence tax-optimization insight.",
-      "formula": "calculateIncomeTax(annualGrossIncome − deductibleExpenses).taxPayable",
-      "authority": "CLAUDE.md §12.2.1 — sources tax from the ONE canonical engine (was a stale inline FY23-24 bracket table, W0 fix 2026-06-25)",
+      "semanticKey": "taxPayable",
+      "produces": "The annual tax estimate behind the /cashflow tax-optimization insight — now the CANONICAL net tax (income tax + Medicare − offsets) from getUserTaxPosition, the SAME source My Guide reads (MON-020).",
+      "formula": "getUserTaxPosition(userId).taxPosition.tax.netTax",
+      "authority": "CLAUDE.md §12.2.1 — one source; converges with My Guide (both read getUserTaxPosition → calculateTaxPosition).",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "app/api/cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (read 2026-06-25)",
-      "workedExample": "taxable $100k → 20,788 (canonical FY24-25) vs the old stale $21,592 — overstated $804",
-      "verifiedDate": "2026-06-25",
+      "verifiedBy": "app/api/cashflow/intelligence/route.ts:421 + tests/tax/userTaxPositionConvergence.test.ts",
+      "workedExample": "netTax includes Medicare — was income-tax-only ($153,278 vs My Guide $104,323); now both = taxPosition.tax.netTax",
+      "verifiedDate": "2026-07-10",
       "status": "documented"
     },
     {
@@ -4075,7 +4075,7 @@
       "kind": "engine",
       "label": "CFO: negative-gearing benefit (estimate)",
       "file": "lib/cfo/decisionSupport/taxIntegration.ts",
-      "line": 293,
+      "line": 198,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "I",
@@ -4096,7 +4096,7 @@
       "kind": "engine",
       "label": "CFO: unrealised CGT (simplified estimate)",
       "file": "lib/cfo/decisionSupport/taxIntegration.ts",
-      "line": 276,
+      "line": 181,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "I",
@@ -5861,6 +5861,34 @@
       "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts",
       "workedExample": null,
       "verifiedDate": "2026-07-08",
+      "status": "documented"
+    },
+    {
+      "id": "service.tax.getUserTaxPosition",
+      "kind": "orchestrator",
+      "label": "User tax position (shared source)",
+      "file": "lib/tax-engine/position/userTaxPosition.ts",
+      "line": 50,
+      "layer": "service",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The ONE user-level tax position (income + deductions + Medicare + offsets + PAYG). Fetches once, calls calculateTaxPosition, and is read by BOTH /cashflow and My Guide so their tax numbers converge (MON-020).",
+      "formula": "getUserTaxPosition(userId) → calculateTaxPosition({incomes,expenses,depreciations,super}). No tax math here — delegates to the reform-aware engine (§12.14 inherited).",
+      "authority": "CLAUDE.md §12.2.1 (one source); calculateTaxPosition = ATO/ITAA engine",
+      "inputs": [
+        {
+          "name": "userId",
+          "unit": "id",
+          "type": "string",
+          "note": "the user"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:50 + tests/tax/userTaxPositionConvergence.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-10",
       "status": "documented"
     }
   ],
@@ -8997,6 +9025,30 @@
       "source": "verified",
       "evidence": "Σ buckets = assets.total − liabilities.total = netWorth (proof in accessibilityBuckets.ts JSDoc + fuzz test)",
       "verifiedDate": "2026-07-08"
+    },
+    {
+      "from": "engine.taxPositionCalculator.calculateTaxPosition",
+      "to": "service.tax.getUserTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "userTaxPosition.ts calculateTaxPosition(...) → returns taxPosition",
+      "verifiedDate": "2026-07-10"
+    },
+    {
+      "from": "service.tax.getUserTaxPosition",
+      "to": "number.cashflowIntelligence.estimatedTax",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "cashflow/intelligence/route.ts:421 estimatedTax = getUserTaxPosition().taxPosition.tax.netTax",
+      "verifiedDate": "2026-07-10"
+    },
+    {
+      "from": "service.tax.getUserTaxPosition",
+      "to": "ui.dashboard.tax",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "taxIntegration.ts calculateCFOTaxInsights reads getUserTaxPosition → My Guide tax surface",
+      "verifiedDate": "2026-07-10"
     }
   ]
 }

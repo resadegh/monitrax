@@ -27,7 +27,11 @@ import {
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
-import { calculateIncomeTax } from '@/lib/tax-engine/core/incomeTaxCalculator';
+// MON-020: the tax estimate now reads the ONE canonical tax position (Medicare
+// + full deductions + offsets) shared with My Guide, instead of an ad-hoc
+// income-tax-only calc — so both surfaces show the same number (§12.2.1).
+import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
+import type { TaxPositionResult } from '@/lib/tax-engine/types';
 import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import {
   detectSavingOpportunities,
@@ -409,54 +413,16 @@ function buildSmartActions(
 // =============================================================================
 
 function buildTaxOptimization(
-  income: any[],
-  expenses: any[],
-  loans: any[]
+  taxPosition: TaxPositionResult
 ): TaxOptimization | undefined {
-  // Calculate gross income and PAYG withheld
-  let annualGrossIncome = 0;
-  let paygWithheld = 0;
-
-  for (const i of income) {
-    const monthlyAmount = normalizeToMonthly(Number(i.amount), i.frequency);
-    annualGrossIncome += monthlyAmount * 12;
-
-    if (i.paygWithholding) {
-      paygWithheld += Number(i.paygWithholding);
-    }
-  }
-
-  // Calculate deductible expenses (investment property expenses)
-  let deductibleExpenses = 0;
-  for (const e of expenses) {
-    if (e.isDeductible) {
-      deductibleExpenses += normalizeToMonthly(Number(e.amount), e.frequency) * 12;
-    }
-  }
-
-  // Calculate loan interest (investment loans are deductible)
-  for (const l of loans) {
-    if (l.type === 'INVESTMENT') {
-      // P0 fix (2026-06-23): interestRateAnnual is a DECIMAL (0.06 = 6%). The
-      // prior /100 made the deductible investment-loan interest 100× too low,
-      // understating the deduction → overstating taxable income + estimated tax.
-      const annualInterest = Number(l.principal) * Number(l.interestRateAnnual);
-      deductibleExpenses += annualInterest;
-    }
-  }
-
-  // Estimate tax via the CANONICAL income-tax engine (CLAUDE.md §12.2.1 SSOT +
-  // §19.2). The previous inline bracket table here was BOTH a duplicate of the
-  // canonical engine AND stale/wrong — it was labelled "2024-25" but held the
-  // superseded FY23-24 values (first rate 0.19 vs the FY24-25 Stage-3 0.16;
-  // base amounts 5092/29467/51667 vs 4288/31288/51638) → it overstated tax for
-  // every user at every bracket. `calculateIncomeTax` reads the canonical
-  // `taxYearConfig` brackets (A1-audited against ATO FY24-25 — Neomatrix
-  // engine.incomeTaxCalculator.calculateIncomeTax) and guards taxableIncome ≤ 0.
-  const taxableIncome = annualGrossIncome - deductibleExpenses;
-  const estimatedTax = calculateIncomeTax(taxableIncome).taxPayable;
-
-  const effectiveTaxRate = annualGrossIncome > 0 ? (estimatedTax / annualGrossIncome) * 100 : 0;
+  // MON-020: every figure reads the ONE canonical tax position (Medicare +
+  // full deductions + offsets), the SAME source My Guide uses — so the two
+  // surfaces show the same estimated tax. No ad-hoc income-tax-only calc here.
+  const estimatedTax = Math.round(taxPosition.tax.netTax); // income tax + Medicare − offsets
+  const deductibleExpenses = Math.round(taxPosition.deductions.total);
+  const annualGrossIncome = taxPosition.income.total; // canonical assessable income
+  const effectiveTaxRate = taxPosition.tax.effectiveRate;
+  const paygWithheld = taxPosition.paygWithheld;
 
   // Generate recommendations
   const recommendations: TaxOptimization['recommendations'] = [];
@@ -706,8 +672,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
         canonical.net
       );
 
-      // Build tax optimization
-      const taxOptimization = buildTaxOptimization(data.income, data.expenses, data.loans);
+      // Build tax optimization from the ONE canonical tax position (MON-020) —
+      // the same source My Guide reads, so both surfaces show the same tax.
+      const taxBundle = await getUserTaxPosition(userId);
+      const taxOptimization = buildTaxOptimization(taxBundle.taxPosition);
 
       // Build smart actions
       const smartActions = buildSmartActions(leaks, healthScore, budgetComparison);
