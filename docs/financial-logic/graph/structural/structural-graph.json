@@ -1054,6 +1054,7 @@
     "lib/tax-engine/orchestrator/masterTaxPosition.ts",
     "lib/tax-engine/position/index.ts",
     "lib/tax-engine/position/taxPositionCalculator.ts",
+    "lib/tax-engine/position/userTaxPosition.ts",
     "lib/tax-engine/stampDuty/stateStampDuty.ts",
     "lib/tax-engine/super/capTracker.ts",
     "lib/tax-engine/super/contributionCalculator.ts",

@@ -95,7 +95,7 @@
     },
     {
       "file": "app/api/cashflow/intelligence/route.ts",
-      "line": 481,
+      "line": 447,
       "pattern": "HARDCODED_FINANCIAL_CONSTANT",
       "match": "27500"
     },

@@ -6,16 +6,13 @@
  * AI is only used for explanation/formatting, NEVER for inventing numbers.
  */
 
-import { prisma } from '@/lib/db';
-import {
-  calculateTaxPosition,
-  getCurrentFinancialYear,
-} from '@/lib/tax-engine';
+// MON-020: the tax position now comes from the ONE user-level source (shared
+// with /cashflow) — this file no longer fetches data or calls calculateTaxPosition itself.
+import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { toAnnual, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { Decimal, toDecimal } from '@/lib/decimal';
-import type { IncomeItem, ExpenseItem, DepreciationItem } from '@/lib/tax-engine/position/taxPositionCalculator';
 
 // ============================================================================
 // Types
@@ -87,115 +84,22 @@ export type TaxRiskType =
 // ============================================================================
 
 export async function calculateCFOTaxInsights(userId: string): Promise<CFOTaxInsights> {
-  // Get current financial year info
-  const fyInfo = getCurrentFinancialYear();
   const daysUntilEOFY = calculateDaysUntilEOFY();
 
-  // Fetch all user data for tax position calculation
-  const [incomes, expenses, depreciations, superAccounts, holdings] = await Promise.all([
-    prisma.income.findMany({
-      where: { userId },
-      include: {
-        property: { select: { id: true, name: true } },
-        investmentAccount: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.expense.findMany({
-      where: { userId },
-      include: {
-        property: { select: { id: true, name: true } },
-        loan: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.depreciationSchedule.findMany({
-      where: {
-        property: { userId },
-      },
-      include: {
-        property: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.superannuationAccount.findMany({
-      where: { userId },
-      select: {
-        concessionalYTD: true,
-        nonConcessionalYTD: true,
-      },
-    }),
-    // Get investment holdings for CGT calculation
-    prisma.investmentHolding.findMany({
-      where: {
-        investmentAccount: { userId },
-      },
-      include: {
-        investmentAccount: { select: { id: true, name: true } },
-      },
-    }),
-  ]);
-
-  // Get properties for negative gearing check
-  const properties = await prisma.property.findMany({
-    where: { userId },
-    include: {
-      income: true,
-      expenses: true,
-      loans: true,
-    },
-  });
-
-  // Transform data for tax position calculator
-  const incomeItems: IncomeItem[] = incomes.map((income: any) => ({
-    id: income.id,
-    name: income.name,
-    type: income.type,
-    amount: income.amount,
-    frequency: income.frequency,
-    propertyId: income.propertyId || undefined,
-    investmentAccountId: income.investmentAccountId || undefined,
-    grossAmount: income.grossAmount || undefined,
-    paygWithholding: income.paygWithholding || undefined,
-    frankingPercentage: income.frankingPercentage || undefined,
-    frankingCredits: income.frankingCredits || undefined,
-  }));
-
-  const expenseItems: ExpenseItem[] = expenses.map((expense: any) => ({
-    id: expense.id,
-    name: expense.name,
-    category: expense.category,
-    amount: expense.amount,
-    frequency: expense.frequency,
-    isTaxDeductible: expense.isTaxDeductible,
-    propertyId: expense.propertyId || undefined,
-    loanId: expense.loanId || undefined,
-  }));
-
-  const depreciationItems: DepreciationItem[] = depreciations.map((dep: any) => {
-    const annualDeduction = dep.cost * dep.rate;
-    return {
-      id: dep.id,
-      propertyId: dep.propertyId,
-      currentYearDeduction: annualDeduction,
-      type: dep.category,
-    };
-  });
-
-  // Calculate super contribution totals
-  const superTotals = superAccounts.reduce(
-    (acc: { concessional: number; nonConcessional: number }, account: any) => ({
-      concessional: acc.concessional + (account.concessionalYTD || 0),
-      nonConcessional: acc.nonConcessional + (account.nonConcessionalYTD || 0),
-    }),
-    { concessional: 0, nonConcessional: 0 }
-  );
-
-  // Calculate tax position
-  const taxPosition = calculateTaxPosition({
-    incomes: incomeItems,
-    expenses: expenseItems,
-    depreciations: depreciationItems,
-    superContributions: superTotals,
-    financialYear: fyInfo.year,
-  });
+  // MON-020: the canonical tax position (Medicare + full deductions + offsets)
+  // comes from the ONE user-level source, shared with /cashflow so both
+  // surfaces show the SAME tax number (§12.2.1). The raw rows come back too so
+  // the CFO-specific extras (CGT, negative gearing, risks) don't re-fetch.
+  const {
+    taxPosition,
+    financialYear,
+    incomes,
+    expenses,
+    depreciations,
+    properties,
+    superTotals,
+    holdings,
+  } = await getUserTaxPosition(userId);
 
   // Calculate unrealised CGT from holdings
   const unrealisedCGT = calculateUnrealisedCGT(holdings);
@@ -225,7 +129,7 @@ export async function calculateCFOTaxInsights(userId: string): Promise<CFOTaxIns
       confidenceLevel,
       daysUntilEOFY,
       actionRequiredBeforeEOFY: daysUntilEOFY <= 30 && taxRisks.some(r => r.type === 'eofy_action_required'),
-      financialYear: fyInfo.year,
+      financialYear,
     },
     deductionsSummary: {
       totalDeductions: Math.round(taxPosition.deductions.total),
