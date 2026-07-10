@@ -63,6 +63,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
 import { DocumentsSection } from '@/components/documents';
 import { LinkedEntityType } from '@/lib/documents/types';
@@ -105,8 +106,12 @@ interface ExpenseItem extends Actuals {
 
 interface DepreciationSchedule {
   id: string;
-  type: string;
-  annualClaim: number;
+  assetName: string;
+  category: string; // DIV40 | DIV43
+  cost: number;
+  rate: number; // stored as a PERCENTAGE (2.5 = 2.5%)
+  startDate: string;
+  method: string; // PRIME_COST | DIMINISHING_VALUE
 }
 
 interface Property {
@@ -152,7 +157,13 @@ function cashflowOf(p: Property) {
 }
 
 function computeAnnualDepreciation(p: Property): number {
-  return (p.depreciationSchedules ?? []).reduce((sum, d) => sum + (d.annualClaim ?? 0), 0);
+  // MON-003: the API returns the raw schedule (cost/rate/method) — the old code
+  // summed a non-existent `annualClaim` field → always $0. Compute via the ONE
+  // canonical engine (rate is a %, handled internally; method-aware).
+  return (p.depreciationSchedules ?? []).reduce(
+    (sum, d) => sum + calculateDepreciationAnnual(d as never).annualDepreciation,
+    0,
+  );
 }
 
 function computeTotalLoanBalance(p: Property): number {

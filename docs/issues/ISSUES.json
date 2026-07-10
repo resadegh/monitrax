@@ -75,20 +75,24 @@
       "area": "properties",
       "plain": {
         "issue": "The property's Depreciation per year always showed $0.",
-        "fix": "(planned) Calculate the yearly depreciation from the schedule's cost and rate (prime-cost / diminishing-value).",
-        "check": "(after fix) Depreciation/yr shows a real figure based on your depreciation schedule."
+        "fix": "Compute Depreciation/yr from the schedule's cost + rate + method via the ONE canonical engine (calculateDepreciationAnnual) — the page was summing a field the API never returns.",
+        "check": "Depreciation/yr shows a real figure from your schedules (e.g. a $100k asset at 2.5% prime-cost → $2,500/yr), not $0."
       },
       "rootCause": [
-        "app/dashboard/properties/[id]/page.tsx:170"
+        "app/dashboard/properties/[id]/page.tsx:157",
+        "lib/depreciation/index.ts:78"
       ],
-      "semanticKeys": [],
+      "semanticKeys": [
+        "engine.depreciation.calculateDepreciationAnnual",
+        "number.propertyDepreciation"
+      ],
       "downstreamConsumers": [
         "app/dashboard/properties/[id]/page.tsx"
       ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/tax/depreciationRate.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5",
-      "notes": "computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness."
+      "notes": "computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness. FIX SHIPPED 2026-07-10 (with MON-026): computeAnnualDepreciation (properties/[id]/page.tsx:157) now sums calculateDepreciationAnnual(schedule).annualDepreciation (was Σ d.annualClaim — a phantom field the API never returns → always $0). The API already returns the raw schedules (cost/rate/method); the client type updated to the real fields. Same ONE engine as the tax paths (MON-026). Test tests/tax/depreciationRate.test.ts. §20.4 10/10."
     },
     {
       "id": "MON-004",
@@ -758,6 +762,39 @@
       "test": "tests/bank/merchantNormalize.test.ts",
       "tracker": "docs/issues/ISSUES.md",
       "notes": "Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/route.ts:345), insights uses stored declared frequency verbatim (insights:245), AI cascade hard-codes isRecurring:false/suggestedFrequency:null (aiCategorisation:248-250), good detector recurringExpenseDetection.ts is DEAD CODE (no importers), exact-name dedup misses spelling variants (link:596-607). Reza requirements 2026-07-08: (a) frequency picker at reconcile, (b) confirm/correct auto-detected recurring frequency, suggest-and-confirm not silent. UI pieces are Stitch-first (§18.2.1). Multi-PR workstream."
+    },
+    {
+      "id": "MON-026",
+      "status": "DIAGNOSED",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-10",
+      "area": "tax",
+      "title": "Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated",
+      "plain": {
+        "issue": "Your property depreciation tax deduction was calculated 100× too high — the code multiplied cost by the rate as if 2.5% meant 2.5, so a $100,000 asset at 2.5% claimed $250,000/yr instead of $2,500. That understates your taxable income and the tax owed.",
+        "fix": "Compute depreciation with the ONE canonical engine (calculateDepreciationAnnual), which correctly treats the rate as a percentage (÷100) and handles prime-cost vs diminishing-value.",
+        "check": "Your depreciation/yr and your estimated tax reflect the real schedule (a $100k asset at 2.5% shows $2,500/yr, not $250,000); estimated tax rises accordingly."
+      },
+      "rootCause": [
+        "lib/tax-engine/position/userTaxPosition.ts:121",
+        "app/api/tax/position/route.ts:150"
+      ],
+      "semanticKeys": [
+        "engine.depreciation.calculateDepreciationAnnual",
+        "number.taxPayable"
+      ],
+      "downstreamConsumers": [
+        "lib/tax-engine/position/userTaxPosition.ts",
+        "app/api/tax/position/route.ts",
+        "app/api/cashflow/intelligence/route.ts",
+        "app/dashboard/cfo",
+        "lib/testing/exporter.ts"
+      ],
+      "fixPRs": [],
+      "test": "tests/tax/depreciationRate.test.ts",
+      "tracker": "found during MON-003 investigation 2026-07-10",
+      "notes": "VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified."
     }
   ]
 }

@@ -6,6 +6,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import type {
   TestExportOutput,
   NetWorthOutput,
@@ -406,9 +407,9 @@ export class TestScenarioExporter {
       const netYield = marketValue > 0 ? (annualIncome - annualExpenses - annualInterest) / marketValue : 0;
       const annualNetCashflow = annualIncome - annualExpenses - annualLoanRepayments;
 
-      // Depreciation
+      // Depreciation (MON-026: rate is a %, use the canonical /100 + method-aware engine)
       const annualDepreciation = p.depreciationSchedules
-        ? p.depreciationSchedules.reduce((sum: number, d: any) => sum + Number(d.cost) * Number(d.rate), 0)
+        ? p.depreciationSchedules.reduce((sum: number, d: any) => sum + calculateDepreciationAnnual(d).annualDepreciation, 0)
         : 0;
 
       return {
@@ -534,7 +535,7 @@ export class TestScenarioExporter {
     const byPropertyMap = new Map<string, any>();
 
     for (const schedule of schedules) {
-      const annual = Number(schedule.cost) * Number(schedule.rate);
+      const annual = calculateDepreciationAnnual(schedule as any).annualDepreciation; // MON-026
       if (schedule.category === 'DIV40') {
         totalDiv40 += annual;
       } else {

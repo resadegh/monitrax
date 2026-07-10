@@ -5868,7 +5868,7 @@
       "kind": "orchestrator",
       "label": "User tax position (shared source)",
       "file": "lib/tax-engine/position/userTaxPosition.ts",
-      "line": 50,
+      "line": 54,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -5908,6 +5908,67 @@
       "inputs": [],
       "astHash": null,
       "verifiedBy": "tests/calculations/propertyCashflowSnapshot.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-10",
+      "status": "documented"
+    },
+    {
+      "id": "engine.depreciation.calculateDepreciationAnnual",
+      "kind": "engine",
+      "label": "Property depreciation (annual)",
+      "file": "lib/depreciation/index.ts",
+      "line": 78,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Annual depreciation for a schedule — prime-cost (cost × rate) or diminishing-value (WDV × 2×rate), Div40/Div43. The ONE depreciation engine (MON-003/MON-026).",
+      "formula": "rate = schedule.rate/100 (rate is stored as a PERCENTAGE); prime-cost = cost×rate; diminishing-value = cost×(1−2·rate)^yearsElapsed × 2·rate.",
+      "authority": "ITAA 1997 Div 40 (plant) / Div 43 (capital works); ATO effective-life / prime-cost + diminishing-value methods.",
+      "inputs": [
+        {
+          "name": "cost",
+          "unit": "AUD",
+          "type": "number",
+          "note": "asset cost base"
+        },
+        {
+          "name": "rate",
+          "unit": "percent",
+          "type": "number",
+          "note": "DepreciationSchedule.rate — PERCENTAGE (2.5 = 2.5%), engine divides by 100"
+        },
+        {
+          "name": "method",
+          "unit": "enum",
+          "type": "string",
+          "note": "PRIME_COST | DIMINISHING_VALUE"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "lib/depreciation/index.ts:78 + tests/tax/depreciationRate.test.ts",
+      "workedExample": "cost 100,000 @ rate 2.5 (%) prime-cost DIV43 → 2,500/yr (was cost×rate = 250,000, 100× too high)",
+      "verifiedDate": "2026-07-10",
+      "status": "documented"
+    },
+    {
+      "id": "number.propertyDepreciation",
+      "kind": "number",
+      "label": "Property depreciation / yr (displayed)",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "propertyDepreciation",
+      "produces": "The property detail page's Depreciation/yr — Σ calculateDepreciationAnnual over the property's schedules (MON-003, was $0).",
+      "formula": "Σ calculateDepreciationAnnual(schedule).annualDepreciation",
+      "authority": "engine.depreciation.calculateDepreciationAnnual",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/dashboard/properties/[id]/page.tsx computeAnnualDepreciation + tests/tax/depreciationRate.test.ts",
       "workedExample": null,
       "verifiedDate": "2026-07-10",
       "status": "documented"
@@ -9077,6 +9138,24 @@
       "type": "rendered-at",
       "source": "verified",
       "evidence": "portfolio/snapshot route.ts computePropertyCashflow → per-property cashflow.monthlyNet → DashboardPropertyTile (MON-014)",
+      "verifiedDate": "2026-07-10"
+    },
+    {
+      "from": "engine.depreciation.calculateDepreciationAnnual",
+      "to": "number.propertyDepreciation",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "properties/[id]/page.tsx computeAnnualDepreciation Σ calculateDepreciationAnnual (MON-003)",
+      "verifiedDate": "2026-07-10"
+    },
+    {
+      "from": "engine.depreciation.calculateDepreciationAnnual",
+      "to": "engine.taxPositionCalculator.calculateTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/year",
+      "toUnit": "AUD/year",
+      "evidence": "depreciationItems (currentYearDeduction = calculateDepreciationAnnual(dep).annualDepreciation) → calculateTaxPosition deductions (MON-026; was cost×rate 100× too high)",
       "verifiedDate": "2026-07-10"
     }
   ]

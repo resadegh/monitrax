@@ -117,3 +117,66 @@ Read-only (`prisma.*.findMany`) + pure engine. No update/upsert/delete. **NOT RE
 
 ### PR
 - PR: (pending) — draft. MON-014 holds at FIXING until Reza verifies on his data.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i — MON-003 + MON-026 (depreciation 100× / phantom-field)
+
+### Changes Made
+- **Type**: Fix (financial correctness — critical)
+- **Scope**: Depreciation — every surface now reads the ONE canonical engine `calculateDepreciationAnnual`.
+- **Root cause (verified, §19.2)**: `DepreciationSchedule.rate` is stored as a **PERCENTAGE** (`2.5` = 2.5%). Proven from three writers/validators: the API validator `rate: z.number().positive().max(100, 'Rate cannot exceed 100%')` (`app/api/properties/[id]/depreciation/route.ts:14`), the schema comment `rate Float // 2.5% for Div43…` (`prisma/schema.prisma:2381`), and the canonical engine which divides by 100 (`lib/depreciation/index.ts:78` `const rate = schedule.rate / 100`).
+  - **MON-026 (critical)** — two production tax paths computed `cost × rate` with **no `/100`** → 100× too high. `cost $100,000 @ rate 2.5` gave `$250,000` (250% of the asset) instead of `$2,500`/yr. That inflated the depreciation deduction 100×, understating taxable income and tax owed. Present in `lib/tax-engine/position/userTaxPosition.ts` (the shared `/cashflow` + My Guide source) AND `app/api/tax/position/route.ts` — the latter's comment even mis-stated "rate is stored as decimal".
+  - **MON-003** — the property **detail page** summed a non-existent `annualClaim` field (the API returns the raw schedule, not that field) → Depreciation/yr always **$0**.
+
+### §19.2 worked example (verified from source)
+- Prime-cost DIV43, `cost 100000`, `rate 2.5`: engine → `100000 × (2.5/100)` = **$2,500/yr**. (Old tax path: `100000 × 2.5` = $250,000 — 100× high.)
+- Diminishing-value DIV40, `cost 10000`, `rate 20`, year-0: `effectiveRate = 20% × 2 = 40%`, WDV ≈ cost → ≈ **$4,000** first year. (Old: `10000 × 20` = $200,000.)
+
+### §12.2.1 SSOT — one engine, five surfaces repointed
+- `lib/depreciation/index.ts` → `calculateDepreciationAnnual(schedule)` is the ONE source (rate `/100`, prime-cost vs diminishing-value, method-aware). Now used by:
+  - `lib/tax-engine/position/userTaxPosition.ts:122` (was `dep.cost * dep.rate`)
+  - `app/api/tax/position/route.ts:153` (was `dep.cost * dep.rate`)
+  - `app/dashboard/properties/[id]/page.tsx` `computeAnnualDepreciation` (was summing phantom `annualClaim`)
+  - `lib/testing/exporter.ts:412` + `:538` (were `Number(d.cost) * Number(d.rate)`)
+
+### §19.4 downstream sweep + hard test
+- Downstream consumers of the depreciation number: (1) `/api/tax/position` `deductions.depreciation` + `taxableIncome` + `taxPayable`; (2) `getUserTaxPosition` → CFO/My Guide tax insights + `/cashflow` tax optimisation; (3) property detail page "Depreciation/yr" tile; (4) the testing exporter's per-property + schedule rows. All now trace to the one engine.
+- **Test** `tests/tax/depreciationRate.test.ts` (NEW): prime-cost $100k@2.5% → `2_500` (asserts `not 250_000`); DV $10k@20% year-0 → `>3_500 && <=4_000`; source-locks that userTaxPosition / tax-position route / property page all call `calculateDepreciationAnnual` and no longer do `dep.cost * dep.rate` / `annualClaim`.
+
+### §21.2 Neomatrix (model-the-change)
+- Added engine node `engine.depreciation.calculateDepreciationAnnual` (`lib/depreciation/index.ts:78`, domain tax, regime `null`) + number node `number.propertyDepreciation` (`semanticKey: propertyDepreciation`).
+- Edges: `calculateDepreciationAnnual → number.propertyDepreciation` (feeds) and `calculateDepreciationAnnual → engine.taxPositionCalculator.calculateTaxPosition` (feeds — so both `taxPayable` numbers' engine-sets include depreciation and A3 converges).
+- Re-pinned `service.tax.getUserTaxPosition` 50→54 (import add shifted the symbol). Added `lib/depreciation/index.ts` to structural files. `neomatrix:check` green (263 nodes, A3 converges, census 0 uncovered).
+
+### Files Modified
+- `lib/tax-engine/position/userTaxPosition.ts` — import + `calculateDepreciationAnnual(dep)`.
+- `app/api/tax/position/route.ts` — import + `calculateDepreciationAnnual(dep as any)`; corrected the wrong "decimal" comment.
+- `app/dashboard/properties/[id]/page.tsx` — import; `DepreciationSchedule` client interface → real fields (cost/rate/method/category/startDate/assetName); `computeAnnualDepreciation` via the engine.
+- `lib/testing/exporter.ts` — import + two call sites via the engine.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — nodes/edges/anchors above.
+- `tests/tax/depreciationRate.test.ts` — NEW.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-026 registered (critical); MON-003 updated; both → FIXING.
+
+### Build status
+- [x] `npm run neomatrix:check` — OK (A3 converges, binding 159/159, census 0 uncovered).
+- [x] `npm run issues:check` — 26 valid.
+- [x] §19.2 worked example traced to source (validator + schema + engine).
+- [ ] `npx tsc` / `npm run test` / `lint:financial-surfaces` — **CI-verified** (local toolchain unavailable — `tsc` aborts on `baseUrl` deprecation). The engine already treats rate as a percentage; the change only re-routes callers to it.
+
+### §12.11 destructive-write check
+Read-only (`prisma.*.findMany`) + pure engine. No update/upsert/delete. **NOT REQUIRED.**
+
+### §12.14 reform-awareness
+Touches `lib/tax-engine/position/userTaxPosition.ts`. The change re-routes the depreciation input through the canonical engine — no new tax math, no regime branch, no schema column on `Property`/`Investment`/`LegalEntity`. Depreciation (Div 40/43) is not one of the eight reform measures. Outcome **(b)**: no reform interaction.
+
+### §20.4 self-review — 10/10 (financial build)
+3× against requirement (depreciation correct + one engine everywhere): v1 fixed the two tax paths (MON-026); v2 fixed the property page phantom-field (MON-003) + the exporter, unifying all five surfaces on the one engine per Reza's "fix both now, unified"; v3 modelled the engine+number in the Neomatrix so A3 converges, added the worked-example + source-lock test, corrected the misleading "decimal" comment, re-pinned the anchor.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+- **Wrong**: depreciation was calculated as `cost × rate` without dividing the rate by 100 — because the rate is stored as a percentage (2.5 means 2.5%). So a $100,000 building at 2.5% was claiming **$250,000/yr** of depreciation instead of **$2,500/yr** — 100× too high — which made your taxable income and tax owed look far too low. Separately, the property detail page's "Depreciation/yr" always showed **$0** because it read a field the data doesn't have.
+- **Changed**: every place that shows or uses depreciation now runs the one correct calculator (which divides the rate by 100 and handles prime-cost vs diminishing-value).
+- **You'll see**: the property detail page now shows a real "Depreciation/yr" (e.g. ~$2,500 for a $100k @ 2.5% capital-works schedule, not $0), and your tax estimate on /cashflow and My Guide will show a smaller, correct depreciation deduction and a correspondingly higher (correct) tax figure.
+
+### PR
+- PR: (pending) — draft. MON-003 + MON-026 hold at FIXING until Reza verifies on his data.
