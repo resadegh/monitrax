@@ -3,13 +3,13 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**26 total** · 23 open · 🔵 4 · 🟡 6 · 🟠 13 · 🟢 0 · ✅ 2
+**26 total** · 23 open · 🔵 4 · 🟡 4 · 🟠 15 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
 | MON-001 | 🟡 DIAGNOSED | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | — | — |
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
-| MON-003 | 🟡 DIAGNOSED | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | — | ✅ |
+| MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
 | MON-005 | 🟡 DIAGNOSED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | — | n/a |
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
@@ -32,7 +32,7 @@
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
-| MON-026 | 🟡 DIAGNOSED | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | — | ✅ |
+| MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
 
 ---
 
@@ -75,7 +75,7 @@ Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-
 
 ### MON-003 — DEPRECIATION / YR always $0 (reads a field absent from the model)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
 
 > **What was wrong:** The property's Depreciation per year always showed $0.
 >
@@ -86,6 +86,7 @@ Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-
 - **Root cause:** `app/dashboard/properties/[id]/page.tsx:157`, `lib/depreciation/index.ts:78`
 - **Neomatrix:** `engine.depreciation.calculateDepreciationAnnual`, `number.propertyDepreciation`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`
+- **Fix PR(s):** #1352
 - **Holistic test (§19.4):** `tests/tax/depreciationRate.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5`
 
@@ -494,7 +495,7 @@ Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/rou
 
 ### MON-026 — Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated
 
-**🟡 DIAGNOSED** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-10
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-10
 
 > **What was wrong:** Your property depreciation tax deduction was calculated 100× too high — the code multiplied cost by the rate as if 2.5% meant 2.5, so a $100,000 asset at 2.5% claimed $250,000/yr instead of $2,500. That understates your taxable income and the tax owed.
 >
@@ -505,6 +506,7 @@ Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/rou
 - **Root cause:** `lib/tax-engine/position/userTaxPosition.ts:121`, `app/api/tax/position/route.ts:150`
 - **Neomatrix:** `engine.depreciation.calculateDepreciationAnnual`, `number.taxPayable`
 - **Downstream consumers (§19.4):** `lib/tax-engine/position/userTaxPosition.ts`, `app/api/tax/position/route.ts`, `app/api/cashflow/intelligence/route.ts`, `app/dashboard/cfo`, `lib/testing/exporter.ts`
+- **Fix PR(s):** #1352
 - **Holistic test (§19.4):** `tests/tax/depreciationRate.test.ts`
 - **Detail:** `found during MON-003 investigation 2026-07-10`
 
