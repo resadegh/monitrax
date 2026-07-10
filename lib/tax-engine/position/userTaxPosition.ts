@@ -22,6 +22,10 @@
 
 import { prisma } from '@/lib/db';
 import { calculateTaxPosition, getCurrentFinancialYear } from '@/lib/tax-engine';
+// MON-026: depreciation via the ONE canonical engine — DepreciationSchedule.rate
+// is stored as a PERCENTAGE (validator max(100), writer ×100), so `cost × rate`
+// was 100× too high. calculateDepreciationAnnual does the /100 + method-aware math.
+import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import type {
   IncomeItem,
   ExpenseItem,
@@ -115,7 +119,7 @@ export async function getUserTaxPosition(
   const depreciationItems: DepreciationItem[] = depreciations.map((dep: any) => ({
     id: dep.id,
     propertyId: dep.propertyId,
-    currentYearDeduction: dep.cost * dep.rate,
+    currentYearDeduction: calculateDepreciationAnnual(dep).annualDepreciation, // MON-026: rate is %, /100 inside
     type: dep.category,
   }));
 

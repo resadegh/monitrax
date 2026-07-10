@@ -3,13 +3,13 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**25 total** · 22 open · 🔵 4 · 🟡 5 · 🟠 13 · 🟢 0 · ✅ 2
+**26 total** · 23 open · 🔵 4 · 🟡 4 · 🟠 15 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
 | MON-001 | 🟡 DIAGNOSED | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | — | — |
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
-| MON-003 | 🟡 DIAGNOSED | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | — | — |
+| MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
 | MON-005 | 🟡 DIAGNOSED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | — | n/a |
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
@@ -32,6 +32,7 @@
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
+| MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
 
 ---
 
@@ -74,20 +75,22 @@ Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-
 
 ### MON-003 — DEPRECIATION / YR always $0 (reads a field absent from the model)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
 
 > **What was wrong:** The property's Depreciation per year always showed $0.
 >
-> **What changed:** (planned) Calculate the yearly depreciation from the schedule's cost and rate (prime-cost / diminishing-value).
+> **What changed:** Compute Depreciation/yr from the schedule's cost + rate + method via the ONE canonical engine (calculateDepreciationAnnual) — the page was summing a field the API never returns.
 >
-> **What you should see:** (after fix) Depreciation/yr shows a real figure based on your depreciation schedule.
+> **What you should see:** Depreciation/yr shows a real figure from your schedules (e.g. a $100k asset at 2.5% prime-cost → $2,500/yr), not $0.
 
-- **Root cause:** `app/dashboard/properties/[id]/page.tsx:170`
+- **Root cause:** `app/dashboard/properties/[id]/page.tsx:157`, `lib/depreciation/index.ts:78`
+- **Neomatrix:** `engine.depreciation.calculateDepreciationAnnual`, `number.propertyDepreciation`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Fix PR(s):** #1352
+- **Holistic test (§19.4):** `tests/tax/depreciationRate.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5`
 
-computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness.
+computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness. FIX SHIPPED 2026-07-10 (with MON-026): computeAnnualDepreciation (properties/[id]/page.tsx:157) now sums calculateDepreciationAnnual(schedule).annualDepreciation (was Σ d.annualClaim — a phantom field the API never returns → always $0). The API already returns the raw schedules (cost/rate/method); the client type updated to the real fields. Same ONE engine as the tax paths (MON-026). Test tests/tax/depreciationRate.test.ts. §20.4 10/10.
 
 ### MON-004 — Loan repayment missing from the property Cashflow rhythm
 
@@ -489,4 +492,23 @@ Regression introduced by MON-023 (denominator switched to recurring.total while 
 - **Detail:** `docs/issues/ISSUES.md`
 
 Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/route.ts:345), insights uses stored declared frequency verbatim (insights:245), AI cascade hard-codes isRecurring:false/suggestedFrequency:null (aiCategorisation:248-250), good detector recurringExpenseDetection.ts is DEAD CODE (no importers), exact-name dedup misses spelling variants (link:596-607). Reza requirements 2026-07-08: (a) frequency picker at reconcile, (b) confirm/correct auto-detected recurring frequency, suggest-and-confirm not silent. UI pieces are Stitch-first (§18.2.1). Multi-PR workstream.
+
+### MON-026 — Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated
+
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-10
+
+> **What was wrong:** Your property depreciation tax deduction was calculated 100× too high — the code multiplied cost by the rate as if 2.5% meant 2.5, so a $100,000 asset at 2.5% claimed $250,000/yr instead of $2,500. That understates your taxable income and the tax owed.
+>
+> **What changed:** Compute depreciation with the ONE canonical engine (calculateDepreciationAnnual), which correctly treats the rate as a percentage (÷100) and handles prime-cost vs diminishing-value.
+>
+> **What you should see:** Your depreciation/yr and your estimated tax reflect the real schedule (a $100k asset at 2.5% shows $2,500/yr, not $250,000); estimated tax rises accordingly.
+
+- **Root cause:** `lib/tax-engine/position/userTaxPosition.ts:121`, `app/api/tax/position/route.ts:150`
+- **Neomatrix:** `engine.depreciation.calculateDepreciationAnnual`, `number.taxPayable`
+- **Downstream consumers (§19.4):** `lib/tax-engine/position/userTaxPosition.ts`, `app/api/tax/position/route.ts`, `app/api/cashflow/intelligence/route.ts`, `app/dashboard/cfo`, `lib/testing/exporter.ts`
+- **Fix PR(s):** #1352
+- **Holistic test (§19.4):** `tests/tax/depreciationRate.test.ts`
+- **Detail:** `found during MON-003 investigation 2026-07-10`
+
+VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified.
 

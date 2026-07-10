@@ -14,6 +14,7 @@ import {
 } from '@/lib/tax-engine';
 import { calculateTaxPositionDecimal } from '@/lib/tax-engine/position/taxPositionCalculator';
 import type { IncomeItem, ExpenseItem, DepreciationItem } from '@/lib/tax-engine/position/taxPositionCalculator';
+import { calculateDepreciationAnnual } from '@/lib/depreciation';
 
 // Types for Prisma query results
 interface IncomeRecord {
@@ -146,8 +147,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
     // Transform depreciations to DepreciationItem format
     // Calculate current year deduction from cost and rate
     const depreciationItems: DepreciationItem[] = (depreciations as unknown as DepreciationRecord[]).map((dep: DepreciationRecord) => {
-      // Calculate annual deduction: cost * rate (rate is stored as decimal, e.g., 0.025 for 2.5%)
-      const annualDeduction = dep.cost * dep.rate;
+      // MON-026: DepreciationSchedule.rate is a PERCENTAGE (2.5 = 2.5%), not a
+      // decimal — the prior `cost * rate` was 100× too high. The canonical engine
+      // does the /100 + prime-cost/diminishing-value math.
+      const annualDeduction = calculateDepreciationAnnual(dep as any).annualDepreciation;
       return {
         id: dep.id,
         propertyId: dep.propertyId,
