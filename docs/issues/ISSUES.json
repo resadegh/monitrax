@@ -269,7 +269,7 @@
     {
       "id": "MON-010",
       "title": "Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-03",
@@ -293,7 +293,9 @@
         "lib/cfo/aiAdvisor.ts:480-485 (CFO AI advisor tax context)",
         "lib/neobrain/factPack.ts:285 (FactPack tax fact)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1353
+      ],
       "test": "tests/tax/rentalTaxDedup.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
       "notes": "Deliberately scoped OUT of MON-009: buildTaxSummary(data.income,...) uses raw records so per-record actuals/reform logic is preserved. §12.14 reform-awareness applies (regime, grandfathering). Fix by threading the MON-009 adjusted rental into the tax income path with the §12.14 PR block. | 2026-07-10: fixed by feeding buildTaxSummary the MON-009 adjustedIncome (adjustPropertyRentalIncome), the same deduped array buildIncomeBreakdown reads → passive-rental total and taxable-rental basis converge. No new tax math (delegates to reform-aware calculateTaxPosition, §12.14 outcome b). Test tests/tax/rentalTaxDedup.test.ts.",
