@@ -6,7 +6,7 @@
       "lib",
       "app"
     ],
-    "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
+    "note": "Layer 0 \u2014 structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
     "counts": {
       "files": 1081,
       "filesOnDisk": 1082,
@@ -732,6 +732,7 @@
     "lib/cashflow-intelligence/index.ts",
     "lib/cashflow-intelligence/leakDetector.ts",
     "lib/cashflow-intelligence/types.ts",
+    "lib/cashflow/buildCFEInput.ts",
     "lib/cashflow/forecasting.ts",
     "lib/cashflow/incomeNormalizer.ts",
     "lib/cashflow/index.ts",

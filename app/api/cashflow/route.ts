@@ -12,153 +12,21 @@ import {
   generateForecast,
   generateOptimisations,
   generateCashflowInsights,
-  CFEInput,
   COEInput,
-  AccountBalance,
-  TransactionRecord,
   RecurringPaymentData,
-  IncomeStream,
-  LoanSchedule,
   SpendingProfileData,
   LoanData,
   OffsetAccountData,
   CategoryAverage,
   TrendDirection,
 } from '@/lib/cashflow';
-import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
+// MON-027: the CFE input builder is now the ONE shared service (was copy-pasted
+// here and in stress-test/route.ts — the copies had drifted on transfers + tax).
+import { buildCFEInput } from '@/lib/cashflow/buildCFEInput';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
 // Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
-
-/**
- * Build CFE input from database
- */
-async function buildCFEInput(
-  userId: string,
-  forecastDays: number = 90
-): Promise<CFEInput> {
-  const [
-    accounts,
-    transactions,
-    recurringPayments,
-    income,
-    loans,
-  ] = await Promise.all([
-    prisma.account.findMany({
-      where: { userId },
-      include: { linkedLoan: true },
-    }),
-    prisma.unifiedTransaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
-        },
-        isTransfer: { not: true }, // Exclude transfers from cashflow calculations
-      },
-      orderBy: { date: 'desc' },
-    }),
-    prisma.recurringPayment.findMany({
-      where: { userId, isActive: true },
-    }),
-    prisma.income.findMany({
-      where: { userId },
-    }),
-    prisma.loan.findMany({
-      where: { userId },
-      include: { offsetAccount: true },
-    }),
-  ]);
-
-  // Transform accounts
-  const accountBalances: AccountBalance[] = accounts.map((a: any) => ({
-    accountId: a.id,
-    accountName: a.name,
-    accountType: a.type,
-    currentBalance: Number(a.currentBalance),
-    lastUpdated: a.updatedAt,
-    linkedLoanId: a.linkedLoan?.id,
-  }));
-
-  // Transform transactions
-  const transactionRecords: TransactionRecord[] = transactions.map((t: any) => ({
-    id: t.id,
-    accountId: t.accountId,
-    date: t.date,
-    amount: Math.abs(Number(t.amount)),
-    direction: t.direction,
-    categoryLevel1: t.categoryLevel1,
-    categoryLevel2: t.categoryLevel2,
-    merchantStandardised: t.merchantStandardised,
-    isRecurring: t.isRecurring,
-  }));
-
-  // Transform recurring payments
-  const recurringData: RecurringPaymentData[] = recurringPayments.map((rp: any) => ({
-    id: rp.id,
-    merchantStandardised: rp.merchantStandardised,
-    accountId: rp.accountId,
-    pattern: rp.pattern,
-    expectedAmount: Number(rp.expectedAmount),
-    nextExpected: rp.nextExpected,
-    lastOccurrence: rp.lastOccurrence,
-    isActive: rp.isActive,
-  }));
-
-  // Transform income streams with tax-adjusted amounts for salaries
-  const incomeStreams: IncomeStream[] = income.map((i: any) => {
-    const baseStream: IncomeStream = {
-      id: i.id,
-      name: i.name,
-      type: i.type,
-      monthlyAmount: toMonthly(Number(i.amount), i.frequency as Frequency),
-      frequency: i.frequency,
-      volatility: 0.1, // Default low volatility for regular income
-      // Pass salary-specific fields for proper tax handling
-      salaryType: i.salaryType || null,
-      grossAmount: i.grossAmount != null ? Number(i.grossAmount) : null,
-      netAmount: i.netAmount != null ? Number(i.netAmount) : null,
-      paygWithholding: i.paygWithholding != null ? Number(i.paygWithholding) : null,
-    };
-
-    // Apply tax normalization (handles NET vs GROSS properly)
-    const normalized = normalizeIncomeStream(baseStream);
-    return {
-      ...baseStream,
-      monthlyAmount: normalized.netMonthlyAmount, // Use after-tax amount for cashflow
-    };
-  });
-
-  // Transform loan schedules
-  const loanSchedules: LoanSchedule[] = loans.map((l: any) => ({
-    loanId: l.id,
-    loanName: l.name,
-    principal: Number(l.principal),
-    interestRate: Number(l.interestRateAnnual),
-    monthlyRepayment: Number(l.minRepayment),
-    repaymentDate: 15, // Default to 15th of month
-    isInterestOnly: l.isInterestOnly,
-    offsetAccountId: l.offsetAccountId,
-    offsetBalance: l.offsetAccount
-      ? Number(l.offsetAccount.currentBalance)
-      : undefined,
-  }));
-
-  return {
-    userId,
-    accounts: accountBalances,
-    transactions: transactionRecords,
-    recurringPayments: recurringData,
-    incomeStreams,
-    loanSchedules,
-    config: {
-      forecastDays,
-      granularity: 'DAILY',
-      includeConfidenceBands: true,
-    },
-  };
-}
 
 /**
  * Build COE input from CFE output and database

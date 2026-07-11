@@ -828,15 +828,15 @@
     {
       "id": "MON-027",
       "title": "CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-11",
       "area": "cashflow",
       "plain": {
-        "issue": "The cashflow stress-test builds its forecast from a stale copy of the input-assembly code: it uses your BEFORE-tax income and counts internal transfers as cashflow, so the stress-test projections are on a different (wrong) basis than the main cashflow forecast.",
-        "fix": "(planned) Extract the ONE correct input builder (after-tax income, transfers excluded) into a shared service and have both the cashflow route and the stress-test route use it.",
-        "check": "(after fix) Stress-test projections line up with the main cashflow forecast basis — after-tax income, no transfers counted as spend/income."
+        "issue": "The cashflow stress-test built its forecast from a stale copy of the input-assembly code: it used your BEFORE-tax income and counted internal transfers as cashflow, so stress-test projections were on a different (wrong) basis than the main cashflow forecast.",
+        "fix": "Extracted the ONE correct input builder (after-tax income, transfers excluded) into a shared service; both the cashflow route and the stress-test route now use it.",
+        "check": "Stress-test projections now line up with the main cashflow forecast basis — after-tax income (not gross), and internal transfers are not counted as money in/out."
       },
       "rootCause": [
         "app/api/cashflow/route.ts:37",
@@ -844,11 +844,16 @@
       ],
       "semanticKeys": [],
       "downstreamConsumers": [
-        "app/api/cashflow/stress-test/route.ts (all stress scenarios)"
+        "app/api/cashflow/stress-test/route.ts (all stress scenarios — now forecast on after-tax income + transfers excluded)",
+        "app/api/cashflow/route.ts (unchanged basis — already correct; now imports the shared builder)"
       ],
-      "fixPRs": [],
-      "test": null,
-      "holisticTests": [],
+      "fixPRs": [
+        1355
+      ],
+      "test": "tests/cashflow/buildCFEInputShared.test.ts",
+      "holisticTests": [
+        "tests/cashflow/buildCFEInputShared.test.ts"
+      ],
       "tracker": "discovered during MON-021 (2026-07-11)",
       "notes": "§12.2.1 duplication. The shared extraction was prototyped during MON-021 then reverted to keep MON-021 scoped to the forecast convergence. Fix as its own PR: lib/cashflow/buildCFEInput.ts shared service (after-tax + transfer-excluded), both routes import it. Also note: the linear forward-projection formula is duplicated in lib/cashflow/forecasting.ts + app/api/cashflow/route.ts — candidates to route through projectBalanceForward or the CFE engine."
     }
