@@ -1001,6 +1001,7 @@ export default function DashboardPage() {
                   snapshot.income || [],
                   snapshot.expenses || []
                 )}
+                entityCount={charts?.entityComparison.length}
               />
             </BentoPair>
           )}
@@ -1016,6 +1017,7 @@ export default function DashboardPage() {
                 snapshot.income || [],
                 snapshot.expenses || []
               )}
+              entityCount={charts?.entityComparison.length}
             />
           )}
 
