@@ -88,3 +88,12 @@ All four follow CLAUDE.md §23.2.1 — the broken/duplicate producer is removed,
 - PR #1360 MERGED — `docs/blueprint/NEOAUDIT.md` (platform blueprint incl. §0 operator guide, non-overlap roles/handshake, Scenario Lab, Eyes & Ears briefs, parity matrix, tooling register) is doctrine.
 - **`GET /api/verify/invariants` built (R3-self node)** — server-side Ring-3 invariants on the user's own real data: I1 assets−liabilities=netWorth; I2 quickMetrics mirrors agree; I3 bucket tie-out (MON-012 class); I4 Σ property equity = portfolio equity (MON-011 class); I5 per-property equity=value−loans; I6 finite-scan (no NaN/Infinity); I7 range sanity. Reads ONLY canonical sources (snapshot + accessors); computes nothing of its own; `withPermission('report.read')`. Tests: `tests/verification/selfAuditInvariants.test.ts` (guard + canonical-only + identity locks). Structural graph manifest updated; `neomatrix:check` green.
 - NeoAudit admin panel (the UI + "due briefs" indicator + scorecard) = NEXT PR with its §18.2.1 Stitch pass.
+
+---
+
+## Session continuation 5: NeoAudit admin panel (#1361 merged → panel PR)
+
+- PR #1361 MERGED (self-audit endpoint live on main).
+- **NeoAudit admin panel built** — `/admin/neoaudit` (AdminFeatureGate) + `components/admin/neoaudit/NeoAuditPanel.tsx`: fetches `/api/verify/invariants` with the operator's token, renders the PASS/FAIL scorecard header (ALL PASS / N FAIL + checkedAt + canonical monthly-net/savings-rate) and the invariant table (id · label · lhs · rhs · Δ · PASS/FAIL, failing rows highlighted). Admin design system (§18.2 — /admin/* is Stitch-exempt), so no Stitch pass. This is the one-click surface from NEOAUDIT.md §0 operator guide.
+- v1 = the invariant (real-data) half of the Release Scorecard; the CI/registry half (rings 0-2 green + zero OPEN number-issues) aggregates in step 6.
+- Structural manifest + NEOAUDIT.md §8 progress updated; `neomatrix:check` green.

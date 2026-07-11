@@ -129,7 +129,7 @@ One generated readout — publish when ALL green: Rings 0–2 green on CI · R3-
 ## 8. Build plan (each its own PR, §20.4 scores recorded)
 
 1. ✅ Foundations — Part 23 law, playbook, VR-001, baseline, ratchet tests (PRs #1358/#1359, merged)
-2. Self-audit endpoint + NeoAudit admin panel (R3-self + scorecard v1)
+2. ✅ Self-audit endpoint (`/api/verify/invariants`, PR #1361, merged) + NeoAudit admin panel (`/admin/neoaudit`, this PR) — R3-self + scorecard v1 (invariant half; CI/registry half = step 6)
 3. Scenario Lab Tier 1 + R2-num golden route/Playwright tests (+ fast-check first ~10 properties)
 4. Parity-matrix generator (§5)
 5. CFO decision tables + report reconciliation locks (§3)
