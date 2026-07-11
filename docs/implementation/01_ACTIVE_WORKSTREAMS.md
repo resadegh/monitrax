@@ -1327,3 +1327,5 @@ Phases:
 
 - **Risk:** medium — fixes delete producers (behaviour-visible); every one needs its Ratchet test.
 - **Blocking:** none. Reza granted full authority 2026-07-11 ("you take charge and have all my authority to act").
+
+**2026-07-12 update — named `NeoAudit`; full platform blueprint approved + committed** (`docs/blueprint/NEOAUDIT.md`): non-overlap roles/handshake (one question → one tool → one ring; registry = the one finding bus), Scenario Lab (authored + oracle-mutated + metamorphic), Eyes & Ears 7-brief Chrome library (incl. functional "push buttons, never save" audit), Neomatrix-driven parity matrix, Release Scorecard, tooling register (adopt-now: fast-check, Playwright MCP, GCP Error Reporting, scoped StrykerJS; CDR-disqualified: Meticulous). PRs #1358/#1359 merged = phase 1 done; next build: self-audit endpoint + admin panel.
