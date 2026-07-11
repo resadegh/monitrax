@@ -265,12 +265,26 @@ export function GlassDebtQuality({ data }: { data: DebtQualityData }) {
 
 import type { EntityCashflowData } from '@/components/dashboard/EntityCashflowSummary';
 
-export function GlassEntityCashflow({ data }: { data: EntityCashflowData }) {
+export function GlassEntityCashflow({
+  data,
+  entityCount,
+}: {
+  data: EntityCashflowData;
+  /** Canonical legal-entity count (snapshot.entities.length) — MON-015. Falsy →
+   *  the "across N entities" line is hidden rather than shown with a wrong count. */
+  entityCount?: number;
+}) {
   const sub: GlassSubPalette = 'sky-indigo';
+  // MON-015: show ALL SIX components that make up totalEntityCashflow so the visible
+  // rows sum to the headline (was 4 rows — standaloneLoansCost + assetsNet were in the
+  // total but never displayed → the -$655 "gap"). Signs match the total formula:
+  // total = incomeNet + propertiesNet + investmentsNet − standaloneLoansCost + assetsNet − expensesNet.
   const rows: Array<{ name: string; net: number }> = [
     { name: 'Properties', net: data.summary.propertiesNet },
     { name: 'Investments', net: data.summary.investmentsNet },
     { name: 'Income', net: data.summary.incomeNet },
+    { name: 'Loans', net: -Math.abs(data.summary.standaloneLoansCost) },
+    { name: 'Assets', net: data.summary.assetsNet },
     { name: 'Expenses', net: -Math.abs(data.summary.expensesNet) },
   ].filter((r) => r.net !== 0);
 
@@ -296,12 +310,17 @@ export function GlassEntityCashflow({ data }: { data: EntityCashflowData }) {
             {formatCurrency(data.summary.totalEntityCashflow)}
           </span>
           <span className="text-xs text-muted-foreground">
-            annual net across {data.properties.length + data.investments.length} entities
+            {/* MON-015: MONTHLY (every component is monthly — sibling summary labels '/mo');
+                count from the canonical legal-entity source, not asset counts. */}
+            monthly net
+            {entityCount != null && entityCount > 0
+              ? ` across ${entityCount} ${entityCount === 1 ? 'entity' : 'entities'}`
+              : ''}
           </span>
         </div>
 
         <ul className="mt-auto space-y-1.5 text-[11px]">
-          {rows.slice(0, 4).map((row) => (
+          {rows.map((row) => (
             <li key={row.name} className="flex items-center justify-between">
               <span className="truncate text-muted-foreground">{row.name}</span>
               <span

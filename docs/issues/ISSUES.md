@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**27 total** · 24 open · 🔵 2 · 🟡 4 · 🟠 18 · 🟢 0 · ✅ 2
+**27 total** · 24 open · 🔵 1 · 🟡 4 · 🟠 19 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -21,7 +21,7 @@
 | MON-012 | 🟠 FIXING | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | #1347 | ✅ |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
 | MON-014 | 🟠 FIXING | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | #1351 | ✅ |
-| MON-015 | 🔵 OPEN | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | — | n/a |
+| MON-015 | 🟠 FIXING | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | #1356 | ✅ |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
 | MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
@@ -296,17 +296,18 @@ Anchor verification 2026-07-07 (§19.2): the Home tile renders property.cashflow
 
 ### MON-015 — Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual'
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-07-07
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-07-07
 
-> **What was wrong:** The widget says -$17,121/yr total but its own lines (-13,149 + 27,358 - 30,675) add to -$16,466 — $655 unexplained. It also says '12 entities' when the universe has 9.
+> **What was wrong:** The Entity Cashflow tile on the dashboard didn't add up: its total (-$17,121/mo) included six things but only four were shown as lines, so the visible rows came up ~$655 short. It also said '12 entities' (it was counting your properties + investment accounts, i.e. assets) when your structure has 9 entities, and it labelled a monthly figure as 'annual'.
 >
-> **What changed:** (planned) Make the total the sum of the displayed components (or display the missing component), and count entities from the one entity source.
+> **What changed:** The tile now shows all six lines that make up the total (adds the previously-hidden Loans and Assets rows), counts entities from the same source the rest of the dashboard uses, and labels the figure 'monthly'.
 >
-> **What you should see:** (after fix) The lines add up to the total, and the entity count matches My Structure.
+> **What you should see:** The tile's lines now add up to its headline total, the entity count matches the number shown elsewhere on the dashboard (your real entities, not asset counts), and it reads 'monthly net'.
 
 - **Root cause:** `components/dashboard/tiles/GlassInsightTiles.tsx:299`, `components/dashboard/EntityCashflowSummary.tsx:795`
-- **Downstream consumers (§19.4):** `app/dashboard/page.tsx`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Downstream consumers (§19.4):** `app/dashboard/page.tsx (GlassEntityCashflow — both call sites)`
+- **Fix PR(s):** #1356
+- **Holistic test (§19.4):** `tests/dashboard/entityCashflowWidget.test.ts`
 - **Detail:** `chat audit 2026-07-07 #5`
 
 VALIDATED 2026-07-07 — CONFIRMED-REAL but DISPLAY/LABEL only (changesNumbers=false). Anchor CORRECTED: the widget is GlassEntityCashflow (components/dashboard/tiles/GlassInsightTiles.tsx:268-300), fed by calculateEntityCashflow (components/dashboard/EntityCashflowSummary.tsx:588-815) — NOT buildEntityBreakdown (entityBreakdown.ts:86 feeds the reports byEntity view, a different engine). Three real display defects: (1) additivity — headline total = summary.totalEntityCashflow (EntityCashflowSummary.tsx:795) sums 6 components (income/properties/investments/standaloneLoans/assets/expenses) but the widget shows only 4 rows (GlassInsightTiles.tsx:270-275), so standaloneLoansCost + assetsNet are in the total but never displayed -> the -$655 gap; the total itself is arithmetically correct. (2) count — GlassInsightTiles.tsx:299 labels 'N entities' from data.properties.length + data.investments.length (3 properties + 9 investment accounts = '12'), mislabelling asset counts as legal entities (universe = 9). (3) a MONTHLY figure is labelled 'annual net' (:299) though every component is monthly (sibling EntityCashflowSummary.tsx:244 correctly labels '/mo'). Fix is display+label: show all 6 rows (or fold the 2 hidden into a row), count from the entity source, correct the annual/monthly label. Unmodelled dashboard-widget surface (§21.5). [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-10): 9 entities vs across 12 entities reproduced (widget counts assets as entities).
