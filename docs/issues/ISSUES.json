@@ -828,7 +828,7 @@
     {
       "id": "MON-027",
       "title": "CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-11",
@@ -847,7 +847,9 @@
         "app/api/cashflow/stress-test/route.ts (all stress scenarios — now forecast on after-tax income + transfers excluded)",
         "app/api/cashflow/route.ts (unchanged basis — already correct; now imports the shared builder)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1355
+      ],
       "test": "tests/cashflow/buildCFEInputShared.test.ts",
       "holisticTests": [
         "tests/cashflow/buildCFEInputShared.test.ts"

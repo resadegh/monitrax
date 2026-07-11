@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**27 total** · 24 open · 🔵 2 · 🟡 5 · 🟠 17 · 🟢 0 · ✅ 2
+**27 total** · 24 open · 🔵 2 · 🟡 4 · 🟠 18 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -33,7 +33,7 @@
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
 | MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
-| MON-027 | 🟡 DIAGNOSED | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | — | ✅ |
+| MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
 
 ---
 
@@ -518,7 +518,7 @@ VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is
 
 ### MON-027 — CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: cashflow · opened 2026-07-11
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: cashflow · opened 2026-07-11
 
 > **What was wrong:** The cashflow stress-test built its forecast from a stale copy of the input-assembly code: it used your BEFORE-tax income and counted internal transfers as cashflow, so stress-test projections were on a different (wrong) basis than the main cashflow forecast.
 >
@@ -528,6 +528,7 @@ VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is
 
 - **Root cause:** `app/api/cashflow/route.ts:37`, `app/api/cashflow/stress-test/route.ts:45`
 - **Downstream consumers (§19.4):** `app/api/cashflow/stress-test/route.ts (all stress scenarios — now forecast on after-tax income + transfers excluded)`, `app/api/cashflow/route.ts (unchanged basis — already correct; now imports the shared builder)`
+- **Fix PR(s):** #1355
 - **Holistic test (§19.4):** `tests/cashflow/buildCFEInputShared.test.ts`
 - **Detail:** `discovered during MON-021 (2026-07-11)`
 
