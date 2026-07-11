@@ -71,3 +71,12 @@ All four follow CLAUDE.md §23.2.1 — the broken/duplicate producer is removed,
 - **MON-030 / MON-031** — root causes verified + recorded (DIAGNOSED): MON-030 = four score producers (fix: delete `calculateCFOScore` as an overall grade → canonical `generateHealthReport`; own PR, structural). MON-031 = label collision, not math (gross liquid vs net-of-cards; $2,496 IS the credit card) — copy fix queued.
 - **Ratchet (§23.2.2):** `tests/verification/vr001Ratchet.test.ts` — Ring-0 worked examples (deficit→0/15; trailing vs declared savings rate; interest-floor $1,271.10 on $228k@6.69%; fortnightly repayment ×26/12) + source-locks on every culprit.
 - Neomatrix: 7 drifted anchors fixed, `getCanonicalSavingsRate` modelled, `number.savingsRate` repointed; `neomatrix:check` + `issues:check` green. `lint:financial-surfaces` unable to run locally (ts-node/node-types container limitation) — Vercel build is the gate.
+
+---
+
+## Session continuation 3: NeoAudit platform blueprint (approved + documented)
+
+- PR #1359 MERGED (all VR-001 fixes + Part 23 law live on main). Post-merge §17.2: production deploy verified building→watched to terminal state; branch reset onto merged main.
+- **`docs/blueprint/NEOAUDIT.md` created** — the platform blueprint: rings/nodes with NON-OVERLAP roles + handshake procedure (Reza directive: "clear roles and responsibilities … without convoluting results"), Scenario Lab (3 tiers), CFO/report decision tables, Eyes & Ears 7-brief Chrome library (incl. functional audit: push buttons/check results, never save), Neomatrix-driven parity matrix, Release Scorecard, tooling register.
+- **Tooling research (web, sourced):** ADOPT NOW — fast-check (R0-gen), Playwright MCP (R3-agent on golden previews), GCP Error Reporting (§13.9), StrykerJS scoped weekly. LATER — Argos/Lost Pixel, axe-core, Chrome DevTools MCP, Checkly (first paying user). SKIP — Meticulous.ai (**CDR-disqualified, verified**: captures cookies/storage/network payloads to their cloud), Percy/Chromatic, hosted agent browsers.
+- CLAUDE.md Part 23 amended (machinery named NeoAudit + blueprint pointer); playbook re-titled as NeoAudit's Ring-3 manual.

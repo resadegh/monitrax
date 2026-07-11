@@ -1,4 +1,6 @@
-# MONITRAX VERIFICATION PLAYBOOK — the road to zero-fail
+# MONITRAX VERIFICATION PLAYBOOK — NeoAudit Ring-3 operating manual
+
+> Part of **NeoAudit** (platform blueprint: `docs/blueprint/NEOAUDIT.md` — rings/nodes, non-overlap roles, Eyes & Ears brief library, tooling register).
 
 > **Canonical operating manual for verifying that every number Monitrax shows is correct — on synthetic data in CI and on Reza's real data in the live app.** Any Claude session can pick this up cold and run it. The standing rules live in CLAUDE.md Part 23; this doc is the *how*. When they disagree, CLAUDE.md wins.
 >
