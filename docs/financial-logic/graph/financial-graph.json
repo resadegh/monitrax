@@ -5598,7 +5598,7 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 93,
+      "line": 113,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -5667,7 +5667,7 @@
       "authority": "CLAUDE.md §12.2.1 one-source / §19.4 full-flow.",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/calculations/propertyCashflow.ts:135",
+      "verifiedBy": "lib/calculations/propertyCashflow.ts:196",
       "workedExample": null,
       "verifiedDate": "2026-07-03",
       "status": "documented"

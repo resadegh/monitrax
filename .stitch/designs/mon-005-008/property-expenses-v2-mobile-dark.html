@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Property Expenses - Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        /* Custom scrollbar for clean editorial look */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#66768d",
+                    "secondary-container": "#d9dff4",
+                    "secondary-fixed-dim": "#c0c6da",
+                    "on-surface-variant": "#94A3B8",
+                    "surface-bright": "#f4fcf0",
+                    "on-secondary-fixed-variant": "#404757",
+                    "surface-dim": "#d5dcd1",
+                    "primary": "#62df7d",
+                    "surface-tint": "#006e2d",
+                    "secondary-fixed": "#dce2f6",
+                    "primary-container": "#00873a",
+                    "surface-container-low": "#1e293b",
+                    "on-tertiary-fixed": "#0b1c30",
+                    "on-error": "#ffffff",
+                    "outline": "#6e7b6c",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#dde5d9",
+                    "inverse-primary": "#006b2c",
+                    "on-primary-fixed-variant": "#005320",
+                    "inverse-on-surface": "#ecf3e7",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed": "#FAFAF7",
+                    "surface": "#050913",
+                    "on-primary-container": "#f7fff2",
+                    "primary-fixed-dim": "#62df7d",
+                    "on-primary-fixed": "#002109",
+                    "surface-container-lowest": "#ffffff",
+                    "trail-violet": "#8B5CF6",
+                    "on-surface": "#FAFAF7",
+                    "trail-indigo": "#6366F1",
+                    "surface-container-high": "#1e293b",
+                    "on-tertiary-fixed-variant": "#38485d",
+                    "error-red": "#DC2626",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "rgba(148, 163, 184, 0.3)",
+                    "trail-amber": "#F59E0B",
+                    "trail-sky": "#0EA5E9",
+                    "background": "#050913",
+                    "primary-fixed": "#7ffc97",
+                    "surface-ivory": "#050913",
+                    "tertiary-fixed-dim": "#b7c8e1",
+                    "error": "#ba1a1a",
+                    "on-background": "#FAFAF7",
+                    "on-tertiary-container": "#fdfcff",
+                    "on-secondary-container": "#94A3B8",
+                    "inverse-surface": "#0E1424",
+                    "trail-emerald": "#10b981",
+                    "tertiary-fixed": "#d3e4fe",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "tertiary": "#4d5d73",
+                    "surface-container": "#0E1424",
+                    "secondary": "#585e6f",
+                    "outline-slate": "#94A3B8",
+                    "surface-variant": "#dde5d9"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "section-gap": "48px",
+                    "unit": "4px",
+                    "margin-mobile": "20px",
+                    "margin-desktop": "48px",
+                    "gutter": "24px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "eyebrow": ["Inter"],
+                    "data-lg": ["Inter"],
+                    "data-xl": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                    "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                    "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                    "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                    "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                    "body-sm": ["14px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                    "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                    "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }]
+            }
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-surface font-body-md text-on-surface min-h-screen pb-24">
+<!-- Screen Wrapper (Mobile Reflow) -->
+<div class="max-w-[390px] mx-auto min-h-screen bg-surface overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-40 bg-surface/80 backdrop-blur-md flex justify-between items-center w-full px-margin-mobile h-16 shadow-lg border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="menu">menu</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Wealth OS</h1>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional, high-end studio portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCy-ehI--Hz8PqoLJ0vrrDUjrgVZUT3gJSZ5TDFhcYCTGeb_w3mO3iIZHkBXjW6GCu2Ggweu-aDXqM2T69EWZ3bc6uebrouioZUUqM2SiS3pdqmv-bBNir8EMdNQ6sXIs1bOmT3G0NY2rEo6WwcvkKSEoOZMKov30k0o07QjX3i9cbcmK80D6F5aY4NTzUcS8wudCEKevyqdTBc8bNBlnPtCTbe-ztXvAyJ5223wMcYH8HpkPbPWrf2Wivb6QhuPhSTxgc_l79drFA"/>
+</div>
+</header>
+<main class="px-margin-mobile pt-8 space-y-6">
+<!-- Header Section -->
+<div class="flex flex-col items-center text-center space-y-4">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-trail-sky to-trail-indigo flex items-center justify-center shadow-lg shadow-trail-sky/20">
+<span class="material-symbols-outlined text-white" data-icon="receipt_long" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+</div>
+<div class="space-y-1">
+<p class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-widest">EXPENSES</p>
+<h2 class="font-data-xl text-data-xl bg-gradient-to-r from-trail-sky to-trail-indigo bg-clip-text text-transparent tabular-nums">$18,240 /yr</h2>
+<p class="font-body-sm text-body-sm text-outline-slate tabular-nums">$1,520 /mo</p>
+</div>
+</div>
+<!-- Expense List Frame -->
+<div class="glass-card rounded-[22px] overflow-hidden relative">
+<div class="h-[3px] w-full bg-gradient-to-r from-trail-sky to-trail-indigo"></div>
+<div class="p-5 space-y-4">
+<!-- Row 1 -->
+<div class="flex justify-between items-center py-2 border-b border-outline-variant">
+<div class="space-y-1">
+<p class="font-label-md text-label-md text-on-surface font-bold">Strata Levies</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-[10px] font-bold text-outline-slate uppercase tracking-tighter">Quarterly</span>
+<span class="px-2 py-0.5 rounded-full bg-trail-emerald/10 text-emerald-300 text-[10px] font-bold uppercase tracking-tighter">Actual</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-body-md text-body-md font-semibold text-on-surface tabular-nums">$1,250</span>
+<span class="material-symbols-outlined text-outline-slate text-lg cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex justify-between items-center py-2 border-b border-outline-variant">
+<div class="space-y-1">
+<p class="font-label-md text-label-md text-on-surface font-bold">Council Rates</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-[10px] font-bold text-outline-slate uppercase tracking-tighter">Annual</span>
+<span class="px-2 py-0.5 rounded-full bg-outline-slate/10 text-slate-300 text-[10px] font-bold uppercase tracking-tighter">Estimate</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-body-md text-body-md font-semibold text-on-surface tabular-nums">$2,480</span>
+<span class="material-symbols-outlined text-outline-slate text-lg cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex justify-between items-center py-2">
+<div class="space-y-1">
+<p class="font-label-md text-label-md text-on-surface font-bold">Water Usage</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-[10px] font-bold text-outline-slate uppercase tracking-tighter">Monthly</span>
+<span class="px-2 py-0.5 rounded-full bg-trail-emerald/10 text-emerald-300 text-[10px] font-bold uppercase tracking-tighter">Actual</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-body-md text-body-md font-semibold text-on-surface tabular-nums">$140</span>
+<span class="material-symbols-outlined text-outline-slate text-lg cursor-pointer" data-icon="more_vert">more_vert</span>
+</div>
+</div>
+</div>
+<!-- Footer Link -->
+<div class="px-5 pb-6 text-center">
+<a class="inline-flex items-center justify-center gap-2 font-label-md text-label-md text-trail-sky hover:text-trail-indigo transition-colors" href="#">
+                        View all in Spending
+                        <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Form Frame -->
+<div class="glass-card rounded-[22px] overflow-hidden">
+<div class="h-[3px] w-full bg-gradient-to-r from-trail-sky to-trail-indigo opacity-30"></div>
+<div class="p-6 space-y-5">
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-[0.2em]">Add New Expense</p>
+<div class="space-y-4">
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-outline-slate block">Expense Name</label>
+<input class="w-full h-12 bg-white/5 border-[1.5px] border-outline-variant rounded-xl px-4 text-on-surface focus:ring-0 focus:border-trail-emerald transition-all placeholder:text-outline-slate/40" placeholder="e.g. Land Tax" type="text"/>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-outline-slate block">Category</label>
+<select class="w-full h-12 bg-[#1e293b] border-[1.5px] border-outline-variant rounded-xl px-4 text-on-surface focus:ring-0 focus:border-trail-emerald transition-all">
+<option>Tax &amp; Compliance</option>
+<option>Maintenance</option>
+<option>Management</option>
+<option>Utilities</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-outline-slate block">Amount</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-outline-slate">$</span>
+<input class="w-full h-12 bg-white/5 border-[1.5px] border-outline-variant rounded-xl pl-8 pr-4 text-on-surface focus:ring-0 focus:border-trail-emerald transition-all tabular-nums" placeholder="0.00" type="number"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-outline-slate text-center block">Frequency</label>
+<div class="flex bg-surface-container-high p-1 rounded-xl">
+<button class="flex-1 py-2 text-[11px] font-bold bg-[#334155] text-on-surface rounded-lg shadow-sm">1W</button>
+<button class="flex-1 py-2 text-[11px] font-bold text-outline-slate">1M</button>
+<button class="flex-1 py-2 text-[11px] font-bold text-outline-slate">1Q</button>
+<button class="flex-1 py-2 text-[11px] font-bold text-outline-slate">1Y</button>
+</div>
+</div>
+<button class="w-full h-12 bg-trail-emerald text-white font-label-md font-bold rounded-xl shadow-lg shadow-emerald-900/20 active:scale-95 transition-all mt-2">
+                            Add expense
+                        </button>
+</div>
+</div>
+</div>
+<!-- Empty State Frame -->
+<div class="glass-card rounded-[22px] border-dashed border-2 border-outline-variant bg-transparent backdrop-blur-none p-10 flex flex-col items-center text-center space-y-4">
+<div class="relative">
+<span class="material-symbols-outlined text-trail-sky/12 text-8xl" data-icon="receipt_long" style="font-variation-settings: 'FILL' 0;">receipt_long</span>
+</div>
+<div class="space-y-2">
+<p class="font-headline-sm text-headline-sm text-on-surface">No expenses tracked yet</p>
+<p class="font-body-sm text-body-sm text-outline-slate max-w-[240px]">Start building your money story by logging recurring costs and maintenance outgoings.</p>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-[#0E1424] border-t border-outline-variant shadow-2xl">
+<a class="flex flex-col items-center justify-center text-outline-slate opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-[10px]">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-medium hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="domain" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-label-md text-[10px]">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-slate opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="font-label-md text-[10px]">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-slate opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px]">Profile</span>
+</a>
+</nav>
+</div>
+<script>
+        // Micro-interaction for segmented control
+        document.querySelectorAll('.flex.bg-surface-container-high button').forEach(el => {
+            el.addEventListener('click', function(e) {
+                const parent = this.parentElement;
+                parent.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('bg-[#334155]', 'text-on-surface', 'shadow-sm');
+                    btn.classList.add('text-outline-slate');
+                });
+                this.classList.add('bg-[#334155]', 'text-on-surface', 'shadow-sm');
+                this.classList.remove('text-outline-slate');
+            });
+        });
+    </script>
+</body></html>
