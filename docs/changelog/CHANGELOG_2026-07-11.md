@@ -80,3 +80,11 @@ All four follow CLAUDE.md §23.2.1 — the broken/duplicate producer is removed,
 - **`docs/blueprint/NEOAUDIT.md` created** — the platform blueprint: rings/nodes with NON-OVERLAP roles + handshake procedure (Reza directive: "clear roles and responsibilities … without convoluting results"), Scenario Lab (3 tiers), CFO/report decision tables, Eyes & Ears 7-brief Chrome library (incl. functional audit: push buttons/check results, never save), Neomatrix-driven parity matrix, Release Scorecard, tooling register.
 - **Tooling research (web, sourced):** ADOPT NOW — fast-check (R0-gen), Playwright MCP (R3-agent on golden previews), GCP Error Reporting (§13.9), StrykerJS scoped weekly. LATER — Argos/Lost Pixel, axe-core, Chrome DevTools MCP, Checkly (first paying user). SKIP — Meticulous.ai (**CDR-disqualified, verified**: captures cookies/storage/network payloads to their cloud), Percy/Chromatic, hosted agent browsers.
 - CLAUDE.md Part 23 amended (machinery named NeoAudit + blueprint pointer); playbook re-titled as NeoAudit's Ring-3 manual.
+
+---
+
+## Session continuation 4: NeoAudit blueprint merged (#1360) + self-audit endpoint built
+
+- PR #1360 MERGED — `docs/blueprint/NEOAUDIT.md` (platform blueprint incl. §0 operator guide, non-overlap roles/handshake, Scenario Lab, Eyes & Ears briefs, parity matrix, tooling register) is doctrine.
+- **`GET /api/verify/invariants` built (R3-self node)** — server-side Ring-3 invariants on the user's own real data: I1 assets−liabilities=netWorth; I2 quickMetrics mirrors agree; I3 bucket tie-out (MON-012 class); I4 Σ property equity = portfolio equity (MON-011 class); I5 per-property equity=value−loans; I6 finite-scan (no NaN/Infinity); I7 range sanity. Reads ONLY canonical sources (snapshot + accessors); computes nothing of its own; `withPermission('report.read')`. Tests: `tests/verification/selfAuditInvariants.test.ts` (guard + canonical-only + identity locks). Structural graph manifest updated; `neomatrix:check` green.
+- NeoAudit admin panel (the UI + "due briefs" indicator + scorecard) = NEXT PR with its §18.2.1 Stitch pass.
