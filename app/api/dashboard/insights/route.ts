@@ -19,7 +19,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
-import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
+import { getCanonicalSavingsRate, getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
 import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 import { computeFinancialIndependence } from '@/lib/calculations/financialIndependence';
@@ -351,10 +351,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const monthsCovered = snapshot.emergencyFund.monthsCovered;
       const emergencyFundGap = snapshot.emergencyFund.gap;
       const emergencyFundStatus = snapshot.emergencyFund.status;
-      // Canonical (actuals-aware) savings rate — §19.1. Was the declared
-      // `quickMetrics.savingsRate`, which made the "you're saving X%" insight
-      // messages falsely optimistic when actual spend exceeds declared.
-      const savingsRate = canonicalCashflow.savingsRate;
+      // MON-029 (VR-001): the ONE canonical savings rate — the SAME selection
+      // rule (trailing-12-mo actuals, declared fallback) the KPI tile below and
+      // the CFO card read. Was the current-in-progress-month rate, which read
+      // ~0% early in the month while the tile showed the trailing figure — the
+      // "Low Savings Rate 0.0%" false alarm.
+      const savingsRate = getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate;
       const debtToIncome = snapshot.healthScore.components.debtToIncome.value;
 
       // Score calculations (0-100 for each component) - for breakdown display
@@ -617,7 +619,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
                 annualInflow: moneyStoryTrend.annualIncome,
                 monthlyOutflow: Math.round(moneyStoryTrend.annualOutgoings / 12),
                 annualOutflow: moneyStoryTrend.annualOutgoings,
-                savingsRate: moneyStoryTrend.savingsRateTrailing,
+                savingsRate: getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate, // MON-029: ONE accessor
                 basis: 'actual-ttm' as const,
               };
             }
@@ -634,7 +636,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
               annualInflow: inM * 12,
               monthlyOutflow: outM,
               annualOutflow: outM * 12,
-              savingsRate: inM > 0 ? (netM / inM) * 100 : 0,
+              savingsRate: getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate, // MON-029: ONE accessor (declared branch)
               basis: 'declared' as const,
             };
           })(),

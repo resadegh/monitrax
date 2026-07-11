@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**33 total** · 30 open · 🔵 5 · 🟡 2 · 🟠 23 · 🟢 0 · ✅ 2
+**33 total** · 30 open · 🔵 0 · 🟡 4 · 🟠 26 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -23,7 +23,7 @@
 | MON-014 | 🟠 FIXING | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | #1351 | ✅ |
 | MON-015 | 🟠 FIXING | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | #1356 | ✅ |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
-| MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346 | ✅ |
+| MON-017 | 🟠 FIXING | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346, #1359 | ✅ |
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
 | MON-020 | 🟠 FIXING | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | #1349 | ✅ |
@@ -35,11 +35,11 @@
 | MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
 | MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
 | MON-028 | 🟠 FIXING | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
-| MON-029 | 🔵 OPEN | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | — | — |
-| MON-030 | 🔵 OPEN | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | — | — |
-| MON-031 | 🔵 OPEN | 🟡 | yes | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | — | — |
-| MON-032 | 🔵 OPEN | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | — | n/a |
-| MON-033 | 🔵 OPEN | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | — | n/a |
+| MON-029 | 🟠 FIXING | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
+| MON-030 | 🟡 DIAGNOSED | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | — | — |
+| MON-031 | 🟡 DIAGNOSED | 🟡 | yes | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | — | — |
+| MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
+| MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 
 ---
 
@@ -352,11 +352,11 @@ RETRACTED 2026-07-07 — MISREAD, not a bug (validated against source). calculat
 - **Root cause:** `app/api/safety-net/route.ts:85`, `app/api/safety-net/route.ts:52`, `app/api/safety-net/route.ts:82`
 - **Neomatrix:** `number.monthlyCashflow`
 - **Downstream consumers (§19.4):** `app/api/safety-net/route.ts`, `app/dashboard/safety-net/page.tsx`, `lib/calculations/safetyScore.ts`
-- **Fix PR(s):** #1346
+- **Fix PR(s):** #1346, #1359
 - **Holistic test (§19.4):** `tests/calculations/safetyScore.test.ts`
 - **Detail:** `chat audit 2026-07-07 #7`
 
-§0.3 no-invented-numbers. Anchor verification 2026-07-07 (§19.2), all in app/api/safety-net/route.ts: cashflowScore = monthlySurplus > 0 ? 15 : monthlySurplus > -200 ? 8 : 0 at :85 (awards 15/15 only if monthlySurplus reads POSITIVE — i.e. monthlySurplus is sourced declared, not the canonical negative actuals — the §19.1 root); targetMonths = 3 HARDCODED at :52 (contradicts Home's 6-month target — one-source fix); billsScore = totalBills > 0 ? (billsOnTime/totalBills)*30 : 30 at :82 (0/0 bills scores full 30/30); recoveryWeeks guards monthlySurplus>0 at :100/:106/:112 (shows a real figure only because monthlySurplus reads positive — same declared-source root). Also 4 colliding scores (Safety 100 / Health 56 / CFO 48 / Cashflow-health 75) need distinct labels. VALIDATED 2026-07-07 CONFIRMED-REAL (all 4 sub-claims): the §19.1 root is safety-net/route.ts:58 — monthlySurplus = qm.monthlyIncome (DECLARED net income, masterFinancialService.ts:2048) minus totalMonthlyOutgoings (ACTUAL avg outflow when hasActualData, :48-50) — an asymmetric mixed source; the canonical qm.actualNetCashflow (:2078, = -6,073 here) is available but UNUSED, so cashflowScore reads 15/15 (:85) and recoveryWeeks shows a finite number (:100/106/112, guarded monthlySurplus>0) even though real net is negative. billsScore=30 on 0 bills confirmed (:81-83, totalBills=recurringPayments.length). Target contradiction confirmed: route :52 targetMonths=3 vs buildEmergencyFundMetrics masterFinancialService.ts:1360 targetMonths=6 (§12.2.1 duplicate constant). Fix: score cashflow from qm.actualNetCashflow when hasActualData; bills neutral at 0 tracked; ONE targetMonths source. Unmodelled surface (§21.5). FIX SHIPPED (PR pending, FIXING — pending Reza data-verify): extracted a pure engine lib/calculations/safetyScore.ts (computeSafetyScore) on CANONICAL inputs — cashflow dimension reads qm.monthlyCashflow (actuals-aware net; a real deficit scores 0), zero tracked bills scores 0 (not 30), emergency-fund coverage/target read from snapshot.emergencyFund (6-month target, one source). monthlySurplus = qm.monthlyCashflow so recoveryWeeks/weeksToTarget return null (not a fabricated timeframe) when cashflow <= 0. Recommendation text de-hardcoded (targetMonths). Worked example: 11.7mo, 0 bills, -$6,073 cashflow → 40+0+15+0 = 55 FRAGILE (was ~100). Neomatrix: new engine.safetyScore.computeSafetyScore + ui.safetyNet.safetyScore nodes + number.monthlyCashflow feeds edge (A3 convergence with /cashflow + dashboard); structural-graph + neomatrix:check green. Test tests/calculations/safetyScore.test.ts. Known remaining placeholder (flagged, NOT fabricated by this fix): noNewDebt stays 15/15 (optimistic default; new-consumer-debt detection is a separate feature, no data source yet). The 4-colliding-scores labelling is a separate cross-surface UX issue (follow-up). [2026-07-10 Chrome audit] RE-RAISED as AUDIT-07 (Positive Cashflow 15/15 while negative). Fix #1346 IS merged + present at HEAD (computeSafetyScore wired; monthlySurplus=qm.monthlyCashflow). Audit ran ~24h AFTER #1346 merged yet shows old behaviour -> observed a PRE-DEPLOY/CACHED prod state, not a live code defect. Verify prod deploy (§17.2) at data-verify.
+§0.3 no-invented-numbers. Anchor verification 2026-07-07 (§19.2), all in app/api/safety-net/route.ts: cashflowScore = monthlySurplus > 0 ? 15 : monthlySurplus > -200 ? 8 : 0 at :85 (awards 15/15 only if monthlySurplus reads POSITIVE — i.e. monthlySurplus is sourced declared, not the canonical negative actuals — the §19.1 root); targetMonths = 3 HARDCODED at :52 (contradicts Home's 6-month target — one-source fix); billsScore = totalBills > 0 ? (billsOnTime/totalBills)*30 : 30 at :82 (0/0 bills scores full 30/30); recoveryWeeks guards monthlySurplus>0 at :100/:106/:112 (shows a real figure only because monthlySurplus reads positive — same declared-source root). Also 4 colliding scores (Safety 100 / Health 56 / CFO 48 / Cashflow-health 75) need distinct labels. VALIDATED 2026-07-07 CONFIRMED-REAL (all 4 sub-claims): the §19.1 root is safety-net/route.ts:58 — monthlySurplus = qm.monthlyIncome (DECLARED net income, masterFinancialService.ts:2048) minus totalMonthlyOutgoings (ACTUAL avg outflow when hasActualData, :48-50) — an asymmetric mixed source; the canonical qm.actualNetCashflow (:2078, = -6,073 here) is available but UNUSED, so cashflowScore reads 15/15 (:85) and recoveryWeeks shows a finite number (:100/106/112, guarded monthlySurplus>0) even though real net is negative. billsScore=30 on 0 bills confirmed (:81-83, totalBills=recurringPayments.length). Target contradiction confirmed: route :52 targetMonths=3 vs buildEmergencyFundMetrics masterFinancialService.ts:1360 targetMonths=6 (§12.2.1 duplicate constant). Fix: score cashflow from qm.actualNetCashflow when hasActualData; bills neutral at 0 tracked; ONE targetMonths source. Unmodelled surface (§21.5). FIX SHIPPED (PR pending, FIXING — pending Reza data-verify): extracted a pure engine lib/calculations/safetyScore.ts (computeSafetyScore) on CANONICAL inputs — cashflow dimension reads qm.monthlyCashflow (actuals-aware net; a real deficit scores 0), zero tracked bills scores 0 (not 30), emergency-fund coverage/target read from snapshot.emergencyFund (6-month target, one source). monthlySurplus = qm.monthlyCashflow so recoveryWeeks/weeksToTarget return null (not a fabricated timeframe) when cashflow <= 0. Recommendation text de-hardcoded (targetMonths). Worked example: 11.7mo, 0 bills, -$6,073 cashflow → 40+0+15+0 = 55 FRAGILE (was ~100). Neomatrix: new engine.safetyScore.computeSafetyScore + ui.safetyNet.safetyScore nodes + number.monthlyCashflow feeds edge (A3 convergence with /cashflow + dashboard); structural-graph + neomatrix:check green. Test tests/calculations/safetyScore.test.ts. Known remaining placeholder (flagged, NOT fabricated by this fix): noNewDebt stays 15/15 (optimistic default; new-consumer-debt detection is a separate feature, no data source yet). The 4-colliding-scores labelling is a separate cross-surface UX issue (follow-up). [2026-07-10 Chrome audit] RE-RAISED as AUDIT-07 (Positive Cashflow 15/15 while negative). Fix #1346 IS merged + present at HEAD (computeSafetyScore wired; monthlySurplus=qm.monthlyCashflow). Audit ran ~24h AFTER #1346 merged yet shows old behaviour -> observed a PRE-DEPLOY/CACHED prod state, not a live code defect. Verify prod deploy (§17.2) at data-verify. RESIDUAL (VR-001 2026-07-11): the route fed the score qm.monthlyCashflow (DECLARED — read positive at −$6,073/mo actual) while claiming actuals-aware; fixed in PR #1359 to getCanonicalMonthlyCashflow(snapshot).net + Ring-0 ratchet test (tests/verification/vr001Ratchet.test.ts).
 
 ### MON-018 — CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend
 
@@ -567,55 +567,81 @@ Found via real-data Claude-Chrome verification 2026-07-11. This is the residual 
 
 ### MON-029 — Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
 
-> **What was wrong:** The app shows three different savings rates at once — My Guide says 75.4%, the Home page says −30.5%, and a Home insight says 0.0%. They cannot all be right.
+> **What was wrong:** The app showed three different savings rates at once — My Guide 75.4% (your typed plan), Home −30.5% (your last 12 months of real transactions), and a Home insight saying 0.0% (just this month so far).
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** Created ONE savings-rate rule — your trailing 12 months of real transactions when history exists, your typed plan otherwise — and pointed all three surfaces at it. Deleted the typed-plan read on My Guide and the current-month read on the insight.
+>
+> **What you should see:** My Guide, the Home savings-rate tile, and any savings-rate insight now show the SAME figure (currently the honest −30.5%-region number from your real transactions, not the optimistic 75.4%).
+
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:152`, `app/api/dashboard/insights/route.ts:357`, `app/api/dashboard/insights/route.ts:620`
+- **Neomatrix:** `number.savingsRate`, `engine.canonicalCashflow.getCanonicalSavingsRate`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `app/dashboard/page.tsx`, `app/api/dashboard/insights/route.ts`, `lib/cfo/intelligenceEngine.ts`
+- **Fix PR(s):** #1359
+- **Holistic test (§19.4):** `tests/verification/vr001Ratchet.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
 Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
 
 ### MON-030 — Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
 
 > **What was wrong:** Your financial health score reads 50 on Home, 46 on My Guide and 70 on My Safety Net — three scores for one health.
 >
+- **Root cause:** `lib/cfo/scoreCalculator.ts:33`, `lib/health/aggregateEngine.ts:370`, `lib/calculations/safetyScore.ts:57`, `lib/services/masterFinancialService.ts:1434`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+VR-001. Root cause verified: FOUR score producers — lib/health (canonical per §12.3, Home 50/C), lib/cfo/scoreCalculator calculateCFOScore (competing 6-component engine, CFO 46/D — the culprit to REMOVE), lib/calculations/safetyScore (a legitimately distinct Stage-A safety metric, 70/100, needs clearer labelling), masterFinancialService.calculateHealthScore (4th latent weighting — retire). Fix = delete calculateCFOScore as an overall grade and point the CFO page at the canonical generateHealthReport; separate PR (structural, API shape changes).
 
 ### MON-031 — Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap)
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
 
 > **What was wrong:** The Balances page and the Safety Net page disagree by $2,496 on how much liquid savings you have.
 >
+- **Root cause:** `lib/calculations/accessibilityBuckets.ts:87`, `lib/services/masterFinancialService.ts:1993`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR.
 
 ### MON-032 — Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost)
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
 
-> **What was wrong:** On a property with a $228,000 loan, the activity list shows the repayment as $0 — the row reads the unset manual field instead of the real loan cost the cashflow already uses.
+> **What was wrong:** On a property with a $228,000 loan, the activity list showed the repayment as $0 — the row read the unset manual field while the cashflow was correctly charging interest.
 >
-- **Holistic test (§19.4):** n/a (display/UX)
+> **What changed:** The cashflow engine now exposes the per-loan cost it actually used (repayment, or the interest floor when no repayment is set), and the activity row renders THAT — labelled honestly as interest when no repayment is set.
+>
+> **What you should see:** The property activity list now shows e.g. "loan interest (no repayment set) −$1,271" instead of "repayment −$0", and it reconciles with the Cashflow/yr figure.
+
+- **Root cause:** `app/dashboard/properties/[id]/page.tsx:830`
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `lib/calculations/propertyCashflow.ts`
+- **Fix PR(s):** #1359
+- **Holistic test (§19.4):** `tests/verification/vr001Ratchet.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
 Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
 
 ### MON-033 — Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it)
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
 
-> **What was wrong:** Your own home is shown with a "rental yield" on the dashboard and flagged "Low Yield" by My Guide — a primary residence has no rental yield.
+> **What was wrong:** Your own home was shown with a "rental yield" on the dashboard and flagged "Low Yield" by My Guide — a primary residence has no rental yield.
 >
-- **Holistic test (§19.4):** n/a (display/UX)
+> **What changed:** Yield now only renders for INVESTMENT properties on the dashboard tile, and the My Guide low-yield alert skips non-investment properties — the same rule the property page already used.
+>
+> **What you should see:** Your home no longer shows a yield on the dashboard tile and no longer gets a "Low Yield" alert; investment properties still show theirs.
+
+- **Root cause:** `components/dashboard/tiles/DashboardPropertyTile.tsx:134`, `lib/cfo/decisionSupport/propertyDecisionSupport.ts:100`
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`
+- **Downstream consumers (§19.4):** `components/dashboard/tiles/DashboardPropertyTile.tsx`, `lib/cfo/decisionSupport/propertyDecisionSupport.ts`, `lib/services/masterFinancialService.ts`
+- **Fix PR(s):** #1359
+- **Holistic test (§19.4):** `tests/verification/vr001Ratchet.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
 Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.

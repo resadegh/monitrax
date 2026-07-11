@@ -817,19 +817,47 @@ function RecentActivityCard({ property }: { property: Property }) {
     });
   });
 
-  // Loan repayments are a real outflow that `computeCashflow` subtracts — show
-  // them so the rhythm reconciles to the hero cashflow (P-3). Rendered as the
-  // same P&I `minRepayment` the cashflow math uses.
+  // Loan repayments are a real outflow that the cashflow engine subtracts — show
+  // them so the rhythm reconciles to the hero cashflow (P-3). MON-032: render the
+  // ENGINE'S resolved per-loan monthly cost (actuals → minRepayment → interest
+  // floor), never raw `minRepayment` — that printed "-$0" on a $228k loan while
+  // the hero cashflow was charging interest for it.
+  const loanLineById = new Map(cashflowOf(property).loanLines.filter((ll) => ll.id).map((ll) => [ll.id as string, ll]));
   (property.loans ?? []).forEach((l) => {
     const freq = l.repaymentFrequency ?? 'MONTHLY';
-    rows.push({
-      id: `act-loan-${l.id}`,
-      date: freq.charAt(0) + freq.slice(1).toLowerCase(),
-      icon: Landmark,
-      title: `${l.name} repayment`,
-      amount: `-${formatCurrency(l.minRepayment ?? 0)}`,
-      tone: 'text-foreground',
-    });
+    const line = loanLineById.get(l.id);
+    if (line?.flooredToInterest) {
+      // No repayment set + no actuals → the engine charges interest. Say so
+      // honestly instead of printing "-$0".
+      rows.push({
+        id: `act-loan-${l.id}`,
+        date: 'Monthly',
+        icon: Landmark,
+        title: `${l.name} interest (no repayment set)`,
+        amount: `-${formatCurrency(line.monthly)}`,
+        tone: 'text-foreground',
+      });
+    } else if (line?.usedActuals) {
+      // Reconciled repayment transactions → true monthly figure.
+      rows.push({
+        id: `act-loan-${l.id}`,
+        date: 'Monthly',
+        icon: Landmark,
+        title: `${l.name} repayment`,
+        amount: `-${formatCurrency(line.monthly)}`,
+        tone: 'text-foreground',
+      });
+    } else {
+      // Declared minRepayment at its own cadence (the engine converts to monthly).
+      rows.push({
+        id: `act-loan-${l.id}`,
+        date: freq.charAt(0) + freq.slice(1).toLowerCase(),
+        icon: Landmark,
+        title: `${l.name} repayment`,
+        amount: `-${formatCurrency(l.minRepayment ?? 0)}`,
+        tone: 'text-foreground',
+      });
+    }
   });
 
   (property.expenses ?? []).slice(0, 3).forEach((e) => {

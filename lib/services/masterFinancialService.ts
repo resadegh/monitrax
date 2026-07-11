@@ -169,6 +169,8 @@ export interface MasterIncomeBreakdown {
 export interface PropertyMetrics {
   id: string;
   name: string;
+  /** HOME | INVESTMENT | RENTAL — rentalYield is only meaningful for INVESTMENT (MON-033). */
+  type: string;
   currentValue: number;
   purchasePrice: number;
   loanBalance: number;
@@ -505,6 +507,8 @@ interface RawProperty {
   id: string;
   ownerEntityId: string;
   name: string;
+  /** HOME | INVESTMENT | RENTAL — consumers gate investment-only metrics (MON-033). */
+  type: string;
   address: string | null;
   currentValue: number;
   purchasePrice: number;
@@ -706,6 +710,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         id: true,
         ownerEntityId: true,
         name: true,
+        type: true,
         address: true,
         currentValue: true,
         purchasePrice: true,
@@ -1258,6 +1263,7 @@ function buildPropertyMetrics(
     return {
       id: property.id,
       name: property.name,
+      type: property.type,
       currentValue: property.currentValue,
       purchasePrice: property.purchasePrice,
       loanBalance,

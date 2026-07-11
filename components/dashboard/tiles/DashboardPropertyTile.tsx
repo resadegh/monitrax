@@ -131,14 +131,18 @@ export function DashboardPropertyTile({ property, href }: DashboardPropertyTileP
               {property.lvr.toFixed(1)}%
             </p>
           </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Rental Yield
-            </p>
-            <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
-              {property.rentalYield.toFixed(1)}%
-            </p>
-          </div>
+          {/* MON-033: a PRIMARY RESIDENCE has no rental yield — gate on
+              isInvestment, matching PropertyTile + the detail page (MON-022). */}
+          {isInvestment && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Rental Yield
+              </p>
+              <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
+                {property.rentalYield.toFixed(1)}%
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Monthly cashflow */}

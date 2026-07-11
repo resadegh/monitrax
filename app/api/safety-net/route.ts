@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import { computeSafetyScore } from '@/lib/calculations/safetyScore';
 
 export const GET = withPermission('report.read', async (request, auth) => {
@@ -52,12 +53,14 @@ export const GET = withPermission('report.read', async (request, auth) => {
     const targetAmount = targetMonths * totalMonthlyOutgoings;
     const gap = ef.gap;
 
-    // MON-017 — "money left over each month" = the CANONICAL actuals-aware net
-    // cashflow (qm.monthlyCashflow), NOT declared income − actual outflow (a
-    // mixed source that read POSITIVE while the real cashflow was negative).
-    // Drives recovery honesty + the cashflow score, so a real deficit is never
-    // dressed up as a surplus.
-    const monthlySurplus = qm.monthlyCashflow;
+    // MON-017 residual (VR-001, 2026-07-11) — "money left over each month" MUST
+    // be the actuals-first canonical net (getCanonicalMonthlyCashflow: actual
+    // when transactions exist, declared fallback). The previous read,
+    // qm.monthlyCashflow, is the DECLARED-basis figure — its comment CLAIMED
+    // actuals-aware, but on real data it read positive while actual cashflow
+    // was −$6,073/mo, so the safety score awarded "Positive Cashflow 15/15" on
+    // a deficit. Drives recovery honesty + the cashflow score.
+    const monthlySurplus = getCanonicalMonthlyCashflow(snapshot).net;
     const weeksToTarget = monthlySurplus > 0 && gap > 0
       ? Math.ceil((gap / monthlySurplus) * 4.33)
       : gap <= 0 ? 0 : null;
