@@ -106,3 +106,51 @@ No writes; no tax-engine change. NOT REQUIRED / no reform interaction.
 
 ### PR
 - PR: (pending) — draft. MON-015 holds at FIXING until Reza verifies on his data.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i — MON-022 (two property display bugs fixed + data-quality diagnosis)
+
+### Changes Made
+- **Type**: Fix (display/label — non-number) + diagnosis of the data-entry items
+- **Scope**: A primary residence no longer shows a rental Yield; a $0/unknown-purchase property no longer shows a fabricated gain %.
+
+### Root cause (verified, §19.2)
+- **(i) Yield on a HOME**: the detail-page mini-grid (Equity/LVR/Yield) was gated on `!isRental` (`[id]/page.tsx:454`), so a PRIMARY RESIDENCE (type HOME) showed "Yield 0.00%". The tile correctly gates yield on `isInvestment` (`PropertyTile.tsx:396`). Fixed: gate the detail-page Yield cell on `isInvestment` (Equity + LVR still show for a home).
+- **(ii) +0.0% on a $0 purchase**: the tile rendered the gain % pill UNCONDITIONALLY (`PropertyTile.tsx:341-351`), so a $0/unknown-purchase property showed a fabricated "+0.0%" green pill. The detail page already suppresses it (`computeGainPercentage` returns 0 for `purchasePrice<=0`, pill gated on `gainPct!==0`). Fixed: gate the tile pill on `property.purchasePrice > 0`.
+
+Both are render suppressions — the underlying numbers are unchanged (`changesNumbers:false`).
+
+### Diagnosis of the data-entry items (NOT fixed — product decisions, surfaced to Reza)
+- **Company ATO tax "as household spend"**: a real SCOPING consideration, **not** a clear code defect. The master snapshot aggregates ALL expenses across ALL entities by design (`masterFinancialService.ts:132` "all expenses, no filter"); the entity breakdown partitions by `ownerEntityId` (`:301`), and `expenseAggregator` supports an `ownerEntityId` filter (`:89-91`). Whether "personal/household" surfaces should exclude company-entity expenses is a **product decision** (does "my spending" include my company's ATO tax?) + would need threading an entity scope through the personal surfaces.
+- **Battery $11,385/mo one-off-as-recurring + count drift**: need a validation + review surface — Stitch-first (§18.2.1), deferred with MON-005/008.
+
+### §19.4 / test
+`tests/dashboard/propertyDisplayGuards.test.ts` — source-locks (detail Yield gated on `isInvestment`; tile gain pill gated on `purchasePrice > 0`). Literals pre-verified.
+
+### §21.2 Neomatrix
+Display suppression — no number change. `neomatrix:check` green (no drift; Layer-0 0 uncovered). `gainPct`/`yieldPct` semantic nodes = N4 backfill (numbers unchanged).
+
+### §18.2.1 assessment
+Both fixes REMOVE a wrong value from an existing surface (true tweaks) — no new composition. The deferred validation/review surface for the data-entry items IS Stitch-first.
+
+### Files Modified
+- `app/dashboard/properties/[id]/page.tsx` — Yield MiniKpi gated on `isInvestment`.
+- `components/properties/PropertyTile.tsx` — gain pill gated on `purchasePrice > 0`.
+- `tests/dashboard/propertyDisplayGuards.test.ts` — NEW.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-022 → DIAGNOSED (2 display bugs; data-entry items diagnosed as product decisions).
+
+### Build status
+- [x] `npm run neomatrix:check` — OK. `npm run issues:check` — 27 valid. Source-locks pre-verified.
+- [ ] `npx tsc` / `npm run test` / `lint:financial-surfaces` — CI-verified.
+
+### §12.11 / §12.14
+No writes; no tax-engine change. NOT REQUIRED / no reform interaction.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+- **Wrong**: your primary residence showed a rental "Yield 0.00%" (a home has no rental yield), and a property with an unknown/$0 purchase price showed a fabricated green "+0.0%" gain.
+- **Changed**: the detail page only shows Yield for investment properties (Equity + LVR still show for your home), and the tile only shows a gain % when the purchase price is known.
+- **You'll see**: no "Yield" on your home (Equity + LVR remain), and no "+0.0%" badge on a property with no purchase price. (The battery $11,385/mo and company-ATO items are data-entry / product-scope questions — see the PR for the decision needed.)
+
+### PR
+- PR: (pending) — draft. MON-022 (display bugs) holds at FIXING until Reza verifies; the data-entry/scoping items await a product decision.
