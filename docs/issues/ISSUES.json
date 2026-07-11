@@ -668,28 +668,33 @@
     {
       "id": "MON-022",
       "title": "Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-07",
       "area": "data-quality",
       "plain": {
-        "issue": "Several typed records look wrong and poison every total: a battery system booked $11,385 EVERY month (~$137K/yr — likely a one-off; it alone drives most of Laguna's -$184,660/yr), Renew Group's $15,000/mo ATO tax counted as household spending, purchase price $0 showing '+0.0% gain', owner-occupied homes showing rental yields, counts drifting (26 vs 24 holdings, 9 vs 12 entities).",
-        "fix": "(planned) Validation + review surface: flag implausible recurring amounts, one-off vs recurring toggle at entry, suppress gain% when purchase unknown, suppress yield on owner-occupied, one count source.",
-        "check": "(after fix) The app flags the battery entry for review; Laguna's cashflow normalises; no '+0.0%' on unknown purchase; no yield on your home."
+        "issue": "Two property surfaces showed meaningless numbers: your PRIMARY RESIDENCE displayed a rental 'Yield 0.00%' (a home has no rental yield), and a property with an unknown/$0 purchase price showed a fabricated green '+0.0%' gain on its tile. (Separately, some totals are inflated by data-entry issues — a battery booked $11,385 EVERY month, and a company's ATO tax showing up in overall spending — see the diagnosis note; those are product/validation gaps, not a single code bug.)",
+        "fix": "The property detail page now only shows Yield for investment properties (Equity + LVR still show for your home), and the property tile only shows a gain % when the purchase price is known.",
+        "check": "Your home no longer shows a 'Yield' figure (it keeps Equity + LVR), and a property with no purchase price no longer shows a '+0.0%' gain badge."
       },
       "rootCause": [
-        "app/dashboard/properties/[id]/page.tsx:443",
-        "components/properties/PropertyTile.tsx:343"
+        "app/dashboard/properties/[id]/page.tsx:454",
+        "components/properties/PropertyTile.tsx:341"
       ],
       "semanticKeys": [],
       "downstreamConsumers": [
         "all cashflow/expense surfaces"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        1357
+      ],
+      "test": "tests/dashboard/propertyDisplayGuards.test.ts",
       "tracker": "chat audit 2026-07-07 #12",
-      "notes": "Product/validation gap (no single code defect): rootCause deliberately left EMPTY — these are missing input-validation + review affordances, not a wrong line (§19.2 never guess an anchor). Freedom hero's -$20,590/mo net-passive matches no visible combination of property cashflows — anchor its inputs during the sweep. '3 producing income' label vs on-screen signs also here. Fix is Stitch-first for any new review surface (§18.2.1). VALIDATED 2026-07-07 — split into TWO REAL display bugs (now anchored) + DATA/PRODUCT-GAP items: (i) owner-occupied HOME shows a rental yield — the tile correctly gates yield behind isInvestment (PropertyTile.tsx:396) but the DETAIL page renders MiniKpi 'Yield' gated only by !isRental (app/dashboard/properties/[id]/page.tsx:443/447), so a PRIMARY RESIDENCE shows 'Yield 0.00%'; fix = gate on isInvestment to match the tile. (ii) $0 purchase -> '+0.0% gain' — the claimed divide-by-zero is a MISREAD (all gain% producers guard purchasePrice>0: masterFinancialService.ts:1211, properties/page.tsx:447, [id]/page.tsx:163), BUT PropertyTile.tsx:343-350 renders the gain% + green TrendingUp UNCONDITIONALLY, so a $0-purchase property shows a fabricated '+0.0%'; the detail page correctly suppresses (page.tsx:432, gainPct!==0); fix = suppress on tile when purchase unknown. changesNumbers=false (both are render suppressions). The battery $11,385/mo, company ATO-as-household-spend, and count drift (26 vs 24 / 9 vs 12) are DATA-ENTRY + missing-validation product gaps (not code defects) — the company-ATO one MAY be a real entity-scoping aggregation bug and needs its own investigation. gain%/yield are UNMODELLED (§21.5) — model when fixing. [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-09: yield on primary residence + +0.0% on $0 purchase — both display bugs anchored here; AUDIT-11: battery $11,385/mo one-off-as-recurring data-quality). AUDIT-10 sub-claims (YOU $4.6M vs Home $2.6M; 26 vs 20 holdings) NOT yet traced to source."
+      "notes": "Product/validation gap (no single code defect): rootCause deliberately left EMPTY — these are missing input-validation + review affordances, not a wrong line (§19.2 never guess an anchor). Freedom hero's -$20,590/mo net-passive matches no visible combination of property cashflows — anchor its inputs during the sweep. '3 producing income' label vs on-screen signs also here. Fix is Stitch-first for any new review surface (§18.2.1). VALIDATED 2026-07-07 — split into TWO REAL display bugs (now anchored) + DATA/PRODUCT-GAP items: (i) owner-occupied HOME shows a rental yield — the tile correctly gates yield behind isInvestment (PropertyTile.tsx:396) but the DETAIL page renders MiniKpi 'Yield' gated only by !isRental (app/dashboard/properties/[id]/page.tsx:443/447), so a PRIMARY RESIDENCE shows 'Yield 0.00%'; fix = gate on isInvestment to match the tile. (ii) $0 purchase -> '+0.0% gain' — the claimed divide-by-zero is a MISREAD (all gain% producers guard purchasePrice>0: masterFinancialService.ts:1211, properties/page.tsx:447, [id]/page.tsx:163), BUT PropertyTile.tsx:343-350 renders the gain% + green TrendingUp UNCONDITIONALLY, so a $0-purchase property shows a fabricated '+0.0%'; the detail page correctly suppresses (page.tsx:432, gainPct!==0); fix = suppress on tile when purchase unknown. changesNumbers=false (both are render suppressions). The battery $11,385/mo, company ATO-as-household-spend, and count drift (26 vs 24 / 9 vs 12) are DATA-ENTRY + missing-validation product gaps (not code defects) — the company-ATO one MAY be a real entity-scoping aggregation bug and needs its own investigation. gain%/yield are UNMODELLED (§21.5) — model when fixing. [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-09: yield on primary residence + +0.0% on $0 purchase — both display bugs anchored here; AUDIT-11: battery $11,385/mo one-off-as-recurring data-quality). AUDIT-10 sub-claims (YOU $4.6M vs Home $2.6M; 26 vs 20 holdings) NOT yet traced to source. | 2026-07-11 FIXED the two confirmed display bugs (yield-on-HOME → gated on isInvestment to match the tile; +0.0%-on-$0-purchase tile → gated on purchasePrice>0 to match the detail page). Test tests/dashboard/propertyDisplayGuards.test.ts. DIAGNOSIS of the data-entry items (NOT fixed — product decisions, surfaced to Reza): (a) company-ATO-as-household-spend is a real SCOPING consideration but not a clear code defect — masterFinancialService aggregates ALL expenses across ALL entities by design (masterFinancialService.ts:132 \"all expenses, no filter\"; the entity breakdown partitions by ownerEntityId at :301, and expenseAggregator SUPPORTS an ownerEntityId filter at :89-91). Whether \"personal/household\" surfaces should exclude company-entity expenses is a PRODUCT decision (does \"my spending\" include my company's ATO?) + would need threading an ownerEntityId scope through the personal-scoped surfaces. (b) battery $11,385/mo one-off-as-recurring + count-drift need a VALIDATION + REVIEW surface (Stitch-first §18.2.1) — deferred with MON-005/008. gainPct/yieldPct semantic Neomatrix nodes: N4 backfill (numbers unchanged — display suppression only).",
+      "holisticTests": [
+        "tests/dashboard/propertyDisplayGuards.test.ts"
+      ]
     },
     {
       "id": "MON-023",

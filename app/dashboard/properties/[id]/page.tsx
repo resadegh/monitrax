@@ -450,12 +450,17 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* 3-cell mini-grid */}
+              {/* Equity + LVR (meaningful for any owned property) + Yield
+                  (income-producing only). MON-022: Yield was gated on !isRental,
+                  so a PRIMARY RESIDENCE showed a meaningless "Yield 0.00%". Gate
+                  Yield on isInvestment to match PropertyTile (the tile's rule). */}
               {!isRental && (
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <MiniKpi label="Equity" value={formatCurrency(equity)} tint="emerald" />
                   <MiniKpi label="LVR" value={`${lvr.toFixed(1)}%`} tint="emerald" sub={lvrLabel} subTone={lvrTone} />
-                  <MiniKpi label="Yield" value={`${yieldPct.toFixed(2)}%`} tint="violet" />
+                  {isInvestment && (
+                    <MiniKpi label="Yield" value={`${yieldPct.toFixed(2)}%`} tint="violet" />
+                  )}
                 </div>
               )}
             </div>

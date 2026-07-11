@@ -338,17 +338,22 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
                   Purchased: <span className="tabular-nums">{formatCurrency(property.purchasePrice)}</span>
                 </p>
               </div>
-              <div
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
-                  isPositiveGain
-                    ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/20'
-                    : 'bg-rose-500/12 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/20'
-                }`}
-              >
-                {isPositiveGain ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {metrics.gainPercentage >= 0 ? '+' : ''}
-                {metrics.gainPercentage.toFixed(1)}%
-              </div>
+              {/* MON-022: only show a gain % when the purchase price is known.
+                  A $0 / unknown purchase produced a fabricated "+0.0%" green pill
+                  (the detail page already suppresses via computeGainPercentage). */}
+              {property.purchasePrice > 0 && (
+                <div
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
+                    isPositiveGain
+                      ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/20'
+                      : 'bg-rose-500/12 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/20'
+                  }`}
+                >
+                  {isPositiveGain ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {metrics.gainPercentage >= 0 ? '+' : ''}
+                  {metrics.gainPercentage.toFixed(1)}%
+                </div>
+              )}
             </div>
 
             {/* Equity + LVR row */}
