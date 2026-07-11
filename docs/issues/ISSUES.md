@@ -33,7 +33,7 @@
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
 | MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
-| MON-027 | 🟡 DIAGNOSED | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | — | — |
+| MON-027 | 🟡 DIAGNOSED | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | — | ✅ |
 
 ---
 
@@ -520,15 +520,15 @@ VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is
 
 **🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: cashflow · opened 2026-07-11
 
-> **What was wrong:** The cashflow stress-test builds its forecast from a stale copy of the input-assembly code: it uses your BEFORE-tax income and counts internal transfers as cashflow, so the stress-test projections are on a different (wrong) basis than the main cashflow forecast.
+> **What was wrong:** The cashflow stress-test built its forecast from a stale copy of the input-assembly code: it used your BEFORE-tax income and counted internal transfers as cashflow, so stress-test projections were on a different (wrong) basis than the main cashflow forecast.
 >
-> **What changed:** (planned) Extract the ONE correct input builder (after-tax income, transfers excluded) into a shared service and have both the cashflow route and the stress-test route use it.
+> **What changed:** Extracted the ONE correct input builder (after-tax income, transfers excluded) into a shared service; both the cashflow route and the stress-test route now use it.
 >
-> **What you should see:** (after fix) Stress-test projections line up with the main cashflow forecast basis — after-tax income, no transfers counted as spend/income.
+> **What you should see:** Stress-test projections now line up with the main cashflow forecast basis — after-tax income (not gross), and internal transfers are not counted as money in/out.
 
 - **Root cause:** `app/api/cashflow/route.ts:37`, `app/api/cashflow/stress-test/route.ts:45`
-- **Downstream consumers (§19.4):** `app/api/cashflow/stress-test/route.ts (all stress scenarios)`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `app/api/cashflow/stress-test/route.ts (all stress scenarios — now forecast on after-tax income + transfers excluded)`, `app/api/cashflow/route.ts (unchanged basis — already correct; now imports the shared builder)`
+- **Holistic test (§19.4):** `tests/cashflow/buildCFEInputShared.test.ts`
 - **Detail:** `discovered during MON-021 (2026-07-11)`
 
 §12.2.1 duplication. The shared extraction was prototyped during MON-021 then reverted to keep MON-021 scoped to the forecast convergence. Fix as its own PR: lib/cashflow/buildCFEInput.ts shared service (after-tax + transfer-excluded), both routes import it. Also note: the linear forward-projection formula is duplicated in lib/cashflow/forecasting.ts + app/api/cashflow/route.ts — candidates to route through projectBalanceForward or the CFE engine.
