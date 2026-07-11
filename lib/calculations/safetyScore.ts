@@ -33,7 +33,9 @@ export interface SafetyScoreInput {
   /** Total tracked recurring bills. 0 → the bills dimension scores 0 (earn it by tracking bills). */
   totalBills: number;
   /**
-   * CANONICAL actuals-aware monthly net cashflow — `quickMetrics.monthlyCashflow`.
+   * CANONICAL actuals-aware monthly net cashflow — `getCanonicalMonthlyCashflow(snapshot).net`
+   * (MON-017 residual, VR-001: `quickMetrics.monthlyCashflow` is the DECLARED figure and
+   * read positive while actual cashflow was −$6,073/mo — never wire that in here).
    * Drives the "positive cashflow" dimension AND recovery honesty. Negative when
    * the user is spending more than they earn (the score must reflect that).
    */

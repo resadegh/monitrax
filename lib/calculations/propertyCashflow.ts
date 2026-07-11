@@ -83,11 +83,28 @@ export interface CashflowExpenseLine {
   usedActuals: boolean;
 }
 
+/**
+ * One resolved loan line (MON-032) — the engine's actual per-loan monthly cost
+ * (actuals → declared minRepayment → interest floor). UI rows render THIS, never
+ * the raw `minRepayment` (which prints "-$0" when unset while the engine charges
+ * interest). Σ loanLines[].monthly === monthlyLoanRepayment by construction.
+ */
+export interface CashflowLoanLine {
+  id?: string;
+  /** The monthly loan cost the engine actually used (never silently $0). */
+  monthly: number;
+  usedActuals: boolean;
+  /** True when neither actuals nor a manual repayment existed → interest floor. */
+  flooredToInterest: boolean;
+}
+
 export interface PropertyCashflow {
   annualRent: number;
   annualExpenses: number;
   /** Per-record expense breakdown (MON-005) — sums to annualExpenses. */
   expenseLines: CashflowExpenseLine[];
+  /** Per-loan resolved cost (MON-032) — sums to monthlyLoanRepayment. */
+  loanLines: CashflowLoanLine[];
   /** P&I cash outflow — actuals-first, never $0 when a loan exists. */
   annualLoanRepayment: number;
   /** Interest only (principal × rate) — the deductible figure for tax. */
@@ -160,6 +177,7 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
   let monthlyLoanRepayment = 0;
   let annualLoanInterest = 0;
   let loansUsedActuals = false;
+  const loanLines: CashflowLoanLine[] = [];
   for (const l of loans) {
     const monthlyInterest = Math.max(0, (l.principal ?? 0) * (l.interestRateAnnual ?? 0)) / 12;
     annualLoanInterest += monthlyInterest * 12;
@@ -174,7 +192,12 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     });
     // Never silently $0: if neither actuals nor a manual repayment exist, floor
     // to interest (the minimum true cost of carrying the loan).
-    monthlyLoanRepayment += r.monthly > 0 ? r.monthly : monthlyInterest;
+    const flooredToInterest = !(r.monthly > 0);
+    const resolvedMonthly = flooredToInterest ? monthlyInterest : r.monthly;
+    monthlyLoanRepayment += resolvedMonthly;
+    // MON-032: expose the resolved per-loan cost so UI rows mirror the engine
+    // (never render raw minRepayment — it prints "-$0" while we charge interest).
+    loanLines.push({ id: l.id, monthly: resolvedMonthly, usedActuals: r.usedActuals, flooredToInterest });
     if (r.usedActuals) loansUsedActuals = true;
     bump(r.usedActuals);
   }
@@ -191,6 +214,7 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     annualRent,
     annualExpenses,
     expenseLines,
+    loanLines,
     annualLoanRepayment,
     annualLoanInterest,
     annualCashflow: annualRent - annualExpenses - annualLoanRepayment,

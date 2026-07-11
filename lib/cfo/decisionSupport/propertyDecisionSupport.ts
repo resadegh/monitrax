@@ -96,8 +96,10 @@ function generatePropertyAlerts(properties: PropertyMetrics[]): CFOPropertyAlert
       });
     }
 
-    // Low yield alert (<3%)
-    if (property.rentalYield > 0 && property.rentalYield < 3) {
+    // Low yield alert (<3%) — INVESTMENT only (MON-033): a primary residence /
+    // renting arrangement has no rental yield, so flagging "Low Yield" on it is
+    // a false alarm (matches riskRadar.ts + the detail page's isInvestment gate).
+    if (property.type === 'INVESTMENT' && property.rentalYield > 0 && property.rentalYield < 3) {
       alerts.push({
         type: 'low_yield',
         severity: property.rentalYield < 2 ? 'high' : 'medium',

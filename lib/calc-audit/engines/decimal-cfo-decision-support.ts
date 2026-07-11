@@ -83,6 +83,7 @@ function makeProperty(overrides: Partial<PropertyMetrics> = {}): PropertyMetrics
   return {
     id: 'p1',
     name: 'Test Property',
+    type: 'INVESTMENT', // MON-033: PropertyMetrics now carries the type gate
     currentValue: 800_000,
     purchasePrice: 600_000,
     loanBalance: 400_000,

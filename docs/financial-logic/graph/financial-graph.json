@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1816,
+      "line": 1822,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -546,7 +546,7 @@
       "kind": "engine",
       "label": "Forward balance projection (the one formula)",
       "file": "lib/calculations/canonicalCashflow.ts",
-      "line": 151,
+      "line": 189,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -942,13 +942,13 @@
       "regime": null,
       "semanticKey": "savingsRate",
       "produces": "The displayed saving rate.",
-      "formula": "= getCanonicalMonthlyCashflow(snapshot).savingsRate",
+      "formula": "= getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate",
       "authority": "CLAUDE.md §19.1",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md §3",
+      "verifiedBy": "tests/verification/vr001Ratchet.test.ts",
       "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedDate": "2026-07-11",
       "status": "documented"
     },
     {
@@ -4073,7 +4073,7 @@
       "kind": "engine",
       "label": "Property portfolio summary",
       "file": "lib/cfo/decisionSupport/propertyDecisionSupport.ts",
-      "line": 248,
+      "line": 250,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "I",
@@ -4157,7 +4157,7 @@
       "kind": "engine",
       "label": "CFO: projected month-end balance",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 321,
+      "line": 327,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -4178,7 +4178,7 @@
       "kind": "engine",
       "label": "CFO: monthly-progress net worth (local)",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 345,
+      "line": 351,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -5598,7 +5598,7 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 113,
+      "line": 130,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -5765,7 +5765,7 @@
       "kind": "engine",
       "label": "Safety Net score (Anchor)",
       "file": "lib/calculations/safetyScore.ts",
-      "line": 57,
+      "line": 59,
       "layer": "engine",
       "domain": "health",
       "trailStage": "A",
@@ -6011,6 +6011,40 @@
       "verifiedBy": "app/dashboard/properties/[id]/page.tsx computeAnnualDepreciation + tests/tax/depreciationRate.test.ts",
       "workedExample": null,
       "verifiedDate": "2026-07-10",
+      "status": "documented"
+    },
+    {
+      "id": "engine.canonicalCashflow.getCanonicalSavingsRate",
+      "kind": "engine",
+      "label": "Canonical savings rate (ONE selection rule)",
+      "file": "lib/calculations/canonicalCashflow.ts",
+      "line": 157,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "THE savings rate every surface shows (MON-029): trailing-12-month ACTUALS when transaction history exists, declared plan (net-income basis) otherwise. Kills the VR-001 three-way split (75.4% CFO declared / -30.5% Home trailing / 0.0% Home insight current-month).",
+      "formula": "hasTrailing ? trend.savingsRateTrailing : (monthlyIncome > 0 ? (monthlyIncome - monthlyExpenses - monthlyLoanRepayments) / monthlyIncome * 100 : 0)",
+      "authority": "CLAUDE.md §12.2.1 one-source / Phase 57 trailing-headline rule / VR-001 finding 2.",
+      "inputs": [
+        {
+          "name": "trend.savingsRateTrailing",
+          "unit": "%",
+          "type": "number",
+          "note": "trailing branch (from getMoneyStoryTrend)"
+        },
+        {
+          "name": "snapshot.quickMetrics.monthlyIncome|monthlyExpenses|monthlyLoanRepayments",
+          "unit": "AUD/month",
+          "type": "number",
+          "note": "declared fallback"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/verification/vr001Ratchet.test.ts",
+      "workedExample": "in 10000, out 8000, no trailing history -> 20%; trailing -30.5% with 12 months data -> -30.5%",
+      "verifiedDate": "2026-07-11",
       "status": "documented"
     }
   ],
@@ -6274,16 +6308,6 @@
       "toUnit": "AUD/month",
       "evidence": "activity/page.tsx fetchSummary getCanonicalMonthlyCashflow(masterSnapshot) → Spending/Income/Net 'This month' tiles (Phase 2c — was rolling-30-day analytics)",
       "verifiedDate": "2026-06-25"
-    },
-    {
-      "from": "engine.canonicalCashflow.getCanonicalMonthlyCashflow",
-      "to": "number.savingsRate",
-      "type": "feeds",
-      "source": "verified",
-      "fromUnit": "%",
-      "toUnit": "%",
-      "evidence": "00b §3 saving rate (canonical .savingsRate)",
-      "verifiedDate": "2026-06-23"
     },
     {
       "from": "number.savingsRate",
@@ -9207,6 +9231,16 @@
       "toUnit": "AUD/year",
       "evidence": "depreciationItems (currentYearDeduction = calculateDepreciationAnnual(dep).annualDepreciation) → calculateTaxPosition deductions (MON-026; was cost×rate 100× too high)",
       "verifiedDate": "2026-07-10"
+    },
+    {
+      "from": "engine.canonicalCashflow.getCanonicalSavingsRate",
+      "to": "number.savingsRate",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "%",
+      "toUnit": "%",
+      "evidence": "MON-029: app/api/dashboard/insights/route.ts (insight + KPI tile, 3 call sites) + lib/cfo/intelligenceEngine.ts calculateMonthlyProgress all read getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate",
+      "verifiedDate": "2026-07-11"
     }
   ]
 }

@@ -132,6 +132,44 @@ export function getCanonicalMonthlyCashflow(
   );
 }
 
+/** Minimal slice of the money-story trend the savings-rate accessor needs. */
+export interface TrailingSavingsSource {
+  trailingMonthsWithData: number;
+  annualIncome: number;
+  annualOutgoings: number;
+  savingsRateTrailing: number;
+}
+
+/**
+ * THE canonical savings rate (MON-029) — ONE selection rule for every surface.
+ *
+ * VR-001 (2026-07-11) found THREE contradictory savings rates on screen at
+ * once: 75.4% (CFO — declared `quickMetrics.savingsRate`), −30.5% (Home KPI —
+ * trailing-12-month actuals), 0.0% (Home "Low Savings Rate" insight —
+ * current-in-progress-month actuals). Three producers, three bases.
+ *
+ * This accessor encodes the Phase 57 headline rule ONCE: trailing-12-month
+ * ACTUALS when transaction history exists (the honest, stable figure), else the
+ * declared plan (net-income basis). Every surface that says "savings rate"
+ * reads THIS — the CFO monthly-progress card, the Home KPI tile, and the Home
+ * insight — so they can never diverge again.
+ */
+export function getCanonicalSavingsRate(
+  snapshot: CashflowSource,
+  trend?: TrailingSavingsSource | null
+): { rate: number; basis: 'actual-ttm' | 'declared' } {
+  const hasTrailing =
+    !!trend &&
+    trend.trailingMonthsWithData > 0 &&
+    (trend.annualIncome > 0 || trend.annualOutgoings > 0);
+  if (hasTrailing && trend) {
+    return { rate: trend.savingsRateTrailing, basis: 'actual-ttm' };
+  }
+  const inM = snapshot.quickMetrics.monthlyIncome;
+  const outM = snapshot.quickMetrics.monthlyExpenses + snapshot.quickMetrics.monthlyLoanRepayments;
+  return { rate: inM > 0 ? ((inM - outM) / inM) * 100 : 0, basis: 'declared' };
+}
+
 /**
  * Project a balance forward `days` days using a canonical monthly net (MON-021).
  *

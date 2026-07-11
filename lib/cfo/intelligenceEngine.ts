@@ -34,7 +34,8 @@ import { Frequency } from '@/lib/types/prisma-enums';
 // MON-021: My Guide's month-end balance projects off the ONE canonical monthly
 // net + the ONE shared projection — the same source + formula /cashflow uses —
 // instead of a crude expenses-only, declared, income-blind linear burn.
-import { getCanonicalMonthlyCashflow, projectBalanceForward } from '@/lib/calculations/canonicalCashflow';
+import { getCanonicalMonthlyCashflow, getCanonicalSavingsRate, projectBalanceForward } from '@/lib/calculations/canonicalCashflow';
+import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 
 // Type definitions for Prisma models (to avoid Prisma client generation dependency)
 interface AccountRecord {
@@ -131,9 +132,10 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
   // source as the Home Net Worth Trend tile, so the two converge — and the
   // savings rate comes from the canonical master snapshot (actuals-aware), so it
   // matches the dashboard KPI instead of the old declared-records figure.
-  const [snapshot, history] = await Promise.all([
+  const [snapshot, history, moneyStoryTrend] = await Promise.all([
     getMasterFinancialSnapshot(userId),
     getNetWorthHistory(userId, 2), // this month vs last month
+    getMoneyStoryTrend(userId, 12), // trailing-12-mo actuals for the ONE savings rate (MON-029)
   ]);
 
   // Real Δ from stored snapshots — honest 0 when <2 months of history (never a
@@ -148,8 +150,12 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
       ? history.trend[0].totalLiabilities - history.trend[history.trend.length - 1].totalLiabilities
       : 0;
 
-  // Savings rate from the ONE canonical snapshot (actuals-aware) — matches the KPI.
-  const savingsRate = snapshot.quickMetrics.savingsRate;
+  // MON-029 (VR-001): this card previously read quickMetrics.savingsRate — the
+  // DECLARED figure (75.4% while trailing actuals were −30.5%). The savings rate
+  // now comes from the ONE canonical selection rule (getCanonicalSavingsRate:
+  // trailing-12-mo actuals when history exists, declared plan otherwise) — the
+  // SAME accessor the Home KPI tile and the Home insight read.
+  const savingsRate = getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate;
 
   return {
     netWorthChange: Math.round(netWorthChange),

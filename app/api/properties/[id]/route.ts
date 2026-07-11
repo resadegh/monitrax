@@ -65,6 +65,12 @@ export const GET = withPermission<RouteContext>('property.read', async (request,
         income: incomeWithActuals,
         expenses: expensesWithActuals,
         loans: loansWithActuals,
+        // MON-028 (§19.1 / §19.4): the detail page feeds these reconciled
+        // transactions to computePropertyCashflow so its cashflow + yield are
+        // ACTUALS-FIRST — identical to the LIST tile and Home tile. Dropping
+        // this field silently made the detail page declared-only (too
+        // optimistic) and drifted from every other surface. Do NOT remove it.
+        linkedTransactions: enriched.linkedTransactions,
       });
     } catch (error) {
       console.error('Get property error:', error);

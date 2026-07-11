@@ -1,7 +1,7 @@
 {
-  "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
+  "comment": "Phase 41i.6b \u2014 pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny \u2014 adding entries here suppresses bugs the lint is designed to catch).",
   "generatedAt": "2026-06-25T11:00:32.520Z",
-  "count": 37,
+  "count": 34,
   "entries": [
     {
       "file": "app/dashboard/income/page.tsx",
@@ -64,24 +64,6 @@
       "match": "summary.annualExpenses + summary.annualLoanRepayments"
     },
     {
-      "file": "app/api/ai/debt-analysis/route.ts",
-      "line": 159,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 52"
-    },
-    {
-      "file": "app/api/ai/debt-analysis/route.ts",
-      "line": 160,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 26"
-    },
-    {
-      "file": "app/api/ai/debt-analysis/route.ts",
-      "line": 164,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount / 12"
-    },
-    {
       "file": "app/api/assets/[id]/route.ts",
       "line": 49,
       "pattern": "INLINE_ARITHMETIC",
@@ -113,13 +95,13 @@
     },
     {
       "file": "app/api/safety-net/route.ts",
-      "line": 72,
+      "line": 75,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 4"
     },
     {
       "file": "app/api/safety-net/route.ts",
-      "line": 76,
+      "line": 79,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount / 12"
     },
