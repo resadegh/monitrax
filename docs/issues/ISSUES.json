@@ -884,7 +884,7 @@
     {
       "id": "MON-028",
       "title": "Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-11",
@@ -908,7 +908,9 @@
         "lib/services/masterFinancialService.ts",
         "app/api/portfolio/snapshot/route.ts"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1359
+      ],
       "test": "tests/api/propertyDetailActuals.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md",
       "notes": "Found via real-data Claude-Chrome verification 2026-07-11. This is the residual root cause behind MON-002 (per-property cashflow same everywhere) still failing on real data: the engine + list + Home were correct (actuals-first); only the detail route dropped linkedTransactions, making the detail page declared-only. Reverse of the initial hypothesis (detail was the declared outlier, not the actuals one)."
