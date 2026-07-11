@@ -81,7 +81,10 @@ describe('MON-017: the /api/safety-net route reads canonical sources (§19.4 dri
     expect(src).toContain('snapshot.emergencyFund');
     expect(src).toContain('ef.targetMonths');
     expect(src).toContain('ef.monthsCovered');
-    // Cashflow dimension reads the actuals-aware net cashflow, not declared − actual.
-    expect(src).toContain('const monthlySurplus = qm.monthlyCashflow');
+    // Cashflow dimension reads the ACTUALS-FIRST canonical net (MON-017 residual,
+    // VR-001: qm.monthlyCashflow is the DECLARED figure and read positive while
+    // actual cashflow was −$6,073/mo → "Positive Cashflow 15/15" on a deficit).
+    expect(src).toContain('const monthlySurplus = getCanonicalMonthlyCashflow(snapshot).net');
+    expect(src).not.toContain('const monthlySurplus = qm.monthlyCashflow');
   });
 });

@@ -44,11 +44,14 @@ describe('MON-018: monthly-progress reads canonical history, not placeholders', 
     const body = engine.slice(start, start + 3200);
     expect(body).toContain('getNetWorthHistory(userId, 2)');
     expect(body).toContain('getMasterFinancialSnapshot(userId)');
-    // Δ + debt come from the stored snapshots; savings rate from the snapshot KPI.
+    // Δ + debt come from the stored snapshots; savings rate from the ONE
+    // canonical accessor (MON-029, VR-001: the old quickMetrics.savingsRate
+    // read was the DECLARED figure — 75.4% while trailing actuals were −30.5%).
     expect(body).toContain('history.deltaAbsolute');
     expect(body).toContain('history.deltaPct');
     expect(body).toContain('totalLiabilities');
-    expect(body).toContain('snapshot.quickMetrics.savingsRate');
+    expect(body).toContain('getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate');
+    expect(body).not.toContain('= snapshot.quickMetrics.savingsRate');
     // Honest null (not a fabricated number) when there's no history to compare.
     expect(body).toContain('savingsRateChange: null');
   });
