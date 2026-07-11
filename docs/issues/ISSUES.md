@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**27 total** · 24 open · 🔵 2 · 🟡 6 · 🟠 16 · 🟢 0 · ✅ 2
+**27 total** · 24 open · 🔵 2 · 🟡 5 · 🟠 17 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -27,7 +27,7 @@
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
 | MON-020 | 🟠 FIXING | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | #1349 | ✅ |
-| MON-021 | 🟡 DIAGNOSED | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | ✅ |
+| MON-021 | 🟠 FIXING | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | #1354 | ✅ |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
@@ -406,7 +406,7 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 
 ### MON-021 — /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: cashflow · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: cashflow · opened 2026-07-07
 
 > **What was wrong:** Two things on the money pages disagreed: (1) My Guide's 'Month-End Balance' and the Cashflow page's forecast used different maths, so they projected balances tens of thousands of dollars apart; and (2) the Cashflow page showed 'Money In $0' in one spot and a much larger 'In +$43,736' in another, unlabelled — because one spot fell back to your typed (planned) income whenever your actual income for the month was $0.
 >
@@ -417,6 +417,7 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 - **Root cause:** `lib/cfo/intelligenceEngine.ts:222`, `app/api/cashflow/intelligence/route.ts:485`, `app/api/cashflow/intelligence/route.ts:654`
 - **Neomatrix:** `engine.canonicalCashflow.projectBalanceForward`, `engine.canonicalCashflow.getCanonicalMonthlyCashflow`
 - **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx:788 My Guide "Month-End Balance" tile (quickStats.projectedMonthEndBalance)`, `app/(dashboard)/cashflow/page.tsx hero "30-Day Forecast" (forecast.forecast30Day.predictedBalance) + "Money In" (forecast.current.income)`, `app/(dashboard)/cashflow GlassMoneyFlowTile (waterfall.netIncome) — now = canonical.inflow, agrees with the hero`
+- **Fix PR(s):** #1354
 - **Holistic test (§19.4):** `tests/cfo/monthEndForecastConvergence.test.ts`
 - **Detail:** `chat audit 2026-07-07 #11`
 
