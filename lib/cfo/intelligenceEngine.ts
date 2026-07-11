@@ -31,6 +31,10 @@ import {
 } from './types';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+// MON-021: My Guide's month-end balance projects off the ONE canonical monthly
+// net + the ONE shared projection — the same source + formula /cashflow uses —
+// instead of a crude expenses-only, declared, income-blind linear burn.
+import { getCanonicalMonthlyCashflow, projectBalanceForward } from '@/lib/calculations/canonicalCashflow';
 
 // Type definitions for Prisma models (to avoid Prisma client generation dependency)
 interface AccountRecord {
@@ -194,21 +198,28 @@ function generateEmergingRisks(savingsRate: number, netWorthChange: number): str
 // ============================================================================
 
 async function calculateQuickStats(userId: string): Promise<CFOQuickStats> {
-  const [accounts, expenses] = await Promise.all([
+  const [accounts, expenses, snapshot] = await Promise.all([
     prisma.account.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
+    getMasterFinancialSnapshot(userId),
   ]);
-
-  // Calculate projected month-end balance
-  const totalLiquid = accounts
-    .filter((a: AccountRecord) => ['SAVINGS', 'TRANSACTIONAL', 'OFFSET'].includes(a.type))
-    .reduce((sum: number, a: AccountRecord) => sum + a.currentBalance, 0);
 
   const now = new Date();
   const daysRemaining = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-  const dailyBurn = expenses.reduce((sum: number, e: ExpenseRecord) => sum + toMonthly(e.amount, e.frequency as Frequency), 0) / 30;
 
-  const projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining);
+  // MON-021 (§12.2.1): project the month-end balance off the ONE canonical
+  // monthly net (actuals-aware) via the ONE shared projection — the SAME source
+  // + formula /cashflow's forecast uses — so My Guide and /cashflow can only
+  // differ by their labelled horizon (month-end vs 30-day), never by method. The
+  // balance base is the sum of all bank accounts, matching /cashflow's forecast
+  // base (`calculateTotalBalance`). The old crude `totalLiquid − dailyBurn ×
+  // daysRemaining` was expenses-only, declared, and ignored income entirely.
+  const totalBalance = accounts.reduce(
+    (sum: number, a: AccountRecord) => sum + a.currentBalance,
+    0,
+  );
+  const canonicalNet = getCanonicalMonthlyCashflow(snapshot).net;
+  const projectedMonthEndBalance = projectBalanceForward(totalBalance, canonicalNet, daysRemaining);
 
   // Count subscription-like expenses
   const subscriptions = expenses.filter((e: ExpenseRecord) =>

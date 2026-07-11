@@ -542,6 +542,46 @@
       "status": "documented"
     },
     {
+      "id": "engine.canonicalCashflow.projectBalanceForward",
+      "kind": "engine",
+      "label": "Forward balance projection (the one formula)",
+      "file": "lib/calculations/canonicalCashflow.ts",
+      "line": 151,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Projected balance = currentBalance + (monthlyNet/30) × days. THE one forward-projection formula for the cashflow forecast SUMMARY tiles (/cashflow '30-Day Forecast' + My Guide 'Month-End Balance'), both fed the same getCanonicalMonthlyCashflow net (MON-021).",
+      "formula": "projectBalanceForward(currentBalance, monthlyNet, days) = currentBalance + (monthlyNet / 30) × days (linear roll-forward off the canonical monthly net).",
+      "authority": "CLAUDE.md §12.2.1 (one formula) + §19.1 (canonical actuals-aware net)",
+      "inputs": [
+        {
+          "name": "currentBalance",
+          "unit": "AUD",
+          "type": "number",
+          "note": "start balance (sum of bank accounts)"
+        },
+        {
+          "name": "monthlyNet",
+          "unit": "AUD/month",
+          "type": "number",
+          "note": "getCanonicalMonthlyCashflow(snapshot).net"
+        },
+        {
+          "name": "days",
+          "unit": "days",
+          "type": "number",
+          "note": "horizon (30, or days remaining to month-end)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/cfo/monthEndForecastConvergence.test.ts",
+      "workedExample": "100,000 + (3,000/30) × 30 = 103,000; over 15 days = 101,500; net −6,000 over 30 days = 44,000.",
+      "verifiedDate": "2026-07-11",
+      "status": "documented"
+    },
+    {
       "id": "engine.canonicalCashflow.resolveCanonicalCashflow",
       "kind": "engine",
       "label": "Resolve canonical cashflow (the rule)",
@@ -4117,7 +4157,7 @@
       "kind": "engine",
       "label": "CFO: projected month-end balance",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 310,
+      "line": 321,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -4138,7 +4178,7 @@
       "kind": "engine",
       "label": "CFO: monthly-progress net worth (local)",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 334,
+      "line": 345,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -5975,6 +6015,16 @@
     }
   ],
   "edges": [
+    {
+      "from": "engine.canonicalCashflow.getCanonicalMonthlyCashflow",
+      "to": "engine.canonicalCashflow.projectBalanceForward",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD/month",
+      "evidence": "MON-021: both forecast surfaces pass getCanonicalMonthlyCashflow(snapshot).net as monthlyNet — lib/cfo/intelligenceEngine.ts calculateQuickStats + app/api/cashflow/intelligence/route.ts buildForecastSummary",
+      "verifiedDate": "2026-07-11"
+    },
     {
       "from": "input.Property.currentValue",
       "to": "engine.netWorthCalculator.calculateNetWorth",

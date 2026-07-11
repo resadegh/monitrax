@@ -32,7 +32,7 @@ import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialServic
 // income-tax-only calc — so both surfaces show the same number (§12.2.1).
 import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
 import type { TaxPositionResult } from '@/lib/tax-engine/types';
-import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
+import { getCanonicalMonthlyCashflow, projectBalanceForward } from '@/lib/calculations/canonicalCashflow';
 import {
   detectSavingOpportunities,
   type SavingOpportunitiesResult,
@@ -481,11 +481,11 @@ function buildForecastSummary(
   monthlyNet: number
 ): ForecastSummary {
   const monthlySurplus = monthlyNet;
-  const dailyNet = monthlySurplus / 30;
 
-  // Calculate 30 and 90 day predictions
-  const balance30 = totalBalance + (dailyNet * 30);
-  const balance90 = totalBalance + (dailyNet * 90);
+  // Calculate 30 and 90 day predictions via the ONE shared projection (MON-021) —
+  // the same helper My Guide's Month-End Balance uses, off the same canonical net.
+  const balance30 = projectBalanceForward(totalBalance, monthlyNet, 30);
+  const balance90 = projectBalanceForward(totalBalance, monthlyNet, 90);
 
   // Calculate break-even day
   let breakEvenDay = -1;
@@ -645,13 +645,15 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Detect money leaks
       const leaks = detectMoneyLeaks(leakDetectorInput);
 
-      // Phase 1 (cashflow-actuals) — actual figures off the canonical snapshot.
-      // When master is unavailable, actualIncome falls back to declared income
-      // and the category breakdown is empty (waterfall shows income with no
-      // spend lines rather than a wrong, optimistic surplus).
-      const actualIncome = masterSnapshot?.quickMetrics.actualMonthlyInflow
-        ? masterSnapshot.quickMetrics.actualMonthlyInflow
-        : monthlyIncome;
+      // MON-021 (§12.2.1 / §19.1): the waterfall income is the SAME canonical
+      // inflow the hero shows (`canonical.inflow`), so the two "Money In" figures
+      // can never contradict. The prior `actualMonthlyInflow ? … : monthlyIncome`
+      // used a TRUTHINESS fallback, so a legitimate $0 actual inflow (user has
+      // transactions but none this month) fell through to DECLARED income — the
+      // "In $0" hero vs "In +$43,736" waterfall discrepancy. `canonical.inflow`
+      // gates on `hasActualData`, so $0 actual stays $0. Declared fallback only
+      // when master is unavailable (canonical's own fallback branch above).
+      const actualIncome = canonical.inflow;
       const actualOutflowByCategory =
         masterSnapshot?.quickMetrics.actualOutflowByCategory ?? {};
 
