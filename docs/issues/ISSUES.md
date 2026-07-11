@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**27 total** · 24 open · 🔵 0 · 🟡 2 · 🟠 22 · 🟢 0 · ✅ 2
+**28 total** · 25 open · 🔵 0 · 🟡 3 · 🟠 22 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -34,6 +34,7 @@
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
 | MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
 | MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
+| MON-028 | 🟡 DIAGNOSED | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | — | ✅ |
 
 ---
 
@@ -539,4 +540,22 @@ VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is
 - **Detail:** `discovered during MON-021 (2026-07-11)`
 
 §12.2.1 duplication. The shared extraction was prototyped during MON-021 then reverted to keep MON-021 scoped to the forecast convergence. Fix as its own PR: lib/cashflow/buildCFEInput.ts shared service (after-tax + transfer-excluded), both routes import it. Also note: the linear forward-projection formula is duplicated in lib/cashflow/forecasting.ts + app/api/cashflow/route.ts — candidates to route through projectBalanceForward or the CFE engine.
+
+### MON-028 — Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home)
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-11
+
+> **What was wrong:** A property's Cashflow/yr and Yield on its detail page didn't match the Properties list tile or the Home dashboard tile — the detail page showed a too-optimistic 'declared' number (e.g. Broadbeach $50,281/yr on the detail page vs ~$15,879/yr everywhere else).
+>
+> **What changed:** The detail page's data feed was dropping your reconciled bank transactions, so its cashflow fell back to your typed-in estimates instead of your actuals. Restored the transactions to the feed so the detail page now uses actuals-first, exactly like the list and Home tiles.
+>
+> **What you should see:** Open a property: its Cashflow/yr and Yield now read the SAME on the detail page, the Properties list tile, and the Home dashboard — and reflect your real transactions, not the higher typed estimate.
+
+- **Root cause:** `app/api/properties/[id]/route.ts:58`
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`, `ui.properties.detailCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`, `lib/services/masterFinancialService.ts`, `app/api/portfolio/snapshot/route.ts`
+- **Holistic test (§19.4):** `tests/api/propertyDetailActuals.test.ts`
+- **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md`
+
+Found via real-data Claude-Chrome verification 2026-07-11. This is the residual root cause behind MON-002 (per-property cashflow same everywhere) still failing on real data: the engine + list + Home were correct (actuals-first); only the detail route dropped linkedTransactions, making the detail page declared-only. Reverse of the initial hypothesis (detail was the declared outlier, not the actuals one).
 
