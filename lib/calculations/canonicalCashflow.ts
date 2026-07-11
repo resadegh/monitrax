@@ -131,3 +131,27 @@ export function getCanonicalMonthlyCashflow(
     }
   );
 }
+
+/**
+ * Project a balance forward `days` days using a canonical monthly net (MON-021).
+ *
+ * The ONE forward-projection formula (CLAUDE.md §12.2.1): a linear roll-forward
+ * of the current balance by the canonical monthly net (`getCanonicalMonthlyCashflow`),
+ * spread evenly across a 30-day month. Every forecast SUMMARY tile — the /cashflow
+ * "30-Day Forecast" and My Guide's "Month-End Balance" — projects through here off
+ * the SAME `net`, so the two can only ever differ by their (labelled) horizon, never
+ * by method. Before MON-021 My Guide used a crude expenses-only, declared, income-
+ * blind burn (`totalLiquid − dailyBurn × daysRemaining`) that contradicted the
+ * canonical /cashflow forecast by tens of thousands of dollars.
+ *
+ * @param currentBalance start balance (the account base)
+ * @param monthlyNet     canonical monthly net inflow−outflow (actuals-aware)
+ * @param days           horizon in days (e.g. 30, or days remaining to month-end)
+ */
+export function projectBalanceForward(
+  currentBalance: number,
+  monthlyNet: number,
+  days: number
+): number {
+  return currentBalance + (monthlyNet / 30) * days;
+}

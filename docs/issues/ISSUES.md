@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**26 total** · 23 open · 🔵 3 · 🟡 4 · 🟠 16 · 🟢 0 · ✅ 2
+**27 total** · 24 open · 🔵 2 · 🟡 5 · 🟠 17 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -27,12 +27,13 @@
 | MON-018 | 🟠 FIXING | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
 | MON-020 | 🟠 FIXING | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | #1349 | ✅ |
-| MON-021 | 🔵 OPEN | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | — | — |
+| MON-021 | 🟠 FIXING | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | #1354 | ✅ |
 | MON-022 | 🔵 OPEN | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | n/a |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
 | MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
+| MON-027 | 🟡 DIAGNOSED | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | — | — |
 
 ---
 
@@ -405,21 +406,22 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 
 ### MON-021 — /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cashflow · opened 2026-07-07
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: cashflow · opened 2026-07-07
 
-> **What was wrong:** The same page says Money In $0 (real transactions this month) and, in another widget, In +$43,736 (typed plan) — no label saying which is which. My Guide projects month-end $262,672 while Cashflow's 30-day forecast says $301,639.
+> **What was wrong:** Two things on the money pages disagreed: (1) My Guide's 'Month-End Balance' and the Cashflow page's forecast used different maths, so they projected balances tens of thousands of dollars apart; and (2) the Cashflow page showed 'Money In $0' in one spot and a much larger 'In +$43,736' in another, unlabelled — because one spot fell back to your typed (planned) income whenever your actual income for the month was $0.
 >
-> **What changed:** (planned) Every flow figure routes through the canonical resolver with its basis labelled ('actual'/'plan'); one forecast producer.
+> **What changed:** Both forecast tiles now roll your balance forward using the SAME one calculation off the SAME canonical monthly net, so they can only differ by their time window (month-end vs 30 days), never by method. And the money-flow 'Money In' now reads the same actual figure the headline shows, so a $0 actual month reads $0 in both places (no silent switch to planned income).
 >
-> **What you should see:** (after fix) The two widgets agree or are explicitly labelled Actual vs Plan; My Guide and Cashflow show the same month-end projection.
+> **What you should see:** My Guide's 'Month-End Balance' and the Cashflow forecast now tell one coherent story. On the Cashflow page, the two 'Money In' figures agree — if you've had no income land this month it reads $0 in both, not $0 in one and a big planned number in the other.
 
-- **Root cause:** `lib/cfo/intelligenceEngine.ts:255`
-- **Neomatrix:** `number.monthlyCashflow`, `number.canonicalCashflow.monthlyInflow`
-- **Downstream consumers (§19.4):** `app/dashboard/cfo`, `app/api/cashflow/intelligence/route.ts`, `app/dashboard/cashflow`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:222`, `app/api/cashflow/intelligence/route.ts:485`, `app/api/cashflow/intelligence/route.ts:654`
+- **Neomatrix:** `engine.canonicalCashflow.projectBalanceForward`, `engine.canonicalCashflow.getCanonicalMonthlyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx:788 My Guide "Month-End Balance" tile (quickStats.projectedMonthEndBalance)`, `app/(dashboard)/cashflow/page.tsx hero "30-Day Forecast" (forecast.forecast30Day.predictedBalance) + "Money In" (forecast.current.income)`, `app/(dashboard)/cashflow GlassMoneyFlowTile (waterfall.netIncome) — now = canonical.inflow, agrees with the hero`
+- **Fix PR(s):** #1354
+- **Holistic test (§19.4):** `tests/cfo/monthEndForecastConvergence.test.ts`
 - **Detail:** `chat audit 2026-07-07 #11`
 
-§19.1. Anchor verification 2026-07-07 (§19.2): the My Guide month-end forecast is projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining) at lib/cfo/intelligenceEngine.ts:255 (rounded + returned :266) — a SECOND forecast producer parallel to Cashflow's 30-day forecast (the $39K disagreement). Proposal cited :354, which is the Decimal sibling calculateProjectedMonthEndBalanceDecimal, not the Float path actually rendered. The /cashflow unlabelled actual-vs-declared money-flow producer (In $0 vs In +$43,736) to be pinned at diagnosis. Related: Home mixes trailing-actual income ($239K) with declared ($484K) on one screen; '+1048.2% YoY' near-zero-baseline artifact to suppress; Activity 'keep 0%' vs components summing 173% same family. VALIDATED 2026-07-07 — (b) CONFIRMED-REAL, (a) MOSTLY REMEDIATED: (b) two forecast producers genuinely diverge (§12.2.1) — CFO intelligenceEngine.ts:255 projectedMonthEndBalance = totalLiquid - dailyBurn×daysRemaining (burn-only, liquid accounts, days-left-in-calendar-month, NO income) vs /cashflow buildForecastSummary in app/api/cashflow/intelligence/route.ts forecast30Day.predictedBalance = totalBalance + dailyNet×30 (net INCLUDES income, all accounts, rolling 30-day); different base+horizon+income treatment -> the ~$39k gap is structural. (a) the unlabelled '$0 actual vs $43,736 declared' pairing is largely FIXED — post 2026-06-23 cashflow-SSOT-convergence both /cashflow income surfaces read canonical actuals (route.ts:686 actualMonthlyInflow, :704 canonical.inflow); no $43,736 declared money-in producer remains on /cashflow (the pairing conflated /cashflow with the plan/home surfaces). RESIDUAL only: the /cashflow hero 'Money In' KPI has no basis label + no bare-$0 guard (shows a lone '$0' with nothing signalling 'actual — plan says $X'). Fix scope = one forecast producer (b) + a basis label on the hero KPI (a-residual). [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-06: $484K declared vs $239K trailing-actual income unlabelled; AUDIT-08: Money In $0 unlabelled; AUDIT-02 savings-rate bases). AUDIT-08 specific IN +$43,736 on /cashflow is a CONFLATION — that declared money-in producer was removed 2026-06-23; residual real issue is the unlabelled $0 hero KPI.
+§19.1. Anchor verification 2026-07-07 (§19.2): the My Guide month-end forecast is projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining) at lib/cfo/intelligenceEngine.ts:255 (rounded + returned :266) — a SECOND forecast producer parallel to Cashflow's 30-day forecast (the $39K disagreement). Proposal cited :354, which is the Decimal sibling calculateProjectedMonthEndBalanceDecimal, not the Float path actually rendered. The /cashflow unlabelled actual-vs-declared money-flow producer (In $0 vs In +$43,736) to be pinned at diagnosis. Related: Home mixes trailing-actual income ($239K) with declared ($484K) on one screen; '+1048.2% YoY' near-zero-baseline artifact to suppress; Activity 'keep 0%' vs components summing 173% same family. VALIDATED 2026-07-07 — (b) CONFIRMED-REAL, (a) MOSTLY REMEDIATED: (b) two forecast producers genuinely diverge (§12.2.1) — CFO intelligenceEngine.ts:255 projectedMonthEndBalance = totalLiquid - dailyBurn×daysRemaining (burn-only, liquid accounts, days-left-in-calendar-month, NO income) vs /cashflow buildForecastSummary in app/api/cashflow/intelligence/route.ts forecast30Day.predictedBalance = totalBalance + dailyNet×30 (net INCLUDES income, all accounts, rolling 30-day); different base+horizon+income treatment -> the ~$39k gap is structural. (a) the unlabelled '$0 actual vs $43,736 declared' pairing is largely FIXED — post 2026-06-23 cashflow-SSOT-convergence both /cashflow income surfaces read canonical actuals (route.ts:686 actualMonthlyInflow, :704 canonical.inflow); no $43,736 declared money-in producer remains on /cashflow (the pairing conflated /cashflow with the plan/home surfaces). RESIDUAL only: the /cashflow hero 'Money In' KPI has no basis label + no bare-$0 guard (shows a lone '$0' with nothing signalling 'actual — plan says $X'). Fix scope = one forecast producer (b) + a basis label on the hero KPI (a-residual). [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-06: $484K declared vs $239K trailing-actual income unlabelled; AUDIT-08: Money In $0 unlabelled; AUDIT-02 savings-rate bases). AUDIT-08 specific IN +$43,736 on /cashflow is a CONFLATION — that declared money-in producer was removed 2026-06-23; residual real issue is the unlabelled $0 hero KPI. | 2026-07-11: FIXED. Extracted ONE projectBalanceForward(balance, monthlyNet, days) in canonicalCashflow.ts; My Guide calculateQuickStats + /cashflow buildForecastSummary both project off getCanonicalMonthlyCashflow(snapshot).net via it (converge, differ only by horizon). Waterfall actualIncome = canonical.inflow (was truthiness fallback to declared at $0 actual). §19.2-verified the live /cashflow page uses buildForecastSummary (NOT the CFE generateForecast) — an initial mis-target caught + reverted before shipping. Neomatrix: new engine.canonicalCashflow.projectBalanceForward node + getCanonicalMonthlyCashflow→projectBalanceForward edge; 2 anchors re-pinned (321/345). Test tests/cfo/monthEndForecastConvergence.test.ts.
 
 ### MON-022 — Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift
 
@@ -513,4 +515,21 @@ Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/rou
 - **Detail:** `found during MON-003 investigation 2026-07-10`
 
 VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified.
+
+### MON-027 — CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers
+
+**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: cashflow · opened 2026-07-11
+
+> **What was wrong:** The cashflow stress-test builds its forecast from a stale copy of the input-assembly code: it uses your BEFORE-tax income and counts internal transfers as cashflow, so the stress-test projections are on a different (wrong) basis than the main cashflow forecast.
+>
+> **What changed:** (planned) Extract the ONE correct input builder (after-tax income, transfers excluded) into a shared service and have both the cashflow route and the stress-test route use it.
+>
+> **What you should see:** (after fix) Stress-test projections line up with the main cashflow forecast basis — after-tax income, no transfers counted as spend/income.
+
+- **Root cause:** `app/api/cashflow/route.ts:37`, `app/api/cashflow/stress-test/route.ts:45`
+- **Downstream consumers (§19.4):** `app/api/cashflow/stress-test/route.ts (all stress scenarios)`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `discovered during MON-021 (2026-07-11)`
+
+§12.2.1 duplication. The shared extraction was prototyped during MON-021 then reverted to keep MON-021 scoped to the forecast convergence. Fix as its own PR: lib/cashflow/buildCFEInput.ts shared service (after-tax + transfer-excluded), both routes import it. Also note: the linear forward-projection formula is duplicated in lib/cashflow/forecasting.ts + app/api/cashflow/route.ts — candidates to route through projectBalanceForward or the CFE engine.
 

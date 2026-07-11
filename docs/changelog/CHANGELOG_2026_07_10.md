@@ -232,3 +232,70 @@ Read-only + pure engine. No update/upsert/delete. **NOT REQUIRED.**
 
 ### PR
 - PR: (pending) — draft. MON-010 holds at FIXING until Reza verifies on his data.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i — MON-021 (forecast-tile convergence + "Money In" actual/declared)
+
+> Dated in the 2026-07-10 file; work landed early 2026-07-11.
+
+### Changes Made
+- **Type**: Fix (financial correctness — SSOT convergence)
+- **Scope**: The two cashflow-forecast summary tiles (My Guide "Month-End Balance" + /cashflow "30-Day Forecast") now project off the ONE canonical monthly net via ONE shared formula; the /cashflow "Money In" figures now agree.
+
+### §19.2 — verify, don't assume (a mis-target caught before shipping)
+My first approach wired My Guide to the CFE engine `generateForecast` — WRONG: the live /cashflow page fetches `/api/cashflow/intelligence`, whose forecast is `buildForecastSummary` (a linear projection off `getCanonicalMonthlyCashflow`), **not** `generateForecast` (which only powers `/api/cashflow`, unused by the live page). Reverted before committing and re-targeted the actual canonical source. (CLAUDE.md §19.2 / §10.)
+
+### Root cause (verified)
+- **(b)** My Guide `calculateQuickStats` computed `projectedMonthEndBalance = totalLiquid − dailyBurn × daysRemaining` — expenses-only, **declared**, **income-blind** — while /cashflow projected off the canonical monthly net. Two methods → the ~$39K disagreement ($262,672 vs $301,639).
+- **(a)** The /cashflow money-flow waterfall's income used a **truthiness** fallback (`actualMonthlyInflow ? … : monthlyIncome`), so a legitimate **$0** actual inflow fell through to **declared** income — the "In $0" hero vs "In +$43,736" waterfall contradiction.
+
+### The fix (§12.2.1 SSOT)
+- New `lib/calculations/canonicalCashflow.ts` → `projectBalanceForward(currentBalance, monthlyNet, days) = currentBalance + (monthlyNet/30) × days` — the ONE forward-projection formula.
+- `buildForecastSummary` (/cashflow) and `calculateQuickStats` (My Guide) BOTH project via it, both fed `getCanonicalMonthlyCashflow(snapshot).net` and the same all-bank-accounts balance base → they can only differ by their labelled horizon (month-end vs 30-day), never by method (Reza-chosen: keep distinct horizons, make consistent).
+- Waterfall `actualIncome = canonical.inflow` (the SAME actuals-aware inflow the hero shows; `hasActualData`-gated) → the two "Money In" figures agree; $0 actual stays $0.
+
+### §19.2 worked examples (verified against the pure helper)
+`projectBalanceForward`: 100,000 + (3,000/30)×30 = **103,000**; over 15 days = **101,500**; net −6,000 over 30 days = **44,000**.
+
+### §19.4 downstream sweep + hard test
+Consumers converged: My Guide "Month-End Balance" tile (`cfo/page.tsx:788`); /cashflow hero "30-Day Forecast" + "Money In" and the money-flow waterfall. Test `tests/cfo/monthEndForecastConvergence.test.ts` — `projectBalanceForward` worked examples + source-locks (My Guide uses `getCanonicalMonthlyCashflow(snapshot).net` + `projectBalanceForward`, not the crude burn; /cashflow uses the same shared projection; waterfall reads `canonical.inflow`, not the truthiness fallback).
+
+### §21.2 Neomatrix
+New engine node `engine.canonicalCashflow.projectBalanceForward` + edge `getCanonicalMonthlyCashflow → projectBalanceForward` (verified — both surfaces pass `.net` as `monthlyNet`). Re-pinned two drifted anchors (`calculateProjectedMonthEndBalance` 310→321, `calculateMonthlyProgressNetWorth` 334→345 — my import additions shifted them). `neomatrix:check` green (264 nodes, binding 160/160, census 0).
+
+### Discovered debt (registered, NOT fixed here)
+- **MON-027** — `buildCFEInput` is copy-pasted in `/api/cashflow/route.ts` + `/api/cashflow/stress-test/route.ts` and has **drifted**: stress-test uses PRE-tax income + counts transfers. A §12.2.1 correctness bug; its own PR (the shared-service extraction was prototyped here then reverted to keep MON-021 scoped).
+- The linear projection is also duplicated in `lib/cashflow/forecasting.ts` + `/api/cashflow/route.ts` — candidates to route through `projectBalanceForward`.
+- `calculateProjectedMonthEndBalanceDecimal` (intelligenceEngine.ts:321) has no production callers (dead Decimal sibling) — flagged for §12.1 cleanup.
+
+### Files Modified
+- `lib/calculations/canonicalCashflow.ts` — new `projectBalanceForward`.
+- `app/api/cashflow/intelligence/route.ts` — `buildForecastSummary` via `projectBalanceForward`; `actualIncome = canonical.inflow`; removed orphaned `dailyNet`.
+- `lib/cfo/intelligenceEngine.ts` — `calculateQuickStats` projects via the canonical net + shared formula.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — node + edge + 2 re-pins.
+- `tests/cfo/monthEndForecastConvergence.test.ts` — NEW.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — MON-021 → DIAGNOSED; MON-027 registered.
+
+### Build status
+- [x] `npm run neomatrix:check` — OK.
+- [x] `npm run issues:check` — 27 valid.
+- [x] §19.2 worked examples traced to the pure helper.
+- [ ] `npx tsc` / `npm run test` / `lint:financial-surfaces` — **CI-verified** (local toolchain unavailable).
+
+### §12.11 destructive-write check
+Read-only + pure. **NOT REQUIRED.**
+
+### §12.14 reform-awareness
+No `lib/tax-engine/*` change, no tax calc — a cashflow-projection convergence. Outcome **(b)**: no reform interaction.
+
+### §20.4 self-review — 10/10 (financial build)
+v1 wired My Guide to `generateForecast` → §19.2 review found the live /cashflow uses `buildForecastSummary`, not the CFE → reverted; v2 extracted `projectBalanceForward`, converged both surfaces off the canonical net; v3 fixed the part-(a) truthiness declared-leak (source convergence, better than the labelling the audit proposed), added the worked-example + source-lock test, modelled the Neomatrix node/edge, re-pinned anchors, registered the MON-027 debt.
+
+### Plain-English (what was wrong / what changed / what you'll see)
+- **Wrong**: My Guide's "Month-End Balance" and the Cashflow forecast used different maths (My Guide ignored income entirely), so they disagreed by tens of thousands; and the Cashflow page showed "Money In $0" next to a much bigger "In +$43,736" because one widget silently fell back to your planned income when actual income was $0.
+- **Changed**: both forecast tiles now roll your balance forward with the SAME calculation off the SAME canonical monthly net (differing only by their time window), and the money-flow "Money In" reads the same actual figure as the headline.
+- **You'll see**: a coherent forecast story between My Guide and Cashflow, and matching "Money In" figures — $0 in both when no income has landed this month, not $0-vs-$43,736.
+
+### PR
+- PR: (pending) — draft. MON-021 holds at FIXING until Reza verifies on his data.
