@@ -65,6 +65,7 @@ import { formatCurrency } from '@/lib/utils/formatters';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
+import PropertyExpensesCard from '@/components/properties/PropertyExpensesCard';
 import { DocumentsSection } from '@/components/documents';
 import { LinkedEntityType } from '@/lib/documents/types';
 
@@ -102,6 +103,16 @@ interface ExpenseItem extends Actuals {
   category: string;
   amount: number;
   frequency: string;
+  // Fields the canonical ExpenseDialog needs to EDIT a row (the API returns
+  // the full Expense row; these are optional on the client type). MON-005/008.
+  vendorName?: string | null;
+  sourceType?: string | null;
+  isEssential?: boolean | null;
+  isTaxDeductible?: boolean | null;
+  propertyId?: string | null;
+  loanId?: string | null;
+  investmentAccountId?: string | null;
+  assetId?: string | null;
 }
 
 interface DepreciationSchedule {
@@ -187,6 +198,7 @@ export default function PropertyDetailPage() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [photoVersion, setPhotoVersion] = useState(0); // bump to force re-fetch of the user photo
+  const [dataVersion, setDataVersion] = useState(0); // bump to re-fetch property data (e.g. after an expense add/edit/delete)
   const [heroBlobUrl, setHeroBlobUrl] = useState<string | null>(null);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
 
@@ -208,7 +220,7 @@ export default function PropertyDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [propertyId, token, photoVersion]);
+  }, [propertyId, token, photoVersion, dataVersion]);
 
   // §18.7.4 Cremorne pattern — fetch the user-uploaded hero photo
   // separately via the auth-gated endpoint (the GET /api/properties/[id]
@@ -506,6 +518,15 @@ export default function PropertyDetailPage() {
           {/* LEFT column (2/3 width) */}
           <div className="flex flex-col gap-5 lg:col-span-2">
             <LinkedEntitiesCard property={property} />
+            {/* MON-005 + MON-008 — a property's expenses shown ON the property,
+                with an inline add/edit/delete affordance (actuals-first). */}
+            <PropertyExpensesCard
+              propertyId={property.id}
+              expenses={property.expenses ?? []}
+              linkedTransactions={property.linkedTransactions}
+              token={token ?? ''}
+              onChanged={() => setDataVersion((v) => v + 1)}
+            />
             <RecentActivityCard property={property} />
             <DocumentsSection
               entityType={LinkedEntityType.PROPERTY}
@@ -723,19 +744,10 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
     });
   });
 
-  if ((property.expenses ?? []).length > 0) {
-    const annual = computePropertyCashflow({ expenses: property.expenses }).annualExpenses;
-    items.push({
-      id: 'exp-summary',
-      icon: Receipt,
-      iconTone: 'text-amber-600 dark:text-amber-400 bg-amber-500/10',
-      title: `${property.expenses?.length ?? 0} ${(property.expenses?.length ?? 0) === 1 ? 'expense' : 'expenses'} tracked`,
-      subtitle: `Annual total ${formatCurrency(annual)}`,
-      amount: formatCurrency(annual),
-      amountTone: 'text-foreground',
-      href: '/dashboard/expenses',
-    });
-  }
+  // MON-005: expenses used to appear here as a single read-only "N tracked" row
+  // linking OUT to the global Spending page. They now have a dedicated
+  // PropertyExpensesCard on this page (list + inline add/edit/delete), so we no
+  // longer duplicate the number here (§6.7 — each metric in one primary place).
 
   if ((property.depreciationSchedules ?? []).length > 0) {
     items.push({

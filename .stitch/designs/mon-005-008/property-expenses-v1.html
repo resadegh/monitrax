@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(14, 165, 233, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(11, 18, 32, 0.04), 0 4px 6px -2px rgba(11, 18, 32, 0.02), inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+        }
+        .gradient-strip {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .text-gradient {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006b2c",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-emerald": "#16A34A",
+                        "trail-sky": "#0EA5E9",
+                        "trail-indigo": "#6366F1",
+                        "trail-violet": "#8B5CF6",
+                        "trail-amber": "#F59E0B",
+                        "outline-slate": "#94A3B8",
+                        "on-surface": "#171d16",
+                        "on-surface-variant": "#3e4a3d",
+                        "navy-deep": "#0B1220"
+                    },
+                    borderRadius: {
+                        "22px": "22px",
+                        "14px": "14px",
+                        "xl": "0.75rem",
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "data-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.16em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-6 font-body-md text-on-surface">
+<!-- Property Expenses Section -->
+<main class="w-full max-w-4xl mx-auto">
+<div class="glass-card rounded-22px relative overflow-hidden transition-all duration-300">
+<!-- Top Gradient Strip -->
+<div class="gradient-strip h-[3px] w-full absolute top-0 left-0"></div>
+<!-- Header -->
+<header class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="gradient-strip w-11 h-11 rounded-14px flex items-center justify-center shadow-lg shadow-trail-sky/20">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">receipt</span>
+</div>
+<div>
+<h2 class="font-eyebrow text-eyebrow text-gradient uppercase">EXPENSES</h2>
+<p class="font-body-sm text-on-surface-variant">5 tracked on this property</p>
+</div>
+</div>
+<div class="text-right">
+<div class="font-data-lg text-data-lg tabular-nums text-on-surface">$18,240 <span class="text-headline-sm font-medium text-on-surface-variant">/yr</span></div>
+<p class="font-label-md text-outline-slate tabular-nums">$1,520 / mo</p>
+</div>
+</header>
+<!-- Expense List -->
+<div class="px-6 pb-2">
+<div class="space-y-0 border-t border-trail-sky/10">
+<!-- 1. Water -->
+<div class="flex items-center justify-between py-4 border-b border-trail-sky/5 hover:bg-white/40 transition-colors px-2 -mx-2 rounded-lg group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-trail-sky/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-sky">water_drop</span>
+</div>
+<div>
+<h3 class="font-label-md font-semibold">Water</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded-full bg-trail-sky/10 text-trail-sky text-[11px] font-bold uppercase tracking-wider">Quarterly</span>
+<span class="flex items-center gap-1 text-[11px] text-outline-slate">
+<span class="w-1.5 h-1.5 rounded-full bg-trail-emerald"></span>
+                                        actual
+                                    </span>
+</div>
+</div>
+</div>
+<div class="font-headline-sm tabular-nums text-on-surface">$420</div>
+</div>
+<!-- 2. Council Rates -->
+<div class="flex items-center justify-between py-4 border-b border-trail-sky/5 hover:bg-white/40 transition-colors px-2 -mx-2 rounded-lg group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-trail-indigo/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-indigo">account_balance</span>
+</div>
+<div>
+<h3 class="font-label-md font-semibold">Council rates</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded-full bg-trail-sky/10 text-trail-sky text-[11px] font-bold uppercase tracking-wider">Quarterly</span>
+<span class="flex items-center gap-1 text-[11px] text-outline-slate">
+<span class="w-1.5 h-1.5 rounded-full bg-trail-emerald"></span>
+                                        actual
+                                    </span>
+</div>
+</div>
+</div>
+<div class="font-headline-sm tabular-nums text-on-surface">$1,180</div>
+</div>
+<!-- 3. Landlord Insurance -->
+<div class="flex items-center justify-between py-4 border-b border-trail-sky/5 hover:bg-white/40 transition-colors px-2 -mx-2 rounded-lg group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-trail-violet/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-violet">shield</span>
+</div>
+<div>
+<h3 class="font-label-md font-semibold">Landlord insurance</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded-full bg-trail-violet/10 text-trail-violet text-[11px] font-bold uppercase tracking-wider">Annual</span>
+<span class="flex items-center gap-1 text-[11px] text-outline-slate">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-slate"></span>
+                                        estimate
+                                    </span>
+</div>
+</div>
+</div>
+<div class="font-headline-sm tabular-nums text-on-surface">$1,420</div>
+</div>
+<!-- 4. Body Corporate -->
+<div class="flex items-center justify-between py-4 border-b border-trail-sky/5 hover:bg-white/40 transition-colors px-2 -mx-2 rounded-lg group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-trail-sky/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-sky">apartment</span>
+</div>
+<div>
+<h3 class="font-label-md font-semibold">Body corporate</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded-full bg-trail-sky/10 text-trail-sky text-[11px] font-bold uppercase tracking-wider">Quarterly</span>
+<span class="flex items-center gap-1 text-[11px] text-outline-slate">
+<span class="w-1.5 h-1.5 rounded-full bg-trail-emerald"></span>
+                                        actual
+                                    </span>
+</div>
+</div>
+</div>
+<div class="font-headline-sm tabular-nums text-on-surface">$5,820</div>
+</div>
+<!-- 5. Maintenance -->
+<div class="flex items-center justify-between py-4 border-b border-trail-sky/5 hover:bg-white/40 transition-colors px-2 -mx-2 rounded-lg group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-trail-amber/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-amber">build</span>
+</div>
+<div>
+<h3 class="font-label-md font-semibold">Maintenance</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="px-2 py-0.5 rounded-full bg-trail-amber/10 text-trail-amber text-[11px] font-bold uppercase tracking-wider">Monthly</span>
+<span class="flex items-center gap-1 text-[11px] text-outline-slate">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-slate"></span>
+                                        estimate
+                                    </span>
+</div>
+</div>
+</div>
+<div class="font-headline-sm tabular-nums text-trail-amber">$9,400</div>
+</div>
+</div>
+</div>
+<!-- Add Expense Form (Expanded UI) -->
+<div class="px-6 py-6 bg-white/30 border-t border-dashed border-trail-sky/30">
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+<div class="md:col-span-5">
+<label class="block font-label-md text-on-surface-variant mb-1.5">Name</label>
+<input class="w-full px-4 py-2.5 rounded-xl border border-outline-slate/30 focus:border-primary focus:ring-0 transition-colors bg-white/50 text-body-md" placeholder="e.g. Garden Maintenance" type="text"/>
+</div>
+<div class="md:col-span-4">
+<label class="block font-label-md text-on-surface-variant mb-1.5">Category</label>
+<select class="w-full px-4 py-2.5 rounded-xl border border-outline-slate/30 focus:border-primary focus:ring-0 transition-colors bg-white/50 text-body-md appearance-none">
+<option>Utilities</option>
+<option>Taxes &amp; Rates</option>
+<option>Insurance</option>
+<option>Strata</option>
+<option>Repairs</option>
+</select>
+</div>
+<div class="md:col-span-3">
+<label class="block font-label-md text-on-surface-variant mb-1.5">Amount</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-outline-slate">$</span>
+<input class="w-full pl-8 pr-4 py-2.5 rounded-xl border border-outline-slate/30 focus:border-primary focus:ring-0 transition-colors bg-white/50 text-body-md tabular-nums" placeholder="0.00" type="text"/>
+</div>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-on-surface-variant mb-2">Frequency</label>
+<div class="inline-flex p-1 bg-surface-ivory rounded-xl border border-outline-slate/10">
+<button class="px-4 py-1.5 rounded-lg text-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" type="button">Weekly</button>
+<button class="px-4 py-1.5 rounded-lg text-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" type="button">Fortnightly</button>
+<button class="px-4 py-1.5 rounded-lg text-body-sm font-medium bg-white text-on-surface shadow-sm ring-1 ring-black/5" type="button">Monthly</button>
+<button class="px-4 py-1.5 rounded-lg text-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" type="button">Quarterly</button>
+<button class="px-4 py-1.5 rounded-lg text-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" type="button">Annual</button>
+</div>
+</div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+<div class="flex items-center gap-4">
+<button class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-xl font-medium shadow-lg shadow-primary/20 transition-all active:scale-95" type="submit">
+                                Add expense
+                            </button>
+<button class="text-outline-slate hover:text-on-surface font-medium transition-colors text-body-sm" type="button">
+                                Cancel
+                            </button>
+</div>
+<p class="text-body-sm text-outline-slate max-w-sm italic">
+                            Enter your typed amount now — we'll switch to your reconciled transactions once they're matched.
+                        </p>
+</div>
+</form>
+</div>
+<!-- Footer -->
+<footer class="p-4 flex justify-end bg-white/10">
+<a class="group flex items-center gap-1.5 text-outline-slate hover:text-trail-indigo font-medium transition-colors text-body-sm" href="#">
+                    View all in Spending
+                    <span class="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+</a>
+</footer>
+</div>
+</main>
+<script>
+        // Simple micro-interaction for the segmented control
+        const buttons = document.querySelectorAll('.inline-flex button');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                buttons.forEach(b => {
+                    b.classList.remove('bg-white', 'text-on-surface', 'shadow-sm', 'ring-1', 'ring-black/5');
+                    b.classList.add('text-on-surface-variant');
+                });
+                btn.classList.add('bg-white', 'text-on-surface', 'shadow-sm', 'ring-1', 'ring-black/5');
+                btn.classList.remove('text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

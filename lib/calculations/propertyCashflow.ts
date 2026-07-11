@@ -65,9 +65,29 @@ export interface PropertyCashflowInput {
   transactions?: CashflowTransaction[];
 }
 
+/**
+ * One resolved expense line — the per-record intermediate the expense loop
+ * already computes. Exposed (MON-005) so a UI surface can render each expense
+ * row AND the header total from the SAME engine call: Σ expenseLines[].annual
+ * === annualExpenses BY CONSTRUCTION (same loop, same `resolveMonthly`). This
+ * is what keeps the per-property Expenses card reconciled with the canonical
+ * total — no second producer (§12.2.1), no row-sum-vs-total drift (§19.4).
+ */
+export interface CashflowExpenseLine {
+  id?: string;
+  /** Actuals-first monthly figure for this record (reconciled when txns exist). */
+  monthly: number;
+  /** monthly × 12. */
+  annual: number;
+  /** True when reconciled transactions drove this line (vs the declared amount). */
+  usedActuals: boolean;
+}
+
 export interface PropertyCashflow {
   annualRent: number;
   annualExpenses: number;
+  /** Per-record expense breakdown (MON-005) — sums to annualExpenses. */
+  expenseLines: CashflowExpenseLine[];
   /** P&I cash outflow — actuals-first, never $0 when a loan exists. */
   annualLoanRepayment: number;
   /** Interest only (principal × rate) — the deductible figure for tax. */
@@ -121,6 +141,7 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
   // ── EXPENSES — per record ──
   let monthlyExpenses = 0;
   let expensesUsedActuals = false;
+  const expenseLines: CashflowExpenseLine[] = [];
   for (const e of expenses) {
     const r = resolveMonthly({
       declaredMonthly: toMonthly(e.amount, e.frequency as never),
@@ -128,6 +149,9 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
       transactions: txFor(txs, (t) => t.expenseId, e.id),
     });
     monthlyExpenses += r.monthly;
+    // Same loop, same resolver → the per-record breakdown is the total,
+    // decomposed. Σ expenseLines[].annual === annualExpenses by construction.
+    expenseLines.push({ id: e.id, monthly: r.monthly, annual: r.monthly * 12, usedActuals: r.usedActuals });
     if (r.usedActuals) expensesUsedActuals = true;
     bump(r.usedActuals);
   }
@@ -166,6 +190,7 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
   return {
     annualRent,
     annualExpenses,
+    expenseLines,
     annualLoanRepayment,
     annualLoanInterest,
     annualCashflow: annualRent - annualExpenses - annualLoanRepayment,
