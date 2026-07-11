@@ -2016,3 +2016,26 @@ not replacing it. Implementation:
 - Canonical reference: `components/documents/GlobalScanReceipt.tsx`. Stitch
   artefacts: `.stitch/designs/phase49-scan-receipt/` (capture + result, light
   + dark).
+
+### Per-property Expenses card (MON-005 + MON-008, 2026-07-11)
+
+A dedicated Expenses section on the property detail page (`/dashboard/properties/[id]`)
+that both SHOWS a property's expenses and lets the user add/edit/delete them inline,
+actuals-first.
+
+- **Anatomy** (§18.7.2 glass): 72% glass card + 3px sky→indigo top-accent +
+  gradient Receipt badge + "EXPENSES" eyebrow + sky→indigo gradient annual total.
+  Rows = name + frequency pill + Actual/Estimate pill + neutral-ink `/yr` amount +
+  hover pencil/trash. Footer = emerald "Add expense" + "View all in Spending".
+  Empty state = faint Receipt watermark + celebratory copy + form-led CTA (§0
+  psychology — celebrate the next action, never shame the gap).
+- **SSOT (§12.2.1 / §19.4)**: header total AND every row read from the ONE
+  canonical engine `computePropertyCashflow` — the header uses `annualExpenses`,
+  rows use the additive `expenseLines[]` breakdown from the same loop, so
+  `Σ rows.annual === annualExpenses` by construction. Create/edit/delete reuse the
+  canonical `ExpenseDialog` + `/api/expenses` — never a second inline form.
+- **Actuals-first (§19.1)**: Actual pill when reconciled transactions exist,
+  Estimate otherwise (the engine's own `usedActuals` signal).
+- Canonical reference: `components/properties/PropertyExpensesCard.tsx`. Stitch
+  artefacts: `.stitch/designs/mon-005-008/` (4-variant matrix, light + dark,
+  desktop + mobile). §18.8 gate: 9.3/10.

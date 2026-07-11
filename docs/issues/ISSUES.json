@@ -130,25 +130,32 @@
     {
       "id": "MON-005",
       "title": "Expense tile -> global page; no per-property summary card / drill-down",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-03",
       "area": "properties",
       "plain": {
-        "issue": "Clicking 'N expenses tracked' jumps to the full expenses page instead of showing this property's expenses.",
-        "fix": "(planned) Show a small summary card of this property's expenses, with a link to drill into the full page if needed.",
-        "check": "(after fix) Clicking the expenses tile opens a summary of that property's expenses; a link takes you to the full page."
+        "issue": "On a property, 'N expenses tracked' jumped to the global expenses page instead of showing that property's own expenses.",
+        "fix": "Added a dedicated Expenses card on the property that lists each expense (with an Actual/Estimate tag) and its annual total, read from the one canonical cashflow engine — the header total and every row come from the same source so they always agree.",
+        "check": "Open a property: its rates, insurance, strata and maintenance now appear on the property with a total that matches the rest of the app; 'View all in Spending' still links to the full page."
       },
       "rootCause": [
         "app/dashboard/properties/[id]/page.tsx:714"
       ],
-      "semanticKeys": [],
-      "downstreamConsumers": [
-        "app/dashboard/properties/[id]/page.tsx"
+      "semanticKeys": [
+        "engine.propertyCashflow.computePropertyCashflow",
+        "number.propertyCashflow"
       ],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx",
+        "components/properties/PropertyExpensesCard.tsx",
+        "lib/calculations/propertyCashflow.ts"
+      ],
+      "fixPRs": [
+        1358
+      ],
+      "test": "tests/calculations/propertyExpenseLines.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-4",
       "notes": "New in-app section-level composition -> Stitch-first (§18.2.1)."
     },
@@ -208,26 +215,33 @@
     {
       "id": "MON-008",
       "title": "Expense initial-entry inconsistent (only due-dates on the property edit form)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-03",
       "area": "properties",
       "plain": {
-        "issue": "There's no clear place to enter a property's initial expense amounts — the property edit form only takes renewal due-dates, and 'Add Expense' is hidden on the old list page.",
-        "fix": "(planned) A consistent way to add initial expense amounts on the property, following the same rule: your typed value first, your reconciled actuals when available.",
-        "check": "(after fix) You can add/see a property's expense amounts in the property view, and reconciled actuals override them automatically."
+        "issue": "There was no clear place to enter a property's expense amounts — the edit form only took renewal due-dates and 'Add Expense' was hidden on the old list page.",
+        "fix": "The Expenses card has an 'Add expense' button (and a form-led empty state) that opens the normal expense form pre-scoped to the property; edit and delete are on each row. Same rule as MON-002: your typed amount first, your reconciled actuals when matched.",
+        "check": "On a property with no expenses you see 'Add your first expense'; adding one shows it immediately, and once your bank transactions reconcile the amount flips from Estimate to Actual automatically."
       },
       "rootCause": [
         "app/dashboard/properties/page.tsx:215",
         "app/dashboard/properties/page.tsx:1602"
       ],
-      "semanticKeys": [],
-      "downstreamConsumers": [
-        "app/dashboard/properties/page.tsx"
+      "semanticKeys": [
+        "engine.propertyCashflow.computePropertyCashflow",
+        "number.propertyCashflow"
       ],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx",
+        "components/properties/PropertyExpensesCard.tsx",
+        "components/ExpenseDialog.tsx"
+      ],
+      "fixPRs": [
+        1358
+      ],
+      "test": "tests/dashboard/propertyExpensesCard.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9",
       "notes": "Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field exists at LoanFormDialog:531.)"
     },

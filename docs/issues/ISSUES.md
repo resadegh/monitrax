@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**27 total** · 24 open · 🔵 0 · 🟡 4 · 🟠 20 · 🟢 0 · ✅ 2
+**27 total** · 24 open · 🔵 0 · 🟡 2 · 🟠 22 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -11,10 +11,10 @@
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
 | MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
-| MON-005 | 🟡 DIAGNOSED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | — | n/a |
+| MON-005 | 🟠 FIXING | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | #1358 | ✅ |
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
 | MON-007 | ✅ CLOSED | 🟡 | no | -$100,912 vs -$46,897 don't add up | #1333 | n/a |
-| MON-008 | 🟡 DIAGNOSED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | — | n/a |
+| MON-008 | 🟠 FIXING | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | #1358 | ✅ |
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🟠 FIXING | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | #1353 | ✅ |
 | MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
@@ -113,17 +113,19 @@ Display-only (no computed number changed). Fixed in #1333 (merged + prod-verifie
 
 ### MON-005 — Expense tile -> global page; no per-property summary card / drill-down
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
 
-> **What was wrong:** Clicking 'N expenses tracked' jumps to the full expenses page instead of showing this property's expenses.
+> **What was wrong:** On a property, 'N expenses tracked' jumped to the global expenses page instead of showing that property's own expenses.
 >
-> **What changed:** (planned) Show a small summary card of this property's expenses, with a link to drill into the full page if needed.
+> **What changed:** Added a dedicated Expenses card on the property that lists each expense (with an Actual/Estimate tag) and its annual total, read from the one canonical cashflow engine — the header total and every row come from the same source so they always agree.
 >
-> **What you should see:** (after fix) Clicking the expenses tile opens a summary of that property's expenses; a link takes you to the full page.
+> **What you should see:** Open a property: its rates, insurance, strata and maintenance now appear on the property with a total that matches the rest of the app; 'View all in Spending' still links to the full page.
 
 - **Root cause:** `app/dashboard/properties/[id]/page.tsx:714`
-- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `components/properties/PropertyExpensesCard.tsx`, `lib/calculations/propertyCashflow.ts`
+- **Fix PR(s):** #1358
+- **Holistic test (§19.4):** `tests/calculations/propertyExpenseLines.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-4`
 
 New in-app section-level composition -> Stitch-first (§18.2.1).
@@ -165,17 +167,19 @@ Same hero tile before/after reassigning rentals; reconciles once the hidden loan
 
 ### MON-008 — Expense initial-entry inconsistent (only due-dates on the property edit form)
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
 
-> **What was wrong:** There's no clear place to enter a property's initial expense amounts — the property edit form only takes renewal due-dates, and 'Add Expense' is hidden on the old list page.
+> **What was wrong:** There was no clear place to enter a property's expense amounts — the edit form only took renewal due-dates and 'Add Expense' was hidden on the old list page.
 >
-> **What changed:** (planned) A consistent way to add initial expense amounts on the property, following the same rule: your typed value first, your reconciled actuals when available.
+> **What changed:** The Expenses card has an 'Add expense' button (and a form-led empty state) that opens the normal expense form pre-scoped to the property; edit and delete are on each row. Same rule as MON-002: your typed amount first, your reconciled actuals when matched.
 >
-> **What you should see:** (after fix) You can add/see a property's expense amounts in the property view, and reconciled actuals override them automatically.
+> **What you should see:** On a property with no expenses you see 'Add your first expense'; adding one shows it immediately, and once your bank transactions reconcile the amount flips from Estimate to Actual automatically.
 
 - **Root cause:** `app/dashboard/properties/page.tsx:215`, `app/dashboard/properties/page.tsx:1602`
-- **Downstream consumers (§19.4):** `app/dashboard/properties/page.tsx`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.propertyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `components/properties/PropertyExpensesCard.tsx`, `components/ExpenseDialog.tsx`
+- **Fix PR(s):** #1358
+- **Holistic test (§19.4):** `tests/dashboard/propertyExpensesCard.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9`
 
 Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field exists at LoanFormDialog:531.)
