@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**28 total** · 25 open · 🔵 0 · 🟡 2 · 🟠 23 · 🟢 0 · ✅ 2
+**33 total** · 30 open · 🔵 5 · 🟡 2 · 🟠 23 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -35,6 +35,11 @@
 | MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
 | MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
 | MON-028 | 🟠 FIXING | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
+| MON-029 | 🔵 OPEN | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | — | — |
+| MON-030 | 🔵 OPEN | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | — | — |
+| MON-031 | 🔵 OPEN | 🟡 | yes | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | — | — |
+| MON-032 | 🔵 OPEN | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | — | n/a |
+| MON-033 | 🔵 OPEN | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | — | n/a |
 
 ---
 
@@ -559,4 +564,59 @@ VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md`
 
 Found via real-data Claude-Chrome verification 2026-07-11. This is the residual root cause behind MON-002 (per-property cashflow same everywhere) still failing on real data: the engine + list + Home were correct (actuals-first); only the detail route dropped linkedTransactions, making the detail page declared-only. Reverse of the initial hypothesis (detail was the declared outlier, not the actuals one).
+
+### MON-029 — Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+
+> **What was wrong:** The app shows three different savings rates at once — My Guide says 75.4%, the Home page says −30.5%, and a Home insight says 0.0%. They cannot all be right.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/verification/runs/VR-001.md`
+
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+
+### MON-030 — Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+
+> **What was wrong:** Your financial health score reads 50 on Home, 46 on My Guide and 70 on My Safety Net — three scores for one health.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/verification/runs/VR-001.md`
+
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+
+### MON-031 — Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+
+> **What was wrong:** The Balances page and the Safety Net page disagree by $2,496 on how much liquid savings you have.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/verification/runs/VR-001.md`
+
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+
+### MON-032 — Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
+
+> **What was wrong:** On a property with a $228,000 loan, the activity list shows the repayment as $0 — the row reads the unset manual field instead of the real loan cost the cashflow already uses.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `docs/verification/runs/VR-001.md`
+
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+
+### MON-033 — Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
+
+> **What was wrong:** Your own home is shown with a "rental yield" on the dashboard and flagged "Low Yield" by My Guide — a primary residence has no rental yield.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `docs/verification/runs/VR-001.md`
+
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
 

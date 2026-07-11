@@ -39,3 +39,21 @@
 ### PR
 - PR: https://github.com/resadegh/monitrax/pull/1358 (draft)
 - Status: Open — MON-005/008 at FIXING, verify on live data before VERIFIED.
+
+---
+
+## Session continuation: the Verification Machine (Part 23) + VR-001 + MON-028
+
+### VR-001 — first real-data verification run (Claude-in-Chrome relay)
+- Reza ran the verification brief on his live account. **Confirmed fixed:** MON-011 (portfolio equity ties out, negative equity honest), MON-020 (tax engines agree, $42,721 both), MON-022(ii) (no fake gain pill), MON-002 tax-vs-cash basis, MON-019 sentinel gone.
+- **FAILs found:** detail-page cashflow/yield drift on every property (→ MON-028, fixed same-day PR #1359); savings rate ×3 producers (→ MON-029); health score ×3 (→ MON-030); liquid savings $2,496 gap (→ MON-031); "-$0" repayment row (→ MON-032); yield on owner-occupied Home tile + CFO (→ MON-033); MON-017/MON-019 residuals re-opened (safety subscore full marks on negative cashflow; refinance offered at 104% LVR); one-offs-as-monthly reconfirmed (MON-023/025 class).
+- Full record: `docs/verification/runs/VR-001.md`; snapshot: `docs/verification/baselines/BASELINE.md` (known-broken annotated).
+
+### MON-028 — detail page declared-only (root-caused, fixed, PR #1359)
+- `/api/properties/[id]` dropped `linkedTransactions` from its JSON → detail page fed the canonical engine `transactions: undefined` → declared fallback (+$34K optimistic on Broadbeach). Fix restores the one field (remove-the-culprit, not a wrapper). Tests: `tests/api/propertyDetailActuals.test.ts` (source-lock + 3-surface input-parity guard). §20.4: 10/10.
+
+### Verification Machine codified
+- **CLAUDE.md Part 23** (v3.4): four rings (engine fixtures / wiring-SSOT / Golden-Household end-to-end / real-data), REMOVE-THE-CULPRIT rule (Reza directive, verbatim), the Ratchet (every Ring-3 escape adds a test at the lowest ring that could have caught it), VERIFIED-requires-Ring-3.
+- **`docs/verification/VERIFICATION_PLAYBOOK.md`** — canonical manual: the Chrome relay protocol, the verbatim run brief (Parts A–F, JSON snapshot), baseline/run management, the fix loop, Ring-2 + self-audit roadmap.
+- Registry: MON-029..033 registered (OPEN). Workstream added to `01_ACTIVE_WORKSTREAMS.md`.
+- In flight: two root-cause investigations (cross-surface splits; golden-test/self-audit infra patterns).

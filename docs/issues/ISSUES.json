@@ -914,6 +914,101 @@
       "test": "tests/api/propertyDetailActuals.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md",
       "notes": "Found via real-data Claude-Chrome verification 2026-07-11. This is the residual root cause behind MON-002 (per-property cashflow same everywhere) still failing on real data: the engine + list + Home were correct (actuals-first); only the detail route dropped linkedTransactions, making the detail page declared-only. Reverse of the initial hypothesis (detail was the declared outlier, not the actuals one)."
+    },
+    {
+      "id": "MON-029",
+      "title": "Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight)",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-11",
+      "area": "cross-surface",
+      "plain": {
+        "issue": "The app shows three different savings rates at once — My Guide says 75.4%, the Home page says −30.5%, and a Home insight says 0.0%. They cannot all be right."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/verification/runs/VR-001.md",
+      "notes": "Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top."
+    },
+    {
+      "id": "MON-030",
+      "title": "Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100)",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-11",
+      "area": "cross-surface",
+      "plain": {
+        "issue": "Your financial health score reads 50 on Home, 46 on My Guide and 70 on My Safety Net — three scores for one health."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/verification/runs/VR-001.md",
+      "notes": "Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top."
+    },
+    {
+      "id": "MON-031",
+      "title": "Liquid savings differs: Balances $301,808 vs Safety Net \"Liquid savings\" $304,304 ($2,496 gap)",
+      "status": "OPEN",
+      "severity": "medium",
+      "changesNumbers": true,
+      "opened": "2026-07-11",
+      "area": "cross-surface",
+      "plain": {
+        "issue": "The Balances page and the Safety Net page disagree by $2,496 on how much liquid savings you have."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/verification/runs/VR-001.md",
+      "notes": "Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top."
+    },
+    {
+      "id": "MON-032",
+      "title": "Property detail Recent-activity shows loan repayment \"-$0\" for a real loan (row reads raw minRepayment, not the engine-resolved cost)",
+      "status": "OPEN",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-11",
+      "area": "cross-surface",
+      "plain": {
+        "issue": "On a property with a $228,000 loan, the activity list shows the repayment as $0 — the row reads the unset manual field instead of the real loan cost the cashflow already uses."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/verification/runs/VR-001.md",
+      "notes": "Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top."
+    },
+    {
+      "id": "MON-033",
+      "title": "Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it)",
+      "status": "OPEN",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-11",
+      "area": "cross-surface",
+      "plain": {
+        "issue": "Your own home is shown with a \"rental yield\" on the dashboard and flagged \"Low Yield\" by My Guide — a primary residence has no rental yield."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/verification/runs/VR-001.md",
+      "notes": "Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top."
     }
   ]
 }

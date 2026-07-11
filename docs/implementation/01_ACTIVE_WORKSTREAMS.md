@@ -1303,3 +1303,27 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 
 ---
 
+
+---
+
+## 🟡 Verification Machine — four-ring defense to zero-fail (Part 23)
+
+- **Status:** Active
+- **Started:** 2026-07-11
+- **Owner:** Claude + Reza (Ring-3 relay)
+- **Last touched:** 2026-07-11
+- **Why this matters:** VR-001 (first real-data verification) proved plumbing bugs escape every existing gate — the engine was right, the graph asserted convergence, and the detail page still showed +$34K wrong (MON-028). Monitrax's credibility = numbers being right EVERYWHERE; this workstream makes that machine-checked instead of hoped.
+- **Canonical docs:** `CLAUDE.md` Part 23 (law) · `docs/verification/VERIFICATION_PLAYBOOK.md` (manual) · `docs/verification/runs/` + `baselines/`
+
+Phases:
+- [x] Playbook + CLAUDE.md Part 23 + VR-001 recorded + baseline seeded (2026-07-11)
+- [x] MON-028 root-caused + fixed (PR #1359) — remove-the-culprit model case
+- [ ] Root-cause MON-029/030/031/033 (cross-surface splits) — investigations running; fixes = delete duplicate producers
+- [ ] MON-017 + MON-019 residuals re-opened from real data (safety subscore, refinance guard)
+- [ ] Ring 2 Tier 1 — Golden Household route-level tests (`tests/golden/`): mocked-Prisma route invocation, exact JSON shape + input-parity per semanticKey
+- [ ] Self-audit endpoint `GET /api/verify/invariants` (server-side Part-E invariants on the user's own data) + minimal admin surface
+- [ ] Ring 2 Tier 2/3 — CI Postgres + Playwright UI-tier (needs GH Actions service container decision)
+- [ ] VR-002 on the post-fix preview → promote verified issues, accept new baseline
+
+- **Risk:** medium — fixes delete producers (behaviour-visible); every one needs its Ratchet test.
+- **Blocking:** none. Reza granted full authority 2026-07-11 ("you take charge and have all my authority to act").
