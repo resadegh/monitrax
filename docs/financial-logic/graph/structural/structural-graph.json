@@ -427,6 +427,7 @@
     "app/api/unified-transactions/renormalize/route.ts",
     "app/api/unified-transactions/review-queue/route.ts",
     "app/api/unified-transactions/route.ts",
+    "app/api/verify/invariants/route.ts",
     "app/api/wealth-graph/route.ts",
     "app/auth/action/page.tsx",
     "app/dashboard/accounts/page.tsx",
