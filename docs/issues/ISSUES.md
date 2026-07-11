@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**27 total** · 24 open · 🔵 0 · 🟡 5 · 🟠 19 · 🟢 0 · ✅ 2
+**27 total** · 24 open · 🔵 0 · 🟡 4 · 🟠 20 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -28,7 +28,7 @@
 | MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
 | MON-020 | 🟠 FIXING | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | #1349 | ✅ |
 | MON-021 | 🟠 FIXING | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | #1354 | ✅ |
-| MON-022 | 🟡 DIAGNOSED | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | — | ✅ |
+| MON-022 | 🟠 FIXING | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | #1357 | ✅ |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
@@ -426,7 +426,7 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 
 ### MON-022 — Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: data-quality · opened 2026-07-07
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: data-quality · opened 2026-07-07
 
 > **What was wrong:** Two property surfaces showed meaningless numbers: your PRIMARY RESIDENCE displayed a rental 'Yield 0.00%' (a home has no rental yield), and a property with an unknown/$0 purchase price showed a fabricated green '+0.0%' gain on its tile. (Separately, some totals are inflated by data-entry issues — a battery booked $11,385 EVERY month, and a company's ATO tax showing up in overall spending — see the diagnosis note; those are product/validation gaps, not a single code bug.)
 >
@@ -436,6 +436,7 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 
 - **Root cause:** `app/dashboard/properties/[id]/page.tsx:454`, `components/properties/PropertyTile.tsx:341`
 - **Downstream consumers (§19.4):** `all cashflow/expense surfaces`
+- **Fix PR(s):** #1357
 - **Holistic test (§19.4):** `tests/dashboard/propertyDisplayGuards.test.ts`
 - **Detail:** `chat audit 2026-07-07 #12`
 
