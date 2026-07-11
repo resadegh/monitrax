@@ -63,7 +63,7 @@ export const GET = withPermission('report.read', async (_request, auth) => {
 
     // ── I1: Assets − Liabilities === Net worth (the base accounting identity) ──
     invariants.push(
-      check('I1', 'Assets − Liabilities = Net worth', nw.assets.total - nw.liabilities.total, nw.netWorth, CENTS),
+      check('I1', 'Assets − Liabilities = Net worth', nw.assets.total - nw.liabilities.total, nw.netWorth, CENTS), /* @financial-math-allowed: NeoAudit R3-self invariant — this arithmetic IS the identity under audit, asserted against the canonical netWorth field; not a producer */
     );
 
     // ── I2: quickMetrics mirrors of the same identity agree with netWorth ──
