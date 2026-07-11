@@ -8,6 +8,24 @@
 
 ---
 
+## 0. What NeoAudit is — and how Reza uses it (operator guide)
+
+**It is three things in layers; your personal surface is deliberately tiny.**
+
+| Layer | What it is | Who operates it | What you do |
+|---|---|---|---|
+| **System** (most of it) | rules + gates baked into CI, the Vercel build and CLAUDE.md — rings 0–2, parity matrix, scenario lab, Stryker, linters | itself, on every PR | nothing — green/red on the PR. Red blocks merge; Claude fixes it |
+| **Platform** | the in-app NeoAudit admin panel: one button → invariants + Release Scorecard computed on YOUR real data | you, one click | open it after money merges / before a release. **Green scorecard = safe to publish** — that IS the publish decision |
+| **Tool** | the Chrome brief library (Eyes & Ears) | you, by relay | paste the brief Claude hands you, let Chrome run, paste the report back (~10–15 min, scheduled; shrinks over time as checks are promoted into CI) |
+
+**Your complete usage manual — four interactions:**
+1. **Merge PRs when green.** Nothing else at the system layer needs you.
+2. **Open the NeoAudit panel** after money-touching merges and before any release → read PASS/FAIL + the scorecard.
+3. **Run a Chrome brief when handed one**; paste the output back. Claude compares, raises MON tickets, ratchets tests.
+4. **Confirm fixes on your numbers** when asked — your "yes" moves an issue to VERIFIED. Browse `docs/issues/ISSUES.md` anytime as the plain-English ledger of everything found / fixed / pending.
+
+You never memorise rules: CLAUDE.md Part 23 binds every Claude session to this machine automatically, and the playbook lets any future session run it cold.
+
 ## 1. Architecture — rings, nodes, and the ONE handshake
 
 ### 1.1 The rings (from CLAUDE.md Part 23, unchanged)
