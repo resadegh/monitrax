@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**33 total** · 30 open · 🔵 0 · 🟡 3 · 🟠 27 · 🟢 0 · ✅ 2
+**34 total** · 31 open · 🔵 0 · 🟡 3 · 🟠 28 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -40,6 +40,7 @@
 | MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | #1368 | ✅ |
 | MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
+| MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
 
 ---
 
@@ -651,4 +652,22 @@ Found by real-data verification run VR-001 (2026-07-11). Root-cause investigatio
 - **Detail:** `docs/verification/runs/VR-001.md`
 
 Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+
+### MON-034 — Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals)
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: reports · opened 2026-07-12
+
+> **What was wrong:** In your reports, anything entered at a YEARLY frequency (e.g. a $2,400/year insurance premium) was counted as if it were $2,400 per MONTH — so it showed as $28,800/year. On the golden test household this inflated total annual expenses from $20,400 to $46,800; on the Tax report it would over-state deductions (and under-state taxable income) for any yearly deductible expense.
+>
+> **What changed:** The report builder had its own copy of the frequency-to-annual conversion that had no case for the ANNUAL setting, so it fell through to multiplying by 12. Replaced it with the app’s single canonical converter (toAnnual, which handles ANNUAL correctly) and deleted the buggy copy.
+>
+> **What you should see:** Open the Income & Expense report and the Tax report: a yearly expense now shows its real yearly amount (e.g. $2,400, not $28,800), total annual expenses tie to your dashboard, and Tax deductions reflect the true yearly figure.
+
+- **Root cause:** `lib/reports/contextBuilder.ts:469`, `lib/reports/contextBuilder.ts:493`
+- **Downstream consumers (§19.4):** `lib/reports/generators/incomeExpense.ts`, `lib/reports/generators/taxTime.ts`
+- **Fix PR(s):** #1376
+- **Holistic test (§19.4):** `tests/golden/ring2.reportReconciliation.test.ts`
+- **Detail:** `docs/changelog/CHANGELOG_2026_07_12.md`
+
+Found by the NeoAudit §3 report-reconciliation lock on its FIRST run (§8 step-5): the income-expense report annual expenses ($46,800) did not tie to the canonical master annual expenses ($20,400) on the Golden Household. Root cause: a DUPLICATE frequency converter (calculateAnnualAmount in contextBuilder.ts) had cases for ANNUALLY/YEARLY but NOT the real Prisma enum value ANNUAL, so ANNUAL entries fell to default:*12. §12.2.1 remediation: removed the duplicate, use canonical toAnnual (removes the culprit, not a patch — Part 23). Blast radius: BOTH the income-expense AND tax-time reports (deductibleExpenses -> totalDeductions -> netTaxableIncome). semanticKeys empty because report annual figures are not yet modelled in the Neomatrix — a §21.5/§21.2 backfill gap (model report totals so a future VERIFIED can carry a resolving key). Stays FIXING pending Reza live-data verification.
 

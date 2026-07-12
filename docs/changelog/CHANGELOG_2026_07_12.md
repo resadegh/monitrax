@@ -375,3 +375,56 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (fixtures the unfixtured EF rule as given→then; reuses refinance rather than duplicating; no gold-plating).
 - Logic 10/10 (each row hand-verified against actionEngine.ts source §19.2; empty-db isolates the rule; monotonic guard; 382/382 clean).
 - **Coverage boundary (honest — §22.2.4):** verifies the EF rule's presence/severity/priority/first-ness AS THE ENGINE COMPUTES them on controlled score inputs with an empty db; does NOT verify the score components themselves (MON-030), the rendered CFO page (R2-vis), real data (R3), or the not-yet-located negative-cashflow rule. Local tsc via CI + Vercel build.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit §8 step-5 (slice 2): report reconciliation locks → caught & fixed MON-034
+
+### Change: report reconciliation locks + FIX for MON-034 (ANNUAL frequency 12× over-count)
+
+- **Type**: FINANCIAL FIX (number-changing) + test infrastructure (NeoAudit §3, §8 step-5 slice 2)
+- **What was wrong (plain English)**: In reports, anything entered at a YEARLY
+  frequency (e.g. a $2,400/yr insurance premium) was counted as if it were
+  $2,400 per MONTH → shown as $28,800/yr. On the golden household this inflated
+  total annual expenses from $20,400 to $46,800; on the Tax report it would
+  over-state deductions (and understate taxable income) for any yearly deductible
+  expense.
+- **What changed (plain English)**: The report builder had its OWN copy of the
+  frequency→annual conversion with no `ANNUAL` case (only `ANNUALLY`/`YEARLY`), so
+  the real Prisma enum value `ANNUAL` fell to `default: ×12`. Replaced it with the
+  app's single canonical converter (`toAnnual`) and DELETED the buggy copy
+  (§12.2.1 remove-the-culprit — not a patch on top).
+- **What you'll see (plain English)**: Income & Expense report and Tax report — a
+  yearly expense now shows its real yearly amount ($2,400, not $28,800), total
+  annual expenses tie to your dashboard, Tax deductions reflect the true figure.
+
+### How it was found
+- The NeoAudit §3 report-reconciliation lock (`tests/golden/ring2.reportReconciliation.test.ts`),
+  on its FIRST run, failed the cross-source assertion (report 46,800 ≠ canonical
+  master 20,400). Root-caused (§19.2) to the missing `ANNUAL` enum case, not
+  guessed. This is the reconciliation layer working as designed.
+
+### §19 evidence
+- **Input/units**: `Expense.frequency` = Prisma enum (WEEKLY/FORTNIGHTLY/MONTHLY/QUARTERLY/ANNUAL/HALF_YEARLY); `amount` = per-period dollars.
+- **Law**: annual = per-period × periods/yr; ANNUAL → ×1. Canonical `toAnnual` (lib/utils/frequencies.ts).
+- **Worked example**: insurance $2,400 ANNUAL → $2,400/yr (was $28,800 = 2,400×12). Golden total expenses 20,400 (was 46,800).
+- **Downstream sweep (§19.4)**: only 2 callers (`fetchIncomeData`/`fetchExpenseData`); consumers = `incomeExpense.ts` + `taxTime.ts` (deductibleExpenses→totalDeductions→netTaxableIncome). One-source fix corrects both. Locked by the reconciliation test (income-expense end-to-end) + a focused tax-time deduction test w/ negative control.
+
+### Files
+- `lib/reports/contextBuilder.ts` — use canonical `toAnnual`; deleted buggy `calculateAnnualAmount` (dead code, §12.1).
+- `tests/golden/ring2.reportReconciliation.test.ts` (new) — internal + cross-source locks + MON-034 root-cause lock + tax-time downstream lock.
+- `tests/golden/goldenHousehold.ts` — harness grew: `.count()` support + `depreciationSchedule: []`.
+- `docs/issues/ISSUES.json` / `ISSUES.md` — **MON-034** (FIXING, changesNumbers, downstream sweep, plain trio, holistic test linked).
+- `docs/financial-logic/graph/*` — anchor `buildReportContext` 32→34 (§21.2.1 zero-drift after the contextBuilder edit) + regenerated GENERATED_CORE.md.
+
+### Verified locally
+- `ring2.reportReconciliation.test.ts` — 8/8 pass.
+- `tests/reports + golden + issues + verification + cfo` — **406/406 pass** (28 files; no regression).
+- `npm run issues:check` — 34 issues valid (MON-034 valid at FIXING).
+- `npm run neomatrix:check` — passes (anchor fixed). `lint:financial-surfaces` — passes.
+
+### Gate (§20.6) — FINANCIAL build, recorded 10/10 (§20.4)
+- Document 10/10 (doc: NEOAUDIT §8 step-5 + §3; on-plan; §12.2.1 SSOT; §21.2.1 anchor fixed same-PR; §19.5 registry).
+- Requirements 10/10 (report reconciliation as §3 asks; the fix removes the culprit per Part 23, not a patch; no gold-plating).
+- Logic 10/10 (root cause verified in source §19.2; canonical toAnnual only changes ANNUAL — no regression on other frequencies; downstream sweep locked; 406/406 clean).
+- **Coverage boundary (honest — §22.2.4):** verifies the income/expense report's line totals reconcile internally AND tie to canonical master annual figures on golden data (declared basis), and the tax-time report's deduction inherits the fix (focused test + negative control). Does NOT verify the OTHER report generators (property/loan/investment — each a future lock), the rendered/exported PDF/XLSX (R2-vis), or real data (R3). **MON-034 stays FIXING — Reza verifies on live data.** semanticKeys empty: report annual figures aren't modelled in the Neomatrix yet (§21.5/§21.2 backfill gap noted in MON-034).
