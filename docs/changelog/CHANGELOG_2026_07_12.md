@@ -260,3 +260,33 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (locks MON-013/014 convergence; minimal include-support, empty-relations chosen over a risky FK-resolver, rationale documented).
 - Logic 10/10 (empty-relations + fail-loud, no FK magic; netWorth computed from top-level arrays so the assertion is correct; 87/87 regression-clean).
 - **Coverage boundary (honest):** verifies the route's HEADLINE net-worth/assets/liabilities agree with master; does NOT verify the SnapshotV2 GRDCS `_links`/`_meta` layer (nested includes served empty). Local tsc via CI + Vercel build.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit §8 step-3: cashflow Ring-2 route
+
+### Change: `GET /api/cashflow` Ring-2 route test (lite exact + full-mode invariants)
+
+- **Type**: Test infrastructure (NeoAudit Ring 2, §8 step-3 backlog) — no production code changed
+- **Why (§8, a-order)**: completes the step-3 route backlog (after portfolio-snapshot).
+  The /cashflow page is the MON-020/021/027/029 surface.
+- **Solution**:
+  - `tests/golden/ring2.cashflowRoute.test.ts` (new) — the ACTUAL route at two
+    honest rigor levels: LITE mode summary asserted EXACTLY (hand-computed);
+    FULL mode runs the real CFE→COE pipeline end-to-end and asserts it EXECUTES
+    on golden data (crash/plumbing class) + the net = income − expenses identity
+    + all-finite (no NaN projection leak). Does NOT assert exact projection
+    values — the day-by-day forecast is not hand-computable (§19.2).
+  - `tests/golden/goldenHousehold.ts` — added `spendingProfile: []` (full-mode
+    COE reads it via findUnique → null → declared branch) + `EXPECTED.cashflowLite`
+    with the derivations.
+
+### Verified locally
+- `ring2.cashflowRoute.test.ts` — 4/4 pass
+- Full `tests/golden` + `tests/verification` — **91/91 pass** (13 files; no regression).
+
+### Gate (§20.6)
+- Document 10/10 (NEOAUDIT §8 step-3, on-plan, no deviation).
+- Requirements 10/10 (completes step-3 route backlog; lite exact + full invariants, no gold-plating).
+- Logic 10/10 (lite values hand-computed exact; full mode asserts execute+identity+finite; 91/91 regression-clean).
+- **Coverage boundary (honest):** LITE summary verified EXACTLY; FULL mode verified as executes end-to-end + accounting identity + all-finite, NOT exact day-by-day projection values. Local tsc via CI + Vercel build.

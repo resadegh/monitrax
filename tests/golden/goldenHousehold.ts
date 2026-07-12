@@ -102,6 +102,7 @@ export const GOLDEN_DB = {
   unifiedTransaction: [] as never[], // declared basis — no actuals
   recurringPayment: [] as never[], // zero tracked bills — MON-017: scores 0, not full marks
   investmentTransaction: [] as never[], // include-shaped routes read this; none for the golden book
+  spendingProfile: [] as never[], // cashflow full-mode reads via findUnique(userId) → null → declared-basis branch
 };
 
 /**
@@ -209,4 +210,15 @@ export const EXPECTED = {
   //   noNewDebt = 15 (known placeholder) · cashflow = 15 (5,300 > 0)
   //   → total 70, grade BUILDING (60–79)
   safetyNet: { total: 70, grade: 'BUILDING', monthsCoveredRounded: 29.4, monthlySurplus: 5_300, weeksToTarget: 0 },
+  // Cashflow route LITE mode (crude fallback: raw toMonthly sums, no dedup/tax).
+  //   totalBalance    = 8,000 + 42,000                             = 50,000
+  //   monthlyIncome   = 7,800 (salary) + 2,600 (rent 600/wk ×52/12) = 10,400
+  //   monthlyExpenses = 1,200 + 200 (2,400/yr) + 300               = 1,700
+  //   netCashflow30   = 10,400 − 1,700                             = 8,700
+  //   withdrawableCash= max(0, 50,000 − 1,700×3)                   = 44,900
+  //   breakEvenDay    = ceil(1,700 / (10,400/30)) = ceil(4.90)     = 5
+  cashflowLite: {
+    totalIncome30: 10_400, totalExpenses30: 1_700, netCashflow30: 8_700,
+    monthlyBurnRate: 1_700, threeMonthBurnRate: 5_100, withdrawableCash: 44_900, breakEvenDay: 5,
+  },
 };
