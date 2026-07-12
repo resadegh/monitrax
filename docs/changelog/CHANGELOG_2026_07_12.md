@@ -152,3 +152,39 @@ real-data confirmation is Reza selecting his real account in the panel.
 ### Build Status
 - [x] `tests/balances/hiddenWealthLensCopy.test.ts` — 2/2 pass locally
 - [x] No financial number changed (copy only) — §19.4 propagation test N/A
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit P-A: Release Scorecard
+
+### Change: NeoAudit Release Scorecard in the admin panel (NEOAUDIT.md §6, publish gate)
+
+- **Type**: Feature (NeoAudit platform — phase P-A of the completion workstream)
+- **Why**: The panel showed only "invariants ALL PASS" — necessary but not the
+  publish verdict. The Scorecard aggregates the publish-readiness signals the
+  app can self-verify and honestly names the ones it can't.
+- **Solution**:
+  - `lib/verification/scorecard.ts` (new) — pure `summarizeScorecard(issues)`:
+    counts number-changing issues NOT yet VERIFIED/CLOSED (each = an unverified
+    user number = a publish blocker, §19.5), plus total-open context, plus the
+    named external checks (Rings 0–2 on CI, Stryker) it does NOT claim in-app
+    (§22.2.4 — gate output, never a bare "safe to publish").
+  - `app/api/admin/neoaudit/scorecard/route.ts` (new) — admin-gated (`audit:read`,
+    same posture as the Neomatrix graph route); imports `ISSUES.json` (bundled at
+    build, resolves on serverless — same pattern as `/api/admin/neomatrix/graph`);
+    returns the summary.
+  - `NeoAuditPanel.tsx` — a "Release scorecard — publish gate" band: this
+    account's invariants (PASS/FAIL) + open number-issues (ZERO / N, listed),
+    green only when BOTH in-app signals are clean, with the "also verify on CI"
+    footnote. Never a bare "safe to publish".
+
+### Files
+- `lib/verification/scorecard.ts`, `tests/verification/scorecard.test.ts` (4/4 local)
+- `app/api/admin/neoaudit/scorecard/route.ts`
+- `components/admin/neoaudit/NeoAuditPanel.tsx`
+- `docs/financial-logic/graph/structural/structural-graph.json` — 2 new files registered
+
+### Build Status
+- [x] `tests/verification/scorecard.test.ts` 4/4 · full golden+verification 84/84 local
+- [x] `neomatrix:check` census 0 uncovered · `lint:financial-surfaces` 0 new · plan-freshness + issues gates green
+- [x] No financial number changed (a new READ/aggregation surface)
