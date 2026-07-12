@@ -223,3 +223,40 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Document 10/10 (CLAUDE.md Part 20 self-review family + the pr-prep-checklist skill — §20.6 extends §20.4/§20.5 without contradiction; skill references, never duplicates).
 - Requirements 10/10 (adds the tri-axis 10/10 gate + consolidates Neomatrix/SSOT/doc-conformance + names CLAUDE.md as the single canonical home + wires the skill for the "always" enforcement Reza asked for).
 - Logic 10/10 (internally consistent, no SSOT violation — one canonical home; binds even under the §20.5 autonomy grant). Coverage boundary: verified by re-reading that the rule integrates without contradiction; NOT verified by any automated test (governance prose has none) — its real proof is future PRs carrying the §20.6 line.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit §8 step-3: portfolio-snapshot Ring-2 route + harness include support
+
+### Change: golden-harness `include` support + `GET /api/portfolio/snapshot` Ring-2 route test (MON-013/014 convergence lock)
+
+- **Type**: Test infrastructure (NeoAudit Ring 2, §8 step-3 backlog) — no production code changed
+- **Why (§8, a-order)**: the step-3 backlog's portfolio-snapshot route uses deep
+  nested Prisma `include` queries; the golden harness was built for the master
+  service's flat `select` shape, so the route 500'd at `route.ts:782`
+  (`property.depreciationSchedules.length` on undefined). The harness FAILED
+  LOUDLY (as designed) rather than fake a green — surfacing that it needed
+  include support.
+- **Solution**:
+  - `tests/golden/goldenHousehold.ts` — `createGoldenDb` now resolves `include`
+    via an explicit `INCLUDE_KINDS` map: each relation served EMPTY (`[]`/`null`)
+    per its declared kind, THROWS on any unmapped relation (same fail-loud
+    discipline as the model-level Proxy). Deliberately NO FK-resolver — a mock
+    mini-ORM could itself be buggy and produce a FALSE green, the worst outcome
+    for an audit tool. Added `investmentTransaction: []` to the golden book.
+  - `tests/golden/ring2.portfolioSnapshotRoute.test.ts` (new) — the ACTUAL
+    portfolio-snapshot route on the golden household, asserting netWorth 472,000
+    / totalAssets 992,000 / totalLiabilities 520,000 == the master manifest
+    (locks the MON-013/014 cross-surface convergence onto `calculateNetWorth`).
+
+### Verified locally
+- `ring2.portfolioSnapshotRoute.test.ts` — 3/3 pass
+- Full `tests/golden` + `tests/verification` — **87/87 pass** (12 files; the
+  `findMany` signature change is backward-compatible — no `include` arg → row
+  unchanged, so no existing Ring-2 test regressed).
+
+### Gate (§20.6)
+- Document 10/10 (NEOAUDIT §8 step-3 backlog — enabling harness infra + the named route test; no plan deviation).
+- Requirements 10/10 (locks MON-013/014 convergence; minimal include-support, empty-relations chosen over a risky FK-resolver, rationale documented).
+- Logic 10/10 (empty-relations + fail-loud, no FK magic; netWorth computed from top-level arrays so the assertion is correct; 87/87 regression-clean).
+- **Coverage boundary (honest):** verifies the route's HEADLINE net-worth/assets/liabilities agree with master; does NOT verify the SnapshotV2 GRDCS `_links`/`_meta` layer (nested includes served empty). Local tsc via CI + Vercel build.

@@ -101,7 +101,57 @@ export const GOLDEN_DB = {
   ],
   unifiedTransaction: [] as never[], // declared basis — no actuals
   recurringPayment: [] as never[], // zero tracked bills — MON-017: scores 0, not full marks
+  investmentTransaction: [] as never[], // include-shaped routes read this; none for the golden book
 };
+
+/**
+ * Declared kind of each Prisma `include` relation the Ring-2 routes touch:
+ * 'many' → resolves to `[]`, 'one' → resolves to `null`.
+ *
+ * DELIBERATELY EMPTY, NOT FK-resolved. The Ring-2 route tests assert the
+ * HEADLINE canonical figures (net worth, totals) which the routes compute from
+ * the TOP-LEVEL golden arrays via the canonical engines — never from these
+ * nested includes. Leaving the includes empty keeps the mock simple and
+ * verifiable (no hidden mini-ORM that could itself be buggy and produce a false
+ * green). The trade-off is explicit and honest: a Ring-2 test on this harness
+ * does NOT verify the GRDCS `_links`/`_meta` relational layer (that needs real
+ * FK-resolved fixtures — a later, separate harness capability).
+ *
+ * Any include key NOT declared here THROWS (same fail-loud discipline as the
+ * model-level Proxy) — so a route reading a new relation forces an explicit
+ * decision, never a silent guess.
+ */
+export const INCLUDE_KINDS: Record<string, 'many' | 'one'> = {
+  'property.loans': 'many', 'property.income': 'many', 'property.expenses': 'many', 'property.depreciationSchedules': 'many',
+  'loan.property': 'one', 'loan.offsetAccount': 'one', 'loan.expenses': 'many',
+  'account.linkedLoan': 'one',
+  'income.property': 'one', 'income.investmentAccount': 'one',
+  'expense.property': 'one', 'expense.loan': 'one', 'expense.investmentAccount': 'one', 'expense.asset': 'one',
+  'investmentAccount.holdings': 'many', 'investmentAccount.transactions': 'many', 'investmentAccount.incomes': 'many', 'investmentAccount.expenses': 'many',
+  'investmentHolding.investmentAccount': 'one', 'investmentHolding.transactions': 'many',
+  'investmentTransaction.investmentAccount': 'one', 'investmentTransaction.holding': 'one',
+  'asset.expenses': 'many', 'asset.valueHistory': 'many',
+};
+
+/**
+ * Attach the requested `include` relations to a row as empty `[]` / `null`
+ * (per INCLUDE_KINDS). Nested includes need no recursion — an empty parent
+ * relation has no children to attach.
+ */
+function applyInclude(model: string, row: Record<string, unknown>, include: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...row };
+  for (const [key, spec] of Object.entries(include)) {
+    if (!spec) continue;
+    const kind = INCLUDE_KINDS[`${model}.${key}`];
+    if (!kind) {
+      throw new Error(
+        `[Ring2 golden] unmapped include relation ${model}.${key} — declare it in INCLUDE_KINDS (goldenHousehold.ts) as 'many' or 'one'.`,
+      );
+    }
+    out[key] = kind === 'many' ? [] : null;
+  }
+  return out;
+}
 
 /**
  * A `@/lib/db`-shaped mock over the golden rows. A Proxy that THROWS on any
@@ -123,11 +173,15 @@ export function createGoldenDb() {
           );
         }
         const rows = models[model];
+        const withInc = (r: Record<string, unknown> | null, include?: Record<string, unknown>) =>
+          r && include ? applyInclude(model, r, include) : r;
         return {
-          findMany: async () => structuredClone(rows),
-          findUnique: async ({ where }: { where: { id?: string } }) =>
-            structuredClone(rows.find((r) => r.id === where?.id) ?? null),
-          findFirst: async () => structuredClone(rows[0] ?? null),
+          findMany: async (args?: { include?: Record<string, unknown> }) =>
+            structuredClone(rows).map((r) => withInc(r as Record<string, unknown>, args?.include)),
+          findUnique: async ({ where, include }: { where: { id?: string }; include?: Record<string, unknown> }) =>
+            withInc(structuredClone(rows.find((r) => r.id === where?.id) ?? null) as Record<string, unknown> | null, include),
+          findFirst: async ({ include }: { include?: Record<string, unknown> } = {}) =>
+            withInc(structuredClone(rows[0] ?? null) as Record<string, unknown> | null, include),
         };
       },
     },
