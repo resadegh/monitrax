@@ -290,3 +290,48 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (completes step-3 route backlog; lite exact + full invariants, no gold-plating).
 - Logic 10/10 (lite values hand-computed exact; full mode asserts execute+identity+finite; 91/91 regression-clean).
 - **Coverage boundary (honest):** LITE summary verified EXACTLY; FULL mode verified as executes end-to-end + accounting identity + all-finite, NOT exact day-by-day projection values. Local tsc via CI + Vercel build.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit §8 step-4: parity-matrix generator
+
+### Change: the §5 parity matrix — generated-from-graph R2 value-parity + coverage ratchet
+
+- **Type**: Test infrastructure (NeoAudit Ring 2, §8 step-4) — no production code changed
+- **Why (§8, a-order)**: step-4 on the documented plan; the parity matrix is the
+  generated cross-surface value check the §5 spec calls for.
+- **Solution**:
+  - `tests/golden/parityMatrix.ts` (new) — generator + resolver registry. Reads
+    `financial-graph.json` `rendered-at` edges, groups surfaces by semanticKey,
+    exposes `SURFACE_RESOLVERS` (faithful golden extractors) + `KNOWN_UNRESOLVED`
+    (tracked growth deferrals, each with a reason + plan item).
+  - `tests/golden/parityMatrix.test.ts` (new) — (1) COVERAGE RATCHET: every
+    `rendered-at` surface must be resolved OR tracked, else FAIL (the growth
+    mechanism); (2) VALUE PARITY: same-key surfaces with resolvers must produce
+    the same value on golden data (load-bearing group `propertyCashflow`: route
+    path vs master path independently = −$400, the MON-028 class); (3) MANIFEST
+    TIE: resolved values equal the §19.2 hand-computed truth; + negative controls
+    (orphan surface caught, value drift detected).
+- **Distinct from R1 (non-overlap §1.2)**: `neomatrix:check` A3b owns *structural*
+  convergence (same-key → same engine); the parity matrix owns *value* parity
+  (same number, equal value end-to-end on golden data). No duplication.
+
+### Coverage-growth gaps discovered + added to the plan (Reza directive 2026-07-12)
+- `netWorthTrend` surfaces need historical-snapshot golden fixtures (golden book
+  is single-point-in-time).
+- `ui.safetyNet.safetyScore` + `ui.balances.hiddenWealth` are engine-fed and
+  carry NO semanticKey → can't join key-based parity groups until number nodes
+  (with semanticKeys) are modelled (§21.2 Neomatrix backfill).
+- Both recorded in NEOAUDIT.md §8 step-4 "coverage-growth queue".
+
+### Verified locally
+- `parityMatrix.test.ts` — 11/11 pass; coverage readout printed:
+  `surfaces 8/18 resolved · 10 tracked-pending · 1 multi-surface parity group asserted: propertyCashflow`
+- Full `tests/golden` + `tests/verification` — **102/102 pass** (14 files; no regression).
+- `npm run neomatrix:check` — passes (graph unchanged).
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §8 step-4 + §5 spec; on-plan, no sequence deviation; A3b non-overlap confirmed; Neomatrix consulted for topology).
+- Requirements 10/10 (generated-from-graph parity + coverage ratchet exactly as §5 asks; no gold-plating).
+- Logic 10/10 (strict SSOT — reads the ONE graph; faithful independent paths for the load-bearing group; negative controls prove the harness fails; 102/102 regression-clean).
+- **Coverage boundary (honest — §22.2.4):** verifies value-parity + manifest-tie for the 8 RESOLVED surfaces (1 real multi-surface group); does NOT verify the 10 KNOWN_UNRESOLVED surfaces (each a printed, tracked growth item), the rendered PAGE pixels (R2-vis, deferred), or real user data (R3). Local tsc via CI + Vercel build.
