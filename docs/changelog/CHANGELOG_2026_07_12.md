@@ -428,3 +428,53 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (report reconciliation as §3 asks; the fix removes the culprit per Part 23, not a patch; no gold-plating).
 - Logic 10/10 (root cause verified in source §19.2; canonical toAnnual only changes ANNUAL — no regression on other frequencies; downstream sweep locked; 406/406 clean).
 - **Coverage boundary (honest — §22.2.4):** verifies the income/expense report's line totals reconcile internally AND tie to canonical master annual figures on golden data (declared basis), and the tax-time report's deduction inherits the fix (focused test + negative control). Does NOT verify the OTHER report generators (property/loan/investment — each a future lock), the rendered/exported PDF/XLSX (R2-vis), or real data (R3). **MON-034 stays FIXING — Reza verifies on live data.** semanticKeys empty: report annual figures aren't modelled in the Neomatrix yet (§21.5/§21.2 backfill gap noted in MON-034).
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit §8 step-5 (MON-030 stage 1): canonical buildHealthInput
+
+### Change: extract the ONE canonical `buildHealthInput` (§12.2.1 dedup) — PURE REFACTOR, no number change
+
+- **Type**: Refactor (SSOT dedup) — MON-030 stage 1 (prep for the number-changing stage 2)
+- **Why**: `buildHealthInput` was duplicated VERBATIM in `app/api/financial-health/route.ts:50`
+  AND `app/api/dashboard/insights/route.ts:699` — two copies of the health-engine
+  input builder feeding two surfaces (Home health tile + financial-health API).
+  §12.2.1: one datum/assembler = ONE source.
+- **Verification it's a pure refactor (§19.2, read both copies line-by-line)**: identical
+  output. The ONLY difference — financial-health's `totalEntities` also added
+  `investmentAccounts.length` (insights didn't) — feeds ONLY `consistencyScore`'s
+  `totalEntities > 0` gate, which is identical in every case (any user with holdings →
+  gate true; fully-empty → both yield 100). No divergence on any valuation, include,
+  reduction, or field mapping. `getNetMonthlyIncome` helper was also byte-identical.
+- **Solution**: new `lib/health/buildHealthInput.ts` (exported via the `@/lib/health`
+  barrel); both routes import it and their local copies (+ the duplicated
+  `getNetMonthlyIncome`) deleted. Dropped now-unused imports (`calculateTakeHomePay`,
+  the health type imports, a pre-existing unused `scoreToRiskBand` in insights).
+
+### Files
+- `lib/health/buildHealthInput.ts` (new) — canonical builder + `getNetMonthlyIncome`.
+- `lib/health/index.ts` — export the new module.
+- `app/api/financial-health/route.ts` — import canonical; delete local copy (−~211 lines).
+- `app/api/dashboard/insights/route.ts` — import canonical; delete local copy (−~156 lines).
+- `tests/golden/ring2.healthInput.test.ts` (new) — the dedup lock + regression baseline.
+- `docs/financial-logic/graph/*` — anchor `orchestrator.dashboardInsights.GET` 188→187 (§21.2.1 zero-drift after the route edit); `structural/coverage-allowlist.json` += buildHealthInput.ts (offline graphify unavailable in-session — self-prunes on next graphify run); regenerated GENERATED_CORE.md.
+
+### Discovered (future MON — NOT this scope)
+- `buildHealthInput` values investments at COST (units×averagePrice = 4,000 on golden)
+  not MARKET (7,000), and its net-worth scope EXCLUDES super + personal assets — a
+  SECOND net-worth basis distinct from canonical `calculateNetWorth`. Flagged in the
+  file header + NEOAUDIT §8 step-5 for a follow-up; deliberately preserved verbatim so
+  this extraction changes nothing.
+
+### Verified locally
+- `ring2.healthInput.test.ts` — 4/4 (builder assembles golden input: 854,000 assets /
+  334,000 net worth / 520,000 liabilities; `generateHealthReport`==`quickHealthCheck`
+  score **72**, locked as the pre-stage-2 baseline).
+- `tests/golden + verification + cfo + issues + reports` — **410/410 pass** (no regression).
+- `npm run neomatrix:check` — passes (anchor fixed, file allowlisted). `issues:check` — 34 valid. `lint:financial-surfaces` — passes.
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §8 step-5; on-plan; §12.2.1 SSOT; §21.2.1 anchor fixed same-PR; Neomatrix consulted via the mapping of both copies).
+- Requirements 10/10 (extracts the ONE canonical builder as MON-030 stage 1; no gold-plating; no behaviour change).
+- Logic 10/10 (both copies verified line-by-line equivalent in SOURCE §19.2 before consolidation; the sole totalEntities difference proven inert; 410/410 clean).
+- **Coverage boundary (honest — §22.2.4):** verifies the ONE builder assembles the golden input and both engine entry points agree on the score, on golden data. Does NOT hand-derive the health score (engine category-test territory — the 72 is a locked regression baseline, not a §19.2 worked example), does NOT verify the rendered pages (R2-vis), and does NOT change any user-facing number (that is MON-030 stage 2). MON-030 stays DIAGNOSED — stage 2 is the number-changing fix.
