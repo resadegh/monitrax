@@ -2589,7 +2589,7 @@
       "kind": "orchestrator",
       "label": "Dashboard insights composer",
       "file": "app/api/dashboard/insights/route.ts",
-      "line": 188,
+      "line": 187,
       "layer": "route",
       "domain": "core",
       "trailStage": null,
