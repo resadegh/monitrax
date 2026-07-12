@@ -181,11 +181,11 @@ export const GET = withPermission('report.read', async (_request, auth) => {
     //    gap that identity checks are blind to (e.g. a $0-liabilities test
     //    account vs a real account with loans silently dropped). ──
     const advisories: string[] = [];
-    if (qm.loans > 0 && nw.liabilities.total <= 0) {
-      advisories.push(`${qm.loans} loan record(s) exist but total liabilities is $0 — loans may not be aggregating (possible real bug).`);
+    if (snapshot.counts.loans > 0 && nw.liabilities.total <= 0) {
+      advisories.push(`${snapshot.counts.loans} loan record(s) exist but total liabilities is $0 — loans may not be aggregating (possible real bug).`);
     }
-    if (qm.properties > 0 && nw.liabilities.mortgages <= 0) {
-      advisories.push(`${qm.properties} propert(y/ies) but $0 mortgages — likely test data, or property loans aren't linked.`);
+    if (snapshot.counts.properties > 0 && nw.liabilities.mortgages <= 0) {
+      advisories.push(`${snapshot.counts.properties} propert(y/ies) but $0 mortgages — likely test data, or property loans aren't linked.`);
     }
     if (qm.monthlyIncome > 0 && Math.abs(getCanonicalMonthlyCashflow(snapshot).net) < 0.01) {
       advisories.push('Monthly net is exactly $0 despite income — looks like placeholder/empty data.');

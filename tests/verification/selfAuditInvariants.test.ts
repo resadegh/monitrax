@@ -44,7 +44,7 @@ describe('NeoAudit self-audit endpoint (R3-self)', () => {
     // consistent-but-wrong / test-account class the identity checks miss.
     expect(src).toContain('auditedAccount: auth.email');
     expect(src).toContain('advisories');
-    expect(src).toContain('qm.loans > 0 && nw.liabilities.total <= 0');
+    expect(src).toContain('snapshot.counts.loans > 0 && nw.liabilities.total <= 0');
   });
 
   it('covers every area with cross-area invariants (breadth pass)', () => {
