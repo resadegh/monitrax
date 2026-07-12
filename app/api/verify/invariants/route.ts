@@ -176,12 +176,34 @@ export const GET = withPermission('report.read', async (_request, auth) => {
       ),
     );
 
+    // ── ADVISORIES — plausibility smells (not identity FAILs; a human should
+    //    look). These catch the "consistent but wrong / whose-account-is-this"
+    //    gap that identity checks are blind to (e.g. a $0-liabilities test
+    //    account vs a real account with loans silently dropped). ──
+    const advisories: string[] = [];
+    if (qm.loans > 0 && nw.liabilities.total <= 0) {
+      advisories.push(`${qm.loans} loan record(s) exist but total liabilities is $0 — loans may not be aggregating (possible real bug).`);
+    }
+    if (qm.properties > 0 && nw.liabilities.mortgages <= 0) {
+      advisories.push(`${qm.properties} propert(y/ies) but $0 mortgages — likely test data, or property loans aren't linked.`);
+    }
+    if (qm.monthlyIncome > 0 && Math.abs(getCanonicalMonthlyCashflow(snapshot).net) < 0.01) {
+      advisories.push('Monthly net is exactly $0 despite income — looks like placeholder/empty data.');
+    }
+    if (nw.assets.total === 0 && nw.liabilities.total === 0) {
+      advisories.push('Assets and liabilities are both $0 — this account has no financial data (empty/test account).');
+    }
+
     const failures = invariants.filter((i) => !i.pass);
 
     return NextResponse.json({
       success: true,
       data: {
         pass: failures.length === 0,
+        // WHOSE data this audited — resolves "there's no way to tell which
+        // account it ran against" (a real gap Reza hit 2026-07-12).
+        auditedAccount: auth.email,
+        advisories,
         checkedAt: new Date().toISOString(),
         invariantCount: invariants.length,
         failureCount: failures.length,

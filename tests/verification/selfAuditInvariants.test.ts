@@ -39,6 +39,14 @@ describe('NeoAudit self-audit endpoint (R3-self)', () => {
     expect(src).toContain('Number.isFinite');
   });
 
+  it('identifies the audited account + emits plausibility advisories', () => {
+    // Resolves "no way to tell which account it ran against" + flags the
+    // consistent-but-wrong / test-account class the identity checks miss.
+    expect(src).toContain('auditedAccount: auth.email');
+    expect(src).toContain('advisories');
+    expect(src).toContain('qm.loans > 0 && nw.liabilities.total <= 0');
+  });
+
   it('covers every area with cross-area invariants (breadth pass)', () => {
     // Emergency fund (I8/I9), expense additivity (I10/I11), cashflow identity (I12).
     expect(src).toContain("'I8'");
