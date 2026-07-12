@@ -168,9 +168,26 @@ Use the standard CLAUDE.md §4.3 template + the §16.5 doc-sync block from Step 
 https://claude.ai/code/{session-url}
 ```
 
+## Step 8.5 — THE §20.6 PRE-PR GATE (10/10 vs Document + Requirements + Logic) — HARD BLOCK
+
+> This is the enforcement of **CLAUDE.md §20.6** (do not duplicate the rule — read it there). It is the last gate before the PR is allowed to move, and it is why Reza should never have to repeat "consult Neomatrix / follow the doc / strict SSOT / don't over-claim" again.
+
+Self-score the change /10 on THREE axes; **ALL THREE must be an honest 10/10** or you do NOT open the PR:
+
+1. **DOCUMENT /10** — did you RE-READ the design/blueprint/NEOAUDIT/phase doc this change touches (not from memory), and does the change conform to its documented plan AND sequence (no jumping ahead without surfacing it)? For any financial number/engine, was the **Neomatrix consulted** (§21.5)?
+2. **REQUIREMENTS /10** — exactly what was asked, no gold-plating / no silent scope-cut, every load-bearing claim verified to source (§19.2)?
+3. **LOGIC /10** — correct, edge cases handled, **strict SSOT (one producer per number/calc, no second source alive, §12.2.1)**, financial changes carry §19.2 worked example + §19.4 sweep?
+
+Then confirm the **coverage boundary is stated precisely** — NOT "tested / green / complete", but "verifies X, does NOT verify Y" (§22.2.4).
+
+**Put the recorded result in the PR body verbatim:**
+`Gate (§20.6): Document X/10 (doc: <name+section>) · Requirements X/10 · Logic X/10` + one line on what the review changed + the coverage boundary.
+
+If any axis is < 10/10: **STOP.** Fix to an honest 10/10, or surface the specific gap to Reza. Do not open the PR.
+
 ## Step 9 — Open the PR
 
-Only now is it safe to call `mcp__github__create_pull_request`. After creation:
+Only now — with the §20.6 gate recorded at 10/10/10 — is it safe to call `mcp__github__create_pull_request`. After creation:
 
 1. Provide the PR URL to the user
 2. Summarise the surfaces touched + docs updated
@@ -186,6 +203,9 @@ Do NOT call `mcp__github__create_pull_request` if:
 - Destructive Prisma operations exist without the §12.11 checklist filled in
 - `prisma/schema.prisma` changed without a matching migration file
 - The §16.5 doc-sync block is missing from the PR body
+- **The §20.6 tri-axis gate is not recorded at an honest 10/10 on Document + Requirements + Logic (Step 8.5) — HARD BLOCK, applies to EVERY PR including trivial ones**
+- The change **deviated from a documented plan/sequence** (e.g. NEOAUDIT §8 order) without that deviation being surfaced to Reza first
+- Coverage is claimed as prose ("tested / all green / complete") instead of "verifies X, does NOT verify Y" (§22.2.4)
 
 For each stop, surface to the user with the exact gap + the fix, then resume from the failed step.
 
@@ -195,9 +215,10 @@ For PRs that are unambiguously trivial (single-file typo, dependency bump with n
 
 1. Build the §16.5 block with all rows unchecked.
 2. Skip Steps 3–7.
-3. Build the PR body with the standard template + unchecked §16.5 block.
-4. Confirm with the user *once* before opening: "This is a `<type>:` PR — skipping full doc-sync walk. Proceed?"
-5. On confirmation, proceed.
+3. **Step 8.5 (the §20.6 gate) is NOT skippable** — even a trivial PR records `Gate (§20.6): Document X/10 · Requirements X/10 · Logic X/10` (for a typo it's a 10-second honest check, but it still runs).
+4. Build the PR body with the standard template + unchecked §16.5 block + the §20.6 line.
+5. Confirm with the user *once* before opening: "This is a `<type>:` PR — skipping full doc-sync walk. Proceed?"
+6. On confirmation, proceed.
 
 The goal of the shortcut is to avoid bureaucratic friction on truly trivial work, not to bypass real protocol violations. If in doubt, treat as substantive.
 

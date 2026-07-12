@@ -188,3 +188,38 @@ real-data confirmation is Reza selecting his real account in the panel.
 - [x] `tests/verification/scorecard.test.ts` 4/4 · full golden+verification 84/84 local
 - [x] `neomatrix:check` census 0 uncovered · `lint:financial-surfaces` 0 new · plan-freshness + issues gates green
 - [x] No financial number changed (a new READ/aggregation surface)
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — CLAUDE.md §20.6 pre-PR gate
+
+### Change: §20.6 — the mandatory 10/10 pre-PR gate (Document + Requirements + Logic) + skill enforcement
+
+- **Type**: Governance (CLAUDE.md rule + skill enforcement)
+- **Why**: Reza directives 2026-07-12 — "review every change against design documents
+  yourself, 10/10 for document/requirements/logic, no PR without the 10/10 check" +
+  "always consult neomatrix, claude.md, strict SSOT" + "I can't keep repeating these —
+  tell me where to add so you ALWAYS follow." Honest trigger: this session drifted from
+  the documented NEOAUDIT §8 build order and over-claimed coverage — the rules were
+  ALREADY in CLAUDE.md; the failure was not CHECKING them before shipping.
+- **Solution**:
+  - `CLAUDE.md §20.6` (new) — the ONE consolidated pre-PR gate: self-score /10 on
+    DOCUMENT (re-read the design doc, conform to plan+sequence, Neomatrix consulted),
+    REQUIREMENTS (exactly asked, verified to source), LOGIC (correct + strict SSOT +
+    §19.2/§19.4). All three must be an honest 10/10 or STOP. Coverage stated as
+    "verifies X, does NOT verify Y" — never "tested/complete". Recorded verbatim in
+    every PR body.
+  - `.claude/skills/pr-prep-checklist/SKILL.md` — Step 8.5 (HARD BLOCK) + a stop
+    condition + trivial-PR shortcut carve-out, so the skill (which auto-fires on every
+    PR cue) refuses to open a PR without the recorded §20.6 gate. Points at CLAUDE.md,
+    does not duplicate the rule.
+  - `CLAUDE.md` Part 9 post-change checklist line + version footer → 3.5.
+
+### Files Modified
+- `CLAUDE.md` — §20.6 + Part 9 checklist line + footer 3.5.
+- `.claude/skills/pr-prep-checklist/SKILL.md` — Step 8.5 hard block + stop condition + shortcut note.
+
+### Gate (§20.6) — dogfooded on its own introduction
+- Document 10/10 (CLAUDE.md Part 20 self-review family + the pr-prep-checklist skill — §20.6 extends §20.4/§20.5 without contradiction; skill references, never duplicates).
+- Requirements 10/10 (adds the tri-axis 10/10 gate + consolidates Neomatrix/SSOT/doc-conformance + names CLAUDE.md as the single canonical home + wires the skill for the "always" enforcement Reza asked for).
+- Logic 10/10 (internally consistent, no SSOT violation — one canonical home; binds even under the §20.5 autonomy grant). Coverage boundary: verified by re-reading that the rule integrates without contradiction; NOT verified by any automated test (governance prose has none) — its real proof is future PRs carrying the §20.6 line.
