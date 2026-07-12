@@ -25,6 +25,8 @@ interface Invariant {
 
 interface SelfAuditData {
   pass: boolean;
+  auditedAccount: string;
+  advisories: string[];
   checkedAt: string;
   invariantCount: number;
   failureCount: number;
@@ -77,6 +79,11 @@ export function NeoAuditPanel() {
             Ring-3 accounting invariants on your real data.{' '}
             <a href="/docs" className="underline">docs/blueprint/NEOAUDIT.md</a>
           </p>
+          {data && (
+            <p className="mt-0.5 text-xs text-slate-500">
+              Auditing account: <span className="font-mono text-slate-700 dark:text-slate-300">{data.auditedAccount}</span>
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -119,6 +126,21 @@ export function NeoAuditPanel() {
               </div>
             </div>
           </div>
+
+          {/* Advisories — plausibility smells (amber, not FAIL) */}
+          {data.advisories.length > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Advisories — a human should look</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-amber-800 dark:text-amber-200">
+                {data.advisories.map((a, i) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                These aren&rsquo;t identity failures — the maths is consistent. They flag data that <em>looks</em> like a test account or a missing feed, which the PASS/FAIL checks can&rsquo;t see.
+              </p>
+            </div>
+          )}
 
           {/* Invariant table */}
           <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
