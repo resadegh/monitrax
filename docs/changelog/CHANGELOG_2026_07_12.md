@@ -106,3 +106,18 @@ real-data confirmation is Reza selecting his real account in the panel.
   fields the page's engine needs, page-level parity (serialized payload →
   `computePropertyCashflow` reproduces the manifest numbers), unknown id → 404.
 - Local run: 4/4; full golden+verification suites 78/78.
+
+### Addendum 2: safety-net route + shared golden-DB helper (same PR)
+- `tests/golden/goldenHousehold.ts` — exported `createGoldenDb()` (the ONE
+  Proxy mock both service- and route-tier tests use; throws on un-served
+  models; `findUnique` honours `where.id`); added `recurringPayment: []`
+  (zero tracked bills) + the hand-computed `EXPECTED.safetyNet` block:
+  EF 40 + bills 0 + noNewDebt 15 + cashflow 15 = **70 BUILDING**.
+- `tests/golden/ring2.safetyNetRoute.test.ts` — the ACTUAL `GET /api/safety-net`
+  (the MON-017 surface) invoked in-process: runs the real
+  getMasterFinancialSnapshot → emergencyFund block → getCanonicalMonthlyCashflow
+  → computeSafetyScore chain and asserts the serialized JSON: EF figures,
+  monthsCovered 29.4, gap 0, monthlySurplus 5,300, and safety score exactly
+  70/BUILDING (zero tracked bills scores 0, not full marks).
+- `ring2.masterSnapshot.test.ts` refactored onto the shared helper (§12.8).
+- Local run: full golden + verification suites **80/80**.

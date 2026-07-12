@@ -100,7 +100,39 @@ export const GOLDEN_DB = {
     { id: 'as-oldcar', ownerEntityId: null, currentValue: 9999, status: 'SOLD' },
   ],
   unifiedTransaction: [] as never[], // declared basis — no actuals
+  recurringPayment: [] as never[], // zero tracked bills — MON-017: scores 0, not full marks
 };
+
+/**
+ * A `@/lib/db`-shaped mock over the golden rows. A Proxy that THROWS on any
+ * model the golden DB doesn't serve — so a new query in a service/route fails
+ * a Ring-2 test loudly (extend the fixture) instead of silently returning
+ * undefined. `findUnique`/`findFirst` honour `where.id` so ownership/404
+ * paths stay live.
+ */
+export function createGoldenDb() {
+  const models = GOLDEN_DB as unknown as Record<string, { id?: string }[]>;
+  return new Proxy(
+    {},
+    {
+      get(_target, model: string | symbol) {
+        if (typeof model === 'symbol' || model === 'then' || model === 'catch') return undefined;
+        if (!(model in models)) {
+          throw new Error(
+            `[Ring2 golden] prisma.${String(model)} queried — not served by the golden DB. Extend tests/golden/goldenHousehold.ts.`,
+          );
+        }
+        const rows = models[model];
+        return {
+          findMany: async () => structuredClone(rows),
+          findUnique: async ({ where }: { where: { id?: string } }) =>
+            structuredClone(rows.find((r) => r.id === where?.id) ?? null),
+          findFirst: async () => structuredClone(rows[0] ?? null),
+        };
+      },
+    },
+  );
+}
 
 /** The hand-computed expected outputs (derivations in the header). */
 export const EXPECTED = {
@@ -117,4 +149,10 @@ export const EXPECTED = {
   portfolio: { value: 800_000, equity: 300_000 },
   counts: { expenses: 3, income: 2, accounts: 2, loans: 2, properties: 1, investments: 1 },
   buckets: { liquidToday: 50_000, accessible: 7_000, lockedLongTerm: 415_000 },
+  // Safety Net (MON-017 engine on canonical inputs, zero tracked bills):
+  //   emergencyFund dim = min(29.4117…/6 × 40, 40) = 40
+  //   bills = 0 (zero tracked bills is NOT full marks)
+  //   noNewDebt = 15 (known placeholder) · cashflow = 15 (5,300 > 0)
+  //   → total 70, grade BUILDING (60–79)
+  safetyNet: { total: 70, grade: 'BUILDING', monthsCoveredRounded: 29.4, monthlySurplus: 5_300, weeksToTarget: 0 },
 };

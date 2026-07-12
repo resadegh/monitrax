@@ -21,28 +21,9 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
 vi.mock('@/lib/db', async () => {
-  const { GOLDEN_DB } = await import('./goldenHousehold');
-  const models = GOLDEN_DB as Record<string, unknown[]>;
-  const mockDb = new Proxy(
-    {},
-    {
-      get(_target, model: string) {
-        // Vitest/Node may probe promise-like props on the proxy — ignore them.
-        if (model === 'then' || model === 'catch' || typeof model === 'symbol') return undefined;
-        if (!(model in models)) {
-          throw new Error(
-            `[Ring2 golden] master service queried prisma.${model} — not served by the golden DB. Extend tests/golden/goldenHousehold.ts.`,
-          );
-        }
-        return {
-          findMany: async () => structuredClone(models[model]),
-          findUnique: async () => null,
-          findFirst: async () => null,
-        };
-      },
-    },
-  );
-  return { default: mockDb, prisma: mockDb };
+  const { createGoldenDb } = await import('./goldenHousehold');
+  const db = createGoldenDb(); // throws on any model the golden DB doesn't serve
+  return { default: db, prisma: db };
 });
 
 import { getMasterFinancialSnapshot, type MasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
