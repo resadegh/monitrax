@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**33 total** · 30 open · 🔵 0 · 🟡 4 · 🟠 26 · 🟢 0 · ✅ 2
+**33 total** · 30 open · 🔵 0 · 🟡 3 · 🟠 27 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -37,7 +37,7 @@
 | MON-028 | 🟠 FIXING | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
 | MON-029 | 🟠 FIXING | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
 | MON-030 | 🟡 DIAGNOSED | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | — | — |
-| MON-031 | 🟡 DIAGNOSED | 🟡 | yes | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | — | — |
+| MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | #1368 | ✅ |
 | MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 
@@ -598,15 +598,21 @@ VR-001. Root cause verified: FOUR score producers — lib/health (canonical per 
 
 ### MON-031 — Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap)
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
 
-> **What was wrong:** The Balances page and the Safety Net page disagree by $2,496 on how much liquid savings you have.
+> **What was wrong:** The Balances page and the Safety Net page disagreed by $2,496 on your liquid savings, with no explanation why.
 >
+> **What changed:** Kept both figures (they measure different things) and made Balances say its number is your cash after credit cards.
+>
+> **What you should see:** On the Balances "Where your wealth is" tile, the line under "Liquid today" now reads "Reachable today, after your credit cards." — so the $2,496 difference from My Safety Net is self-explanatory. No number changed.
+
 - **Root cause:** `lib/calculations/accessibilityBuckets.ts:87`, `lib/services/masterFinancialService.ts:1993`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `components/balances/HiddenWealthLens.tsx (the only surface that renders liquidToday with this label)`
+- **Fix PR(s):** #1368
+- **Holistic test (§19.4):** `tests/balances/hiddenWealthLensCopy.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR.
+VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED.
 
 ### MON-032 — Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost)
 

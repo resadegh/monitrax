@@ -121,3 +121,34 @@ real-data confirmation is Reza selecting his real account in the panel.
   70/BUILDING (zero tracked bills scores 0, not full marks).
 - `ring2.masterSnapshot.test.ts` refactored onto the shared helper (§12.8).
 - Local run: full golden + verification suites **80/80**.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — MON-031 liquid-savings relabel
+
+### Change: Balances "Liquid today" now declares it is net of credit cards (MON-031, Reza decision option a)
+
+- **Type**: Fix (copy/UX — no number changes)
+- **Scope**: `components/balances/HiddenWealthLens.tsx`
+- **Decision**: Reza chose option (a) 2026-07-12 — the two figures stay as the
+  distinct measures they are (My Safety Net "Liquid savings" = GROSS cash /
+  emergency buffer; Balances "Liquid today" = cash NET of credit cards), and we
+  make that legible rather than forcing one number.
+- **Root cause (verified, not a math bug)**: Safety Net renders
+  `quickMetrics.liquidCash` (gross, $304,304); Balances renders
+  `accessibilityBuckets.liquidToday = liquidBasis − creditCards` ($301,808). The
+  $2,496 gap IS the credit-card balance — both figures are correct for their
+  purpose; only the near-identical framing caused confusion.
+- **Fix**: the "Liquid today" bucket's micro-copy is now cards-aware — when a
+  card balance is netted, it reads "Reachable today, after your credit cards."
+  (`breakdown.creditCards` is already threaded to the component). No number
+  moves; `changesNumbers: false`.
+
+### Files Modified
+- `components/balances/HiddenWealthLens.tsx` — cards-aware liquid micro-copy.
+- `tests/balances/hiddenWealthLensCopy.test.ts` — **new**; source-lock so a
+  future edit can't silently drop the clarification.
+
+### Build Status
+- [x] `tests/balances/hiddenWealthLensCopy.test.ts` — 2/2 pass locally
+- [x] No financial number changed (copy only) — §19.4 propagation test N/A
