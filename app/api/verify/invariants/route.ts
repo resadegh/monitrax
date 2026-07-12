@@ -139,6 +139,43 @@ export const GET = withPermission('report.read', async (_request, auth) => {
         snapshot.properties.every((p) => p.lvr >= 0),
     });
 
+    // ── I8/I9: emergency-fund identities (gap + months from the same fields) ──
+    const ef = snapshot.emergencyFund;
+    invariants.push(
+      check(
+        'I8',
+        'Emergency gap = max(0, target × burn − liquid)',
+        ef.gap,
+        Math.max(0, ef.targetMonths * ef.monthlyExpenses - ef.liquidCash), /* @financial-math-allowed: NeoAudit R3-self invariant — re-states the canonical gap formula (masterFinancialService:1411) to assert the stored field matches it */
+        CENTS,
+      ),
+    );
+    if (ef.monthlyExpenses > 0) {
+      invariants.push(
+        check('I9', 'Months covered × burn = liquid cash', ef.monthsCovered * ef.monthlyExpenses, ef.liquidCash, CENTS), /* @financial-math-allowed: NeoAudit R3-self invariant — identity check, not a producer */
+      );
+    }
+
+    // ── I10/I11: expense-breakdown additivity (the "where your money goes" class) ──
+    const exp = snapshot.expenses.monthly.all;
+    const categorySum = Object.values(exp.byCategory).reduce((sum, v) => sum + v, 0);
+    invariants.push(
+      check('I10', 'Σ expense categories = total monthly expenses', categorySum, exp.total, CENTS),
+      check('I11', 'Essential + Discretionary = total monthly expenses', exp.essential + exp.discretionary, exp.total, CENTS), /* @financial-math-allowed: NeoAudit R3-self invariant — additivity assertion between canonical fields */
+    );
+
+    // ── I12: declared-cashflow internal identity ──
+    const cf = snapshot.cashflow;
+    invariants.push(
+      check(
+        'I12',
+        'Declared cashflow = net income − expenses − loan repayments',
+        cf.monthlyCashflow,
+        cf.monthlyNetIncome - cf.monthlyExpenses - cf.monthlyLoanRepayments, /* @financial-math-allowed: NeoAudit R3-self invariant — asserts the canonical cashflow block is internally consistent */
+        CENTS,
+      ),
+    );
+
     const failures = invariants.filter((i) => !i.pass);
 
     return NextResponse.json({

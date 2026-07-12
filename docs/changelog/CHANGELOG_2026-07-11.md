@@ -97,3 +97,10 @@ All four follow CLAUDE.md §23.2.1 — the broken/duplicate producer is removed,
 - **NeoAudit admin panel built** — `/admin/neoaudit` (AdminFeatureGate) + `components/admin/neoaudit/NeoAuditPanel.tsx`: fetches `/api/verify/invariants` with the operator's token, renders the PASS/FAIL scorecard header (ALL PASS / N FAIL + checkedAt + canonical monthly-net/savings-rate) and the invariant table (id · label · lhs · rhs · Δ · PASS/FAIL, failing rows highlighted). Admin design system (§18.2 — /admin/* is Stitch-exempt), so no Stitch pass. This is the one-click surface from NEOAUDIT.md §0 operator guide.
 - v1 = the invariant (real-data) half of the Release Scorecard; the CI/registry half (rings 0-2 green + zero OPEN number-issues) aggregates in step 6.
 - Structural manifest + NEOAUDIT.md §8 progress updated; `neomatrix:check` green.
+
+---
+
+## Session continuation 6 (2026-07-12): breadth pass — cross-area invariants I8–I12
+
+- §17.2: #1362 production deploy READY — `/admin/neoaudit` live on prod.
+- Self-audit endpoint extended (breadth-first per Reza's default): **I8** EF gap = max(0, target×burn−liquid) (verified vs masterFinancialService:1411) · **I9** monthsCovered×burn = liquid · **I10** Σ expense categories = total · **I11** essential+discretionary = total (both verified structural in expenseAggregator:84-110) · **I12** declared cashflow = netIncome−expenses−loanRepayments (verified at cashflowOrchestrator:373). Every area now has ≥1 real-data invariant: net worth, buckets, property, emergency fund, budgeting/expenses, cashflow. All identities linter-annotated as R3-self assertions.

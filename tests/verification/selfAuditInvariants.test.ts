@@ -38,4 +38,14 @@ describe('NeoAudit self-audit endpoint (R3-self)', () => {
   it('scans headline figures for NaN/Infinity', () => {
     expect(src).toContain('Number.isFinite');
   });
+
+  it('covers every area with cross-area invariants (breadth pass)', () => {
+    // Emergency fund (I8/I9), expense additivity (I10/I11), cashflow identity (I12).
+    expect(src).toContain("'I8'");
+    expect(src).toContain("'I10'");
+    expect(src).toContain("'I12'");
+    expect(src).toContain('snapshot.emergencyFund');
+    expect(src).toContain('snapshot.expenses.monthly.all');
+    expect(src).toContain('snapshot.cashflow');
+  });
 });
