@@ -49,7 +49,7 @@ Every check lives at **exactly one node**. A node answers its question and nothi
 | **R2-num** | Playwright checked-in specs + golden seeds | "Does the rendered page show the manifest's exact number on golden data?" (text assertions ONLY) | registry on FAIL |
 | **R2-vis** | Playwright `toHaveScreenshot()` (→ Argos later) | "Do the pixels match the approved baseline?" (NEVER asserts numbers) | registry on FAIL |
 | **R3-agent** | **Playwright MCP** (Claude session, headless) | "Exploratory: does anything look wrong on a golden-seeded preview?" — agent-driven, synthetic data ONLY, no permanent assertions live here | every repeatable discovery is **promoted** to an R2 spec (and stops being an R3 check); finding → MON |
-| **R3-self** | self-audit endpoint `/api/verify/invariants` + admin panel | "Do the invariants hold on the user's REAL data right now?" (server-side, first-party only) | FAIL → MON with lhs/rhs/delta |
+| **R3-self** | self-audit endpoint `/api/verify/invariants` (own data) + admin-targeted `/api/admin/neoaudit?userId=…` (selected user) + admin panel picker | "Do the invariants hold on the user's REAL data right now?" (server-side, first-party only) | FAIL → MON with lhs/rhs/delta |
 | **R3-eyes** | **Claude-in-Chrome** (Reza relay, brief library §4) | "On real data, rendered: judgment — numbers cross-checked, copy, forms, visuals, functionality, journeys" — ONLY what no automated ring can judge | findings → MON; anything mechanical → Ratchet to R2/R0 |
 | **Guard-tests** | **StrykerJS** (weekly, scoped to `lib/calculations` + `lib/tax-engine` + `lib/health`) | "Would the test suite actually catch a broken formula?" | surviving mutant → MON (test-gap class) |
 | **Guard-crash** | **GCP Error Reporting** (§13.9) | "Did production throw?" (crashes/NaN renders ONLY — never numeric correctness) | alert → MON |
@@ -129,8 +129,8 @@ One generated readout — publish when ALL green: Rings 0–2 green on CI · R3-
 ## 8. Build plan (each its own PR, §20.4 scores recorded)
 
 1. ✅ Foundations — Part 23 law, playbook, VR-001, baseline, ratchet tests (PRs #1358/#1359, merged)
-2. ✅ Self-audit endpoint (`/api/verify/invariants`, PR #1361, merged) + NeoAudit admin panel (`/admin/neoaudit`, this PR) — R3-self + scorecard v1 (invariant half; CI/registry half = step 6)
-3. 🟡 Scenario Lab: **fast-check Ring-0-gen properties landed** (`tests/golden/properties.*.test.ts`, this PR — frequency laws + engine decomposition/additivity) · R2-num golden route/Playwright tests + authored scenarios = next
+2. ✅ Self-audit endpoint (`/api/verify/invariants`, PR #1361, merged) + NeoAudit admin panel (`/admin/neoaudit`, PR #1364, merged) — R3-self + scorecard v1 (invariant half; CI/registry half = step 6). **Audit-any-user picker (2026-07-12):** the invariant computation is now one shared `lib/verification/selfAuditInvariants.ts` called by both the self endpoint AND a new admin-gated `GET /api/admin/neoaudit?userId=…` (same posture as `/api/admin/users` — `verifyAdminGCPAuth` + `users:read` + audit-logged, aggregates+identities only per §13); the panel gains an "Audit account" picker so Ring-3 runs on real user data, not just the empty admin account.
+3. ✅ Scenario Lab: **fast-check Ring-0-gen properties landed** (`tests/golden/*.test.ts`, PR #1365 merged — frequency laws, engine decomposition/additivity, net-worth/savings/aggregator identities, authored high-gear scenario) · R2-num golden route/Playwright tests = next
 4. Parity-matrix generator (§5)
 5. CFO decision tables + report reconciliation locks (§3)
 6. Tier 2 oracle + Tier 3 metamorphic + `issues:raise` + full scorecard; Stryker weekly job; Playwright MCP runbook for R3-agent

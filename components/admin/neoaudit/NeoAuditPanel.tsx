@@ -1,12 +1,18 @@
 'use client';
 
 /**
- * NeoAudit panel (R3-self) — renders GET /api/verify/invariants on the
- * operator's real data as a PASS/FAIL scorecard. Admin design system (§18.2).
+ * NeoAudit panel (R3-self) — renders the Ring-3 accounting invariants as a
+ * PASS/FAIL scorecard. Admin design system (§18.2).
+ *
+ * Audit target (2026-07-12): a picker lets the operator run the audit on ANY
+ * user's real data, not just the logged-in admin account.
+ *   - "My account (self)" → GET /api/verify/invariants   (the admin's own data)
+ *   - a selected user      → GET /api/admin/neoaudit?userId=…  (admin-gated +
+ *     audit-logged; the same shared computation, so results can't diverge)
  *
  * v1 scope: the self-audit invariants (the real-data half of the Release
- * Scorecard). The CI/registry half of the scorecard (rings 0–2 green, zero OPEN
- * number-issues) is aggregated in a later iteration (NEOAUDIT.md §6, §8 step 6).
+ * Scorecard). The CI/registry half (rings 0–2 green, zero OPEN number-issues) is
+ * aggregated later (NEOAUDIT.md §6, §8 step 6).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -39,23 +45,56 @@ interface SelfAuditData {
   };
 }
 
+interface UserOption {
+  id: string;
+  email: string;
+}
+
+// null = "My account (self)"; a userId = audit that user via the admin endpoint.
+const SELF = '__self__';
+
 export function NeoAuditPanel() {
   const { token } = useAuth();
   const [data, setData] = useState<SelfAuditData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [target, setTarget] = useState<string>(SELF);
+
+  // Populate the picker from the existing admin users list (cookie-authed).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/users?limit=200&sortBy=email&sortOrder=asc');
+        if (!res.ok) return; // picker is optional — self-audit still works without it
+        const json = await res.json();
+        const list: UserOption[] = (json.data ?? []).map((u: { id: string; email: string }) => ({ id: u.id, email: u.email }));
+        if (!cancelled) setUsers(list);
+      } catch {
+        /* non-fatal — leave the picker with just "self" */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const run = useCallback(async () => {
-    if (!token) return;
+    // Self-audit needs the Firebase token; wait for it rather than flash a 401
+    // on first mount. The admin-targeted path uses the admin_session cookie.
+    if (target === SELF && !token) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/verify/invariants', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res =
+        target === SELF
+          ? await fetch('/api/verify/invariants', { headers: { Authorization: `Bearer ${token}` } })
+          : await fetch(`/api/admin/neoaudit?userId=${encodeURIComponent(target)}`);
       const json = await res.json();
       if (!res.ok || !json.success) {
-        setError(json.error ?? 'Self-audit failed to run');
+        setError(json?.error?.message ?? json?.error ?? 'Self-audit failed to run');
+        setData(null);
         return;
       }
       setData(json.data as SelfAuditData);
@@ -64,19 +103,20 @@ export function NeoAuditPanel() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [target, token]);
 
+  // Re-run whenever the target changes (and on mount).
   useEffect(() => {
     run();
   }, [run]);
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">NeoAudit — Self-Audit</h1>
           <p className="text-sm text-slate-500">
-            Ring-3 accounting invariants on your real data.{' '}
+            Ring-3 accounting invariants on real data.{' '}
             <a href="/docs" className="underline">docs/blueprint/NEOAUDIT.md</a>
           </p>
           {data && (
@@ -85,14 +125,32 @@ export function NeoAuditPanel() {
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={run}
-          disabled={loading}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-        >
-          {loading ? 'Running…' : 'Re-run'}
-        </button>
+        <div className="flex flex-col items-end gap-2">
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="whitespace-nowrap">Audit account</span>
+            <select
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              disabled={loading}
+              className="max-w-[220px] rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <option value={SELF}>My account (self)</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.email}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={run}
+            disabled={loading}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+          >
+            {loading ? 'Running…' : 'Re-run'}
+          </button>
+        </div>
       </div>
 
       {error && (
