@@ -511,3 +511,34 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (verified the rule exists per §19.2; closed ONLY the untested boundaries — did NOT duplicate the covered tiers or fabricate a rule; no gold-plating beyond the boundary completion).
 - Logic 10/10 (boundaries verified by running the engine: cf=0→8, cf=−200→0; 10/10 clean).
 - **Coverage boundary (honest — §22.2.4):** completes the tier-boundary coverage of the safety-score positive-cashflow dimension; the tiers themselves were already covered. Does NOT add a new rule or engine. This resolves the queued §3 item — the rule was correct + covered, only its boundaries were unpinned.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — Governance: CLAUDE.md §20.7 (the 10/10 gate covers recommendations too)
+
+### Change: §20.7 — recommendations go through the same 3× self-review to 10/10
+
+- **Type**: Governance (CLAUDE.md) — docs only, no code
+- **Reza directive 2026-07-13**: "are you still performing 10/10 reviews for your
+  suggestions and fixes? all your recommendations should also go through the same
+  review — if this is not a requirement in CLAUDE.md, make sure you add it now."
+- **Finding**: the base §20 rule ALREADY names "recommendation" among what must be
+  3×-reviewed to 10/10 before presenting — so the requirement existed. §20.7 makes
+  it airtight/explicit (removes any read that it's PR/build-only).
+- **§20.7 codifies**: every recommendation put in front of Reza (option analyses /
+  A-B-C forks with a pick, e.g. the MON-030 B1/B2/B3 rec; architecture/product/
+  design/financial suggestions; plans; sub-agent instructions; sign-off verdicts)
+  goes through the same draft → adversarial-critique-≥3× (§0 four lenses + §10 +
+  §12.2.1 + §19.2, never guess a load-bearing claim) → score → iterate to an honest
+  10/10, shown briefly; if it can't reach 10/10, present the blocker not a sub-10
+  recommendation. Reviewer rejects a sub-10 recommendation the same as a sub-10 PR.
+- Single canonical home = CLAUDE.md §20 (no second instruction store — SSOT). Footer → 3.6.
+
+### Files
+- `CLAUDE.md` — §20.7 added; version footer 3.5 → 3.6.
+
+### Gate (§20.6)
+- Document 10/10 (extends §20 in its canonical home; consistent with §20.1's existing "recommendation" wording; no second store).
+- Requirements 10/10 (makes recommendations explicitly covered as Reza asked; no scope creep).
+- Logic 10/10 (docs-only clarification; enumerates the recommendation types + binds the existing discipline).
+- **Coverage boundary (honest):** a governance/text change — it states the rule; it does not add a mechanical gate for recommendations (the §20.6 skill enforces PRs; recommendations are self-enforced per §20.1.3 "show the gate"). No code, no tests.
