@@ -335,3 +335,43 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (generated-from-graph parity + coverage ratchet exactly as §5 asks; no gold-plating).
 - Logic 10/10 (strict SSOT — reads the ONE graph; faithful independent paths for the load-bearing group; negative controls prove the harness fails; 102/102 regression-clean).
 - **Coverage boundary (honest — §22.2.4):** verifies value-parity + manifest-tie for the 8 RESOLVED surfaces (1 real multi-surface group); does NOT verify the 10 KNOWN_UNRESOLVED surfaces (each a printed, tracked growth item), the rendered PAGE pixels (R2-vis, deferred), or real user data (R3). Local tsc via CI + Vercel build.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit §8 step-5 (slice 1): CFO EF decision table
+
+### Change: emergency-fund recommendation decision table (§3 given→then)
+
+- **Type**: Test infrastructure (NeoAudit §3 decision tables, §8 step-5 slice 1) — no production code changed
+- **Why (§8, a-order)**: step-5 opens with the CFO decision-table layer; the EF
+  recommendation rule had no given→then fixtures.
+- **Solution**:
+  - `tests/cfo/actionEngineDecisionTable.test.ts` (new) — locks the EF rule of
+    `generateActions` (verified in source §19.2): buffer <30 → present/high/do_now/FIRST;
+    30–49 → present/medium/upcoming; 50–59 → NO rec (rule gates at <50 though
+    findWeakAreas flags <60 — the honest edge); ≥60 → none; + monotonic-urgency
+    guard. Driven through the real engine with an EMPTY db (isolates the rule).
+- **Non-overlap (§1.2 / §12.2.1 discovery)**: the REFINANCE decision rule is
+  ALREADY fixtured in `loanDecisionSupportGuards.test.ts` (MON-019) — NOT
+  re-tested. Re-fixturing it would be the duplication §1.2 forbids.
+
+### Discoveries added to the plan (Reza directive — keep NeoAudit growing)
+- "negative cashflow ⇒ no positive-cashflow credit" (§3 example) not yet located
+  in source → decision-table queue item (verify §19.2 before fixturing; MON if a
+  real gap). NOT fabricated as a test.
+- "EF FIRST" as a hard universal guarantee isn't enforced by the engine (only when
+  EF is the pressing weakness) → prioritisation-change + MON if §3 wants it hard.
+- Report reconciliation needs the report generators inspected (no expense/loan
+  line structure on the master service) → next step-5 slice.
+- MON-030 (score dedup, changesNumbers) → its own carefully-verified step-5 PR.
+- All recorded in NEOAUDIT.md §8 step-5 decision-table queue.
+
+### Verified locally
+- `actionEngineDecisionTable.test.ts` — 5/5 pass.
+- `tests/cfo` + `tests/golden` + `tests/verification` — **382/382 pass** (25 files; no regression).
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §8 step-5 + §3; on-plan; §1.2 non-overlap confirmed by reading the existing refinance guards; the rule read in source not memory).
+- Requirements 10/10 (fixtures the unfixtured EF rule as given→then; reuses refinance rather than duplicating; no gold-plating).
+- Logic 10/10 (each row hand-verified against actionEngine.ts source §19.2; empty-db isolates the rule; monotonic guard; 382/382 clean).
+- **Coverage boundary (honest — §22.2.4):** verifies the EF rule's presence/severity/priority/first-ness AS THE ENGINE COMPUTES them on controlled score inputs with an empty db; does NOT verify the score components themselves (MON-030), the rendered CFO page (R2-vis), real data (R3), or the not-yet-located negative-cashflow rule. Local tsc via CI + Vercel build.
