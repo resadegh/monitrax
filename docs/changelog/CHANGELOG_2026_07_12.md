@@ -51,3 +51,44 @@ No financial number changed — this is a new READ surface over the existing
 canonical snapshot. The invariant maths is unchanged (moved verbatim into the
 shared lib); the same computation now runs against a selectable user. Ring-3
 real-data confirmation is Reza selecting his real account in the panel.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — Ring 2 service-tier
+
+### Change: NeoAudit Ring 2 — Golden Household end-to-end through the REAL master service
+
+- **Type**: Test infrastructure (Ring 2 of the Part-23 four-ring defense)
+- **Scope**: `tests/golden/` — no production code changed
+- **Why**: Rings 0/1 verify engines and wiring; nothing verified the full
+  fetch → map → engine → snapshot ASSEMBLY on known data. The MON-028 class
+  (a select silently dropping a field, a mapping feeding an engine partial
+  inputs) lives exactly there.
+- **Solution**:
+  - `tests/golden/goldenHousehold.ts` — the Golden Household "Avalon": fixture
+    rows shaped exactly like `fetchAllUserData`'s Prisma selects, every headline
+    number hand-computed (§19.2) with derivations documented in the header.
+    Deliberate constraints: NET salary (GROSS would route through the full
+    PAYG tables — Ring 0's job), no transactions (declared basis), amounts
+    chosen for exact conversions (600/wk = 2,600/mo).
+  - `tests/golden/ring2.masterSnapshot.test.ts` — mocks `@/lib/db` with a Proxy
+    that THROWS on any model the golden DB doesn't serve (a new query in the
+    service fails loudly), runs the REAL `getMasterFinancialSnapshot`, and
+    asserts the manifest: net-worth assembly (SMSF + SOLD exclusions), declared
+    cashflow + savings rate 50.96, MON-009 rental dedup, emergency fund,
+    per-property equity/LVR/yield/cashflow, quickMetrics mirrors, the
+    MON-028-class INPUT-PARITY check (engine run directly on golden inputs ==
+    snapshot), and the Ring-3 tie (computeSelfAuditReport ALL PASS).
+  - Two NEGATIVE CONTROLS prove the harness can fail: dropping the loan from
+    the engine inputs breaks parity; zeroing liabilities fails the report (I1).
+
+### Verified locally (vitest now runs in-container)
+- `tests/golden/ring2.masterSnapshot.test.ts` — **16/16 pass**
+- Full `tests/golden` + `tests/verification` — **74/74 pass**
+- `npm run neomatrix:check` + `lint:financial-surfaces` — green (tests/ not census-scoped)
+
+### Observation (flagged, not fixed here)
+- Running the tax engine logs "Tax config not found for 2026-27, using latest
+  available (2025-26)" — FY 2026-27 began 1 Jul 2026; the engine falls back to
+  2025-26 rates (per the Phase 41E commencement gating this is by design until
+  rates are verified, but worth Reza's awareness that FY26-27 config is absent).
