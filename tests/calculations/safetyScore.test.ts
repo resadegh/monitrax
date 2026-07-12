@@ -47,6 +47,19 @@ describe('MON-017: computeSafetyScore reflects reality', () => {
     expect(computeSafetyScore({ monthsCovered: 0, targetMonths: 6, billsOnTime: 0, totalBills: 0, monthlyCashflow: 500 }).positiveCashflow.score).toBe(15);
   });
 
+  // §3 decision-table completion (NEOAUDIT §8 step-5): the exact tier BOUNDARIES
+  // of the "negative cashflow ⇒ no positive-cashflow credit" rule (safetyScore.ts:75
+  // `cf > 0 ? 15 : cf > -200 ? 8 : 0`). The three tiers themselves are covered above
+  // + in vr001Ratchet.test.ts — this pins ONLY the transition points those miss.
+  it('cashflow-credit tier boundaries: cf=0 → 8 (break-even is NOT positive), cf=−200 → 0', () => {
+    const cf = (v: number) =>
+      computeSafetyScore({ monthsCovered: 0, targetMonths: 6, billsOnTime: 0, totalBills: 0, monthlyCashflow: v }).positiveCashflow.score;
+    expect(cf(0.01)).toBe(15); // just positive → full credit
+    expect(cf(0)).toBe(8); // exactly break-even → NOT >0 → marginal (8), not a positive-cashflow credit
+    expect(cf(-199.99)).toBe(8); // just inside the marginal band
+    expect(cf(-200)).toBe(0); // the band edge: NOT >-200 → no credit (a real deficit)
+  });
+
   it('zero tracked bills scores 0 (was a fabricated 30/30)', () => {
     expect(computeSafetyScore({ monthsCovered: 0, targetMonths: 6, billsOnTime: 0, totalBills: 0, monthlyCashflow: 0 }).billsOnTime.score).toBe(0);
   });

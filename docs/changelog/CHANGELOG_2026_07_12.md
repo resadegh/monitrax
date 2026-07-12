@@ -478,3 +478,36 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (extracts the ONE canonical builder as MON-030 stage 1; no gold-plating; no behaviour change).
 - Logic 10/10 (both copies verified line-by-line equivalent in SOURCE §19.2 before consolidation; the sole totalEntities difference proven inert; 410/410 clean).
 - **Coverage boundary (honest — §22.2.4):** verifies the ONE builder assembles the golden input and both engine entry points agree on the score, on golden data. Does NOT hand-derive the health score (engine category-test territory — the 72 is a locked regression baseline, not a §19.2 worked example), does NOT verify the rendered pages (R2-vis), and does NOT change any user-facing number (that is MON-030 stage 2). MON-030 stays DIAGNOSED — stage 2 is the number-changing fix.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — §8 step-5: negative-cashflow decision-table item VERIFIED (no new engine)
+
+### Change: verified the "negative cashflow ⇒ no positive-cashflow credit" rule + closed its boundary micro-gap
+
+- **Type**: Test completion + verification (NeoAudit §3 decision-table queue) — no production code changed
+- **Finding (§19.2, read-only verification)**: the §3 example rule EXISTS in
+  `lib/calculations/safetyScore.ts:75` (MON-017): `cf > 0 ? 15 : cf > -200 ? 8 : 0`.
+  It is a SCORING sanity ("no full marks on the positive-cashflow dimension for a
+  real deficit"), NOT a recommendation guard — matching VR-001's phrasing.
+- **§12.2.1 (same pattern as refinance)**: the rule is ALREADY FULLY FIXTURED —
+  all three tiers (0/8/15) in `tests/calculations/safetyScore.test.ts` + the
+  extremes in `tests/verification/vr001Ratchet.test.ts`. NOT re-tested (duplicating
+  an existing rule's table is the §1.2 violation this forbids).
+- **The one micro-gap closed**: the exact tier BOUNDARIES (cf=0 → 8 [break-even is
+  NOT positive]; cf=−200 → 0 [band edge]) weren't pinned. Added a 4-assertion
+  boundary row to the existing test (extending, not a parallel file). Correct-by-
+  design — no bug, no MON.
+
+### Files
+- `tests/calculations/safetyScore.test.ts` — +1 boundary `it` (10/10 pass).
+- `docs/blueprint/NEOAUDIT.md:§8 step-5` — negative-cashflow queue item marked resolved.
+
+### Verified locally
+- `tests/calculations/safetyScore.test.ts` — 10/10 pass.
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §8 step-5; on-plan; §12.2.1 non-overlap confirmed by reading the existing fixtures).
+- Requirements 10/10 (verified the rule exists per §19.2; closed ONLY the untested boundaries — did NOT duplicate the covered tiers or fabricate a rule; no gold-plating beyond the boundary completion).
+- Logic 10/10 (boundaries verified by running the engine: cf=0→8, cf=−200→0; 10/10 clean).
+- **Coverage boundary (honest — §22.2.4):** completes the tier-boundary coverage of the safety-score positive-cashflow dimension; the tiers themselves were already covered. Does NOT add a new rule or engine. This resolves the queued §3 item — the rule was correct + covered, only its boundaries were unpinned.
