@@ -103,6 +103,7 @@ export const GOLDEN_DB = {
   recurringPayment: [] as never[], // zero tracked bills — MON-017: scores 0, not full marks
   investmentTransaction: [] as never[], // include-shaped routes read this; none for the golden book
   spendingProfile: [] as never[], // cashflow full-mode reads via findUnique(userId) → null → declared-basis branch
+  depreciationSchedule: [] as never[], // report contextBuilder counts these; none for the golden book
 };
 
 /**
@@ -183,6 +184,11 @@ export function createGoldenDb() {
             withInc(structuredClone(rows.find((r) => r.id === where?.id) ?? null) as Record<string, unknown> | null, include),
           findFirst: async ({ include }: { include?: Record<string, unknown> } = {}) =>
             withInc(structuredClone(rows[0] ?? null) as Record<string, unknown> | null, include),
+          // The golden book is single-user, so every `where: { userId }` (or a
+          // related `{ property: { userId } }`) matches ALL rows of the model —
+          // rows.length is the faithful count. (Not a general WHERE evaluator;
+          // adequate + honest for a single-household fixture.)
+          count: async () => rows.length,
         };
       },
     },

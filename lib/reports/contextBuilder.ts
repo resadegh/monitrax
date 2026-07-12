@@ -18,6 +18,8 @@ import type {
   EntityReportData,
 } from './types';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { toAnnual } from '@/lib/utils/frequencies';
+import type { Frequency } from '@/lib/types/prisma-enums';
 import { UNATTRIBUTED_ENTITY_ID } from '@/lib/calculations/entityBreakdown';
 import { ENTITY_TYPE_LABELS } from '@/lib/entities/entityTypeCatalog';
 import { assembleEntityTaxFacts } from '@/lib/services/entityTaxFactsAssembler';
@@ -464,7 +466,7 @@ async function fetchIncomeData(userId: string): Promise<IncomeReportData[]> {
       category: i.type,
       amount: i.amount,
       frequency: i.frequency,
-      annualAmount: calculateAnnualAmount(i.amount, i.frequency),
+      annualAmount: toAnnual(i.amount, i.frequency as Frequency),
       linkedPropertyName: i.property?.name || null,
       isTaxable: i.isTaxable,
     });
@@ -488,7 +490,7 @@ async function fetchExpenseData(userId: string): Promise<ExpenseReportData[]> {
       category: e.category,
       amount: e.amount,
       frequency: e.frequency,
-      annualAmount: calculateAnnualAmount(e.amount, e.frequency),
+      annualAmount: toAnnual(e.amount, e.frequency as Frequency),
       linkedPropertyName: e.property?.name || null,
       isDeductible: e.isTaxDeductible,
     });
@@ -546,24 +548,4 @@ async function fetchDepreciationData(userId: string): Promise<DepreciationReport
   }
 
   return results;
-}
-
-function calculateAnnualAmount(amount: number, frequency: string): number {
-  switch (frequency.toUpperCase()) {
-    case 'WEEKLY':
-      return amount * 52;
-    case 'FORTNIGHTLY':
-      return amount * 26;
-    case 'MONTHLY':
-      return amount * 12;
-    case 'QUARTERLY':
-      return amount * 4;
-    case 'HALF_YEARLY':
-      return amount * 2;
-    case 'ANNUALLY':
-    case 'YEARLY':
-      return amount;
-    default:
-      return amount * 12;
-  }
 }
