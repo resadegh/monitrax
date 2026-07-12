@@ -92,3 +92,17 @@ real-data confirmation is Reza selecting his real account in the panel.
   available (2025-26)" — FY 2026-27 began 1 Jul 2026; the engine falls back to
   2025-26 rates (per the Phase 41E commencement gating this is by design until
   rates are verified, but worth Reza's awareness that FY26-27 config is absent).
+
+### Addendum: Ring 2 route-tier (same PR)
+- `tests/golden/ring2.propertyRoute.test.ts` — invokes the ACTUAL
+  `GET /api/properties/[id]` handler (the MON-028 type specimen) in-process on
+  the golden household. Real: handler body, `verifyOwnership`,
+  `enrichPropertiesWithActuals` (prisma reads served by the golden DB),
+  NextResponse serialization. Mocked (honest scope): `withPermission` injects
+  the golden user (token verification is Ring-1/unit territory); `@/lib/db`
+  `findUnique` honours `where.id` so the 404/ownership path stays live.
+  Asserts: `linkedTransactions` PRESENT in the serialized JSON (the exact
+  MON-028 dropped-field regression), relations survive serialization with the
+  fields the page's engine needs, page-level parity (serialized payload →
+  `computePropertyCashflow` reproduces the manifest numbers), unknown id → 404.
+- Local run: 4/4; full golden+verification suites 78/78.
