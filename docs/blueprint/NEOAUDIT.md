@@ -130,7 +130,7 @@ One generated readout — publish when ALL green: Rings 0–2 green on CI · R3-
 
 1. ✅ Foundations — Part 23 law, playbook, VR-001, baseline, ratchet tests (PRs #1358/#1359, merged)
 2. ✅ Self-audit endpoint (`/api/verify/invariants`, PR #1361, merged) + NeoAudit admin panel (`/admin/neoaudit`, this PR) — R3-self + scorecard v1 (invariant half; CI/registry half = step 6)
-3. Scenario Lab Tier 1 + R2-num golden route/Playwright tests (+ fast-check first ~10 properties)
+3. 🟡 Scenario Lab: **fast-check Ring-0-gen properties landed** (`tests/golden/properties.*.test.ts`, this PR — frequency laws + engine decomposition/additivity) · R2-num golden route/Playwright tests + authored scenarios = next
 4. Parity-matrix generator (§5)
 5. CFO decision tables + report reconciliation locks (§3)
 6. Tier 2 oracle + Tier 3 metamorphic + `issues:raise` + full scorecard; Stryker weekly job; Playwright MCP runbook for R3-agent
