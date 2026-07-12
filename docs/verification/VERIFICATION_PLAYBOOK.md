@@ -66,7 +66,16 @@ RULES:
 - Before reporting any MISMATCH, re-read both values once to rule out a misread.
 - If something isn't on my account, say "not found" — never guess.
 
-=== PART A — CROSS-SURFACE CONSISTENCY (2–3 properties of different types) ===
+=== MISSION: OPEN EVERYTHING (this is an EXHAUSTIVE sweep, not a spot-check) ===
+Click INTO every entity and read the numbers INSIDE — never stop at a summary tile (a tile can read correctly while the detail page behind it is wrong — the MON-028 class).
+- For EVERY property, investment account, super account, loan and bank account: click "View details" (or the tile) to open its DETAIL page/dialog and read the figures inside.
+- Open EVERY tab inside any entity dialog (Overview, Linked Data, Insights, Actions).
+- Expand EVERY collapsible; click every "Show more" / "View all" / "See breakdown".
+- Do NOT summarise or skip "similar" items — read each one and record its figures.
+- Walk the WHOLE left sidebar top-to-bottom so nothing is missed: Home · My Accounts (Accounts, Loans, Income, Spending, Transactions, Recurring) · My Budget (Budget, Cashflow, Debt Freedom, Tax) · My Safety Net · My Wealth (Properties, Investments, Super, Assets) · My Guide (Health, Actions, Progress) · Reports · Settings (Household).
+- My Guide what-if levers: move each slider, confirm the projected output moves in the SENSIBLE direction, then Cancel/reset (no save).
+
+=== PART A — CROSS-SURFACE CONSISTENCY (EVERY property — open each via "View details") ===
 For each property, report the "Cashflow / yr" (or monthly ×12) shown on ALL of:
   1. the property detail page, 2. the Properties LIST tile, 3. the Home dashboard tile (×12).
 State MATCH or MISMATCH by $X across the three. Then for the same property report:
