@@ -93,9 +93,15 @@ interface Bucket {
  * wealth" is anchored against the reality of "but only $Y is reachable
  * this week" — Andrew's whole point, framed warmly.
  */
-function getMicro(key: Bucket['key'], pct: number): string {
+function getMicro(key: Bucket['key'], pct: number, creditCards = 0): string {
   switch (key) {
     case 'liquid':
+      // MON-031 (Reza decision 2026-07-12, option a): this figure is liquid
+      // cash MINUS credit cards, so it reads ~$2.5k below My Safety Net's
+      // "Liquid savings" (which is gross cash — your emergency buffer). When a
+      // card balance is netted here, say so plainly so the two surfaces read as
+      // the distinct measures they are, not a discrepancy.
+      if (creditCards > 0) return 'Reachable today, after your credit cards.';
       if (pct < 5)
         return 'A small share of your wealth is reachable this week.';
       if (pct < 15) return 'Reachable today — a typical buffer.';
@@ -142,7 +148,7 @@ export function HiddenWealthLens({
       pct: liquidPct,
       barCls: 'bg-emerald-500/85 dark:bg-emerald-400/80',
       dotCls: 'bg-emerald-500 dark:bg-emerald-400',
-      micro: getMicro('liquid', liquidPct),
+      micro: getMicro('liquid', liquidPct, breakdown?.creditCards ?? 0),
     },
     {
       key: 'accessible',
