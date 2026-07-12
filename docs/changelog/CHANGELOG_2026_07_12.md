@@ -51,3 +51,73 @@ No financial number changed — this is a new READ surface over the existing
 canonical snapshot. The invariant maths is unchanged (moved verbatim into the
 shared lib); the same computation now runs against a selectable user. Ring-3
 real-data confirmation is Reza selecting his real account in the panel.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — Ring 2 service-tier
+
+### Change: NeoAudit Ring 2 — Golden Household end-to-end through the REAL master service
+
+- **Type**: Test infrastructure (Ring 2 of the Part-23 four-ring defense)
+- **Scope**: `tests/golden/` — no production code changed
+- **Why**: Rings 0/1 verify engines and wiring; nothing verified the full
+  fetch → map → engine → snapshot ASSEMBLY on known data. The MON-028 class
+  (a select silently dropping a field, a mapping feeding an engine partial
+  inputs) lives exactly there.
+- **Solution**:
+  - `tests/golden/goldenHousehold.ts` — the Golden Household "Avalon": fixture
+    rows shaped exactly like `fetchAllUserData`'s Prisma selects, every headline
+    number hand-computed (§19.2) with derivations documented in the header.
+    Deliberate constraints: NET salary (GROSS would route through the full
+    PAYG tables — Ring 0's job), no transactions (declared basis), amounts
+    chosen for exact conversions (600/wk = 2,600/mo).
+  - `tests/golden/ring2.masterSnapshot.test.ts` — mocks `@/lib/db` with a Proxy
+    that THROWS on any model the golden DB doesn't serve (a new query in the
+    service fails loudly), runs the REAL `getMasterFinancialSnapshot`, and
+    asserts the manifest: net-worth assembly (SMSF + SOLD exclusions), declared
+    cashflow + savings rate 50.96, MON-009 rental dedup, emergency fund,
+    per-property equity/LVR/yield/cashflow, quickMetrics mirrors, the
+    MON-028-class INPUT-PARITY check (engine run directly on golden inputs ==
+    snapshot), and the Ring-3 tie (computeSelfAuditReport ALL PASS).
+  - Two NEGATIVE CONTROLS prove the harness can fail: dropping the loan from
+    the engine inputs breaks parity; zeroing liabilities fails the report (I1).
+
+### Verified locally (vitest now runs in-container)
+- `tests/golden/ring2.masterSnapshot.test.ts` — **16/16 pass**
+- Full `tests/golden` + `tests/verification` — **74/74 pass**
+- `npm run neomatrix:check` + `lint:financial-surfaces` — green (tests/ not census-scoped)
+
+### Observation (flagged, not fixed here)
+- Running the tax engine logs "Tax config not found for 2026-27, using latest
+  available (2025-26)" — FY 2026-27 began 1 Jul 2026; the engine falls back to
+  2025-26 rates (per the Phase 41E commencement gating this is by design until
+  rates are verified, but worth Reza's awareness that FY26-27 config is absent).
+
+### Addendum: Ring 2 route-tier (same PR)
+- `tests/golden/ring2.propertyRoute.test.ts` — invokes the ACTUAL
+  `GET /api/properties/[id]` handler (the MON-028 type specimen) in-process on
+  the golden household. Real: handler body, `verifyOwnership`,
+  `enrichPropertiesWithActuals` (prisma reads served by the golden DB),
+  NextResponse serialization. Mocked (honest scope): `withPermission` injects
+  the golden user (token verification is Ring-1/unit territory); `@/lib/db`
+  `findUnique` honours `where.id` so the 404/ownership path stays live.
+  Asserts: `linkedTransactions` PRESENT in the serialized JSON (the exact
+  MON-028 dropped-field regression), relations survive serialization with the
+  fields the page's engine needs, page-level parity (serialized payload →
+  `computePropertyCashflow` reproduces the manifest numbers), unknown id → 404.
+- Local run: 4/4; full golden+verification suites 78/78.
+
+### Addendum 2: safety-net route + shared golden-DB helper (same PR)
+- `tests/golden/goldenHousehold.ts` — exported `createGoldenDb()` (the ONE
+  Proxy mock both service- and route-tier tests use; throws on un-served
+  models; `findUnique` honours `where.id`); added `recurringPayment: []`
+  (zero tracked bills) + the hand-computed `EXPECTED.safetyNet` block:
+  EF 40 + bills 0 + noNewDebt 15 + cashflow 15 = **70 BUILDING**.
+- `tests/golden/ring2.safetyNetRoute.test.ts` — the ACTUAL `GET /api/safety-net`
+  (the MON-017 surface) invoked in-process: runs the real
+  getMasterFinancialSnapshot → emergencyFund block → getCanonicalMonthlyCashflow
+  → computeSafetyScore chain and asserts the serialized JSON: EF figures,
+  monthsCovered 29.4, gap 0, monthlySurplus 5,300, and safety score exactly
+  70/BUILDING (zero tracked bills scores 0, not full marks).
+- `ring2.masterSnapshot.test.ts` refactored onto the shared helper (§12.8).
+- Local run: full golden + verification suites **80/80**.
