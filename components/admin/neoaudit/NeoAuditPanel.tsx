@@ -50,6 +50,14 @@ interface UserOption {
   email: string;
 }
 
+interface ScorecardData {
+  openNumberIssues: { id: string; title: string; status: string }[];
+  openNumberIssueCount: number;
+  totalOpenCount: number;
+  registryClean: boolean;
+  externalChecks: string[];
+}
+
 // null = "My account (self)"; a userId = audit that user via the admin endpoint.
 const SELF = '__self__';
 
@@ -60,8 +68,9 @@ export function NeoAuditPanel() {
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [target, setTarget] = useState<string>(SELF);
+  const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
 
-  // Populate the picker from the existing admin users list (cookie-authed).
+  // Populate the picker + the Release Scorecard (both cookie-authed, admin).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -73,6 +82,16 @@ export function NeoAuditPanel() {
         if (!cancelled) setUsers(list);
       } catch {
         /* non-fatal — leave the picker with just "self" */
+      }
+    })();
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/neoaudit/scorecard');
+        if (!res.ok) return; // scorecard is optional decoration on the invariants
+        const json = await res.json();
+        if (!cancelled && json.success) setScorecard(json.data as ScorecardData);
+      } catch {
+        /* non-fatal */
       }
     })();
     return () => {
@@ -152,6 +171,53 @@ export function NeoAuditPanel() {
           </button>
         </div>
       </div>
+
+      {/* Release Scorecard — the publish gate (NEOAUDIT.md §6). States gate
+          OUTPUT, never a bare "safe to publish" claim (§22.2.4). Combines the
+          two signals the app can self-verify (this account's invariants +
+          zero open number-issues) and names the external ones. */}
+      {scorecard && (() => {
+        const invariantsClean = data?.pass ?? null; // null = not yet run
+        const appVerifiable = invariantsClean === true && scorecard.registryClean;
+        return (
+          <div
+            className={`mb-4 rounded-lg border p-4 ${
+              appVerifiable
+                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950'
+                : 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950'
+            }`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Release scorecard — publish gate</p>
+            <div className="mt-2 space-y-1.5 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-700 dark:text-slate-300">Real-data invariants (this account)</span>
+                <span className={`font-semibold ${invariantsClean === true ? 'text-emerald-700 dark:text-emerald-300' : invariantsClean === false ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                  {invariantsClean === true ? 'ALL PASS' : invariantsClean === false ? `${data?.failureCount} FAIL` : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-700 dark:text-slate-300">Open number-issues in the registry</span>
+                <span className={`font-semibold ${scorecard.registryClean ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                  {scorecard.openNumberIssueCount === 0 ? 'ZERO' : `${scorecard.openNumberIssueCount} open`}
+                </span>
+              </div>
+            </div>
+            {scorecard.openNumberIssues.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-amber-800 dark:text-amber-200">
+                {scorecard.openNumberIssues.map((i) => (
+                  <li key={i.id}><span className="font-mono">{i.id}</span> <span className="uppercase opacity-70">({i.status})</span> — {i.title}</li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 border-t border-black/5 pt-2 text-xs text-slate-500 dark:border-white/10">
+              Also verify on CI before publishing (not self-reported here): {scorecard.externalChecks.join(' · ')}.
+              {appVerifiable
+                ? ' The two in-app signals are green.'
+                : ' One or more in-app signals is not yet green.'}
+            </p>
+          </div>
+        );
+      })()}
 
       {error && (
         <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
