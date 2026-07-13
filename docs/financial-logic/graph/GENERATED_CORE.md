@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 265 · **Edges:** 355
-- **By kind:** orchestrator 10 · engine 147 · input-field 29 · number 14 · ui-surface 18 · law 40 · verification 7
-- **By status:** documented 265
-- **Edge provenance:** verified 355 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/171 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 262 · **Edges:** 347
+- **By kind:** orchestrator 10 · engine 145 · input-field 29 · number 14 · ui-surface 18 · law 39 · verification 7
+- **By status:** documented 262
+- **Edge provenance:** verified 347 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/169 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -57,8 +57,6 @@
 | **Health aggregate score** | `lib/health/aggregateEngine.ts:106` | engine | health | The 0-100 aggregate health score from weighted category scores − penalties. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/health/aggregateEngine.ts:106 | documented |
 | **Health score (with trend/band)** | `lib/health/aggregateEngine.ts:315` | engine | health | HealthScore { score, trend, band } from the aggregate. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | lib/health/aggregateEngine.ts:315 (read this session) | documented |
 | **Financial health report (SSOT)** | `lib/health/aggregateEngine.ts:338` | service | health | FinancialHealthReport — the canonical §12.3 health output. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | lib/health/aggregateEngine.ts:338 (read this session) | documented |
-| **CFO overall score (weighted)** | `lib/cfo/scoreCalculator.ts:730` | engine | cfo | The 0-100 CFO score from the 6 weighted component sub-scores (Decimal sibling). | Monitrax CFO-score methodology (6 weighted components: cashflow 25% / debt 20% / emergency 15% / diversification 15% / spending 15% / savings 10%) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/cfo/scoreCalculator.ts:730 | documented |
-| **CFO score (orchestrator)** | `lib/cfo/scoreCalculator.ts:33` | service | cfo | CFOScore { overall, components, trend } — the §6.4 CFO SSOT. | Monitrax CFO-score methodology (6 weighted components: cashflow 25% / debt 20% / emergency 15% / diversification 15% / spending 15% / savings 10%) | lib/cfo/scoreCalculator.ts:33 (read this session) | documented |
 | **What-if: cut a spend category** | `lib/cfo/scenarios/cutSpendCategory.ts:18` | engine | cfo | ScenarioResult — monthly cashflow + annual saving + savings-rate + emergency-months impact of cutting a category. | Monitrax what-if methodology (annual = monthly delta × 12, held constant 12 months; reduction capped at actual spend) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/cfo/scenarios/cutSpendCategory.ts:18 | documented |
 | **Cashflow health score (5-category)** | `lib/cashflow-intelligence/healthScoreAggregator.ts:248` | engine | intelligence | CashflowHealthScore — overall 0-100 + per-category breakdown (liquidity/stability/forecast/budget/debt). | Monitrax cashflow-intelligence methodology (Phase 13/14) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/cashflow-intelligence/healthScoreAggregator.ts:248 | documented |
 | **GRDCS linkage health** | `lib/intelligence/linkageHealthService.ts:306` | service | intelligence | LinkageHealthResponse — completeness, orphan/missing counts, module breakdown, severity. | Monitrax GRDCS linkage-health Blueprint thresholds (§04 GRDCS) | lib/intelligence/linkageHealthService.ts:306 (read this session) | documented |
@@ -245,7 +243,6 @@
 | **State Duties Acts** | Transfer (stamp) duty on dutiable property value + foreign-purchaser surcharge. | NSW Duties Act 1997; VIC Duties Act 2000; state equivalents | Stamp duty / transfer duty (per state) |
 | **GST Act 1999** | 10% GST on taxable supplies; $75k registration threshold. | A New Tax System (Goods and Services Tax) Act 1999 — s9-70, s23-15 | GST / BAS |
 | **Monitrax health-score methodology** | score = round(clamp(0,100, Σ(catScore×catWeight) − totalPenalty)) | Monitrax health methodology (Phase 12 Financial Health Engine) | Health aggregate score |
-| **CFO score component weights** | overall = Σ component_i × weight_i | Monitrax CFO methodology (Phase 17 Personal CFO Engine) | CFO overall score (weighted), CFO score (orchestrator) |
 | **What-if annualisation rule** | annual = monthlyDelta × 12 | Monitrax CFO what-if methodology | What-if: cut a spend category, What-if: park cash in offset |
 | **Cashflow health category weights** | overall = Σ category × weight | Monitrax cashflow-intelligence methodology | Cashflow health score (5-category) |
 | **GRDCS linkage severity thresholds** | severity = f(orphanPct, missingPct) by Blueprint thresholds | Monitrax GRDCS Blueprint (docs/architecture/04_GRDCS_SPECIFICATION.md) | GRDCS linkage health |
@@ -369,8 +366,6 @@
 | Health aggregate score | → | Monitrax health-score methodology | governed-by | — | verified | weighted sum − penalty, clamped 0-100 (aggregateEngine.ts:106) |
 | Health score (with trend/band) | → | Financial health score | feeds | — | verified | generateHealthScore produces the displayed score |
 | Financial health score | → | Home — Health tile | rendered-at | score→score | verified | 00b §3 Home Health tile |
-| CFO overall score (weighted) | → | CFO score component weights | governed-by | — | verified | scoreCalculator.ts:730 weighted sum over SCORE_WEIGHTS |
-| CFO score (orchestrator) | → | CFO score component weights | governed-by | — | verified | scoreCalculator.ts:64-71 inline weighted sum |
 | Financial health report (SSOT) | → | CFO score | feeds | — | verified | MON-030 B1: the CFO overall is now the canonical health score (generateHealthReport().healthScore.score), assembled in intelligenceEngine.assembleCanonicalCFOScore — identical to the Home health tile. calculateCFOScore no longer feeds the displayed score (it feeds generateActions only, transitional; removed stage 2b). |
 | CFO score | → | /dashboard/cfo — CFO score | rendered-at | score→score | verified | /dashboard/cfo renders the CFO score |
 | What-if: cut a spend category | → | What-if annualisation rule | governed-by | — | verified | cutSpendCategory.ts:73 annual = realisedReduction × 12; :12 cap at currentMonthlySpend |
@@ -402,12 +397,6 @@
 | Low Income Tax Offset (config) | → | Low Income Tax Offset (LITO) — two-tier phase-out | feeds | — | verified | taxOffsets.ts:41 const { lito } = config |
 | Low Income Tax Offset (LITO) — two-tier phase-out | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | ATO Individual income tax rates — LITO (law.itaa1997.incomeTax covers brackets + LITO) |
 | Low Income Tax Offset (LITO) — two-tier phase-out | → | Apply offsets to gross tax (refundable vs non-refundable) | feeds | AUD→AUD | verified | taxOffsets.ts:443 nonRefundableOffsets includes offsets.lito |
-| Account.currentBalance | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:43 prisma.account.findMany |
-| Loan.principal | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:44 prisma.loan.findMany |
-| Income (declared) | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:45 prisma.income.findMany |
-| Expense (declared) | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:46 prisma.expense.findMany |
-| Investment units × price | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:47 prisma.investmentAccount.findMany |
-| Property.currentValue | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:51 prisma.property.findMany |
 | Property.currentValue | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:61 prisma.property → :277 generateHealthReport(input) |
 | Loan.principal | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:69 prisma.loan |
 | Account.currentBalance | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:76 prisma.account |

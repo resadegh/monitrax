@@ -42,7 +42,7 @@ import { GEMINI_MODELS } from '@/lib/ai/google/modelConfig';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { buildTaxRulesReference } from '@/lib/neobrain/factPack';
 import { renderTaxLawLines } from '@/lib/neobrain/grounding';
-import { calculateCFOScore } from './scoreCalculator';
+import { computeCFOComponents } from './scoreCalculator';
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
 import {
@@ -166,13 +166,13 @@ export async function generateOrFetchAdvice(
   const { userId, forceRegenerate = false } = options;
 
   // Load canonical snapshot + rule-engine outputs in parallel.
-  const [snapshot, score, riskOutput, loanRows] = await Promise.all([
+  const [snapshot, cfoComponents, riskOutput, loanRows] = await Promise.all([
     getMasterFinancialSnapshot(userId),
-    calculateCFOScore(userId),
+    computeCFOComponents(userId), // MON-030 2b: the advisor's action-signals (not a score)
     scanForRisks(userId),
     fetchLoanViews(userId),
   ]);
-  const ruleActions = await generateActions(userId, riskOutput.risks, score.components);
+  const ruleActions = await generateActions(userId, riskOutput.risks, cfoComponents);
   const allActions = [
     ...ruleActions.doNow,
     ...ruleActions.upcoming,

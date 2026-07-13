@@ -36,7 +36,7 @@
 | MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
 | MON-028 | 🟠 FIXING | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
 | MON-029 | 🟠 FIXING | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
-| MON-030 | 🟠 FIXING | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | #1380 | ✅ |
+| MON-030 | 🟠 FIXING | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | #1380, #1381 | ✅ |
 | MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | #1368 | ✅ |
 | MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
@@ -598,11 +598,11 @@ Found by real-data verification run VR-001 (2026-07-11). Root-cause investigatio
 - **Root cause:** `lib/cfo/scoreCalculator.ts:33`
 - **Neomatrix:** `number.cfoScore`, `number.healthScore`
 - **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `app/api/cfo/route.ts`, `lib/cfo/intelligenceEngine.ts`
-- **Fix PR(s):** #1380
+- **Fix PR(s):** #1380, #1381
 - **Holistic test (§19.4):** `tests/golden/ring2.cfoScoreDedup.test.ts`
 - **Detail:** `docs/blueprint/NEOAUDIT.md`
 
-Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealthInput (§12.2.1). Stage 2a (PR #1380, THIS): the CFO overall+grade+bars are sourced from the canonical generateHealthReport via intelligenceEngine.assembleCanonicalCFOScore (the ONE producer, used by getCFODashboardData + getCFOScore) — CFO overall == Home health == generateHealthReport score (golden: 72/B). The 6 legacy CFO component bars are replaced by the 7 canonical health categories (warm-labelled). calculateCFOScore is retained ONLY to feed generateActions (advisor unchanged, no regression) — removed in stage 2b. Neomatrix: number.cfoScore repointed from calculateCFOScore to generateHealthReport (§21.2.1). Cross-surface lock: tests/golden/ring2.cfoScoreDedup.test.ts. STAYS FIXING pending Reza live-data verification (Home==CFO on his real numbers). Stage 2b remaining: re-ground generateActions/advisor on canonical categories, then delete calculateCFOScore + its calc-audit shadow engine + the scoreCalculator Neomatrix nodes.
+Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealthInput (§12.2.1). Stage 2a (PR #1380, THIS): the CFO overall+grade+bars are sourced from the canonical generateHealthReport via intelligenceEngine.assembleCanonicalCFOScore (the ONE producer, used by getCFODashboardData + getCFOScore) — CFO overall == Home health == generateHealthReport score (golden: 72/B). The 6 legacy CFO component bars are replaced by the 7 canonical health categories (warm-labelled). calculateCFOScore is retained ONLY to feed generateActions (advisor unchanged, no regression) — removed in stage 2b. Neomatrix: number.cfoScore repointed from calculateCFOScore to generateHealthReport (§21.2.1). Cross-surface lock: tests/golden/ring2.cfoScoreDedup.test.ts. STAYS FIXING pending Reza live-data verification (Home==CFO on his real numbers). Stage 2b (PR #1381, DONE — Reza-approved REFRAME 2026-07-13): did NOT re-ground the advisor on the coarser 7 health categories (that would degrade advice precision — generateActions.findWeakAreas needs the granular 6 levers). Instead: kept the 6 CFO components as the advisor action-signals (extracted computeCFOComponents), and DELETED the dead competing-score role — calculateCFOScore + calculateTrend + getGrade + SCORE_WEIGHTS + calculateOverallScoreDecimal + the calc-audit overallScoreShadow + the scoreCalculator Neomatrix nodes (calculateCFOScore, calculateOverallScoreDecimal, cfoScoreWeights). Advice UNCHANGED (generateActions still takes the 6 components). number.cfoScore stays fed by generateHealthReport.
 
 ### MON-031 — Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap)
 

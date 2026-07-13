@@ -12,9 +12,9 @@
  * What runs REAL: `getCFOScore` (the /api/cfo?type=score path) → `buildHealthInput
  * → generateHealthReport → assembleCanonicalCFOScore`, and the Home path
  * `quickHealthCheck(buildHealthInput())`. Mocked: `@/lib/db` serves the golden
- * rows. `calculateCFOScore` still runs inside `getCFOScore` (it feeds the legacy
- * `components`, transitional) — its output does NOT affect `overall` here (that's
- * the whole point of the fix), so its golden values are not asserted.
+ * rows. `computeCFOComponents` still runs inside `getCFOScore` (it feeds the 6
+ * advisor action-signals) — its output does NOT affect `overall` here (that's the
+ * whole point of the fix), so its golden values are not asserted.
  *
  * Coverage boundary (§20.6 / §22.2.4): verifies the CFO overall + grade are
  * sourced from the canonical health engine and EQUAL the Home score on golden

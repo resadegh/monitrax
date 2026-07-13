@@ -24,7 +24,7 @@ import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialServic
 import { generateOrFetchAdvice, type AIAdviceDocument } from '@/lib/cfo';
 import { buildAIContext } from '@/lib/cfo/aiAdvisor';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
-import { calculateCFOScore, scanForRisks, generateActions } from '@/lib/cfo';
+import { computeCFOComponents, scanForRisks, generateActions } from '@/lib/cfo';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { groundNarrative } from '@/lib/neobrain/verifyNarrativeFigures';
@@ -114,11 +114,11 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
       hasInvestments: snapshot.counts.investments > 0,
       healthScore: snapshot.healthScore.score,
     });
-    const [score, risks] = await Promise.all([
-      calculateCFOScore(auth.userId),
+    const [cfoComponents, risks] = await Promise.all([
+      computeCFOComponents(auth.userId), // MON-030 2b: advisor action-signals (not a score)
       scanForRisks(auth.userId),
     ]);
-    const ruleActionsResult = await generateActions(auth.userId, risks.risks, score.components);
+    const ruleActionsResult = await generateActions(auth.userId, risks.risks, cfoComponents);
     const ruleActions = [
       ...ruleActionsResult.doNow,
       ...ruleActionsResult.upcoming,

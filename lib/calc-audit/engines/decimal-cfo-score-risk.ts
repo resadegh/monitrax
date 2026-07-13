@@ -25,7 +25,6 @@ import {
   calculateSpendingControlDecimal,
   calculateSavingsRateDecimal,
   calculateComponentsDecimal,
-  calculateOverallScoreDecimal,
 } from '@/lib/cfo/scoreCalculator';
 import { calculateSummaryDecimal } from '@/lib/cfo/riskRadar';
 import type {
@@ -565,109 +564,6 @@ export const savingsRateShadow: ShadowEngine<
   ],
 };
 
-// ---------------------------------------------------------------------------
-// Composite: overall weighted score
-// ---------------------------------------------------------------------------
-
-interface OverallFixtureInput {
-  cashflowStrength: number;
-  debtCoverage: number;
-  emergencyBuffer: number;
-  investmentDiversification: number;
-  spendingControl: number;
-  savingsRate: number;
-}
-
-const SCORE_WEIGHTS_LOCAL = {
-  cashflowStrength: 0.25,
-  debtCoverage: 0.2,
-  emergencyBuffer: 0.15,
-  investmentDiversification: 0.15,
-  spendingControl: 0.15,
-  savingsRate: 0.1,
-};
-
-function weightedOverallFloat(c: OverallFixtureInput): number {
-  return (
-    c.cashflowStrength * SCORE_WEIGHTS_LOCAL.cashflowStrength +
-    c.debtCoverage * SCORE_WEIGHTS_LOCAL.debtCoverage +
-    c.emergencyBuffer * SCORE_WEIGHTS_LOCAL.emergencyBuffer +
-    c.investmentDiversification * SCORE_WEIGHTS_LOCAL.investmentDiversification +
-    c.spendingControl * SCORE_WEIGHTS_LOCAL.spendingControl +
-    c.savingsRate * SCORE_WEIGHTS_LOCAL.savingsRate
-  );
-}
-
-export const overallScoreShadow: ShadowEngine<
-  OverallFixtureInput,
-  number,
-  Decimal
-> = {
-  name: 'cfo.scoreCalculator.overall.shadow',
-  description: 'Shadow Float vs Decimal weighted-overall composition.',
-  sourcePath: 'lib/cfo/scoreCalculator.ts',
-  floatExecute: (c) => weightedOverallFloat(c),
-  decimalExecute: (c) =>
-    calculateOverallScoreDecimal({
-      cashflowStrength: new Decimal(c.cashflowStrength),
-      debtCoverage: new Decimal(c.debtCoverage),
-      emergencyBuffer: new Decimal(c.emergencyBuffer),
-      investmentDiversification: new Decimal(c.investmentDiversification),
-      spendingControl: new Decimal(c.spendingControl),
-      savingsRate: new Decimal(c.savingsRate),
-    }),
-  fieldPolicy: {},
-  fixtures: [
-    {
-      name: 'all 100s → 100',
-      description: 'Perfect score.',
-      input: {
-        cashflowStrength: 100,
-        debtCoverage: 100,
-        emergencyBuffer: 100,
-        investmentDiversification: 100,
-        spendingControl: 100,
-        savingsRate: 100,
-      },
-    },
-    {
-      name: 'all 50s → 50',
-      description: 'Average baseline.',
-      input: {
-        cashflowStrength: 50,
-        debtCoverage: 50,
-        emergencyBuffer: 50,
-        investmentDiversification: 50,
-        spendingControl: 50,
-        savingsRate: 50,
-      },
-    },
-    {
-      name: 'realistic mid-bracket',
-      description: 'Mixed components — exercises weighted sum precision.',
-      input: {
-        cashflowStrength: 73,
-        debtCoverage: 65,
-        emergencyBuffer: 82,
-        investmentDiversification: 60,
-        spendingControl: 71,
-        savingsRate: 50,
-      },
-    },
-    {
-      name: 'all zeros → 0',
-      description: 'Floor.',
-      input: {
-        cashflowStrength: 0,
-        debtCoverage: 0,
-        emergencyBuffer: 0,
-        investmentDiversification: 0,
-        spendingControl: 0,
-        savingsRate: 0,
-      },
-    },
-  ],
-};
 
 // ---------------------------------------------------------------------------
 // Risk summary
@@ -752,6 +648,5 @@ export const cfoScoreRiskShadowEngines = [
   investmentDiversificationShadow,
   spendingControlShadow,
   savingsRateShadow,
-  overallScoreShadow,
   riskSummaryShadow,
 ] as const;

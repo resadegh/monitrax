@@ -597,3 +597,44 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (B1 exactly: overall+grade+bars from canonical, 7 warm-labelled categories, Safety Net distinct, advisor untouched in 2a; no gold-plating).
 - Logic 10/10 (ONE producer used by both entry points; golden 72==72 dedup proven; grade derivation shared; 544/544 clean).
 - **Coverage boundary (honest — §22.2.4):** verifies the CFO overall + grade are canonical-sourced and EQUAL the Home score on golden data + the 7 categories are the bar source. Does NOT verify the rendered CFO PAGE pixels (R2-vis), the advisor grounding (still legacy components until 2b), or real user data (R3). **MON-030 stays FIXING — Reza verifies Home==CFO on his live numbers.** Stage 2b removes calculateCFOScore + shadow engine + scoreCalculator graph nodes.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — MON-030 stage 2b: delete the dead competing-score role (Reza-approved reframe)
+
+### Change: keep the 6 CFO components as advisor action-signals; delete the dead CFO score
+
+- **Type**: Refactor / dead-code removal (MON-030 stage 2b) — **no user-facing number or advice change**
+- **The reframe (Reza-approved 2026-07-13)**: the documented 2b plan said "re-ground
+  the advisor on canonical categories + delete calculateCFOScore." Verified in source
+  (§19.2) that `generateActions.findWeakAreas` needs the GRANULAR 6 CFO components
+  (specific levers — emergencyBuffer, spendingControl, savingsRate); re-grounding on
+  the coarser 7 health categories would DEGRADE advice precision + silently change
+  recommendations. So the advisor was NOT re-grounded.
+- **What changed**: extracted `computeCFOComponents(userId): Promise<CFOScoreComponents>`
+  (the 6 components — the advisor's action-signals); DELETED the dead competing-score
+  role — `calculateCFOScore` + `calculateTrend` + `getGrade` + `SCORE_WEIGHTS` +
+  `calculateOverallScoreDecimal` + the calc-audit `overallScoreShadow` + the
+  `scoreCalculator` Neomatrix nodes. `generateActions` unchanged (still takes the 6
+  components) → **advice UNCHANGED**. The displayed score stays the ONE canonical
+  health score (stage 2a).
+- **§12.1 dead code removed**; **§12.2.1** — no competing displayed score remains.
+
+### Files
+- `lib/cfo/scoreCalculator.ts` — `calculateCFOScore`→`computeCFOComponents` (components only); deleted calculateTrend/getGrade/SCORE_WEIGHTS/calculateOverallScoreDecimal.
+- `lib/cfo/intelligenceEngine.ts` — assembler + getCFODashboardData/getCFOScore/getActions use `computeCFOComponents`; trend='stable' (history is a no-op).
+- `lib/cfo/aiAdvisor.ts` + `app/api/cfo/advice/chat/route.ts` + `lib/cfo/index.ts` — use `computeCFOComponents`.
+- `lib/calc-audit/engines/decimal-cfo-score-risk.ts` — removed `overallScoreShadow` + helpers (6 component shadows kept).
+- `tests/cfo/score-risk.decimal.test.ts` + `tests/neomatrix/financialAudit.test.ts` — removed the deleted-overall assertions.
+- `docs/financial-logic/graph/*` — removed 3 dead nodes + 8 edges (calculateCFOScore, calculateOverallScoreDecimal, cfoScoreWeights); GENERATED_CORE regen.
+- `docs/issues/ISSUES.json` — MON-030 fixPRs [1380,1381]; stage-2b note.
+
+### Verified locally
+- `tests/cfo + golden + neomatrix + verification + issues` — **535/535 pass** (no regression; advice-generation tests incl. the EF decision table unchanged + green).
+- `neomatrix:check` + `issues:check` + `lint:financial-surfaces` — all green.
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §8 step-5; Reza-approved reframe recorded; §12.2.1; §21.2.1 graph updated same-PR).
+- Requirements 10/10 (removes the dead score role WITHOUT degrading advice — the reframe Reza approved; no gold-plating).
+- Logic 10/10 (verified in source the advisor needs the granular components; deletions gate-safe — the cfo shadows aren't in the calc-audit census; 535/535 clean).
+- **Coverage boundary (honest — §22.2.4):** verifies the CFO score wiring + advice-generation are unchanged and the dead score code is gone (tests + gates green); does NOT change any displayed number or advice. **MON-030 stays FIXING** for Reza's live verify. §8 step-5 is now complete.
