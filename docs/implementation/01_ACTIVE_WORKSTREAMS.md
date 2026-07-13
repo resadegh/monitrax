@@ -13,7 +13,7 @@
 - **Status:** 🟡 ACTIVE — driving to completion phase-by-phase. Reza directive 2026-07-12: *"update the implementation plan with the complete neoaudit build, keep on track … when completed then let me know."* Blanket build-authority granted; drive the sequence, surface only true forks inline, report at completion.
 - **Started:** 2026-07-11 (foundations); completion push 2026-07-12.
 - **Owner:** Claude (build, autonomous) + Reza (merge in sequence + the MON-030 component-bar fork, DECIDED = option B).
-- **Last touched:** 2026-07-12 — P-A Release Scorecard shipped (PR); P-B (MON-030) next.
+- **Last touched:** 2026-07-13 — §8 steps 3–5 complete (Ring-2 route breadth, parity matrix, CFO decision tables + report reconciliation caught+fixed MON-034, MON-030 stages 1/2a/2b → FIXING for Reza's live verify); §8 step-6 started — **Tier 3 metamorphic invariants landed** (this PR). Ring-3 brief now carries the explicit MON-030 score/grade check (PR #1382). Following NEOAUDIT.md §8 step order verbatim.
 - **Source of truth:** [`docs/blueprint/NEOAUDIT.md`](../blueprint/NEOAUDIT.md) §8 build plan; law = CLAUDE.md Part 23.
 - **Why this matters:** the Release Scorecard is the *"safe to publish?"* verdict Reza needs before going public. Today the panel only says "invariants ALL PASS" — necessary but not the publish gate. Completing NeoAudit turns green CI + zero open number-issues + a clean real-data run into a single go/no-go.
 - **Phase checklist (each = its own PR, §8):**
@@ -22,12 +22,12 @@
   - [x] **P2.** Ring-0-gen fast-check properties + Ring-2 golden household (service tier + property & safety-net route tiers) (PRs #1365/#1367).
   - [x] **P2.5.** Exhaustive Chrome full-app sweep brief → canonical in the playbook (PR #1369).
   - [x] **P-A. Release Scorecard in the panel** — aggregates the two in-app publish signals (real-data invariants + zero OPEN number-issues) + names the external ones (Rings 0–2 on CI, Stryker); never a bare "safe to publish" (§22.2.4). Shipped as PR (below).
-  - [ ] **P-B. MON-030 CFO health-score dedup** — foundation: extract ONE canonical `buildHealthInput` (kills the 2× duplication); then point CFO overall+grade+6 bars at the canonical engine (option B, 7→6 map), remove the competing `scoreCalculator` formulas, unwind its calc-audit shadow engine + Neomatrix nodes, verify AI advisor. **Number-changing → §19.2 worked example + cross-surface "Home == CFO" test + Ring-3.**
-  - [ ] **P-C. Ring-2 route breadth** — the rest of the money routes on the golden harness (portfolio-snapshot, cashflow, investments, super, tax) + Playwright rendered-page tier (install `@playwright/test`).
-  - [ ] **P-D. Parity-matrix generator** — reads `financial-graph.json`, emits one R2 check per (semanticKey × surface-pair) (§5).
-  - [ ] **P-E. Wire the 3 adopt-now tools** — Stryker (weekly, scoped), GCP Error Reporting (Guard-crash node), Playwright MCP runbook (R3-agent).
-  - [ ] **P-F. `issues:raise`** — failures auto-file a MON ticket (pre-filled, de-duped by semanticKey+surface).
-- **Risk:** P-B is the high-risk item (flagship CFO surface + calc-audit proof spine + AI advisor + number change) — staged (foundation PR first) and Ring-3-verified. P-A/C/D/F are additive/low-risk.
+  - [x] **P-B. MON-030 CFO health-score dedup** (§8 step-5) — extracted ONE canonical `buildHealthInput` (stage 1, PR #1377), pointed CFO overall+grade+bars at the canonical `generateHealthReport` (stage 2a option B1, PR #1380 — 7 warm health-category bars), deleted the dead competing `scoreCalculator` score role + its calc-audit shadow + Neomatrix nodes while keeping the 6 CFO components as advisor action-signals (stage 2b reframe, PR #1381). §19.2 evidence + cross-surface "Home == CFO" lock (`ring2.cfoScoreDedup.test.ts`). **MON-030 stays FIXING** until Reza verifies Home==CFO on his live data (Ring-3; brief updated PR #1382).
+  - [x] **P-C. Ring-2 route breadth** (§8 step-3) — portfolio-snapshot + cashflow routes landed on the golden harness (PRs #1373 + earlier). **Backlog:** investments/super/tax routes + Playwright rendered-page tier (needs `@playwright/test`).
+  - [x] **P-D. Parity-matrix generator** (§8 step-4, PR #1374) — reads `financial-graph.json` `rendered-at` edges, emits one R2 value-parity check per multi-surface semanticKey + a coverage ratchet (8/18 resolved, rest tracked).
+  - [ ] **P-E/step-6. Scenario Lab Tier 2/3 + tools:** ✅ **Tier 3 metamorphic invariants landed 2026-07-13** (`ring3.metamorphic.test.ts` — expense/income flow, scale-invariance, sale continuity through the real snapshot). Pending: Tier 2 combinatorial oracle · Stryker (weekly, scoped) · Playwright MCP runbook (R3-agent).
+  - [ ] **P-F/step-6. `issues:raise` + full Release Scorecard (CI/registry half)** — failures auto-file a de-duped MON ticket; scorecard aggregates Rings 0–2 CI + registry OPEN-number-issues=0 + VR-clean + Stryker.
+- **Risk:** the high-risk item (MON-030 — flagship CFO surface + number change) is DONE and Ring-3-pending; the remaining step-6 items (Tier 2 oracle, issues:raise, scorecard, Stryker, Playwright runbook) are additive/low-risk test+tooling infra.
 - **Blocking:** branch constraint = one PR at a time on the designated branch → phases land in sequence as Reza merges. Not a design blocker.
 
 ### 0·DASH-KPI. Dashboard KPI tiles — trailing basis (Phase 57, Reza review 2026-07-02)
