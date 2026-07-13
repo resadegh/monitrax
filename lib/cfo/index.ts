@@ -7,7 +7,7 @@
 export * from './types';
 
 // Score calculation
-export { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
+export { computeCFOComponents, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
 
 // Risk detection
 export { scanForRisks } from './riskRadar';

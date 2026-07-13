@@ -16,7 +16,6 @@ import {
   investmentDiversificationShadow,
   spendingControlShadow,
   savingsRateShadow,
-  overallScoreShadow,
   riskSummaryShadow,
   cfoScoreRiskShadowEngines,
 } from '@/lib/calc-audit/engines/decimal-cfo-score-risk';
@@ -33,7 +32,6 @@ import {
   calculateSpendingControlDecimal,
   calculateSavingsRateDecimal,
   calculateComponentsDecimal,
-  calculateOverallScoreDecimal,
 } from '@/lib/cfo/scoreCalculator';
 import { calculateSummaryDecimal } from '@/lib/cfo/riskRadar';
 import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
@@ -50,7 +48,6 @@ const ENGINES = [
   ['investmentDiversification', investmentDiversificationShadow] as const,
   ['spendingControl', spendingControlShadow] as const,
   ['savingsRate', savingsRateShadow] as const,
-  ['overallScore', overallScoreShadow] as const,
   ['riskSummary', riskSummaryShadow] as const,
 ];
 
@@ -272,32 +269,9 @@ describe('calculateComponentsDecimal — composer', () => {
   });
 });
 
-describe('calculateOverallScoreDecimal — weighted composer', () => {
-  it('all 100s → 100', () => {
-    const r = calculateOverallScoreDecimal({
-      cashflowStrength: new Decimal(100),
-      debtCoverage: new Decimal(100),
-      emergencyBuffer: new Decimal(100),
-      investmentDiversification: new Decimal(100),
-      spendingControl: new Decimal(100),
-      savingsRate: new Decimal(100),
-    });
-    expect(r.toString()).toBe('100');
-  });
-
-  it('weights sum to 1 — mid-bracket case', () => {
-    // 73*0.25 + 65*0.20 + 82*0.15 + 60*0.15 + 71*0.15 + 50*0.10 = 18.25 + 13 + 12.3 + 9 + 10.65 + 5 = 68.2
-    const r = calculateOverallScoreDecimal({
-      cashflowStrength: new Decimal(73),
-      debtCoverage: new Decimal(65),
-      emergencyBuffer: new Decimal(82),
-      investmentDiversification: new Decimal(60),
-      spendingControl: new Decimal(71),
-      savingsRate: new Decimal(50),
-    });
-    expect(r.toDecimalPlaces(2).toString()).toBe('68.2');
-  });
-});
+// MON-030 stage 2b: `calculateOverallScoreDecimal` + `overallScoreShadow` deleted
+// (the competing weighted CFO overall — dead once the display de-duped onto the
+// canonical health score). The 6 component shadows above remain (advisor signals).
 
 describe('calculateSummaryDecimal — riskRadar', () => {
   function buildRisk(severity: 'critical' | 'high' | 'medium' | 'low', impact: number): FinancialRisk {

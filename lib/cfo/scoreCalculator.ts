@@ -17,70 +17,36 @@ import { Decimal, toDecimal } from '@/lib/decimal';
 // Score Weights
 // ============================================================================
 
-const SCORE_WEIGHTS = {
-  cashflowStrength: 0.25,      // 25%
-  debtCoverage: 0.20,          // 20%
-  emergencyBuffer: 0.15,       // 15%
-  investmentDiversification: 0.15, // 15%
-  spendingControl: 0.15,       // 15%
-  savingsRate: 0.10,           // 10%
-};
+// MON-030 stage 2b: `SCORE_WEIGHTS` deleted — the weighting of the former competing
+// CFO overall score. The displayed score is the ONE canonical health score
+// (generateHealthReport); these 6 components are now advisor action-signals with
+// no weighted roll-up.
 
 // ============================================================================
-// Score Calculation
+// Component Calculation (advisor action-signals — MON-030 stage 2b)
 // ============================================================================
 
-export async function calculateCFOScore(userId: string): Promise<CFOScore> {
-  // Fetch all required data
-  const [
-    accounts,
-    loans,
-    incomes,
-    expenses,
-    investments,
-    properties,
-  ] = await Promise.all([
+/**
+ * MON-030 stage 2b: the 6 CFO component sub-scores — the advisor's granular
+ * ACTION SIGNALS (each maps to a concrete improvement recommendation via
+ * `generateActions` → `findWeakAreas`). These are NOT a "score": the displayed
+ * health score is the ONE canonical `generateHealthReport` value (My Guide ==
+ * Home). The former `calculateCFOScore` overall/grade — a competing weighted
+ * score — was DELETED here (dead once the display de-duped in stage 2a); this
+ * function keeps only the granular signals, which are more actionable than the
+ * coarser 7 health categories (Reza-approved reframe 2026-07-13).
+ */
+export async function computeCFOComponents(userId: string): Promise<CFOScoreComponents> {
+  const [accounts, loans, incomes, expenses, investments, properties] = await Promise.all([
     prisma.account.findMany({ where: { userId } }),
     prisma.loan.findMany({ where: { userId } }),
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
-    prisma.investmentAccount.findMany({
-      where: { userId },
-      include: { holdings: true },
-    }),
+    prisma.investmentAccount.findMany({ where: { userId }, include: { holdings: true } }),
     prisma.property.findMany({ where: { userId } }),
   ]);
 
-  // Calculate component scores
-  const components = calculateComponents(
-    accounts,
-    loans,
-    incomes,
-    expenses,
-    investments,
-    properties
-  );
-
-  // Calculate weighted overall score
-  const overall = Math.round(
-    components.cashflowStrength * SCORE_WEIGHTS.cashflowStrength +
-    components.debtCoverage * SCORE_WEIGHTS.debtCoverage +
-    components.emergencyBuffer * SCORE_WEIGHTS.emergencyBuffer +
-    components.investmentDiversification * SCORE_WEIGHTS.investmentDiversification +
-    components.spendingControl * SCORE_WEIGHTS.spendingControl +
-    components.savingsRate * SCORE_WEIGHTS.savingsRate
-  );
-
-  // Get trend from history
-  const trend = await calculateTrend(userId, overall);
-
-  return {
-    overall,
-    components,
-    trend,
-    lastCalculated: new Date(),
-    grade: getGrade(overall),
-  };
+  return calculateComponents(accounts, loans, incomes, expenses, investments, properties);
 }
 
 // ============================================================================
@@ -377,26 +343,9 @@ function calculateSavingsRate(
   return 0;
 }
 
-// ============================================================================
-// Trend & Grade Helpers
-// ============================================================================
-
-async function calculateTrend(
-  userId: string,
-  currentScore: number
-): Promise<'improving' | 'stable' | 'declining'> {
-  // For now, return stable - in production, compare against historical scores
-  // This would query a CFOScoreHistory table
-  return 'stable';
-}
-
-function getGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
-  if (score >= 90) return 'A';
-  if (score >= 75) return 'B';
-  if (score >= 60) return 'C';
-  if (score >= 40) return 'D';
-  return 'F';
-}
+// MON-030 stage 2b: `calculateTrend` + `getGrade` deleted — they only served the
+// former `calculateCFOScore` overall/grade (a competing displayed score, removed
+// when the display de-duped onto the canonical health score in stage 2a).
 
 // ============================================================================
 // Score History
@@ -727,12 +676,7 @@ export function calculateComponentsDecimal(
  * boundary. For shadow comparison, the comparator rounds the Decimal
  * result to align the precision.
  */
-export function calculateOverallScoreDecimal(components: CFOScoreComponentsDecimal): Decimal {
-  return components.cashflowStrength
-    .times(SCORE_WEIGHTS.cashflowStrength)
-    .plus(components.debtCoverage.times(SCORE_WEIGHTS.debtCoverage))
-    .plus(components.emergencyBuffer.times(SCORE_WEIGHTS.emergencyBuffer))
-    .plus(components.investmentDiversification.times(SCORE_WEIGHTS.investmentDiversification))
-    .plus(components.spendingControl.times(SCORE_WEIGHTS.spendingControl))
-    .plus(components.savingsRate.times(SCORE_WEIGHTS.savingsRate));
-}
+// MON-030 stage 2b: `calculateOverallScoreDecimal` deleted — the Decimal mirror of
+// the former competing overall score, dead once the display de-duped onto the
+// canonical health score (stage 2a). The Decimal COMPONENT siblings above stay —
+// they back the granular action-signals the advisor still uses.

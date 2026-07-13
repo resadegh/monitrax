@@ -6,7 +6,7 @@
 import { prisma } from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { getNetWorthHistory } from '@/lib/calculations/netWorthHistory';
-import { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
+import { computeCFOComponents, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
 // MON-030 B1: the CFO overall score + grade + bars come from the CANONICAL health
 // engine (same as the Home tile), so there is ONE health score, not three.
 import { buildHealthInput, generateHealthReport, scoreToRiskBand, riskBandToGrade } from '@/lib/health';
@@ -67,36 +67,36 @@ interface ExpenseRecord {
 // ============================================================================
 
 /**
- * MON-030 B1: the ONE producer of the My Guide (CFO) score object. Overall +
- * grade come from the CANONICAL health engine (`generateHealthReport`, identical
- * to the Home health tile — one health score, not three); the BARS are the 7
- * canonical `healthCategories`. `components` (the legacy 6) is carried ONLY to
- * feed `generateActions` — it is NOT rendered (stage 2b re-grounds the advisor
- * on canonical categories and deletes `calculateCFOScore`).
+ * MON-030: the ONE producer of the My Guide (CFO) score object. Overall + grade
+ * come from the CANONICAL health engine (`generateHealthReport`, identical to the
+ * Home health tile — one health score, not three); the BARS are the 7 canonical
+ * `healthCategories`. `components` are the 6 CFO sub-scores — kept as the advisor's
+ * granular ACTION SIGNALS (fed to `generateActions`), NOT a competing score
+ * (stage 2b: the former weighted `calculateCFOScore` overall/grade were deleted;
+ * the components are more actionable than the coarser health categories).
  */
 function assembleCanonicalCFOScore(
   healthReport: Awaited<ReturnType<typeof generateHealthReport>>,
-  cfoComponents: CFOScore,
+  cfoComponents: Awaited<ReturnType<typeof computeCFOComponents>>,
 ): CFOScore {
   const overall = healthReport.healthScore.score;
   return {
     overall,
     grade: riskBandToGrade(scoreToRiskBand(overall)),
-    components: cfoComponents.components,
+    components: cfoComponents, // advisor action-signals (MON-030 2b: no longer a "score")
     healthCategories: healthReport.categories,
-    trend: cfoComponents.trend,
-    lastCalculated: cfoComponents.lastCalculated,
+    trend: 'stable', // history tracking is a no-op (getCFOScoreHistory returns [])
+    lastCalculated: new Date(),
   };
 }
 
 export async function getCFODashboardData(userId: string): Promise<CFODashboardData> {
   // Calculate all components in parallel where possible.
-  // MON-030 B1: `healthReport` is the CANONICAL score source (My Guide == Home).
-  // `cfoComponents` is retained ONLY to feed `generateActions` (component-based),
-  // transitional until stage 2b re-grounds the advisor on canonical categories.
+  // MON-030: `healthReport` is the CANONICAL score source (My Guide == Home);
+  // `cfoComponents` are the advisor's granular action-signals (feed generateActions).
   const [healthReport, cfoComponents, risks, taxInsights, loanInsights, propertyInsights, investmentInsights] = await Promise.all([
     buildHealthInput(userId).then(generateHealthReport),
-    calculateCFOScore(userId),
+    computeCFOComponents(userId),
     scanForRisks(userId),
     calculateCFOTaxInsights(userId).catch((err) => {
       console.error('[CFO] Tax insights calculation failed:', err);
@@ -327,7 +327,7 @@ export async function getCFOScore(userId: string): Promise<CFOScore> {
   // MON-030 B1: same canonical assembly as the dashboard — no divergent producer.
   const [healthReport, cfoComponents] = await Promise.all([
     buildHealthInput(userId).then(generateHealthReport),
-    calculateCFOScore(userId),
+    computeCFOComponents(userId),
   ]);
   return assembleCanonicalCFOScore(healthReport, cfoComponents);
 }
@@ -337,11 +337,11 @@ export async function getRisks(userId: string): Promise<RiskRadarOutput> {
 }
 
 export async function getActions(userId: string): Promise<ActionPrioritisationOutput> {
-  const [risks, score] = await Promise.all([
+  const [risks, components] = await Promise.all([
     scanForRisks(userId),
-    calculateCFOScore(userId),
+    computeCFOComponents(userId),
   ]);
-  return generateActions(userId, risks.risks, score.components);
+  return generateActions(userId, risks.risks, components);
 }
 
 // ============================================================================

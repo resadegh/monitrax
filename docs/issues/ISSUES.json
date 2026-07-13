@@ -977,11 +977,12 @@
         "lib/cfo/intelligenceEngine.ts"
       ],
       "fixPRs": [
-        1380
+        1380,
+        1381
       ],
       "test": "tests/golden/ring2.cfoScoreDedup.test.ts",
       "tracker": "docs/blueprint/NEOAUDIT.md",
-      "notes": "Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealthInput (§12.2.1). Stage 2a (PR #1380, THIS): the CFO overall+grade+bars are sourced from the canonical generateHealthReport via intelligenceEngine.assembleCanonicalCFOScore (the ONE producer, used by getCFODashboardData + getCFOScore) — CFO overall == Home health == generateHealthReport score (golden: 72/B). The 6 legacy CFO component bars are replaced by the 7 canonical health categories (warm-labelled). calculateCFOScore is retained ONLY to feed generateActions (advisor unchanged, no regression) — removed in stage 2b. Neomatrix: number.cfoScore repointed from calculateCFOScore to generateHealthReport (§21.2.1). Cross-surface lock: tests/golden/ring2.cfoScoreDedup.test.ts. STAYS FIXING pending Reza live-data verification (Home==CFO on his real numbers). Stage 2b remaining: re-ground generateActions/advisor on canonical categories, then delete calculateCFOScore + its calc-audit shadow engine + the scoreCalculator Neomatrix nodes."
+      "notes": "Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealthInput (§12.2.1). Stage 2a (PR #1380, THIS): the CFO overall+grade+bars are sourced from the canonical generateHealthReport via intelligenceEngine.assembleCanonicalCFOScore (the ONE producer, used by getCFODashboardData + getCFOScore) — CFO overall == Home health == generateHealthReport score (golden: 72/B). The 6 legacy CFO component bars are replaced by the 7 canonical health categories (warm-labelled). calculateCFOScore is retained ONLY to feed generateActions (advisor unchanged, no regression) — removed in stage 2b. Neomatrix: number.cfoScore repointed from calculateCFOScore to generateHealthReport (§21.2.1). Cross-surface lock: tests/golden/ring2.cfoScoreDedup.test.ts. STAYS FIXING pending Reza live-data verification (Home==CFO on his real numbers). Stage 2b (PR #1381, DONE — Reza-approved REFRAME 2026-07-13): did NOT re-ground the advisor on the coarser 7 health categories (that would degrade advice precision — generateActions.findWeakAreas needs the granular 6 levers). Instead: kept the 6 CFO components as the advisor action-signals (extracted computeCFOComponents), and DELETED the dead competing-score role — calculateCFOScore + calculateTrend + getGrade + SCORE_WEIGHTS + calculateOverallScoreDecimal + the calc-audit overallScoreShadow + the scoreCalculator Neomatrix nodes (calculateCFOScore, calculateOverallScoreDecimal, cfoScoreWeights). Advice UNCHANGED (generateActions still takes the 6 components). number.cfoScore stays fed by generateHealthReport."
     },
     {
       "id": "MON-031",

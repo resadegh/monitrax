@@ -30,7 +30,6 @@ import { calculateCgtDiscount } from '@/lib/tax-engine/divisions/cgtDiscount';
 import { calculateSmsfIncomeTax } from '@/lib/tax-engine/super/smsfIncomeTax';
 import { calculateAggregateScore } from '@/lib/health/aggregateEngine';
 import { scoreToRiskBand } from '@/lib/health/types';
-import { calculateOverallScoreDecimal } from '@/lib/cfo/scoreCalculator';
 import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
 import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/healthScoreAggregator';
 import { generatePropertyPortfolioReport } from '@/lib/reports/generators/propertyPortfolio';
@@ -54,16 +53,6 @@ import { calculateLandTax, NSW_LAND_TAX_CY2025 } from '@/lib/tax-engine/landTax/
 import { calculateCrossStateLandTax } from '@/lib/tax-engine/landTax/crossStateAggregator';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
-
-const cfoComponents = (cf: number, debt: number, emerg: number, div: number, spend: number, save: number) =>
-  ({
-    cashflowStrength: new Decimal(cf),
-    debtCoverage: new Decimal(debt),
-    emergencyBuffer: new Decimal(emerg),
-    investmentDiversification: new Decimal(div),
-    spendingControl: new Decimal(spend),
-    savingsRate: new Decimal(save),
-  }) as never;
 
 const graph = JSON.parse(
   readFileSync(resolve(process.cwd(), 'docs/financial-logic/graph/financial-graph.json'), 'utf8'),
@@ -458,28 +447,10 @@ const CASES: AuditCase[] = [
     expected: 0,
   },
 
-  // ── CFO score — Monitrax 6-component weighting (.25/.20/.15/.15/.15/.10) ──────
-  {
-    node: 'engine.scoreCalculator.calculateOverallScoreDecimal',
-    law: 'CFO methodology: overall = Σ(component × weight); weights sum to 1.0',
-    derivation: 'all components 100 → 100 × (0.25+0.20+0.15+0.15+0.15+0.10) = 100',
-    actual: () => calculateOverallScoreDecimal(cfoComponents(100, 100, 100, 100, 100, 100)).toNumber(),
-    expected: 100,
-  },
-  {
-    node: 'engine.scoreCalculator.calculateOverallScoreDecimal',
-    law: 'CFO methodology: each component is weighted by its share',
-    derivation: '80×.25 + 60×.20 + 40×.15 + 100×.15 + 50×.15 + 20×.10 = 20+12+6+15+7.5+2 = 62.5',
-    actual: () => calculateOverallScoreDecimal(cfoComponents(80, 60, 40, 100, 50, 20)).toNumber(),
-    expected: 62.5,
-  },
-  {
-    node: 'engine.scoreCalculator.calculateOverallScoreDecimal',
-    law: 'CFO methodology: all-zero components → 0',
-    derivation: 'all 0 → 0',
-    actual: () => calculateOverallScoreDecimal(cfoComponents(0, 0, 0, 0, 0, 0)).toNumber(),
-    expected: 0,
-  },
+  // MON-030 stage 2b: the CFO overall-score audit cases were removed — the
+  // competing weighted `calculateOverallScoreDecimal` was deleted (the displayed
+  // score is now the ONE canonical health score; My Guide == Home). The 6 CFO
+  // components remain as advisor action-signals (shadowed in score-risk.decimal.test.ts).
 
   // ── CFO what-if: cut a spend category — annual = realised × 12 (capped) ───────
   {
