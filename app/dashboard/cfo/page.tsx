@@ -60,9 +60,25 @@ interface CFOScore {
     spendingControl: number;
     savingsRate: number;
   };
+  // MON-030 B1: the 7 canonical health categories rendered as the bars (so the
+  // bars explain the ring — one engine, same data as the Home health tile).
+  healthCategories?: Array<{ name: string; score: number }>;
   trend: 'improving' | 'stable' | 'declining';
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
 }
+
+// MON-030 B1: the My Guide score bars = the 7 canonical health categories, warm-
+// labelled (§14). Order + labels controlled here; each bar looks up its score by
+// category name so it's robust to the engine's array order.
+const CATEGORY_DISPLAY: Array<{ name: string; label: string; icon: typeof Banknote }> = [
+  { name: 'LIQUIDITY', label: 'Cash on hand', icon: Banknote },
+  { name: 'CASHFLOW', label: 'Cash flow', icon: TrendingUp },
+  { name: 'DEBT', label: 'Debt health', icon: Shield },
+  { name: 'INVESTMENTS', label: 'Investments', icon: BarChart3 },
+  { name: 'PROPERTY', label: 'Property', icon: Home },
+  { name: 'RISK_EXPOSURE', label: 'Protection', icon: Shield },
+  { name: 'LONG_TERM_OUTLOOK', label: 'Long-term outlook', icon: Sparkles },
+];
 
 interface Risk {
   id: string;
@@ -761,16 +777,17 @@ export default function CFODashboardPage() {
               <ScoreRing score={score.overall} grade={score.grade} size={160} trend={score.trend} />
             </div>
 
-            {/* Score Components Grid */}
+            {/* Score Components Grid — MON-030 B1: the 7 CANONICAL health categories
+                (same engine + data as the Home health tile) so the bars explain the
+                ring. Warm labels per §14; each looked up by category name so order
+                + labels are controlled here, robust to the engine's array order. */}
             <div className="flex-1 w-full">
               <h3 className="text-white/80 text-sm font-medium mb-4">Health Score Breakdown</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                <ScoreBar label="Cashflow" value={score.components.cashflowStrength} icon={DollarSign} />
-                <ScoreBar label="Debt Coverage" value={score.components.debtCoverage} icon={Shield} />
-                <ScoreBar label="Emergency Buffer" value={score.components.emergencyBuffer} icon={Shield} />
-                <ScoreBar label="Diversification" value={score.components.investmentDiversification} icon={BarChart3} />
-                <ScoreBar label="Spending Control" value={score.components.spendingControl} icon={Target} />
-                <ScoreBar label="Savings Rate" value={score.components.savingsRate} icon={TrendingUp} />
+                {CATEGORY_DISPLAY.map(({ name, label, icon }) => {
+                  const cat = score.healthCategories?.find((c) => c.name === name);
+                  return <ScoreBar key={name} label={label} value={cat?.score ?? 0} icon={icon} />;
+                })}
               </div>
             </div>
           </div>

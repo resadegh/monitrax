@@ -7,6 +7,9 @@ import { prisma } from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { getNetWorthHistory } from '@/lib/calculations/netWorthHistory';
 import { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
+// MON-030 B1: the CFO overall score + grade + bars come from the CANONICAL health
+// engine (same as the Home tile), so there is ONE health score, not three.
+import { buildHealthInput, generateHealthReport, scoreToRiskBand, riskBandToGrade } from '@/lib/health';
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
 import { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
@@ -63,9 +66,36 @@ interface ExpenseRecord {
 // Main Dashboard Data Generator
 // ============================================================================
 
+/**
+ * MON-030 B1: the ONE producer of the My Guide (CFO) score object. Overall +
+ * grade come from the CANONICAL health engine (`generateHealthReport`, identical
+ * to the Home health tile — one health score, not three); the BARS are the 7
+ * canonical `healthCategories`. `components` (the legacy 6) is carried ONLY to
+ * feed `generateActions` — it is NOT rendered (stage 2b re-grounds the advisor
+ * on canonical categories and deletes `calculateCFOScore`).
+ */
+function assembleCanonicalCFOScore(
+  healthReport: Awaited<ReturnType<typeof generateHealthReport>>,
+  cfoComponents: CFOScore,
+): CFOScore {
+  const overall = healthReport.healthScore.score;
+  return {
+    overall,
+    grade: riskBandToGrade(scoreToRiskBand(overall)),
+    components: cfoComponents.components,
+    healthCategories: healthReport.categories,
+    trend: cfoComponents.trend,
+    lastCalculated: cfoComponents.lastCalculated,
+  };
+}
+
 export async function getCFODashboardData(userId: string): Promise<CFODashboardData> {
-  // Calculate all components in parallel where possible
-  const [score, risks, taxInsights, loanInsights, propertyInsights, investmentInsights] = await Promise.all([
+  // Calculate all components in parallel where possible.
+  // MON-030 B1: `healthReport` is the CANONICAL score source (My Guide == Home).
+  // `cfoComponents` is retained ONLY to feed `generateActions` (component-based),
+  // transitional until stage 2b re-grounds the advisor on canonical categories.
+  const [healthReport, cfoComponents, risks, taxInsights, loanInsights, propertyInsights, investmentInsights] = await Promise.all([
+    buildHealthInput(userId).then(generateHealthReport),
     calculateCFOScore(userId),
     scanForRisks(userId),
     calculateCFOTaxInsights(userId).catch((err) => {
@@ -85,6 +115,9 @@ export async function getCFODashboardData(userId: string): Promise<CFODashboardD
       return undefined;
     }),
   ]);
+
+  // MON-030 B1: ONE canonical CFO score, assembled from the health engine.
+  const score = assembleCanonicalCFOScore(healthReport, cfoComponents);
 
   // Actions depend on risks and score
   const actions = await generateActions(userId, risks.risks, score.components);
@@ -291,7 +324,12 @@ async function getActiveAlerts(userId: string): Promise<CFOAlert[]> {
 // ============================================================================
 
 export async function getCFOScore(userId: string): Promise<CFOScore> {
-  return calculateCFOScore(userId);
+  // MON-030 B1: same canonical assembly as the dashboard — no divergent producer.
+  const [healthReport, cfoComponents] = await Promise.all([
+    buildHealthInput(userId).then(generateHealthReport),
+    calculateCFOScore(userId),
+  ]);
+  return assembleCanonicalCFOScore(healthReport, cfoComponents);
 }
 
 export async function getRisks(userId: string): Promise<RiskRadarOutput> {

@@ -542,3 +542,58 @@ real-data confirmation is Reza selecting his real account in the panel.
 - Requirements 10/10 (makes recommendations explicitly covered as Reza asked; no scope creep).
 - Logic 10/10 (docs-only clarification; enumerates the recommendation types + binds the existing discipline).
 - **Coverage boundary (honest):** a governance/text change — it states the rule; it does not add a mechanical gate for recommendations (the §20.6 skill enforces PRs; recommendations are self-enforced per §20.1.3 "show the gate"). No code, no tests.
+
+---
+
+## Session: chat-audit-findings-issues-m9518i (continued) — MON-030 stage 2a: CFO score == Home (option B1)
+
+### Change: My Guide (CFO) score sourced from the canonical health engine (NUMBER-CHANGING)
+
+- **Type**: FINANCIAL FIX (number-changing) — MON-030 stage 2a (Reza option B1), §8 step-5
+- **What was wrong (plain English)**: Your financial health read three different
+  scores — Home 50/C, My Guide (CFO) 46/D, My Safety Net 70 — for one health.
+- **What changed (plain English)**: My Guide's score + grade now come from the SAME
+  financial-health engine as your Home tile, so they show the same number (one
+  health score, not three). The 6 old CFO bars are replaced by the 7 canonical
+  health categories that actually build the score, so the bars explain the ring.
+  My Safety Net stays a separate, purpose-built score (it measures your safety
+  buffer, not overall health).
+- **What you'll see (plain English)**: Open My Guide and Home — the big health
+  score + grade READ THE SAME on both. My Guide bars are now Cash on hand / Cash
+  flow / Debt health / Investments / Property / Protection / Long-term outlook.
+  Safety Net unchanged.
+
+### §19 evidence
+- **Source**: CFO overall = `generateHealthReport(buildHealthInput(userId)).healthScore.score`
+  via `intelligenceEngine.assembleCanonicalCFOScore` (the ONE producer — used by
+  `getCFODashboardData` + `getCFOScore`, no divergent source). Grade =
+  `riskBandToGrade(scoreToRiskBand(overall))` (canonicalized into lib/health — the
+  ONE grade fn Home + CFO share).
+- **Worked example (golden)**: health score 72 → `scoreToRiskBand(72)=GOOD` →
+  grade B. CFO overall 72 == Home `quickHealthCheck` 72 == `generateHealthReport` 72.
+- **§19.4 downstream sweep**: CFO page (`app/dashboard/cfo/page.tsx` — bars now the
+  7 categories) · `/api/cfo` default + `?type=score` (both via the ONE assembler) ·
+  `intelligenceEngine`. The advisor + chat route call `calculateCFOScore` directly
+  for `generateActions` — UNCHANGED in 2a (no regression), re-grounded in 2b.
+- **Cross-surface lock**: `tests/golden/ring2.cfoScoreDedup.test.ts` — CFO overall
+  === Home === generateHealthReport; grade B; 7 categories present; + negative control.
+
+### Files
+- `lib/health/types.ts` — canonical `riskBandToGrade` (was a private copy in the insights route).
+- `app/api/dashboard/insights/route.ts` — use the canonical `riskBandToGrade` (local copy deleted).
+- `lib/cfo/intelligenceEngine.ts` — `assembleCanonicalCFOScore` (ONE producer); `getCFODashboardData` + `getCFOScore` source the score from health.
+- `lib/cfo/types.ts` — `CFOScore.healthCategories?`.
+- `app/dashboard/cfo/page.tsx` — bars = the 7 canonical categories (warm labels).
+- `tests/golden/ring2.cfoScoreDedup.test.ts` (new) — the §19.4 lock.
+- `docs/issues/ISSUES.json` — **MON-030 → FIXING** (downstream sweep, fixPRs #1380, test, plain trio, resolving semanticKeys).
+- `docs/financial-logic/graph/*` — `number.cfoScore` repointed calculateCFOScore → generateHealthReport (§21.2.1); intelligenceEngine anchors 327→365 / 351→389; GENERATED_CORE regenerated.
+
+### Verified locally
+- `ring2.cfoScoreDedup.test.ts` — 5/5. `tests/cfo + golden + verification + issues + neomatrix` — **544/544 pass** (34 files; no regression).
+- `neomatrix:check` + `issues:check` + `lint:financial-surfaces` — all green.
+
+### Gate (§20.6) — FINANCIAL build, recorded 10/10 (§20.4)
+- Document 10/10 (doc: NEOAUDIT §8 step-5; Reza option B1 followed exactly; §12.2.1 one-producer assembler + canonical grade; §21.2.1 lineage repointed same-PR; §19.5 registry).
+- Requirements 10/10 (B1 exactly: overall+grade+bars from canonical, 7 warm-labelled categories, Safety Net distinct, advisor untouched in 2a; no gold-plating).
+- Logic 10/10 (ONE producer used by both entry points; golden 72==72 dedup proven; grade derivation shared; 544/544 clean).
+- **Coverage boundary (honest — §22.2.4):** verifies the CFO overall + grade are canonical-sourced and EQUAL the Home score on golden data + the 7 categories are the bar source. Does NOT verify the rendered CFO PAGE pixels (R2-vis), the advisor grounding (still legacy components until 2b), or real user data (R3). **MON-030 stays FIXING — Reza verifies Home==CFO on his live numbers.** Stage 2b removes calculateCFOScore + shadow engine + scoreCalculator graph nodes.

@@ -954,26 +954,34 @@
     {
       "id": "MON-030",
       "title": "Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-11",
       "area": "cross-surface",
       "plain": {
-        "issue": "Your financial health score reads 50 on Home, 46 on My Guide and 70 on My Safety Net — three scores for one health."
+        "issue": "Your financial health score reads 50 on Home, 46 on My Guide and 70 on My Safety Net — three scores for one health.",
+        "fix": "Your My Guide (CFO) score now comes from the SAME financial-health engine as your Home health score — so they show the same number (one health score, not three). The 6 old CFO bars are replaced by the 7 canonical health categories that actually build the score, so the bars explain the ring. My Safety Net stays a separate, purpose-built score (it measures your safety buffer, not overall health).",
+        "check": "Open My Guide and the Home dashboard: the big health score + its grade now READ THE SAME on both. The My Guide bars are now Cash on hand / Cash flow / Debt health / Investments / Property / Protection / Long-term outlook (the 7 that build the score). My Safety Net is unchanged."
       },
       "rootCause": [
-        "lib/cfo/scoreCalculator.ts:33",
-        "lib/health/aggregateEngine.ts:370",
-        "lib/calculations/safetyScore.ts:57",
-        "lib/services/masterFinancialService.ts:1434"
+        "lib/cfo/scoreCalculator.ts:33"
       ],
-      "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
-      "tracker": "docs/verification/runs/VR-001.md",
-      "notes": "VR-001. Root cause verified: FOUR score producers — lib/health (canonical per §12.3, Home 50/C), lib/cfo/scoreCalculator calculateCFOScore (competing 6-component engine, CFO 46/D — the culprit to REMOVE), lib/calculations/safetyScore (a legitimately distinct Stage-A safety metric, 70/100, needs clearer labelling), masterFinancialService.calculateHealthScore (4th latent weighting — retire). Fix = delete calculateCFOScore as an overall grade and point the CFO page at the canonical generateHealthReport; separate PR (structural, API shape changes)."
+      "semanticKeys": [
+        "number.cfoScore",
+        "number.healthScore"
+      ],
+      "downstreamConsumers": [
+        "app/dashboard/cfo/page.tsx",
+        "app/api/cfo/route.ts",
+        "lib/cfo/intelligenceEngine.ts"
+      ],
+      "fixPRs": [
+        1380
+      ],
+      "test": "tests/golden/ring2.cfoScoreDedup.test.ts",
+      "tracker": "docs/blueprint/NEOAUDIT.md",
+      "notes": "Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealthInput (§12.2.1). Stage 2a (PR #1380, THIS): the CFO overall+grade+bars are sourced from the canonical generateHealthReport via intelligenceEngine.assembleCanonicalCFOScore (the ONE producer, used by getCFODashboardData + getCFOScore) — CFO overall == Home health == generateHealthReport score (golden: 72/B). The 6 legacy CFO component bars are replaced by the 7 canonical health categories (warm-labelled). calculateCFOScore is retained ONLY to feed generateActions (advisor unchanged, no regression) — removed in stage 2b. Neomatrix: number.cfoScore repointed from calculateCFOScore to generateHealthReport (§21.2.1). Cross-surface lock: tests/golden/ring2.cfoScoreDedup.test.ts. STAYS FIXING pending Reza live-data verification (Home==CFO on his real numbers). Stage 2b remaining: re-ground generateActions/advisor on canonical categories, then delete calculateCFOScore + its calc-audit shadow engine + the scoreCalculator Neomatrix nodes."
     },
     {
       "id": "MON-031",

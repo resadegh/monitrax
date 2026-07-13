@@ -23,7 +23,7 @@ import { getCanonicalSavingsRate, getCanonicalMonthlyCashflow } from '@/lib/calc
 import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
 import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 import { computeFinancialIndependence } from '@/lib/calculations/financialIndependence';
-import { quickHealthCheck, buildHealthInput } from '@/lib/health';
+import { quickHealthCheck, buildHealthInput, riskBandToGrade } from '@/lib/health';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { resolveMonthly } from '@/lib/calculations/monthlyResolver';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -656,25 +656,4 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-/**
- * Convert Financial Health Engine riskBand to letter grade
- * Aligns Dashboard grade with the health score from the engine
- */
-function riskBandToGrade(riskBand: string): 'A' | 'B' | 'C' | 'D' | 'F' {
-  switch (riskBand) {
-    case 'EXCELLENT':
-      return 'A';
-    case 'GOOD':
-      return 'B';
-    case 'MODERATE':
-      return 'C';
-    case 'CONCERNING':
-      return 'D';
-    case 'CRITICAL':
-      return 'F';
-    default:
-      return 'C';
-  }
 }
