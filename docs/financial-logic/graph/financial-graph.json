@@ -2262,14 +2262,14 @@
       "trailStage": "L",
       "regime": null,
       "semanticKey": "cfoScore",
-      "produces": "The displayed 0-100 CFO score.",
-      "formula": "= calculateCFOScore(...).overall",
-      "authority": "Monitrax CFO methodology",
+      "produces": "The displayed 0-100 My Guide (CFO) score — MON-030 B1: equals the Home health score (one health, not three).",
+      "formula": "= generateHealthReport(buildHealthInput(userId)).healthScore.score (via intelligenceEngine.assembleCanonicalCFOScore) — MON-030 B1: same canonical health score as number.healthScore.",
+      "authority": "Monitrax Financial Health Engine (canonical) — MON-030 B1 unified the CFO overall with the Home health score",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/cfo/scoreCalculator.ts:33",
+      "verifiedBy": "lib/cfo/intelligenceEngine.ts (assembleCanonicalCFOScore) → lib/health/aggregateEngine.ts:338",
       "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedDate": "2026-07-13",
       "status": "documented"
     },
     {
@@ -4157,7 +4157,7 @@
       "kind": "engine",
       "label": "CFO: projected month-end balance",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 327,
+      "line": 365,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -4178,7 +4178,7 @@
       "kind": "engine",
       "label": "CFO: monthly-progress net worth (local)",
       "file": "lib/cfo/intelligenceEngine.ts",
-      "line": 351,
+      "line": 389,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -6890,14 +6890,14 @@
       "verifiedDate": "2026-06-23"
     },
     {
-      "from": "engine.scoreCalculator.calculateCFOScore",
+      "from": "engine.aggregateEngine.generateHealthReport",
       "to": "number.cfoScore",
       "type": "feeds",
       "source": "verified",
       "fromUnit": null,
       "toUnit": null,
-      "evidence": "calculateCFOScore.overall is the displayed score",
-      "verifiedDate": "2026-06-23"
+      "evidence": "MON-030 B1: the CFO overall is now the canonical health score (generateHealthReport().healthScore.score), assembled in intelligenceEngine.assembleCanonicalCFOScore — identical to the Home health tile. calculateCFOScore no longer feeds the displayed score (it feeds generateActions only, transitional; removed stage 2b).",
+      "verifiedDate": "2026-07-13"
     },
     {
       "from": "number.cfoScore",

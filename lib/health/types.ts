@@ -479,6 +479,29 @@ export function scoreToRiskBand(score: number): RiskBand {
 }
 
 /**
+ * Convert a health risk band to the A–F letter grade shown on the Home health
+ * tile AND the My Guide (CFO) score ring. CANONICAL (MON-030 §12.2.1) — the ONE
+ * grade derivation both surfaces use, so a single health score maps to a single
+ * grade everywhere. (Was previously a private copy in the insights route.)
+ */
+export function riskBandToGrade(riskBand: RiskBand | string): 'A' | 'B' | 'C' | 'D' | 'F' {
+  switch (riskBand) {
+    case 'EXCELLENT':
+      return 'A';
+    case 'GOOD':
+      return 'B';
+    case 'MODERATE':
+      return 'C';
+    case 'CONCERNING':
+      return 'D';
+    case 'CRITICAL':
+      return 'F';
+    default:
+      return 'C';
+  }
+}
+
+/**
  * Convert a risk band to a numeric severity
  */
 export function riskBandToSeverity(band: RiskBand): RiskSeverity {

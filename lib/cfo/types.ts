@@ -2,14 +2,20 @@
  * Phase 17: Personal CFO Engine Types
  * Core type definitions for the CFO Intelligence System
  */
+import type { HealthCategory } from '@/lib/health';
 
 // ============================================================================
 // CFO Score Types
 // ============================================================================
 
 export interface CFOScore {
-  overall: number; // 0-100
-  components: CFOScoreComponents;
+  overall: number; // 0-100 — MON-030 B1: sourced from the canonical health engine
+  components: CFOScoreComponents; // legacy 6 — feeds generateActions only; NOT rendered (removed stage 2b)
+  // MON-030 B1: the 7 canonical health categories rendered as the My Guide bars
+  // (so the bars explain the ring — one engine). Same data as the Home tile.
+  // Optional because the legacy `calculateCFOScore` (transitional, feeds
+  // generateActions only) doesn't populate it — only the canonical assembler does.
+  healthCategories?: HealthCategory[];
   trend: 'improving' | 'stable' | 'declining';
   lastCalculated: Date;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';

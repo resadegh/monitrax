@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**34 total** · 31 open · 🔵 0 · 🟡 3 · 🟠 28 · 🟢 0 · ✅ 2
+**34 total** · 31 open · 🔵 0 · 🟡 2 · 🟠 29 · 🟢 0 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -36,7 +36,7 @@
 | MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
 | MON-028 | 🟠 FIXING | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
 | MON-029 | 🟠 FIXING | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
-| MON-030 | 🟡 DIAGNOSED | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | — | — |
+| MON-030 | 🟠 FIXING | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | #1380 | ✅ |
 | MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | #1368 | ✅ |
 | MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
@@ -587,15 +587,22 @@ Found by real-data verification run VR-001 (2026-07-11). Root-cause investigatio
 
 ### MON-030 — Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: cross-surface · opened 2026-07-11
 
 > **What was wrong:** Your financial health score reads 50 on Home, 46 on My Guide and 70 on My Safety Net — three scores for one health.
 >
-- **Root cause:** `lib/cfo/scoreCalculator.ts:33`, `lib/health/aggregateEngine.ts:370`, `lib/calculations/safetyScore.ts:57`, `lib/services/masterFinancialService.ts:1434`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
-- **Detail:** `docs/verification/runs/VR-001.md`
+> **What changed:** Your My Guide (CFO) score now comes from the SAME financial-health engine as your Home health score — so they show the same number (one health score, not three). The 6 old CFO bars are replaced by the 7 canonical health categories that actually build the score, so the bars explain the ring. My Safety Net stays a separate, purpose-built score (it measures your safety buffer, not overall health).
+>
+> **What you should see:** Open My Guide and the Home dashboard: the big health score + its grade now READ THE SAME on both. The My Guide bars are now Cash on hand / Cash flow / Debt health / Investments / Property / Protection / Long-term outlook (the 7 that build the score). My Safety Net is unchanged.
 
-VR-001. Root cause verified: FOUR score producers — lib/health (canonical per §12.3, Home 50/C), lib/cfo/scoreCalculator calculateCFOScore (competing 6-component engine, CFO 46/D — the culprit to REMOVE), lib/calculations/safetyScore (a legitimately distinct Stage-A safety metric, 70/100, needs clearer labelling), masterFinancialService.calculateHealthScore (4th latent weighting — retire). Fix = delete calculateCFOScore as an overall grade and point the CFO page at the canonical generateHealthReport; separate PR (structural, API shape changes).
+- **Root cause:** `lib/cfo/scoreCalculator.ts:33`
+- **Neomatrix:** `number.cfoScore`, `number.healthScore`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `app/api/cfo/route.ts`, `lib/cfo/intelligenceEngine.ts`
+- **Fix PR(s):** #1380
+- **Holistic test (§19.4):** `tests/golden/ring2.cfoScoreDedup.test.ts`
+- **Detail:** `docs/blueprint/NEOAUDIT.md`
+
+Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealthInput (§12.2.1). Stage 2a (PR #1380, THIS): the CFO overall+grade+bars are sourced from the canonical generateHealthReport via intelligenceEngine.assembleCanonicalCFOScore (the ONE producer, used by getCFODashboardData + getCFOScore) — CFO overall == Home health == generateHealthReport score (golden: 72/B). The 6 legacy CFO component bars are replaced by the 7 canonical health categories (warm-labelled). calculateCFOScore is retained ONLY to feed generateActions (advisor unchanged, no regression) — removed in stage 2b. Neomatrix: number.cfoScore repointed from calculateCFOScore to generateHealthReport (§21.2.1). Cross-surface lock: tests/golden/ring2.cfoScoreDedup.test.ts. STAYS FIXING pending Reza live-data verification (Home==CFO on his real numbers). Stage 2b remaining: re-ground generateActions/advisor on canonical categories, then delete calculateCFOScore + its calc-audit shadow engine + the scoreCalculator Neomatrix nodes.
 
 ### MON-031 — Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap)
 
