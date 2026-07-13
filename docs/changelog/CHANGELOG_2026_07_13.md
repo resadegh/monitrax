@@ -164,3 +164,47 @@
   CLI's file-write path (that would mutate the real registry in CI) — the write
   path is exercised manually and self-validated by the gate `issues:raise` runs
   after every write.
+
+## Session: chat-audit-findings-issues-m9518i (continued) — §8 step-6: Playwright MCP runbook (R3-agent)
+
+### Change: the R3-agent operating procedure — exploratory verification on a golden-seeded preview
+
+- **Type**: Docs (NeoAudit R3-agent runbook) — §8 step-6 (3rd of 6)
+- **Scope**: `docs/verification/PLAYWRIGHT_MCP_RUNBOOK.md` (new)
+- **Why**: R3-agent (NEOAUDIT §1.2) is the agent-driven exploratory node — a Claude
+  session drives Playwright MCP over a golden-seeded preview looking for anything
+  wrong. It had a defined role but no operating procedure; without one it risks
+  two failure modes the runbook forecloses: touching real/CDR data, and growing a
+  permanent assertion suite at R3 instead of promoting findings down.
+- **Solution** — a tight runbook that codifies:
+  - the two absolute boundaries (§1.3): **synthetic/golden data ONLY** (real data is
+    R3-self + R3-eyes only), and **no permanent assertions at R3** (repeatable
+    discovery → promoted to an R2 spec / R0 fixture, then deleted from R3);
+  - prerequisites (Playwright MCP available + a golden-seeded preview + the
+    `tests/golden/goldenHousehold.ts` `EXPECTED` manifest; `@playwright/test` is NOT
+    yet a repo dep — R3-agent via MCP doesn't need it, promotion to an R2 spec does);
+  - the run (confirm the golden seed via the net-worth anchor → exploratory sweep
+    mirroring the Eyes & Ears functional/visual briefs on synthetic data → capture
+    surface/expected/actual → file via `npm run issues:raise`);
+  - the promotion ratchet (wrong number → R2-num · visual → R2-vis · formula → R0 ·
+    advice → decision-table) — R3-agent is a net, not a suite.
+
+### Files Modified
+- `docs/verification/PLAYWRIGHT_MCP_RUNBOOK.md` — new (R3-agent runbook)
+- `docs/blueprint/NEOAUDIT.md` — §8 step-6 runbook marked landed + backlog trimmed
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — step-6 progress
+- (`docs/00_INDEX.md` unchanged — it does not list the verification docs; the sibling
+  `VERIFICATION_PLAYBOOK.md` isn't indexed either, so no entry to add)
+
+### Build Status
+- [x] Doc-only — no code/test surface touched
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT.md §1.2 R3-agent + §1.3 handshake + §4 Eyes & Ears —
+  the runbook matches the R3-agent role, boundaries, and promotion ratchet exactly;
+  §8 step-6 named component) · Requirements 10/10 (the runbook the step calls for; no
+  gold-plating) · Logic 10/10 (no code; the procedure is grounded in the documented
+  node roles + the real golden manifest + the real `issues:raise` command).
+- **Coverage boundary (honest — §22.2.4):** this is a runbook (procedure), NOT
+  executable code — it does not itself run any verification. Playwright MCP wiring +
+  a golden-seeded preview endpoint are the operator's setup; the doc is the protocol.
