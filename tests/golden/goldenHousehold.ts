@@ -163,7 +163,18 @@ function applyInclude(model: string, row: Record<string, unknown>, include: Reco
  * paths stay live.
  */
 export function createGoldenDb() {
-  const models = GOLDEN_DB as unknown as Record<string, { id?: string }[]>;
+  return createGoldenDbFrom(GOLDEN_DB as unknown as Record<string, { id?: string }[]>);
+}
+
+/**
+ * Build a `@/lib/db`-shaped mock over an ARBITRARY GOLDEN_DB-shaped rows object.
+ * Identical fail-loud Proxy to {@link createGoldenDb}, but over rows passed in —
+ * used by the Tier-3 metamorphic suite (NEOAUDIT.md §2 Tier 3), which runs the
+ * REAL snapshot on a PERTURBED clone of the golden rows and compares the two
+ * runs. No shared module constant, so each run is independent.
+ */
+export function createGoldenDbFrom(rowsByModel: Record<string, { id?: string }[]>) {
+  const models = rowsByModel;
   return new Proxy(
     {},
     {
