@@ -108,3 +108,59 @@
   DECLARED-basis golden book through the real snapshot service. Does NOT exercise
   the ACTUALS path (the transfer-invariance law needs an actuals-basis fixture —
   tracked follow-up), and does NOT verify any rendered page (R2-vis).
+
+## Session: chat-audit-findings-issues-m9518i (continued) — §8 step-6: issues:raise (the finding bus)
+
+### Change: `npm run issues:raise` — auto-file a gate/verification FAIL as a de-duped MON ticket
+
+- **Type**: Tooling (NeoAudit finding bus, NEOAUDIT §3.1) — §8 step-6 (2nd of 6)
+- **Scope**: `scripts/issues/raise-issue.mjs` (new) + `package.json` (`issues:raise`)
+  + `tests/issues/raiseIssue.test.ts` (new)
+- **Why**: NEOAUDIT §3.1 mandates ONE finding bus — every node's FAIL becomes a
+  MON-### in the registry, no side-channels. Until now that entry was hand-written;
+  `issues:raise` pre-fills it so a gate/verification failure files itself, de-duped,
+  gate-valid, instead of getting lost or spawning duplicates.
+- **Solution** — a pure-node CLI that:
+  - scaffolds a **gate-VALID OPEN** entry (all REQUIRED fields + `plain.issue` +
+    evidence — surface/expected/actual/run/node — in `notes`);
+  - **de-dups by semanticKey+surface** against LIVE issues (a CLOSED/WONTFIX/
+    RETRACTED bug can recur → NOT deduped; `--append` stamps new evidence onto the
+    existing ticket);
+  - **never emits an unmodelled semanticKey** — a key absent from the Neomatrix is
+    recorded in `notes` as "MODEL then attach (§21.5)", never as a gate-invalid id
+    (so the entry always passes `issues:check`);
+  - after a write regenerates `ISSUES.md` and self-runs the gate, failing loudly if
+    its own scaffold is somehow rejected;
+  - flags: `--dry-run` (print, write nothing), `--json '<obj>'` (programmatic),
+    `--append`, plus `--title/--area/--surface` (required) and the evidence fields.
+  - Pure helpers (`buildEntry`/`splitKeys`/`findDuplicate`/`nextId`/`parseArgs`) are
+    exported; the CLI entry is guarded by `import.meta.url` so importing for tests
+    doesn't execute it.
+
+### Files Modified
+- `scripts/issues/raise-issue.mjs` — new (the finding bus)
+- `tests/issues/raiseIssue.test.ts` — new (8 tests, validated against the REAL gate + graph)
+- `package.json` — `issues:raise` script
+- `docs/blueprint/NEOAUDIT.md` — §8 step-6 issues:raise landed + §3.1 "(queued build)" removed
+- `docs/issues/README.md` — tooling table row + a "raising an issue" section
+
+### Build Status
+- [x] `npx vitest run tests/issues` — 2 files, 16 tests pass (incl. the new 8)
+- [x] `npm run issues:check` — 34 issues valid (registry untouched — the manual
+      end-to-end write test filed MON-035 then reverted it)
+- [x] CLI verified end-to-end: dry-run, de-dup (→ MON-002), real write (gate-valid
+      MON-035), revert
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT.md §3.1 + §8 step-6 — issues:raise is the named
+  finding bus; de-dup by semanticKey+surface exactly as §3.1 specifies) ·
+  Requirements 10/10 (implements the finding bus; no gold-plating) · Logic 10/10
+  (the scaffold is proven gate-valid against the REAL gate + graph; de-dup match/
+  miss/terminal + unknown-key-noted all locked; SSOT — reuses the ONE registry +
+  ONE gate + ONE graph, no parallel platform per §22; negative control proves the
+  gate we validate against is real).
+- **Coverage boundary (honest — §22.2.4):** the test verifies the PURE scaffold +
+  de-dup logic against the real gate + Neomatrix graph. It does NOT unit-test the
+  CLI's file-write path (that would mutate the real registry in CI) — the write
+  path is exercised manually and self-validated by the gate `issues:raise` runs
+  after every write.

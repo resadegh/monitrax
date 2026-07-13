@@ -12,6 +12,19 @@
 | `ISSUES.json` | **SSOT** — one entry per issue (machine-readable) | ✅ edit this |
 | `ISSUES.md` | human view (generated) | ❌ generated — `npm run issues:generate` |
 | `scripts/issues/check-issues.mjs` | the **gate** | ❌ the enforcer |
+| `scripts/issues/raise-issue.mjs` | the **finding bus** — `npm run issues:raise` scaffolds a gate-valid OPEN ticket from a gate/verification FAIL (de-duped by semanticKey+surface) | ▶️ run it (don't hand-edit output) |
+
+### Raising an issue from a gate/verification failure (`issues:raise`)
+
+Instead of hand-writing a new entry, a NeoAudit gate/verification FAIL files itself (NEOAUDIT.md §3.1 — the ONE finding bus):
+
+```
+npm run issues:raise -- --title "Cashflow tile disagrees with /cashflow" \
+  --area cashflow --surface app/dashboard/page.tsx \
+  --semantic-key number.cashflow --expected -400 --actual 10505 --run <jobId>
+```
+
+It scaffolds a **gate-valid OPEN** entry (all REQUIRED fields + a plain-English `issue` + the evidence in `notes`), **de-dups by semanticKey+surface** (a LIVE match prints `duplicate of MON-XXX` and files nothing; `--append` stamps the new evidence onto it), and **never emits an unmodelled semanticKey** — a key not in the Neomatrix is recorded in `notes` as "MODEL then attach (§21.5)", not as a gate-invalid id. `--dry-run` prints the entry without writing; `--json '<obj>'` supplies the fields programmatically. After writing it regenerates `ISSUES.md` and self-runs the gate. You still **diagnose** it (fill `rootCause` + `semanticKeys`) and advance the lifecycle by hand — raising only opens the ticket.
 
 Enforcement runs in CI via `tests/issues/registry.test.ts` (a required check) and locally via `npm run issues:check`.
 

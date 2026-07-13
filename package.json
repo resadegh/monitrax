@@ -32,7 +32,8 @@
     "neomatrix:census": "node scripts/neomatrix/calc-census.mjs",
     "neomatrix:proven": "node scripts/neomatrix/generate-proven-set.mjs",
     "issues:check": "node scripts/issues/check-issues.mjs",
-    "issues:generate": "node scripts/issues/generate-issues-md.mjs"
+    "issues:generate": "node scripts/issues/generate-issues-md.mjs",
+    "issues:raise": "node scripts/issues/raise-issue.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
