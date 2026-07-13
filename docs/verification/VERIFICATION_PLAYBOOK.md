@@ -96,6 +96,7 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
   - Estimated annual tax on /cashflow vs My Guide (CFO) — identical? Medicare levy visible/included?
   - /cashflow "Money In" figures — do the two agree? If no income landed this month, do BOTH read $0?
   - "Month-End Balance" on My Guide vs the Cashflow forecast — same number?
+  - [MON-030] My Guide (CFO) overall score AND letter grade vs the Home "Health" score AND grade — IDENTICAL? (both now come from the ONE health engine, so they MUST match to the digit and the letter; any gap is a FAIL.) Then look at the CFO score's coloured bars: they should be the SEVEN warm categories — Cash on hand / Cash flow / Debt health / Investments / Property / Protection / Long-term outlook — NOT a different set of six CFO metrics. Report the score, the grade, and the bar labels you see on each surface.
 
 === PART D — EDGE CASES (yes/no each) ===
   - Owner-occupied HOME: does ANY surface show a "Yield" for it? (should NOT)
@@ -111,7 +112,7 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
   - Essential + Discretionary = Recurring monthly spend.
   - Every % is 0–100% (LVR may exceed 100).
   - Negative portfolio cashflow ⇒ no "Positive Cashflow" full-marks sub-score; Safety score < 100.
-  - The SAME metric (net worth, savings rate, health score, liquid savings, each property's cashflow) reads the SAME on every page it appears — list each occurrence.
+  - The SAME metric (net worth, savings rate, health score AND its letter grade, liquid savings, each property's cashflow) reads the SAME on every page it appears — list each occurrence. [MON-030: Home health score/grade === My Guide CFO score/grade.]
   - No sentinel leaks: "69 years", "999", decades-long payoff, "$0 repayment" on a property that has a loan.
 
 === PART F — REGRESSION SNAPSHOT (fenced JSON, fixed keys, same every run) ===
@@ -121,7 +122,7 @@ Output a fenced JSON block exactly like:
   "netWorth": 0, "totalAssets": 0, "totalLiabilities": 0, "portfolioEquity": 0,
   "properties": { "<name>": { "cashflowYrDetail": 0, "cashflowYrList": 0, "cashflowYrHome": 0, "yieldDetail": 0, "yieldList": 0 } },
   "totalMonthlyExpenses": 0, "estimatedAnnualTax": 0,
-  "safetyScore": 0, "healthScoreHome": 0, "healthScoreCfo": 0,
+  "safetyScore": 0, "healthScoreHome": 0, "healthScoreCfo": 0, "healthGradeHome": null, "healthGradeCfo": null,
   "emergencyFundMonths": 0, "savingsRateCfo": 0, "savingsRateHome": 0,
   "balances": { "liquid": 0, "accessible": 0, "locked": 0 }
 }

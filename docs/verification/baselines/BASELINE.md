@@ -24,6 +24,8 @@
   "safetyScore": 70,
   "healthScoreHome": 50,
   "healthScoreCfo": 46,
+  "healthGradeHome": null,
+  "healthGradeCfo": null,
   "emergencyFundMonths": 11.7,
   "savingsRateCfo": 75.4,
   "savingsRateHome": -30.5,
@@ -37,7 +39,7 @@
 |---|---|---|
 | `properties.*.cashflowYrDetail` + `yieldDetail` | **BROKEN (MON-028)** — detail page was declared-only | After #1359: detail converges to the list/Home value (Broadbeach → ~15,879; ThornlandLot1 → ~−74,614; Guildford → ~−28,308) |
 | `savingsRateCfo` (75.4) vs `savingsRateHome` (−30.5) vs a 0.0% Home insight | **BROKEN (MON-029)** — three producers | One canonical value everywhere once fixed |
-| `healthScoreHome` 50 vs `healthScoreCfo` 46 vs `safetyScore` 70 | **BROKEN (MON-030)** — multiple score producers | One canonical engine (or explicitly distinct, labelled metrics) |
+| `healthScoreHome` 50 vs `healthScoreCfo` 46 vs `safetyScore` 70 | **FIX SHIPPED (MON-030, PRs #1380/#1381)** — CFO score+grade+bars re-sourced from the ONE `generateHealthReport`; Safety Net stays deliberately distinct | Next run: `healthScoreCfo` === `healthScoreHome` AND `healthGradeCfo` === `healthGradeHome` (expected delta — bucket as "fix shipped"). `safetyScore` stays distinct by design. MON-030 flips FIXING→VERIFIED once this convergence is confirmed on Reza's live data. |
 | `balances.liquid` 301,808 vs Safety Net "Liquid savings" 304,304 | **BROKEN (MON-031)** — $2,496 producer gap | One value |
 | Laguna list −321,280 vs Home −315,240 | **UNEXPLAINED $6,040/yr gap** — same class as MON-028? To investigate | Converge |
 | netWorth identity off by $1 | Tolerance/rounding — watch, don't chase yet | Exact after bucket-producer unification |
