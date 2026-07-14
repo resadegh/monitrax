@@ -54,7 +54,7 @@
 | MON-045 | 🟡 DIAGNOSED | 🟡 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
 | MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##PENDING | ✅ |
 | MON-047 | 🟡 DIAGNOSED | 🟢 | no | Dead unwired calculateMonthlyProgressNetWorth uses COST basis (averagePrice) not market — latent net-worth bug + stale graph node | ##PENDING | n/a |
-| MON-048 | 🟠 FIXING | 🟡 | no | Property Cashflow-rhythm shows one-off expenses as MONTHLY (badge read declared frequency, not isRecurring) | ##PENDING | ✅ |
+| MON-048 | 🟠 FIXING | 🟡 | no | Property Cashflow-rhythm shows one-off expenses as MONTHLY (badge read declared frequency, not isRecurring) | ##1406 | ✅ |
 
 ---
 
@@ -919,9 +919,9 @@ Surfaced by the Neomatrix accuracy audit (Reza directive 2026-07-14 — bugs in 
 
 - **Root cause:** `app/dashboard/properties/[id]/page.tsx:866`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`
-- **Fix PR(s):** ##PENDING
+- **Fix PR(s):** ##1406
 - **Holistic test (§19.4):** `tests/properties/activityFrequencyLabel.test.ts`
 - **Detail:** `reza-chrome:2026-07-14`
 
-Found by Reza on the property detail page (2026-07-14 screenshot): the RecentActivityCard "Cashflow rhythm" built each expense row’s cadence badge from e.frequency.charAt(0)+... i.e. the RAW DECLARED frequency, which defaults to MONTHLY — so a one-off (isRecurring===false) rendered "Monthly". This is a MON-037 SIBLING (F1 partial-surface): MON-037 fixed the Expenses CARD + the cashflow ENGINE run-rate, but this DIFFERENT component on the same page kept the declared-frequency label. Fix (§12.2.1 one source): lib/properties/activityFrequencyLabel.ts returns "One-off" when isRecurring===false else the humanised frequency; RecentActivityCard uses it (ExpenseItem type gained isRecurring; the detail API already returns it via the enricher spread). Ratchet: tests/properties/activityFrequencyLabel.test.ts. Why VR-005 Chrome missed it: my brief did not list the Recent-Activity cadence BADGES as a check target (it checked the Expenses CARD reconciliation A5 + the cashflow NUMBERS) — a coverage gap in the brief; this label class should be promoted to an automated check (done: the Ratchet). Neomatrix: pure presentation helper, allowlisted. changesNumbers=false (amount unchanged; only the frequency label).
+Found by Reza on the property detail page (2026-07-14 screenshot): the RecentActivityCard "Cashflow rhythm" built each expense row’s cadence badge from e.frequency.charAt(0)+... i.e. the RAW DECLARED frequency, which defaults to MONTHLY — so a one-off (isRecurring===false) rendered "Monthly". This is a MON-037 SIBLING (F1 partial-surface): MON-037 fixed the Expenses CARD + the cashflow ENGINE run-rate, but this DIFFERENT component on the same page kept the declared-frequency label. Fix (§12.2.1 one source, PR #1406): lib/properties/activityFrequencyLabel.ts returns "One-off" when isRecurring===false else the humanised frequency; RecentActivityCard uses it (ExpenseItem type gained isRecurring; the detail API already returns it via the enricher spread). Ratchet (step 3): tests/properties/activityFrequencyLabel.test.ts. GROWTH-LOOP STEP 5 (brief-broadening, follow-up PR 2026-07-14): VR-005 Chrome missed this because the brief listed no LABEL/badge scrutiny — it checked the Expenses CARD reconciliation A5 + the cashflow NUMBERS but never told the auditor to read the cadence BADGES. The specific one-off badge is now the Ratchet; the CLASS it revealed ("a correct number can carry a lying LABEL") is now a STANDING direction in the canonical brief VERIFICATION_PLAYBOOK.md §3.3 Part D ("LABELS, not just numbers") so the next novel label-lie is still caught by eye. This is the type case that made the growth loop's step 5 explicit (NEOAUDIT.md §10 / FIX_PROTOCOL Stage 5.4). Neomatrix: pure presentation helper, allowlisted. changesNumbers=false (amount unchanged; only the frequency label).
 

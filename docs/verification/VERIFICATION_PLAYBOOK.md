@@ -48,7 +48,7 @@ Rings 0–2 are fully automated in CI. Ring 3 is semi-automated (Chrome reads, a
 
 ### 3.2 The relay protocol (who does what)
 
-1. **Session** hands Reza the run brief (§3.3, verbatim — do not improvise a new one; edit THIS doc if the brief must change).
+1. **Session** hands Reza the run brief (§3.3, verbatim — do not improvise a new one; edit THIS doc if the brief must change). **The brief is a LIVING document (NEOAUDIT.md §10 step 5):** whenever a run finds a defect that reveals a NEW CLASS of human scrutiny the brief never directed the auditor to apply (e.g. MON-048 → "read the LABEL, not just the number"), broaden §3.3 in the SAME fix PR so every future run inherits the lens. The brief only ever gets more complete — automatable specifics leave it (become Ratchet tests, §5), newly-recognised categories of judgement enter it.
 2. **Reza** opens Monitrax (prod, or a PR preview URL when verifying a specific fix) → opens Claude-in-Chrome → pastes the brief → allows navigation/reading, denies writes → asks for the final report in the output format → pastes the report back to the session.
 3. **Session** compares (§3.5) and produces the PASS/FAIL table mapped to MON-### issues; registers new MON-### for every new FAIL; applies the Ratchet (§5).
 4. **Session** stores the run under `docs/verification/runs/VR-NNN.md` (sequential) and, if this run becomes the new reference, updates `docs/verification/baselines/`.
@@ -106,7 +106,8 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
 === PART D — EDGE CASES (yes/no each) ===
   - Owner-occupied HOME: does ANY surface show a "Yield" for it? (should NOT)
   - Property with unknown/$0 purchase price: green "+0.0%" gain pill anywhere? (should NOT)
-  - A one-off expense (battery, ATO payment, one-off legal/renovation): shown anywhere as "$X /mo"? (should NOT)
+  - A one-off expense (battery, ATO payment, one-off legal/renovation): shown anywhere as "$X /mo"? (should NOT). Also check its FREQUENCY/CADENCE BADGE on every list it appears in — the property "Cashflow rhythm" / Recent-activity rows, the Spending list, any activity feed: a one-off must read "One-off", NOT "Monthly"/"Weekly"/etc. (MON-048 — the label lied even though the $ amount was right).
+  - LABELS, not just numbers: on every row that carries a badge (frequency/cadence, "Actual" vs "Estimate", "Appreciation" vs "Depreciation", a basis label like "Net"/"Gross"/"Last 12 months"), read the badge and flag any that contradicts the row (e.g. an appreciating asset badged "-200% depreciation", a one-off badged "Monthly", income figures on two pages with no basis label to explain why they differ). A correct number with a wrong label is still a defect.
   - "High Discretionary Spending": exact % — is it 0–100%?
   - CFO Loan Opportunities: any sentinel text ("Save 69 years", "999")? refinance offered on a loan over 100% LVR?
 
