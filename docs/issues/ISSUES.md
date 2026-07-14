@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**47 total** · 44 open · 🔵 3 · 🟡 4 · 🟠 32 · 🟢 5 · ✅ 2
+**48 total** · 45 open · 🔵 3 · 🟡 4 · 🟠 33 · 🟢 5 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -54,6 +54,7 @@
 | MON-045 | 🟡 DIAGNOSED | 🟡 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
 | MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##PENDING | ✅ |
 | MON-047 | 🟡 DIAGNOSED | 🟢 | no | Dead unwired calculateMonthlyProgressNetWorth uses COST basis (averagePrice) not market — latent net-worth bug + stale graph node | ##PENDING | n/a |
+| MON-048 | 🟠 FIXING | 🟡 | no | Property Cashflow-rhythm shows one-off expenses as MONTHLY (badge read declared frequency, not isRecurring) | ##PENDING | ✅ |
 
 ---
 
@@ -905,4 +906,22 @@ Surfaced by the MON-044 dead-link Ratchet (tests/dashboard/cfoTileLinks.test.ts)
 - **Detail:** `neomatrix-audit:2026-07-14`
 
 Surfaced by the Neomatrix accuracy audit (Reza directive 2026-07-14 — bugs in Monitrax are reflected in the graph). calculateMonthlyProgressNetWorth (Float :404 in the sibling) + calculateMonthlyProgressNetWorthDecimal (:389) compute netWorth investments as Σ(units×averagePrice) = COST basis, whereas the canonical netWorthCalculator.calculateNetWorth uses units×currentPrice = MARKET value (§12.2.1 divergence). VERIFIED unwired: production CFO monthly-progress net worth uses getNetWorthHistory(userId,2)→history.deltaAbsolute/deltaPct (the MON-018 fix superseded this function); the only references are tests + the calc-audit Decimal shadow. So NO live number is wrong today (changesNumbers=false) — it is DEAD CODE with a latent cost-basis bug + a stale documented Neomatrix node. FIX (own PR, careful re calc-audit census): delete both functions + the shadow fixture (lib/calc-audit/engines/decimal-cfo-actions-ai-intel.ts) + the tests + the graph node engine.intelligenceEngine.calculateMonthlyProgressNetWorth; regenerate GENERATED_CORE; confirm neomatrix:check + calc census stay green. Interim: graph node flagged suspected-issue so the map stops presenting dead code as a documented live engine.
+
+### MON-048 — Property Cashflow-rhythm shows one-off expenses as MONTHLY (badge read declared frequency, not isRecurring)
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-14
+
+> **What was wrong:** On a property’s detail page, the "Cashflow rhythm / Recent activity" list tagged every expense "Monthly" — even genuine one-off costs (e.g. Battery System for HOME -$11,385, Hunter Premium -$812).
+>
+> **What changed:** The cadence badge now reads the categorisation signal (isRecurring): a one-off shows "One-off", a recurring expense shows its real frequency — via ONE shared helper so it can’t drift.
+>
+> **What you should see:** Open the HOME property → Cashflow rhythm: the Battery System (and other one-offs) now read "One-off", not "Monthly"; recurring items keep their real frequency.
+
+- **Root cause:** `app/dashboard/properties/[id]/page.tsx:866`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** `tests/properties/activityFrequencyLabel.test.ts`
+- **Detail:** `reza-chrome:2026-07-14`
+
+Found by Reza on the property detail page (2026-07-14 screenshot): the RecentActivityCard "Cashflow rhythm" built each expense row’s cadence badge from e.frequency.charAt(0)+... i.e. the RAW DECLARED frequency, which defaults to MONTHLY — so a one-off (isRecurring===false) rendered "Monthly". This is a MON-037 SIBLING (F1 partial-surface): MON-037 fixed the Expenses CARD + the cashflow ENGINE run-rate, but this DIFFERENT component on the same page kept the declared-frequency label. Fix (§12.2.1 one source): lib/properties/activityFrequencyLabel.ts returns "One-off" when isRecurring===false else the humanised frequency; RecentActivityCard uses it (ExpenseItem type gained isRecurring; the detail API already returns it via the enricher spread). Ratchet: tests/properties/activityFrequencyLabel.test.ts. Why VR-005 Chrome missed it: my brief did not list the Recent-Activity cadence BADGES as a check target (it checked the Expenses CARD reconciliation A5 + the cashflow NUMBERS) — a coverage gap in the brief; this label class should be promoted to an automated check (done: the Ratchet). Neomatrix: pure presentation helper, allowlisted. changesNumbers=false (amount unchanged; only the frequency label).
 

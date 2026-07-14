@@ -63,6 +63,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { activityFrequencyLabel } from '@/lib/properties/activityFrequencyLabel';
 import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
 import PropertyExpensesCard from '@/components/properties/PropertyExpensesCard';
@@ -109,6 +110,7 @@ interface ExpenseItem extends Actuals {
   sourceType?: string | null;
   isEssential?: boolean | null;
   isTaxDeductible?: boolean | null;
+  isRecurring?: boolean | null; // MON-048: one-off vs recurring — drives the rhythm cadence badge
   propertyId?: string | null;
   loanId?: string | null;
   investmentAccountId?: string | null;
@@ -863,7 +865,9 @@ function RecentActivityCard({ property }: { property: Property }) {
   (property.expenses ?? []).slice(0, 3).forEach((e) => {
     rows.push({
       id: `act-exp-${e.id}`,
-      date: e.frequency.charAt(0) + e.frequency.slice(1).toLowerCase(),
+      // MON-048: cadence badge from the categorisation signal (isRecurring), not
+      // the declared-frequency default — a one-off never reads "Monthly".
+      date: activityFrequencyLabel(e),
       icon: Receipt,
       title: `${e.name}`,
       amount: `-${formatCurrency(e.amount)}`,
