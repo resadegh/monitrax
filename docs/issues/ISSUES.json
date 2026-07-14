@@ -1141,21 +1141,35 @@
     {
       "id": "MON-036",
       "title": "HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05)",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-14",
       "area": "properties",
       "plain": {
-        "issue": "The HOME property's rental yield shows three different percentages depending on which screen you look at."
+        "issue": "The HOME property's rental yield shows three different percentages depending on which screen you look at.",
+        "fix": "The CFO Risk Radar's 'Low yield' check now reads the SAME actuals-based yield engine as every other screen (it used to work off your typed-in rent only, over no shared window), so the yield matches everywhere. Combined with the MON-035 window fix, all four surfaces converge.",
+        "check": "The property's rental yield now reads the SAME on the property detail page, the Properties list, the Home dashboard tile, and the My Guide Risk Radar (was 0.12% / 0.9% / 1.05% across them)."
       },
-      "rootCause": [],
-      "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "rootCause": [
+        "lib/cfo/riskRadar.ts:417"
+      ],
+      "semanticKeys": [
+        "number.propertyCashflow"
+      ],
+      "downstreamConsumers": [
+        "lib/cfo/riskRadar.ts",
+        "lib/cfo/intelligenceEngine.ts",
+        "lib/cfo/aiAdvisor.ts",
+        "app/api/cfo/advice/chat/route.ts",
+        "app/dashboard/cfo/page.tsx"
+      ],
+      "fixPRs": [
+        "#1397"
+      ],
+      "test": "tests/cfo/mon036RiskRadarYield.test.ts",
       "tracker": "neoaudit-run:VR-002",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: HOME detail/list vs Home tile vs CFO Risk Radar. Expected: same yield on every surface. Actual: 0.12pct detail/list, 0.9pct home tile, 1.05pct CFO risk radar. Evidence/run: VR-002. | [2026-07-14] The MON-035 window fix converges detail/list vs Home YIELD (0.12 vs 0.9 — yield derives from the window-based annualRent). REMAINING third value (CFO Risk Radar 1.05%) is riskRadar.ts:393 computing yield from DECLARED income (a separate producer, bypassing the engine) — the focused MON-036 fix (repoint to canonical), next PR."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: HOME detail/list vs Home tile vs CFO Risk Radar. Expected: same yield on every surface. Actual: 0.12pct detail/list, 0.9pct home tile, 1.05pct CFO risk radar. Evidence/run: VR-002. | [2026-07-14] The MON-035 window fix converges detail/list vs Home YIELD (0.12 vs 0.9 — yield derives from the window-based annualRent). REMAINING third value (CFO Risk Radar 1.05%) is riskRadar.ts:393 computing yield from DECLARED income (a separate producer, bypassing the engine) — the focused MON-036 fix (repoint to canonical), next PR. | [FIX 2026-07-14] Removed the 4th rogue yield producer: detectPropertyUnderperformanceRisks computed grossYield = annualIncome/currentValue from DECLARED income (riskRadar.ts), bypassing the engine. Now enrichPropertiesWithActuals (ONE 12-month window, MON-035) + computePropertyCashflow + calculateRentalYield — the SAME source as detail/list/Home. Cash-flow-negative flag now uses cf.annualCashflow (canonical). Ratchet source-lock: tests/cfo/mon036RiskRadarYield.test.ts. Neomatrix calculateSummary anchor re-pinned 601->621. Advances to FIXING with PR#."
     },
     {
       "id": "MON-037",

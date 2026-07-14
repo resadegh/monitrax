@@ -4031,7 +4031,7 @@
       "kind": "engine",
       "label": "Risk radar summary",
       "file": "lib/cfo/riskRadar.ts",
-      "line": 601,
+      "line": 621,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
