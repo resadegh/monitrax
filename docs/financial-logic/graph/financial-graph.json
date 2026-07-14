@@ -4123,13 +4123,13 @@
       "semanticKey": null,
       "produces": "LEGACY parity helper (MON-018): the live CFO monthly-progress no longer computes net worth inline — it reads getNetWorthHistory. Retained only as a Float/Decimal calc-audit fixture; NOT on the live path.",
       "formula": "netWorth = Σ accountBalances + Σ propertyValues + Σ(units×averagePrice) − totalDebt.",
-      "authority": "Accounting identity (assets − liabilities). LOCAL helper — the canonical net-worth engine is lib/calculations/netWorthCalculator.calculateNetWorth (this simplified copy exists for local composition; downstream uses a ×0.98 placeholder, per source comment). Noted for Reza (§12.2.1).",
+      "authority": "Accounting identity (assets − liabilities). LOCAL helper — the canonical net-worth engine is lib/calculations/netWorthCalculator.calculateNetWorth. MON-047 SUSPECTED ISSUE (Neomatrix audit 2026-07-14): (1) DEAD CODE — verified unwired; production CFO monthly-progress reads getNetWorthHistory(userId,2)→deltaAbsolute/deltaPct (the MON-018 fix superseded this), so the ONLY references are tests + the calc-audit Decimal shadow; (2) LATENT COST-BASIS BUG — investments are Σ(units×averagePrice) = COST, whereas the canonical engine uses units×currentPrice = MARKET (§12.2.1). No live number is wrong today (unwired). Fix (MON-047, own PR): delete both functions + the calc-audit shadow + tests + this node (careful re the calc census). Flagged so the map stops presenting dead code as a documented live engine.",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit engine cfo.intelligenceEngine.calculateMonthlyProgressNetWorth (proven, Decimal) + lib/cfo/intelligenceEngine.ts:377",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
-      "status": "documented"
+      "status": "suspected-issue"
     },
     {
       "id": "engine.tax.payg.calculatePAYG",

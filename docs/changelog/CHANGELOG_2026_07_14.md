@@ -555,3 +555,26 @@ Reza directive (2026-07-14): "the Neomatrix was designed on the basis of the exi
 - Document 10/10 (Reza directive + Part 24 #6 coupling extended to node semantics; no design-doc deviation)
 - Requirements 10/10 (corrects exactly the stale/buggy nodes found; property-cashflow formula now matches the shipped code; neg-gearing flagged suspected-issue pending MON-045 — honest, not silently changed)
 - Logic 10/10 (formula text verified against propertyCashflow.ts:174 isRecurring gate + propertyActualsWindow; suspected-issue is a valid status enum; gate + tests green). Coverage: verifies schema/anchors/markdown-freshness + these 2 nodes' accuracy; does NOT re-audit all 262 nodes (broader pass ongoing).
+
+---
+
+## Session: chat-audit-findings — Neomatrix audit pass 2: MON-047 (dead cost-basis net-worth helper)
+
+### Context
+Continuing the Neomatrix accuracy audit (Reza directive 2026-07-14). Auditing the cfo/health/reports/intelligence node formulas surfaced a real issue.
+
+### Finding — MON-047 (DIAGNOSED, changesNumbers=false)
+`calculateMonthlyProgressNetWorth` (+ Decimal sibling, `lib/cfo/intelligenceEngine.ts`) computes net-worth investments as `Σ(units×averagePrice)` = **COST** basis, whereas the canonical `netWorthCalculator.calculateNetWorth` uses `units×currentPrice` = **MARKET** (§12.2.1). **Verified unwired**: production CFO monthly-progress reads `getNetWorthHistory(userId,2)→deltaAbsolute/deltaPct` (the MON-018 fix superseded this function); the only references are tests + the calc-audit Decimal shadow. So **no live number is wrong today** — it's dead code with a latent cost-basis bug, still modelled as a `documented` live engine in the graph.
+
+### Changes
+- `docs/issues/ISSUES.{json,md}` — MON-047 raised (DIAGNOSED) with the verified diagnosis + remove-when.
+- `docs/financial-logic/graph/financial-graph.json` — node `engine.intelligenceEngine.calculateMonthlyProgressNetWorth` flagged `documented → suspected-issue` with the MON-047 note (map stops presenting dead code as a live engine). `GENERATED_CORE.md` regenerated.
+- Full removal (function + Decimal + calc-audit shadow + tests + node) deferred to MON-047's own PR (careful re the calc census).
+
+### Build Status
+- [x] neomatrix:check OK · 142 graph+registry tests pass · issues:check 47 valid
+
+### Gate (§20.6)
+- Document 10/10 (Reza Neomatrix directive · §12.1 dead-code · §21.2 flag-not-silently-change · Part 24 #6)
+- Requirements 10/10 (real graph-reflected issue found + verified unwired via caller trace; raised + flagged honestly; risky removal deferred)
+- Logic 10/10 (verified: only tests+shadow reference it; production uses getNetWorthHistory; averagePrice vs currentPrice read in source). Coverage: verifies the finding is real + unwired; does NOT perform the removal (own PR).

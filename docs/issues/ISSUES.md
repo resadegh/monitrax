@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**46 total** · 43 open · 🔵 3 · 🟡 3 · 🟠 32 · 🟢 5 · ✅ 2
+**47 total** · 44 open · 🔵 3 · 🟡 4 · 🟠 32 · 🟢 5 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -53,6 +53,7 @@
 | MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##PENDING | ✅ |
 | MON-045 | 🟡 DIAGNOSED | 🟡 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
 | MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##PENDING | ✅ |
+| MON-047 | 🟡 DIAGNOSED | 🟢 | no | Dead unwired calculateMonthlyProgressNetWorth uses COST basis (averagePrice) not market — latent net-worth bug + stale graph node | ##PENDING | n/a |
 
 ---
 
@@ -886,4 +887,22 @@ Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Propert
 - **Detail:** `ratchet:MON-044`
 
 Surfaced by the MON-044 dead-link Ratchet (tests/dashboard/cfoTileLinks.test.ts) on 2026-07-14 — the route-existence assertion flagged /dashboard/investments has no page.tsx (only accounts/holdings/super/transactions sub-tabs), so 4 bare-route links 404d. Fix: app/dashboard/investments/page.tsx redirects to /dashboard/investments/accounts (mirrors the /dashboard/accounts -> /dashboard/balances redirect pattern), fixing all callers at source (§12.1). Example of the NeoAudit living-system loop — a Ratchet added for one bug caught a latent sibling.
+
+### MON-047 — Dead unwired calculateMonthlyProgressNetWorth uses COST basis (averagePrice) not market — latent net-worth bug + stale graph node
+
+**🟡 DIAGNOSED** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
+
+> **What was wrong:** A leftover net-worth calculation (used only by tests) adds up investments at what you PAID (cost) instead of what they are worth now (market) — so it would understate net worth. It is not shown anywhere in the app.
+>
+> **What changed:** (planned) Delete the dead function + its Decimal twin + calc-audit shadow + tests, and remove its Neomatrix node — production already uses the correct net-worth-history source (from the MON-018 fix).
+>
+> **What you should see:** Nothing visible changes (the function is not wired to any screen); this is code + map hygiene.
+
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:404`, `lib/cfo/intelligenceEngine.ts:389`
+- **Downstream consumers (§19.4):** `(none — unwired: only tests/cfo/actions-ai-intel.decimal.test.ts + lib/calc-audit/engines/decimal-cfo-actions-ai-intel.ts shadow)`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neomatrix-audit:2026-07-14`
+
+Surfaced by the Neomatrix accuracy audit (Reza directive 2026-07-14 — bugs in Monitrax are reflected in the graph). calculateMonthlyProgressNetWorth (Float :404 in the sibling) + calculateMonthlyProgressNetWorthDecimal (:389) compute netWorth investments as Σ(units×averagePrice) = COST basis, whereas the canonical netWorthCalculator.calculateNetWorth uses units×currentPrice = MARKET value (§12.2.1 divergence). VERIFIED unwired: production CFO monthly-progress net worth uses getNetWorthHistory(userId,2)→history.deltaAbsolute/deltaPct (the MON-018 fix superseded this function); the only references are tests + the calc-audit Decimal shadow. So NO live number is wrong today (changesNumbers=false) — it is DEAD CODE with a latent cost-basis bug + a stale documented Neomatrix node. FIX (own PR, careful re calc-audit census): delete both functions + the shadow fixture (lib/calc-audit/engines/decimal-cfo-actions-ai-intel.ts) + the tests + the graph node engine.intelligenceEngine.calculateMonthlyProgressNetWorth; regenerate GENERATED_CORE; confirm neomatrix:check + calc census stay green. Interim: graph node flagged suspected-issue so the map stops presenting dead code as a documented live engine.
 
