@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**39 total** · 36 open · 🔵 5 · 🟡 2 · 🟠 25 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 9 · 🟡 2 · 🟠 25 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -46,6 +46,10 @@
 | MON-037 | 🔵 OPEN | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | — | — |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
+| MON-040 | 🔵 OPEN | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | — | — |
+| MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
+| MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
+| MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
 
 ---
 
@@ -738,4 +742,48 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 - **Detail:** `neoaudit-run:VR-002`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes display. Surface: tax cards / cashflow page / Properties list tile. Expected: Medicare shown; consistent Money In labelling; list tile shows cashflow/yr. Actual: Medicare absent on both tax cards; Money In 0 but text says 1 income source fed; Guildford list tile has no cashflow/yr line. Evidence/run: VR-002.
+
+### MON-040 — Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
+
+> **What was wrong:** The Tax page's savings suggestions show impossible numbers (e.g. 'save 3685%' and millions in savings), which look broken.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-003`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/tax (recommendations panel). Expected: realistic savings figures and percentages. Actual: 'save 3685%', potential savings 1,105,500 and 6,274,704 rendered as real recommendations. Evidence/run: VR-003.
+
+### MON-041 — Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation)
+
+**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: assets · opened 2026-07-14
+
+> **What was wrong:** Cars that went UP in value show a weird 'depreciation -200%' instead of an appreciation figure.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neoaudit-run:VR-003`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/assets (vehicle dialogs). Expected: a percentage in a sane range with the right label (appreciation vs depreciation). Actual: 300Z shows depreciation -200.0pct and Landcruiser -66.7pct — an appreciating asset is labelled as negative depreciation. Evidence/run: VR-003.
+
+### MON-042 — Household vehicle count (4) disagrees with the Assets list (5 vehicles)
+
+**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: household · opened 2026-07-14
+
+> **What was wrong:** Your household summary says 4 vehicles but the Assets page lists 5.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neoaudit-run:VR-003`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard household profile vs assets list. Expected: same vehicle count on both. Actual: Household profile says 4 vehicles; Assets lists 5 (Excavator, 300Z, Ford Ranger, VW Golf, Landcruiser). Evidence/run: VR-003.
+
+### MON-043 — Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-14
+
+> **What was wrong:** Your annual income shows as three different numbers depending on the page (Home vs Activity vs Tax) with nothing explaining why.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-003`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home tile vs Activity YTD vs Tax total income. Expected: either one consistent figure or clearly-labelled distinct bases. Actual: Home 239K/yr, Activity YTD 484K/yr, Tax total income 524,831 — three different income figures with no visible basis label. Evidence/run: VR-003.
 

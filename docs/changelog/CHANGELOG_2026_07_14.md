@@ -286,3 +286,48 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
   the standing principle; it adds no test itself. The principle is ENFORCED by the existing
   §23.3(b) reviewer rule + §9(g) + the registry gate (a number-changing issue can't reach
   VERIFIED without its holistic test).
+
+## Session: chat-audit-findings-issues-m9518i (continued) — VR-003 (Phase 2) + complete list + rectification plan
+
+### Change: VR-003 comprehensive sweep analysed; 4 new findings filed; root-cause-clustered rectification plan
+
+- **Type**: Docs (NeoAudit Ring-3) — verification record + registry + rectification plan
+- **Scope**: `docs/verification/runs/VR-003.md` (new), `docs/verification/baselines/BASELINE.md`
+  (accepted VR-003 as the new post-fix baseline), `docs/issues/ISSUES.json` (+ `ISSUES.md`)
+  (4 new MONs), `docs/implementation/01_ACTIVE_WORKSTREAMS.md` (rectification workstream)
+- **Why**: Reza ran the comprehensive two-phase Chrome sweep (VR-003, `coverage.everyEntityOpened:
+  true`). This is the Phase-2 analysis + the complete issue list + the root-cause-clustered
+  plan to rectify he asked for.
+- **Solution**:
+  - **VR-003.md** — Phase-2 staged analysis: **the fixes HOLD** (MON-028/029/030/017 still
+    converged, no regression vs VR-002); re-confirmed the open findings (MON-031/035/036/037/038);
+    the §19.4 downstream note that **MON-037 is the hub** (one-offs/duplicate expenses inflate
+    HOME cashflow, tax deductions → understated tax, and the expense-card basis).
+  - **4 new findings filed** (`issues:raise`): MON-040 (tax recommendations "save 3685%"/$6.27M),
+    MON-041 (vehicle depreciation % / appreciation mislabelled), MON-042 (household vehicle count
+    4 vs 5), MON-043 (income basis Home/Activity/Tax). Known/accepted items ($1 rounding, savings
+    −31% display, totalMonthlyExpenses basis = a MON-037 symptom) NOT re-filed.
+  - **BASELINE.md** — accepted VR-003 as the new post-fix baseline (all open items annotated).
+  - **Rectification plan** — a new `0·RECTIFY` workstream: 6 root-cause clusters in fix order,
+    highest-leverage first (① expense-frequency/one-offs/duplicates = MON-037+023+025 hub;
+    ② cashflow cross-surface; ③ yield; ④ liquidity; ⑤ tax/recommendation sanity; ⑥ display).
+    Each fix REMOVES the culprit + PROMOTES a lower-ring test (growth loop) + Ring-3 re-verify.
+
+### Files Modified
+- `docs/verification/runs/VR-003.md` — new (run + Phase-2 analysis)
+- `docs/verification/baselines/BASELINE.md` — VR-003 accepted as baseline
+- `docs/issues/ISSUES.json` (+ `ISSUES.md`) — MON-040..043 filed
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — 0·RECTIFY workstream (clustered fix order)
+
+### Build Status
+- [x] `npm run issues:check` — 43 issues valid
+
+### Gate (§20.6)
+- Document 10/10 (VR-003 follows §3.4/§3.5 two-phase discipline; complete list = the ONE
+  registry; clusters grounded in the captured findings) · Requirements 10/10 (delivers the
+  Phase-2 analysis + complete issue list + rectification plan Reza asked for) · Logic 10/10
+  (baseline diff is arithmetic; new-vs-existing disposition avoids double-filing; clusters
+  are flagged as hypotheses to confirm at §19.2, not asserted root causes — no guessing).
+- **Coverage boundary (honest — §22.2.4):** this ANALYSES + PLANS; it FIXES nothing. The
+  cluster groupings are fix-planning hypotheses to be confirmed by §19.2 diagnosis at fix
+  time; the rectification itself (starting with cluster ①) is the next phase, on Reza's go.
