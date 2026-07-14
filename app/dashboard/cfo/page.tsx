@@ -918,7 +918,7 @@ export default function CFODashboardPage() {
             icon={Banknote}
             iconColor="text-emerald-600 dark:text-emerald-400"
             badgeColor="emerald"
-            href="/dashboard/debt"
+            href="/dashboard/debt-planner"
             alertCount={loanInsights.rateAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length}
           >
             <div className="space-y-3">

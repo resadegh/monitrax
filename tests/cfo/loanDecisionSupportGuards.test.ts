@@ -148,4 +148,13 @@ describe('MON-038: no refinance advice above the LVR ceiling from ANY producer',
     const rateAlert = alerts.find((a) => a.type === 'rate_above_market');
     expect(rateAlert!.action).toMatch(/refinanc/i);
   });
+
+  it('the "N opportunity found" COUNT (worthRefinancing filter) excludes the 104% loan (VR-004 count concern)', () => {
+    // cfo/page.tsx renders `refinanceOpportunities.filter(r => r.worthRefinancing).length`
+    // as "N opportunity found". A 104% LVR loan is gated to worthRefinancing:false,
+    // so it must NOT be counted — the exact metric VR-004 asked to confirm.
+    const opps = calculateRefinanceOpportunities(highLvrAboveMarket, properties104);
+    const displayedCount = opps.filter((r) => r.worthRefinancing).length;
+    expect(displayedCount).toBe(0); // the 104% loan is excluded from the count
+  });
 });
