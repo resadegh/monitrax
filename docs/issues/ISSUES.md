@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 6 · 🟡 3 · 🟠 27 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 6 · 🟡 2 · 🟠 28 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -42,7 +42,7 @@
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
 | MON-035 | 🟠 FIXING | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
-| MON-036 | 🟡 DIAGNOSED | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | — | ✅ |
+| MON-036 | 🟠 FIXING | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | ##1397 | ✅ |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
@@ -708,7 +708,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 
 ### MON-036 — HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
 
 > **What was wrong:** The HOME property's rental yield shows three different percentages depending on which screen you look at.
 >
@@ -719,6 +719,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 - **Root cause:** `lib/cfo/riskRadar.ts:417`
 - **Neomatrix:** `number.propertyCashflow`
 - **Downstream consumers (§19.4):** `lib/cfo/riskRadar.ts`, `lib/cfo/intelligenceEngine.ts`, `lib/cfo/aiAdvisor.ts`, `app/api/cfo/advice/chat/route.ts`, `app/dashboard/cfo/page.tsx`
+- **Fix PR(s):** ##1397
 - **Holistic test (§19.4):** `tests/cfo/mon036RiskRadarYield.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
