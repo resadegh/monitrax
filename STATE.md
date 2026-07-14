@@ -7,9 +7,9 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `b03975d` (merge of #1164) · **on:** 2026-06-21 · **by:** chat session (0·MOB: Spending + Cashflow mini locked light+dark — 7 screens total; specs documented; cursor refresh)
+**Last verified against HEAD:** `38abeee` (merge of #1416) · **on:** 2026-07-15 · **by:** Cowork session — The Matrix HQ (full-repo ingestion + cursor truth-restore; prior cursor was ~250 PRs stale at `b03975d`)
 
-> **OPEN THREADS (Code session 2026-06-16/17):** (1) **Per-item Documents upload — THIS PR**: `DocumentsSection`
+> **OPEN THREADS (Code session 2026-06-16/17) — ⚠️ status UNVERIFIED-current as of 2026-07-15; re-verify each in live logs/env before acting:** (1) **Per-item Documents upload — THIS PR**: `DocumentsSection`
 > on Properties/Investments/Assets (Super deferred — needs `SUPER` LinkedEntityType + migration). (2) **Mobile scan
 > recognition BROKEN** — `/api/documents/analyze-for-form` 500s at the Vision OCR step; Vision API is *enabled* but
 > shows ZERO traffic → auth failing before the call. Vision authenticates via `GCS_SERVICE_ACCOUNT_KEY`
@@ -48,59 +48,18 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-19 (Code) at live HEAD `a0eb95e` = merge of #1162 (was stale at `654bc55`).
-> **Landed since `654bc55` (#1149–#1162):** Phase 50 **Phase D** engine-intelligence layer is COMPLETE (D.2 reconcile,
-> D.3 confidence policy SSOT, D.4 learned routing suggest-only, D.5a renewal→reminder + D.5b retention clock, D.6
-> bulk-approve Smart Inbox, D.1.1 scan-path dedup) — **`0·DOC` is now feature-complete**; **Wealth Universe WX.6 / WX.6.1**
-> (entity → class → asset zoom + tap-to-zoom-first); **unified accountant tax-pack** (`format=pack` — one ZIP: PDF +
-> XLSX + receipts); **Document Vault preview fix** (same-origin streaming kills "This content is blocked").
-> **AI Document Router (workstream `0·DOC`) was the active line of work; now feature-complete.** Spec: `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md`.
+> Re-pinned 2026-07-15 (Cowork "The Matrix" HQ session) at live HEAD `38abeee` = merge of #1416 (was stale at `b03975d` = #1164, 2026-06-21 — ~250 PRs of drift closed this session).
+> **Landed since `b03975d` (#1165–#1416, condensed):** SSOT-dedup + MON-issue fix arc (dual tax engines reconciled, depreciation 100× bug, equity floor overstatement, cashflow-tile producer unification — see `docs/issues/ISSUES.md`); CSV-import hardening (#1326–1328); AI = Gemini-only (#1323, Anthropic disabled); **NeoAudit core build COMPLETE 2026-07-14** (CLAUDE.md Part 23: Ring-2 Golden Household + parity matrix + §20.6 pre-PR gate + `issues:raise` + Release Scorecard; standing/LIVE system); verification runs **VR-001→VR-006**, accepted baseline = **VR-006** (`docs/verification/baselines/BASELINE.md`); **Issue registry live:** 50 MON issues (32 FIXING · 9 VERIFIED · 4 DIAGNOSED · 2 OPEN · 2 CLOSED · 1 RETRACTED at this pin — re-read `docs/issues/ISSUES.json` before acting, statuses move fast); **RECTIFICATION_PLAN_2026-07-14** ready with DECISION 1 (one-offs excluded from run-rate) + DECISION 2 (trailing-12-month single producer) both ✅ DECIDED by Reza 2026-07-14.
 
-- **Current focus:** **AI Document Router — Phase B in progress.** Vision (Reza): every receipt → AI recognises →
-  attaches to the correct item/asset OR creates a new expense → filed in the Vault for tax-time. Phase A ✅ shipped
-  (the scan now identifies receipts via `/api/documents/analyze-for-form`; assets are linkable). Phase B has two
-  tracks: **B-storage** (storage = GCS + per-user quota) and **B-intelligence** (attach-to-existing, not just create).
-  Phase B slice 1 ✅ = the **per-user storage quota** (`lib/documents/storage/storageQuota.ts`, SSOT — drift-free,
-  computed from `SUM(Document.size)`, default 2 GiB, backend-independent; enforced at the DME `processUpload`
-  chokepoint + the legacy scan path; `/api/documents/upload` → 413 on breach).
-- **Active task + stop-point:** **GCS keyless cutover IN PROGRESS.** #1126 (keyless GCS auth + GCS-aware download)
-  merged & prod-verified. THIS PR fixes the factory gate: `computeGcsConfigured()` now accepts keyless WIF (was
-  requiring the key — deleting it would have silently sent uploads to the DB). Reza has provisioned: bucket
-  `monitrax-documents` exists; `vercel-monitrax-db` granted `roles/storage.objectUser`; Vercel prod has
-  PROJECT_ID + BUCKET_NAME + (still) the key. **GCS is live TODAY via the key.** Full resolution-order + rollback
-  runbook: `PHASE_50_AI_DOCUMENT_ROUTER.md` § "Storage backend — how it resolves, and how to roll back".
-- **Immediate next action:**
-  (1) **Finish the keyless cutover (after this PR merges):** delete `GCS_SERVICE_ACCOUNT_KEY` from Vercel + redeploy
-  → keyless engages (`vercel-monitrax-db`). **Verify from logs:** `[GCS] Using keyless Workload Identity Federation
-  auth` + new `Document.storageProvider = GOOGLE_CLOUD_STORAGE`. **Emergency rollback = re-add the key + redeploy.**
-  (2) **`/api/documents/analyze` 500 — separate diagnostic** (Phase A traced it to the two-step analyze path, NOT
-  confirmed GCS-related): read live logs + fix directly; do NOT assume GCS resolves it.
-  (3) **B-intelligence (needs Stitch per §18.2.1):** `ATTACH_TO_*` confirm actions + entity picker + scan-UI "attach vs create" branch.
-- **Open decisions / blockers:**
-  - **GCS provisioning — pending Reza** (blocks the GCS cut-over; the quota + DB fallback work today regardless).
-  - **DECIDED 2026-06-16:** storage = GCS with per-user quota; household = shared finances incl. documents (if/when multi-user accounts exist). See PHASE_50 decisions log.
-  - **E2E UAT (`playwright (UAT)`) — ✅ GREEN under the Firebase Auth emulator; PR #1121 open (NOT merged).** Superseded
-    the old "E2E_ENABLED + storage-state secret" plan — the job now runs unconditionally under
-    `firebase emulators:exec --only auth` (no secret, no real Firebase project, no manual login). Reproduced locally
-    (Postgres + emulator + `seed:lighthouse` + a real prod build): all 4 specs green twice. Root causes fixed on the
-    branch (see `04_RECENTLY_COMPLETED.md` 2026-06-16): `lib/gcp/credentials.ts` ADC uncaught-exception gated under the
-    emulator env (prod untouched; vitest 2870✓); `seed-emulator.ts` marks onboarding complete + seeds the mandatory
-    `UserConsent` rows (both blocking modals were swallowing clicks); `uat.spec.ts` made robust (auth-shell waits,
-    scoped dialog, investment-property CGT, `reducedMotion`). **Next:** once CI confirms green, add the required check
-    `playwright (UAT)` to the `main` ruleset.
-  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
-- **Verified-live this session:** #1122/#1123/#1124 each built + merged; prod deploys reached READY on monitrax.com.au
-  (iad1+syd1) — half-yearly live, scan-recognition fix live, storage quota enforcing in prod. main advanced to `654bc55`.
+- **Current focus: 0·RECTIFY — Reza gave the "rectify" GO on 2026-07-15 (Cowork session).** Work the clusters per `docs/issues/FIX_PROTOCOL.md` (Part 24), ONE issue at a time, own PR each, per-fix Ring-3 Chrome verification before VERIFIED. Cluster order per RECTIFICATION_PLAN §4 (① MON-037 one-off hub first) — but NOTE: VR-004/VR-006 already moved some cluster issues (MON-035/036 VERIFIED); **re-read the registry for per-issue status before starting any issue.**
+- **Launch decision (Reza, 2026-07-15, Cowork):** 31 July = **friendlies beta + broker outbound** (NOT consumer bank-feeds launch — Basiq stays MRR-gated/parked). Gate plan: `docs/operational/LAUNCH_PROGRAM_2026-07.md` (added this PR).
+- **Immediate next action:** (1) cluster ① — MON-037 per FIX_PROTOCOL stages 1–6; (2) then remaining DIAGNOSED/OPEN (MON-001, 006, 045, 047, 049, 050) in plan order; (3) file the 2026-07-15 session findings via `issues:raise` if not already present (see below).
+- **Open decisions / blockers (awaiting Reza):** Q-GTM-7 friendlies cohort (blocks invite send) · Q-GTM-5 fintech-lawyer engagement (blocks Reviews to strangers) · Stripe live-mode (parked) · Q-BASIQ-1/Basiq (parked, MRR-gated) · Q-GTM-4 VA timing · mobile D2/D3/D4. Dependabot major-bump PRs (#811–#816: Prisma 5→7, Next 15→16, ESLint 8→10…) — recommendation: PARK pre-launch, do not merge.
+- **New findings (Cowork ingestion 2026-07-15, to be registered):** (a) `lib/cfo/intelligenceEngine.ts:274-275` hardcodes `savingsOpportunities: 3` / `pendingActions: 5` — user-facing placeholder metrics (MON-018 class); (b) `lib/tax-engine` PAYG `paygCalculator.ts:197` TODO — HECS-HELP withholding component not implemented; (c) VR-005 run file absent though referenced; (d) `lib/calc-audit/runDifferential.ts` header cites non-existent `npm run audit:fixtures`; (e) `docs/architecture/09` top table stale (Render-era; its own §5.3 says so); (f) GCS prod provisioning state CONFLICTS between arch doc ("pending, uploads → Postgres bytea") and the pre-refresh STATE.md ("live via key") — **re-verify in Vercel env + logs before any doc claims either.**
+- **HQ note:** Monitrax program orchestration now runs from the Cowork project "Monitrax HQ — The Matrix" (Mission Control artifact + daily ops brief + this cursor discipline). Repo stays the only truth; the Matrix duplicates nothing (§12.2.1).
 
 - **0·MOB (Mobile companion app) — design phase.** Live tracker: docs/implementation/05_MOBILE_WORKSTREAM.md.
-  **LOCKED light+dark set — 7 screens: Daily Pulse · Triage · Scanner · Insights · Accounts · Spending (transaction feed) · Cashflow mini** on the canonical
-  Stitch system (project `4167588157712714472`, asset `f73ad289…` "My Wealth glass"); rich/premium direction (D6),
-  quality loop >9 bar (D7), interaction states required (D8), font lock (D-TYPE). Screen specs for all 7 authored
-  (`docs/mobile/design/02_SCREEN_SPECIFICATIONS.md`). NEXT (Code follow-up): commit Stitch artefacts under
-  `docs/mobile/design/stitch/` (7 screens), realign `01_DESIGN_SYSTEM.md` to rich-glass v3, realign blueprint §13, apply copy/data
-  fixes (incl. Spending-dark donut-legend). THEN: remaining MVP screens (quick-add · health detail · biometric unlock ·
-  notification prefs · widget) + RN build in `monitrax-mobile`. BLOCKERS: D4 push-copy compliance sign-off (content
-  only, not the visual design); build gates on Basiq accredited+live + §15.1 P0. RN app = future monitrax-mobile repo.
+  LOCKED light+dark set — 7 screens on the canonical Stitch system; next = commit Stitch artefacts + realign design docs; RN build gated on Basiq-live + §15.1 P0. Open for Reza: D2/D3/D4 (unchanged since 2026-06-21).
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
