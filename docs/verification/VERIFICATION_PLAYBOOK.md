@@ -66,6 +66,11 @@ RULES:
 - Before reporting any MISMATCH, re-read both values once to rule out a misread.
 - If something isn't on my account, say "not found" — never guess.
 
+=== YOUR JOB IS PHASE 1 — COMPLETE CAPTURE (not analysis) ===
+Monitrax is a HOLISTIC tool: a number is only "correct" in relation to the others (a property's cashflow must agree across its detail page, the list tile and the Home tile; net worth must tie to assets−liabilities AND to liquid+accessible+locked). So the capture must be WHOLE and done in ONE pass — never section-by-section, or the cross-surface comparisons are lost. Your job here is to OPEN EVERYTHING and RECORD every number faithfully. You do NOT need to do the final maths/verdicts — a separate session does the staged holistic analysis (Phase 2) from what you capture. If you spot an obvious MISMATCH, note it, but your priority is complete, accurate reads.
+
+COVERAGE IS MANDATORY: you MUST visit every sidebar item and open every entity, and you MUST fill the "coverage" object in the MACHINE REPORT with true/false per sidebar section + list anything you could not open in "skipped". A false or a non-empty "skipped" is an incomplete run — say so plainly rather than pretend completeness.
+
 === MISSION: OPEN EVERYTHING (this is an EXHAUSTIVE sweep, not a spot-check) ===
 Click INTO every entity and read the numbers INSIDE — never stop at a summary tile (a tile can read correctly while the detail page behind it is wrong — the MON-028 class).
 - For EVERY property, investment account, super account, loan and bank account: click "View details" (or the tile) to open its DETAIL page/dialog and read the figures inside.
@@ -119,11 +124,16 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
 Capture these figures for the snapshot — they are emitted inside the MACHINE REPORT's "partF" object below (do NOT also print a separate Part F block): netWorth, totalAssets, totalLiabilities, portfolioEquity; per-property cashflowYrDetail/List/Home + yieldDetail/List; totalMonthlyExpenses, estimatedAnnualTax; safetyScore, healthScoreHome, healthScoreCfo, healthGradeHome, healthGradeCfo; emergencyFundMonths, savingsRateCfo, savingsRateHome; balances.liquid/accessible/locked. Use null for not-found. Numbers only (no $ or commas).
 
 === OUTPUT FORMAT — produce BOTH, in this order ===
-(1) HUMAN SUMMARY — numbered list, one value per line: [Part] [what] = [exact figure] (page). Every cross-surface pair gets MATCH or MISMATCH by $X. FAIL in caps on anything breaking an invariant.
+(1) HUMAN SUMMARY — numbered list, one value per line: [Part] [what] = [exact figure] (page). Note any MATCH/MISMATCH you happen to see — but this is a secondary signal; Phase 2 recomputes every verdict from the captured numbers, so faithful reads matter more than your judgments.
 
-(2) MACHINE REPORT — a SINGLE fenced ```json block, FIXED KEYS, for automated NeoAudit comparison. Fill EVERY field from what you actually read; null for not-found; [] for no findings. Do NOT omit it — this is the block the tooling parses. Every MISMATCH/FAIL in the human summary MUST also appear as a "findings" entry (if all clean, "findings": []).
+(2) MACHINE REPORT — THE PRIMARY DELIVERABLE (Phase 2 consumes this). A SINGLE fenced ```json block, FIXED KEYS. Fill EVERY field from what you actually read; null for not-found; [] for no findings. The "coverage" object is mandatory — set each sidebar section true only if you actually opened it, and list anything you couldn't open in "skipped". Every MISMATCH/FAIL you did notice should also appear as a "findings" entry (if none, "findings": []).
 {
   "meta": { "asOf": "<date+time>", "account": "<email or label>", "env": "production" },
+  "coverage": {
+    "Home": true, "MyAccounts": true, "MyBudget": true, "MySafetyNet": true,
+    "MyWealth": true, "MyGuide": true, "Reports": true, "Settings": true,
+    "everyEntityOpened": true, "skipped": []
+  },
   "partF": {
     "netWorth": 0, "totalAssets": 0, "totalLiabilities": 0, "portfolioEquity": 0,
     "properties": { "<name>": { "cashflowYrDetail": 0, "cashflowYrList": 0, "cashflowYrHome": 0, "yieldDetail": 0, "yieldList": 0 } },
@@ -171,13 +181,26 @@ Optional `[ACTION]` add-flow test (MON-008 class): add a clearly-labelled test e
 - `docs/verification/runs/VR-NNN.md` — every run's full report + the session's PASS/FAIL comparison table. Append-only, sequential.
 - `docs/verification/baselines/BASELINE.md` — the Part F JSON of the most recent **accepted** run (all known FAILs annotated). A new run's Part F is diffed against it; every delta is bucketed **unchanged / expected (Reza confirms: data added or fix shipped) / UNEXPLAINED → new MON-### issue**. When a run is accepted as the new reference, its JSON replaces BASELINE.md (with annotations).
 
-### 3.5 The comparing session's procedure
+### 3.5 The comparing session's procedure (Phase 2 — staged holistic analysis)
 
-1. Diff Part F JSON vs BASELINE.md → bucket every delta.
-2. For each Part A property: recompute the expected figure from the captured inputs via the canonical engine's formula (actuals-first, §19.1; loan floor; frequency conversion) — state the arithmetic.
-3. For each invariant/edge FAIL: map to an existing MON-### or register a new one (DIAGNOSED requires a §19.2-verified root cause — investigate in code before writing `rootCause`).
-4. Produce the PASS/FAIL table mapped to MON-###, store the run file, update the registry.
-5. Apply the Ratchet (§5) for every FAIL that rings 0–2 should have caught.
+The comparing session (Claude, in-repo) runs the checks in STAGES over the COMPLETE captured dataset — the numbers are holistic, so every stage reasons over the whole (never a partial capture). No browser needed (the only live-interaction check — what-if lever direction — is captured in Phase 1).
+
+- **Stage A — net-worth tie-outs:** assets−liabilities=net worth; liquid+accessible+locked=net worth; Σ per-property equity=portfolio equity.
+- **Stage B — cross-surface parity:** each property's cashflow (detail/list/home) and yield agree; every shared metric reads the same on every surface (the MON-028 class).
+- **Stage C — story convergence:** health Home==CFO (score+grade); savings rate one value; tax one-story (/cashflow==CFO); Month-End Balance==forecast.
+- **Stage D — edge cases + sentinel leaks** (Part D/E booleans).
+- **Stage E — baseline diff + disposition:** diff `partF` vs BASELINE.md, bucket every delta (unchanged / expected-fix / UNEXPLAINED); recompute each Part-A figure from captured inputs via the canonical formula (actuals-first §19.1; loan floor; frequency conversion) — state the arithmetic; map each FAIL to an existing MON-### or register a new one via `npm run issues:raise` (DIAGNOSED requires a §19.2-verified root cause — investigate in code before writing `rootCause`); apply the Ratchet (§5) for every FAIL rings 0–2 should have caught; store the VR-NNN run file and update the registry.
+
+### 3.6 The two-phase model (why capture and analysis are separated — 2026-07-14)
+
+> **Reza directive 2026-07-14:** *"Monitrax is a holistic tool, so all numbers are meaningful as a whole rather than individually. However after a complete sweep of existing numbers you can perform checks in stages (considering holistic numbers)."*
+
+A single agent task that both captures AND analyses the whole app tends to shortcut on a long sweep (VR-002: the agent nearly skipped sidebar items). The fix is NOT to chunk the sweep by section — that would break the cross-surface comparisons that are the whole point (a property's cashflow lives on 3 surfaces; splitting the capture loses the tie). The fix is to split by KIND of work:
+
+- **Phase 1 — CAPTURE (the Chrome relay, §3.3):** ONE exhaustive holistic pass whose only job is to OPEN EVERYTHING and record every number into the MACHINE REPORT, with a mandatory `coverage` checklist so any skip is visible. Capture-only is low-cognitive-load, so the single pass is reliable. (If the app ever outgrows one pass, capture MAY be chunked ONLY IF every chunk is unioned into one dataset BEFORE Phase 2 — never analyse a partial capture.)
+- **Phase 2 — STAGED ANALYSIS (the comparing session, §3.5):** the relational checks, run in stages over the COMPLETE captured dataset. Staging is safe here because every stage sees the whole.
+
+**The rule:** capture is whole and one-pass; staging happens in the analysis, never in the capture. A run whose `coverage` shows a false/`skipped` is incomplete — re-capture the missing surfaces before Phase 2.
 
 ## 4. The fix loop (root-cause → remove-the-culprit → retest)
 
