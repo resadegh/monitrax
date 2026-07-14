@@ -197,3 +197,16 @@
 - **Type:** fix/feat | **Scope:** OAuth, settings, expenses, cashflow, dashboard
 - Fixed OAuth redirect_uri using dynamic base URL derivation. Added settings back/close navigation. Added receipt upload to expenses (Phase 19.1). Fixed critical bug: loan repayments missing from all cashflow calculations. Added click-to-expand detail dialogs for all 4 dashboard metric tiles (net worth, cashflow, savings rate, LVR). Complete expenses page redesign with grouped views (by category/property/all).
 - **Key files:** `app/api/settings/storage/connect/[provider]/route.ts`, `app/dashboard/expenses/page.tsx`, `app/api/portfolio/snapshot/route.ts`, `app/dashboard/page.tsx`
+
+---
+
+## July 2026
+
+### 2026-07-15 — Governance: cursor truth-restore + The Matrix HQ (Cowork session)
+- **Type:** docs/governance | **Scope:** STATE.md, implementation plan hub + spokes 03/04, docs/operational (new launch program), changelog
+- STATE.md Resume Cursor re-pinned from `b03975d` (#1164, 2026-06-21) to `38abeee` (#1416, 2026-07-15) — ~250 PRs of cursor drift closed after a full-repo ingestion (6 parallel deep reviews: blueprint/Neo, financial code, implementation+issues, architecture/infra, compliance/legal, GTM).
+- Q-GTM-3 (first aggregator) reconciled: BROKER_ICP.md records DECIDED 2026-06-10 (Finsure first); 03_OPEN_QUESTIONS still listed it OPEN — drift fixed, pointer added.
+- New `docs/operational/LAUNCH_PROGRAM_2026-07.md` — gate plan for the Reza-decided (2026-07-15) 31-July scope: friendlies beta + broker outbound Phase 2; Basiq/Stripe-live/mobile explicitly out of scope.
+- Reza decisions recorded 2026-07-15: The Matrix HQ build GO; 0·RECTIFY GO (cluster ①, one issue at a time per FIX_PROTOCOL, per-fix Ring-3); launch scope as above.
+- Session findings (queued for issues:raise): CFO hardcoded `savingsOpportunities: 3`/`pendingActions: 5` (`lib/cfo/intelligenceEngine.ts:274-275`); HECS-HELP PAYG withholding TODO (`paygCalculator.ts:197`); VR-005 run file absent; stale `audit:fixtures` script ref (`runDifferential.ts` header); docs/architecture/09 stale top table; GCS prod provisioning doc-conflict.
+- **PR:** (this PR)
