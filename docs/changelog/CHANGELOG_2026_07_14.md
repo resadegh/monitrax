@@ -369,3 +369,29 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 ### Testing
 - [x] Ratchet Ring-0 lock; §19.4 downstream sweep verified via golden end-to-end suites
 - [ ] Ring-3 per-fix Chrome verification (in the consolidated brief — before VERIFIED)
+
+---
+
+## Session: chat-audit-findings — MON-035 fix (property cashflow window unification)
+
+### Changes Made
+- **Type**: Fix (financial, changesNumbers) — DECISION 2 (trailing-12-month)
+- **Root Cause**: `computePropertyCashflow` (one engine) was fed THREE different transaction WINDOWS — all-time (property detail + list via `enrichPropertiesWithActuals`) vs last-12-months (Home tile + master snapshot). Same engine, different inputs → the same property's Cashflow/yr + yield differed across screens.
+- **Solution**: extracted ONE window source `lib/calculations/propertyActualsWindow.ts` (`propertyActualsWindowStart()` = trailing 12 months); referenced by all three fetch sites. Added the window to `enrichPropertiesWithActuals` (the bug site — was all-time); master + portfolio/snapshot already used 12-month, now reference the shared constant (window rule single-source). Converges detail/list/Home/master cashflow AND yield (yield derives from the window-based annualRent — resolves MON-036's detail-vs-Home divergence too; the CFO Risk Radar's declared-income yield is the remaining MON-036 producer, next PR).
+
+### Files Modified
+- `lib/calculations/propertyActualsWindow.ts` — the ONE window (new)
+- `lib/services/propertyActuals.ts` — window added to the 3 enrich fetches (detail/list)
+- `lib/services/masterFinancialService.ts`, `app/api/portfolio/snapshot/route.ts` — inline `-12` replaced by the shared helper
+- `tests/calculations/mon035PropertyActualsWindow.test.ts` — Ring-0 unit + §19.4 source-lock (new)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — 3 anchors re-pinned (Neomatrix lockstep, Part 24 #6)
+- `docs/financial-logic/graph/structural/coverage-allowlist.json` — new file allowlisted (graphify offline; self-prunes)
+- `.audit/financial-math-baseline.json` — one grandfathered depreciation violation re-lined 908→910 (import shift)
+- `docs/issues/ISSUES.{json,md}` — MON-035 → DIAGNOSED (→ FIXING with PR)
+
+### Build Status
+- [x] tsc 0 errors · full vitest 3905 passed · neomatrix:check exit 0 · lint:financial-surfaces no new violations
+
+### Testing
+- [x] Ratchet Ring-0 unit + source-lock (window single-source, no inline -12)
+- [ ] Ring-3 per-fix Chrome verification (consolidated brief — before VERIFIED)

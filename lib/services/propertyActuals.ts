@@ -21,6 +21,7 @@
  */
 
 import prisma from '@/lib/db';
+import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
 
 export type ActualTx = { date: Date; amount: number };
 
@@ -149,24 +150,28 @@ export async function enrichPropertiesWithActuals<P extends EnrichableProperty>(
   const expenseIds = properties.flatMap((p) => p.expenses.map((e) => e.id));
   const loanIds = properties.flatMap((p) => p.loans.map((l) => l.id));
 
+  // MON-035 (DECISION 2): trailing-12-month window — the ONE canonical window
+  // (propertyActualsWindow.ts), IDENTICAL to the master snapshot + Home tile, so
+  // detail/list no longer read all-time and diverge from them.
+  const windowStart = propertyActualsWindowStart();
   const [incomeTx, expenseTx, loanTx] = await Promise.all([
     incomeIds.length > 0
       ? prisma.unifiedTransaction.findMany({
-          where: { userId, incomeId: { in: incomeIds } },
+          where: { userId, incomeId: { in: incomeIds }, date: { gte: windowStart } },
           select: { date: true, amount: true, incomeId: true },
           orderBy: { date: 'asc' },
         })
       : Promise.resolve([]),
     expenseIds.length > 0
       ? prisma.unifiedTransaction.findMany({
-          where: { userId, expenseId: { in: expenseIds } },
+          where: { userId, expenseId: { in: expenseIds }, date: { gte: windowStart } },
           select: { date: true, amount: true, expenseId: true },
           orderBy: { date: 'asc' },
         })
       : Promise.resolve([]),
     loanIds.length > 0
       ? prisma.unifiedTransaction.findMany({
-          where: { userId, loanId: { in: loanIds } },
+          where: { userId, loanId: { in: loanIds }, date: { gte: windowStart } },
           select: { date: true, amount: true, loanId: true },
           orderBy: { date: 'asc' },
         })

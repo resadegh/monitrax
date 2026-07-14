@@ -35,6 +35,7 @@
 import prisma from '@/lib/db';
 import { buildEntityBreakdown, type EntityPosition } from '@/lib/calculations/entityBreakdown';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
 import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { createAuditLog } from '@/lib/security/auditLog';
@@ -757,13 +758,14 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         status: true,
       },
     }),
-    // Phase 30: Fetch linked transactions for actual calculation
-    // Get transactions from last 12 months that are linked to income/expense entries
+    // Phase 30: Fetch linked transactions for actual calculation.
+    // MON-035 (DECISION 2): the ONE canonical property-actuals window
+    // (propertyActualsWindow.ts) — same window every property surface reads.
     prisma.unifiedTransaction.findMany({
       where: {
         userId,
         date: {
-          gte: new Date(new Date().setMonth(new Date().getMonth() - 12)),
+          gte: propertyActualsWindowStart(),
         },
         OR: [
           { incomeId: { not: null } },

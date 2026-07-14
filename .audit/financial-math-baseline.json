@@ -1,5 +1,5 @@
 {
-  "comment": "Phase 41i.6b \u2014 pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny \u2014 adding entries here suppresses bugs the lint is designed to catch).",
+  "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
   "generatedAt": "2026-06-25T11:00:32.520Z",
   "count": 34,
   "entries": [
@@ -89,7 +89,7 @@
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 908,
+      "line": 910,
       "pattern": "INLINE_ARITHMETIC",
       "match": "asset.purchasePrice - asset.currentValue"
     },

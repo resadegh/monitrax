@@ -20,6 +20,7 @@ import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 // master snapshot + property pages) so the Home tiles never show gross rent in
 // place of cashflow when a loan lacks minRepayment.
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
@@ -607,13 +608,14 @@ export const GET = withPermission('report.read', async (request, auth) => {
           where: { userId },
           select: { currentBalance: true, fundType: true, ownerEntityId: true },
         }),
-        // MON-014 — reconciled transactions linked to income/expense/loan rows
-        // (last 12 months), so per-property cashflow resolves actuals-first via
-        // the ONE canonical engine, IDENTICAL inputs to the master snapshot.
+        // MON-014 — reconciled transactions linked to income/expense/loan rows,
+        // so per-property cashflow resolves actuals-first via the ONE canonical
+        // engine. MON-035 (DECISION 2): the ONE canonical property-actuals window
+        // (propertyActualsWindow.ts) — IDENTICAL to the master snapshot + detail/list.
         prisma.unifiedTransaction.findMany({
           where: {
             userId,
-            date: { gte: new Date(new Date().setMonth(new Date().getMonth() - 12)) },
+            date: { gte: propertyActualsWindowStart() },
             OR: [
               { incomeId: { not: null } },
               { expenseId: { not: null } },
