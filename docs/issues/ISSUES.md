@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 6 · 🟡 2 · 🟠 28 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 5 · 🟡 2 · 🟠 29 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -46,7 +46,7 @@
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
-| MON-040 | 🔵 OPEN | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | — | — |
+| MON-040 | 🟠 FIXING | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
 | MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
 | MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
@@ -768,14 +768,22 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes display
 
 ### MON-040 — Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings)
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
 
 > **What was wrong:** The Tax page's savings suggestions show impossible numbers (e.g. 'save 3685%' and millions in savings), which look broken.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** The savings calculator was reading your marginal tax rate as a fraction when it's stored as a percent (37, not 0.37) — so every rate-based figure was inflated ~100×. Fixed to use the rate correctly (kept the percent convention the rest of the tax page depends on).
+>
+> **What you should see:** On the Tax page, the salary-sacrifice suggestion now shows a sane figure — e.g. 'save 22%' and a few thousand dollars — instead of 'save 3685%' and $1.1M / $6.27M.
+
+- **Root cause:** `lib/tax-engine/position/taxPositionCalculator.ts:360`
+- **Neomatrix:** `engine.taxPositionCalculator.calculateTaxPosition`
+- **Downstream consumers (§19.4):** `app/api/tax/position/route.ts`, `app/dashboard/tax/page.tsx`
+- **Fix PR(s):** ##1398
+- **Holistic test (§19.4):** `tests/tax/mon040TaxRecommendations.test.ts`
 - **Detail:** `neoaudit-run:VR-003`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/tax (recommendations panel). Expected: realistic savings figures and percentages. Actual: 'save 3685%', potential savings 1,105,500 and 6,274,704 rendered as real recommendations. Evidence/run: VR-003.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/tax (recommendations panel). Expected: realistic savings figures and percentages. Actual: 'save 3685%', potential savings 1,105,500 and 6,274,704 rendered as real recommendations. Evidence/run: VR-003. | [FIX 2026-07-14] Verified end-to-end: incomeTaxCalculator.ts:118 returns marginalRate*100 (a PERCENT) -> TaxCalculation.marginalRate=37 -> generateRecommendations misread it as a decimal at :356/361/366/376. Fix: local mr = marginalRate/100 for rate math; guard >=32 (percent); '% saved' = marginalRate-15. Did NOT touch incomeTaxCalculator or the marginalRate type (tax page depends on percent). Worked examples reproduce the reported numbers exactly (37-0.15)*100=3685, 30000*36.85=1,105,500. Ratchet Ring-0: tests/tax/mon040TaxRecommendations.test.ts (22% not 3685; savings<20k; class invariant savings<=netTax). Blast radius = tax recommendations panel only (does NOT feed netTax/CFO). Advances to FIXING with PR#.
 
 ### MON-041 — Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation)
 
