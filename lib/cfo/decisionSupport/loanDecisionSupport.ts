@@ -260,6 +260,23 @@ export async function calculateCFOLoanInsights(userId: string): Promise<CFOLoanI
 // Refinance Analysis
 // ============================================================================
 
+/**
+ * MON-019 + MON-038 — the ONE LVR gate for refinance advice (§12.2.1: one policy,
+ * one place). A property loan above `MAX_REFINANCE_LVR` (~95%) cannot be
+ * refinanced — no lender writes it (well past LMI). Non-property loans (no
+ * `propertyId`), or a loan whose property has no value, have no LVR gate on this
+ * axis → refinanceable. BOTH refinance producers (`calculateRefinanceOpportunities`
+ * and `generateRateAlerts`' rate-above-market branch) call this, so a 104%-LVR
+ * loan can never be offered a refinance from either surface (MON-038: it was
+ * gated in the first but not the second).
+ */
+function isRefinanceableLvr(loan: any, properties: any[]): boolean {
+  if (!loan.propertyId) return true;
+  const property = properties.find((p) => p.id === loan.propertyId);
+  if (!property || !(property.currentValue > 0)) return true;
+  return loan.principal / property.currentValue <= MAX_REFINANCE_LVR;
+}
+
 export function calculateRefinanceOpportunities(
   loans: any[],
   properties: any[] = [],
@@ -272,16 +289,10 @@ export function calculateRefinanceOpportunities(
       continue;
     }
 
-    // MON-019: a property loan above ~95% LVR cannot be refinanced (no lender
-    // writes it — LMI territory well before). Don't recommend it. Non-property
-    // loans (no propertyId) have no LVR gate.
-    let overMaxLvr = false;
-    if (loan.propertyId) {
-      const property = properties.find((p) => p.id === loan.propertyId);
-      if (property && property.currentValue > 0) {
-        overMaxLvr = loan.principal / property.currentValue > MAX_REFINANCE_LVR;
-      }
-    }
+    // MON-019 + MON-038: the ONE LVR gate (isRefinanceableLvr) — a property loan
+    // above ~95% LVR cannot be refinanced (no lender writes it). Shared with
+    // generateRateAlerts so the gate can't be applied here and missed there.
+    const overMaxLvr = !isRefinanceableLvr(loan, properties);
 
     const currentRate = loan.interestRateAnnual;
     const marketRate = MARKET_RATES[loan.type as keyof typeof MARKET_RATES] || 0.06;
@@ -344,7 +355,7 @@ export function calculateRefinanceOpportunities(
 // Rate Alerts
 // ============================================================================
 
-function generateRateAlerts(loans: any[], properties: any[]): RateAlert[] {
+export function generateRateAlerts(loans: any[], properties: any[]): RateAlert[] {
   const alerts: RateAlert[] = [];
   const now = new Date();
 
@@ -408,6 +419,11 @@ function generateRateAlerts(loans: any[], properties: any[]): RateAlert[] {
       // More than 1% above market
       const overPayment = ((loan.interestRateAnnual - marketRate) * loan.principal) / 12;
 
+      // MON-038: don't tell the user to refinance a loan they can't refinance
+      // (over the LVR ceiling) — the SAME gate the refinance-opportunity path
+      // uses. Above the ceiling, steer to paying down LVR first, not refinancing.
+      const canRefinance = isRefinanceableLvr(loan, properties);
+
       alerts.push({
         type: 'rate_above_market',
         severity: loan.interestRateAnnual > marketRate + 0.02 ? 'high' : 'medium',
@@ -417,7 +433,9 @@ function generateRateAlerts(loans: any[], properties: any[]): RateAlert[] {
         description: `Your rate of ${(loan.interestRateAnnual * 100).toFixed(2)}% is ${((loan.interestRateAnnual - marketRate) * 100).toFixed(2)}% above market rates.`,
         currentRate: loan.interestRateAnnual,
         impact: Math.round(overPayment * 12),
-        action: 'Consider refinancing or negotiating a rate reduction',
+        action: canRefinance
+          ? 'Consider refinancing or negotiating a rate reduction'
+          : 'Focus extra repayments to reduce your LVR below 80% first',
       });
     }
 

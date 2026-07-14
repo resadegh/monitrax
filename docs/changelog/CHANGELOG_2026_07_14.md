@@ -430,3 +430,21 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 
 ### Build Status
 - [x] tsc 0 · full vitest 3914 passed · neomatrix:check exit 0 · lint clean
+
+---
+
+## Session: chat-audit-findings — MON-038 fix (refinance LVR gate — both producers)
+
+### Changes Made
+- **Type**: Fix (advice-text; changesNumbers=false) — §12.2.1 duplicate-producer completion of MON-019
+- **Root Cause**: refinance advice has TWO producers. MON-019 gated `calculateRefinanceOpportunities` (LVR ceiling), but `generateRateAlerts`' `rate_above_market` branch still set `action: 'Consider refinancing…'` with NO LVR gate — so a 104% LVR loan was told to refinance.
+- **Solution**: extracted ONE `isRefinanceableLvr(loan, properties)` helper (the `> MAX_REFINANCE_LVR` rule) called by BOTH producers. Above the ceiling the rate alert reframes to "Focus extra repayments to reduce your LVR below 80% first" (the alert + its impact $ stay — only the action text changes).
+
+### Files Modified
+- `lib/cfo/decisionSupport/loanDecisionSupport.ts` — shared `isRefinanceableLvr`; both producers gated; `generateRateAlerts` exported for testability
+- `tests/cfo/loanDecisionSupportGuards.test.ts` — cross-producer invariant (no refinance advice > LVR ceiling from ANY producer + healthy-LVR control)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — 3 loanDecisionSupport anchors re-pinned
+- `docs/issues/ISSUES.{json,md}` — MON-038 → DIAGNOSED (→ FIXING); changesNumbers→false
+
+### Build Status
+- [x] tsc 0 · full vitest 3917 passed · neomatrix:check exit 0 · lint clean
