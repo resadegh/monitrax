@@ -26,6 +26,7 @@ import {
   Fuel, Shield, FileText, Zap, FolderOpen, Pencil
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { assetValueDirection, assetValueChangeMagnitudePercent } from '@/lib/assets/valueChange';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
@@ -630,7 +631,10 @@ function AssetsPageContent() {
                 )}
                 {formatCurrency(Math.abs(computed.depreciation))}
                 <span className="text-sm text-muted-foreground">
-                  ({computed.depreciationPercent.toFixed(1)}%)
+                  {/* MON-041: the icon + $ sign already convey direction; show the
+                      MAGNITUDE (an appreciating asset must not read as "-200%
+                      depreciation"). ONE source: lib/assets/valueChange. */}
+                  ({assetValueChangeMagnitudePercent(computed.depreciationPercent).toFixed(1)}%)
                 </span>
               </p>
             </div>
@@ -1243,7 +1247,8 @@ function AssetsPageContent() {
                 <div className="grid grid-cols-2 gap-3 py-4 sm:grid-cols-4 sm:gap-4">
                   {(() => {
                     const dep = selectedAsset._computed?.depreciation || 0;
-                    const gained = dep <= 0; // currentValue ≥ purchase → asset gained
+                    const direction = assetValueDirection(dep); // MON-041 (one source)
+                    const gained = direction !== 'depreciation'; // appreciation / unchanged
                     return (
                       <>
                         <KpiTile
@@ -1260,7 +1265,11 @@ function AssetsPageContent() {
                         />
                         <KpiTile
                           accent={gained ? 'from-emerald-400 to-teal-500' : 'from-rose-400 to-orange-500'}
-                          label="Depreciation"
+                          // MON-041: an appreciating asset (currentValue ≥ purchase)
+                          // is APPRECIATION, not "Depreciation -200%". Label by
+                          // direction + show the magnitude % (icon/colour convey
+                          // the sign) — ONE source: lib/assets/valueChange.
+                          label={direction === 'appreciation' ? 'Appreciation' : direction === 'depreciation' ? 'Depreciation' : 'Value change'}
                           value={formatCurrency(Math.abs(dep))}
                           valueIcon={
                             gained ? (
@@ -1269,7 +1278,7 @@ function AssetsPageContent() {
                               <TrendingDown className="h-4 w-4 shrink-0 text-rose-500" />
                             )
                           }
-                          sub={`${(selectedAsset._computed?.depreciationPercent || 0).toFixed(1)}%`}
+                          sub={`${assetValueChangeMagnitudePercent(selectedAsset._computed?.depreciationPercent || 0).toFixed(1)}%`}
                         />
                         <KpiTile
                           accent="from-violet-400 to-indigo-500"

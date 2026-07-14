@@ -508,3 +508,27 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 - Document 10/10 (§6.7 no-dead-ends · §12.1 root-cause redirect fixes all callers · §23.2.2 Ratchet + §23.2.6 living-system sibling catch; Neomatrix — no engine touched, redirect page allowlisted, graph green)
 - Requirements 10/10 (MON-044 repoint exact; MON-046 sibling fixed at source; MON-038 count confirmed+locked; no gold-plating)
 - Logic 10/10 (one-line href · standard redirect page · count filter already correct, now locked). Coverage: verifies hrefs resolve to real route dirs + dead path absent + count excludes the gated loan; does NOT verify the rendered browser navigation (manual/Ring-3 click-through — VR-005).
+
+---
+
+## Session: chat-audit-findings — MON-041 asset appreciation shown as negative depreciation
+
+### Changes
+- **Root cause**: `depreciation = purchasePrice − currentValue` (positive = lost value, negative = gained), and `depreciationPercent` carries the same sign (`app/api/assets/route.ts:58`). `AssetTile` abs'd it + labelled Appreciated/Depreciated, but the **Assets page dialogs** (`page.tsx:636` inline %, `:1276` KpiTile) printed the **raw signed** percent + a hardcoded "Depreciation" label → an appreciating 300Z read "-200.0% depreciation".
+- **Fix (§12.2.1)**: extracted `lib/assets/valueChange.ts` (`assetValueDirection` + `assetValueChangeMagnitudePercent`) as the ONE presentation rule; wired both page dialog sites (label by direction, % as magnitude) and repointed `AssetTile`'s `lostValue`/percent to it. The underlying signed value is unchanged — only the display sign/label (`changesNumbers=false`).
+
+### Files Modified
+- `lib/assets/valueChange.ts` — NEW canonical presentation helper
+- `app/dashboard/assets/page.tsx` — both dialog sites use the helper (label + magnitude)
+- `components/assets/AssetTile.tsx` — `lostValue`/percent repointed to the helper
+- `tests/assets/valueChange.test.ts` — NEW Ratchet (direction + non-negative magnitude, incl. the -200% case)
+- `docs/financial-logic/graph/structural/coverage-allowlist.json` — presentation helper allowlisted (no money formula; graphify offline)
+- `docs/issues/ISSUES.{json,md}` — MON-041 → FIXING
+
+### Build Status
+- [x] tsc 0 · full vitest 3935 passed · neomatrix:check exit 0 · lint clean · issues:check 46 valid
+
+### Gate (§20.6)
+- Document 10/10 (§12.2.1 one-source presentation helper · §23.2.2 Ratchet; Neomatrix — pure presentation, allowlisted, graph green)
+- Requirements 10/10 (fixes the exact mislabel; signed data untouched; no gold-plating)
+- Logic 10/10 (direction enum + Math.abs magnitude; all 3 surfaces share it). Coverage: verifies the direction + non-negative magnitude rule; does NOT verify the rendered dialog pixels (manual/Ring-3).

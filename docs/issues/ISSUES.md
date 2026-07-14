@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**46 total** · 43 open · 🔵 4 · 🟡 3 · 🟠 31 · 🟢 5 · ✅ 2
+**46 total** · 43 open · 🔵 3 · 🟡 3 · 🟠 32 · 🟢 5 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -47,7 +47,7 @@
 | MON-038 | 🟠 FIXING | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
 | MON-040 | 🟢 VERIFIED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
-| MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
+| MON-041 | 🟠 FIXING | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | ##PENDING | ✅ |
 | MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
 | MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
 | MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##PENDING | ✅ |
@@ -797,14 +797,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 ### MON-041 — Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation)
 
-**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: assets · opened 2026-07-14
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: assets · opened 2026-07-14
 
-> **What was wrong:** Cars that went UP in value show a weird 'depreciation -200%' instead of an appreciation figure.
+> **What was wrong:** On an asset that has gone UP in value (e.g. a classic car), the Assets detail showed a negative depreciation like "-200.0%" — treating appreciation as negative depreciation.
 >
-- **Holistic test (§19.4):** n/a (display/UX)
+> **What changed:** Asset value-change is now shown as a positive magnitude with a clear direction — an appreciating asset reads "Appreciation 200.0%" (green, up-arrow), a depreciating one reads "Depreciation" — using ONE shared presentation rule across the list tile and the detail dialog.
+>
+> **What you should see:** Open an asset that’s worth more than you paid (e.g. the 300Z / Landcruiser): the detail now says Appreciation with a positive % and a green up-arrow, not "-200.0% depreciation".
+
+- **Root cause:** `app/dashboard/assets/page.tsx:636`, `app/dashboard/assets/page.tsx:1276`, `app/api/assets/route.ts:58`
+- **Downstream consumers (§19.4):** `app/dashboard/assets/page.tsx`, `components/assets/AssetTile.tsx`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** `tests/assets/valueChange.test.ts`
 - **Detail:** `neoaudit-run:VR-003`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/assets (vehicle dialogs). Expected: a percentage in a sane range with the right label (appreciation vs depreciation). Actual: 300Z shows depreciation -200.0pct and Landcruiser -66.7pct — an appreciating asset is labelled as negative depreciation. Evidence/run: VR-003.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/assets (vehicle dialogs). Expected: a percentage in a sane range with the right label (appreciation vs depreciation). Actual: 300Z shows depreciation -200.0pct and Landcruiser -66.7pct — an appreciating asset is labelled as negative depreciation. Evidence/run: VR-003. | [FIX 2026-07-14] Root cause: depreciation = purchasePrice − currentValue (positive=lost, negative=gained) and depreciationPercent same sign (app/api/assets/route.ts:58). AssetTile abs’d it + labelled Appreciated/Depreciated, but the Assets PAGE dialogs (page.tsx:636 inline %, :1276 KpiTile) printed the RAW signed percent + a hardcoded "Depreciation" label → an appreciating asset read "-200.0%". Fix (§12.2.1): extracted lib/assets/valueChange.ts (assetValueDirection + assetValueChangeMagnitudePercent) as the ONE presentation rule; wired both page sites (label by direction, % as magnitude) + repointed AssetTile’s lostValue/percent to it. Ratchet: tests/assets/valueChange.test.ts. Neomatrix: pure presentation helper, allowlisted (no money formula; graphify offline, self-prunes). changesNumbers=false (the signed value is unchanged; only the display sign/label).
 
 ### MON-042 — Household vehicle count (4) disagrees with the Assets list (5 vehicles)
 
