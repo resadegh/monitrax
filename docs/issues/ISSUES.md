@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 7 · 🟡 3 · 🟠 26 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 7 · 🟡 2 · 🟠 27 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -41,7 +41,7 @@
 | MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
-| MON-035 | 🟡 DIAGNOSED | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | — | ✅ |
+| MON-035 | 🟠 FIXING | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
 | MON-036 | 🔵 OPEN | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | — | — |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
@@ -689,7 +689,7 @@ Found by the NeoAudit §3 report-reconciliation lock on its FIRST run (§8 step-
 
 ### MON-035 — HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
 
 > **What was wrong:** On the Home dashboard, the HOME property's yearly cashflow tile shows a different number than the property's own detail page and the Properties list (which now agree).
 >
@@ -700,6 +700,7 @@ Found by the NeoAudit §3 report-reconciliation lock on its FIRST run (§8 step-
 - **Root cause:** `lib/services/propertyActuals.ts:157`, `lib/calculations/propertyActualsWindow.ts:32`
 - **Neomatrix:** `number.propertyCashflow`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`, `app/api/portfolio/snapshot/route.ts`, `lib/services/masterFinancialService.ts`, `components/dashboard/tiles/DashboardPropertyTile.tsx`
+- **Fix PR(s):** ##1396
 - **Holistic test (§19.4):** `tests/calculations/mon035PropertyActualsWindow.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
