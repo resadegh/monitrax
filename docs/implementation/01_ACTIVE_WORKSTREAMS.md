@@ -32,6 +32,22 @@
 - **Risk:** the high-risk item (MON-030 — flagship CFO surface + number change) is DONE and Ring-3-pending; the remaining step-6 items (Tier 2 oracle, issues:raise, scorecard, Stryker, Playwright runbook) are additive/low-risk test+tooling infra.
 - **Blocking:** branch constraint = one PR at a time on the designated branch → phases land in sequence as Reza merges. Not a design blocker.
 
+### 0·RECTIFY. Rectify the VR-002/VR-003 findings — root-cause-clustered (post-NeoAudit; Reza plan 2026-07-14)
+
+- **Status:** 🟡 READY — VR-003 (comprehensive two-phase sweep) complete; the full issue list is the registry (`docs/issues/ISSUES.md`); this is the root-cause-clustered fix order. Awaiting Reza's "rectify" go (or cluster pick). Each fix: REMOVE the culprit (§4) + PROMOTE a permanent lower-ring test (the growth loop, NEOAUDIT §10) + Ring-3 re-verify.
+- **Started:** 2026-07-14. **Owner:** Claude (fix, autonomous per cluster) + Reza (direction + live Ring-3 confirm).
+- **Source of truth:** the registry (`ISSUES.json`) + `docs/verification/runs/VR-002.md` + `VR-003.md`.
+- **✅ Already VERIFIED on live data (VR-002/VR-003):** MON-028 (property detail cashflow/yield) · MON-029 (savings rate) · MON-030 (health/CFO score) · MON-017 (safety score).
+- **Root-cause clusters (fix order — highest leverage first; clustering is a hypothesis to confirm at §19.2 diagnosis, not an asserted root cause):**
+  - **① EXPENSE FREQUENCY / ONE-OFFS / DUPLICATES (the hub — highest leverage):** MON-037 (one-offs shown as monthly + Battery duplicate, critical) + the pre-existing siblings **MON-023** (isRecurring ignored + reconcile duplicates) + **MON-025** (frequency defaults MONTHLY, no detection/confirm, fuzzy-dedup missing) + **MON-024/011** (discretionary base). §19.4 downstream: HOME −$321,280 cashflow, inflated tax deductions ($367,440 → understated taxable income/tax), `totalMonthlyExpenses` basis split. **Fix this first — it moves cashflow, tax, expenses, and safety together.**
+  - **② CASHFLOW CROSS-SURFACE (Home tile producer):** MON-035 (HOME home-tile −315,240 vs detail/list −321,280) + **MON-014** (Home per-property tile is a non-canonical cashflow producer when a loan lacks minRepayment). Likely one Home-tile producer to repoint at the canonical `computePropertyCashflow`.
+  - **③ YIELD CROSS-SURFACE:** MON-036 (HOME yield 0.12 detail/list vs 0.9 Home tile vs 1.05 CFO radar) — one yield producer.
+  - **④ LIQUIDITY / BALANCES:** MON-031 (liquid 301,808 vs 304,304, FIXING) + **MON-012** (liquidity buckets L3 tie-out) + the $1 net-worth rounding (watched).
+  - **⑤ TAX / RECOMMENDATION SANITY:** MON-040 (implausible "save 3685%"/$6.27M) + MON-038 (refinance on 104% LVR) + **MON-018** (net-worth +2% placeholder) + **MON-019** (sentinel) + MON-020 (tax-engine duplicate/Medicare) — the recommendation/sentinel sanity family.
+  - **⑥ DISPLAY / LABELLING (low):** MON-039 (Medicare/Money-In/Guildford tile) + MON-041 (depreciation % / appreciation label) + MON-042 (vehicle count 4 vs 5) + MON-043 (income basis Home/Activity/Tax) + savings −31% vs −30.5% rounding.
+- **Risk:** cluster ① is the biggest (touches the expense model + tax + cashflow) and is number-changing on real data → full §19.2 + §19.4 downstream sweep + Ring-3 re-verify. Clusters ②③④ are SSOT-dedup (repoint to canonical producer). ⑤⑥ are lower-leverage.
+- **Blocking:** awaiting Reza's go / cluster priority.
+
 ### 0·DASH-KPI. Dashboard KPI tiles — trailing basis (Phase 57, Reza review 2026-07-02)
 
 - **Status:** 🟢 SHIPPING — KPI tiles (income/outgoings/saving-rate/cash-flow) fixed; PR open. Freedom Horizon reframe **deferred** pending Reza's product-philosophy pick.
