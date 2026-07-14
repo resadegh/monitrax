@@ -20,7 +20,10 @@ import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 // master snapshot + property pages) so the Home tiles never show gross rent in
 // place of cashflow when a loan lacks minRepayment.
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
-import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
+// MON-035/036: the ONE canonical per-property actuals assembler — shared with the
+// property detail page, the Properties list, and the CFO Risk Radar so the Home
+// dashboard tile can never drift to its own inline producer (§12.2.1).
+import { enrichPropertiesWithActuals } from '@/lib/services/propertyActuals';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
@@ -520,7 +523,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const userId = auth.userId;
 
       // Fetch all user data in parallel with full relational includes
-      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets, superannuation, linkedTxns] = await Promise.all([
+      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets, superannuation] = await Promise.all([
         prisma.property.findMany({
           where: { userId },
           include: {
@@ -608,31 +611,20 @@ export const GET = withPermission('report.read', async (request, auth) => {
           where: { userId },
           select: { currentBalance: true, fundType: true, ownerEntityId: true },
         }),
-        // MON-014 — reconciled transactions linked to income/expense/loan rows,
-        // so per-property cashflow resolves actuals-first via the ONE canonical
-        // engine. MON-035 (DECISION 2): the ONE canonical property-actuals window
-        // (propertyActualsWindow.ts) — IDENTICAL to the master snapshot + detail/list.
-        prisma.unifiedTransaction.findMany({
-          where: {
-            userId,
-            date: { gte: propertyActualsWindowStart() },
-            OR: [
-              { incomeId: { not: null } },
-              { expenseId: { not: null } },
-              { loanId: { not: null } },
-            ],
-          },
-          select: {
-            id: true,
-            date: true,
-            amount: true,
-            direction: true,
-            incomeId: true,
-            expenseId: true,
-            loanId: true,
-          },
-        }),
       ]);
+
+      // MON-035/036 (Stage-4 FAIL re-diagnosis, VR-005): per-property cashflow +
+      // yield now come from the ONE canonical assembler `enrichPropertiesWithActuals`
+      // — the SAME producer the property detail page, the Properties list, and the
+      // CFO Risk Radar use. Previously this route had its OWN inline transaction
+      // fetch + `propertyTx` filter (a §12.2.1 DUPLICATE producer), which diverged
+      // from the enricher on live HOME data (the Home tile fell back to declared
+      // rent → 0.9% vs the detail page's actuals-based 0.12%). Removing the inline
+      // copy makes the Home dashboard tile equal the other three surfaces BY
+      // CONSTRUCTION. `properties` already carries its income/expenses/loans
+      // relations (findMany include above), so the enricher batches the actuals
+      // fetch (§12.10, no N+1).
+      const enrichedProperties = await enrichPropertiesWithActuals(userId, properties);
 
       // ============================================================================
       // CALCULATE LINKAGE HEALTH
@@ -702,33 +694,24 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // ============================================================================
       // GRDCS-ENHANCED PROPERTY SNAPSHOTS
       // ============================================================================
-      const propertySnapshots = properties.map((property: any) => {
-        const propertyLoans = loans.filter((l: any) => l.propertyId === property.id);
+      const propertySnapshots = enrichedProperties.map((property: any) => {
+        // Loans from the property's OWN enriched relation — the SAME rows the
+        // enricher + detail page use (not a re-filter of the top-level array).
+        const propertyLoans = property.loans;
         const totalLoanBalance = propertyLoans.reduce((sum: number, l: any) => sum + l.principal, 0);
         const equity = property.currentValue - totalLoanBalance;
         const lvr = calculateLVR(totalLoanBalance, property.currentValue);
 
-        const propertyIncome = income.filter((i: any) => i.propertyId === property.id);
-        const propertyExpenses = expenses.filter((e: any) => e.propertyId === property.id);
-
-        // MON-014: rent / expenses / loan cost / cashflow come from the ONE
-        // canonical per-property engine — actuals-first (resolved from the
-        // reconciled transaction dates), rent pooled at the property-stream level,
-        // and the loan cost floored to interest (NEVER silently $0 when a loan
-        // lacks minRepayment). IDENTICAL inputs to the master snapshot
-        // (buildPropertyMetrics) → the Home tile equals the detail page (§12.2.1/§19.4).
-        const incomeIds = new Set(propertyIncome.map((i: any) => i.id));
-        const expenseIds = new Set(propertyExpenses.map((e: any) => e.id));
-        const loanIds = new Set(propertyLoans.map((l: any) => l.id));
-        const propertyTx = linkedTxns.filter(
-          (t) =>
-            (t.incomeId && incomeIds.has(t.incomeId)) ||
-            (t.expenseId && expenseIds.has(t.expenseId)) ||
-            (t.loanId && loanIds.has(t.loanId)),
-        );
+        // MON-035/036: rent / expenses / loan cost / cashflow come from the ONE
+        // canonical assembler `enrichPropertiesWithActuals` → `computePropertyCashflow`
+        // — IDENTICAL inputs (income/expenses/loans + reconciled `linkedTransactions`
+        // over the trailing-12-month window) to the property detail page, the
+        // Properties list, and the CFO Risk Radar. The Home dashboard tile therefore
+        // reads the SAME number as those three surfaces by construction (§12.2.1 —
+        // no second inline producer to drift).
         const cf = computePropertyCashflow({
-          income: propertyIncome.map((i: any) => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
-          expenses: propertyExpenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring })), // MON-037: exclude one-offs from run-rate
+          income: property.income.map((i: any) => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
+          expenses: property.expenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring })), // MON-037: exclude one-offs from run-rate
           loans: propertyLoans.map((l: any) => ({
             id: l.id,
             principal: l.principal,
@@ -736,7 +719,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
             minRepayment: l.minRepayment,
             repaymentFrequency: l.repaymentFrequency,
           })),
-          transactions: propertyTx.map((t) => ({
+          transactions: property.linkedTransactions.map((t: any) => ({
             incomeId: t.incomeId,
             expenseId: t.expenseId,
             loanId: t.loanId,

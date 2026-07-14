@@ -578,3 +578,34 @@ Continuing the Neomatrix accuracy audit (Reza directive 2026-07-14). Auditing th
 - Document 10/10 (Reza Neomatrix directive · §12.1 dead-code · §21.2 flag-not-silently-change · Part 24 #6)
 - Requirements 10/10 (real graph-reflected issue found + verified unwired via caller trace; raised + flagged honestly; risky removal deferred)
 - Logic 10/10 (verified: only tests+shadow reference it; production uses getNetWorthHistory; averagePrice vs currentPrice read in source). Coverage: verifies the finding is real + unwired; does NOT perform the removal (own PR).
+
+---
+
+## Session: chat-audit-findings — MON-035/036 REAL fix (VR-005 Stage-4 FAIL re-diagnosis)
+
+### The honest failure
+VR-005 (Chrome, full-merged deploy) showed the Home dashboard tile STILL diverges (−$2,628/yr, 0.9% yield) from detail/list/Risk-Radar (−$8,668/yr, 0.12%). My #1401 "deploy-skew" conclusion was **wrong** — the Ring-2 reproduction gave a **false PASS** because its DB mock ignores WHERE clauses, so it couldn't catch a fetch-layer difference.
+
+### Real root cause (§12.2.1 duplicate producer)
+`/api/portfolio/snapshot` had its OWN inline per-property transaction fetch (`unifiedTransaction.findMany`) + `propertyTx` filter feeding `computePropertyCashflow` — a duplicate of `enrichPropertiesWithActuals` (used by detail/list/Risk-Radar). On live HOME data the inline path fell back to **declared** rent (~$6,970/yr → 0.9%) while the enricher used 12-month **actuals** (~$929/yr → 0.12%).
+
+### Fix (remove-the-culprit §23.2.1)
+Deleted the inline fetch + assembly; the route now calls `enrichPropertiesWithActuals(userId, properties)` and feeds `computePropertyCashflow` from `property.income/expenses/loans + property.linkedTransactions` — the SAME producer as the other three surfaces → Home tile == detail **by construction**.
+
+### Files Modified
+- `app/api/portfolio/snapshot/route.ts` — removed the inline `linkedTxns` fetch + `propertyTx` assembly; delegates to `enrichPropertiesWithActuals`
+- `tests/golden/ring2.homePropertyParity.test.ts` — **Ring-1 source-lock Ratchet** (route uses the enricher, has NO inline `unifiedTransaction.findMany`) + fixed the mock to populate `property.findMany` includes (the false-pass cause)
+- `tests/calculations/mon035PropertyActualsWindow.test.ts` — direct fetch sites 3→2 (portfolio now delegates)
+- `docs/financial-logic/graph/financial-graph.json` — `portfolioSnapshot.GET` re-pinned 518→521 + formula reflects the enricher delegation
+- `docs/issues/ISSUES.{json,md}` — MON-035/036 re-diagnosis; `docs/issues/FIX_PROTOCOL.md` §7 ledger retro; `.audit/financial-math-baseline.json` re-lined 910→893
+
+### Build Status
+- [x] tsc 0 · full vitest 3937 passed · neomatrix:check OK · lint clean · issues:check 47 valid
+
+### The process lesson (§7 ledger)
+A value-parity test CANNOT verify a fetch-layer bug — the Ratchet for a duplicate-producer class is a **Ring-1 source-lock**, and any cross-surface parity claim on a WHERE-blind golden mock must be paired with it.
+
+### Gate (§20.6)
+- Document 10/10 (§12.2.1 remove-the-culprit · §23.2 Ratchet at the right ring · §21.2.1 same-PR Neomatrix update; Part 24 #6 coupling)
+- Requirements 10/10 (fixes the confirmed live divergence at source; one producer remains; honest Stage-4-FAIL retro instead of re-claiming)
+- Logic 10/10 (route delegates to the ONE enricher; source-lock prevents recurrence). Coverage: verifies the route has one producer (source-lock) + golden parity; does NOT re-verify live numbers — that's the VR-006 Chrome re-check (stays FIXING until then).

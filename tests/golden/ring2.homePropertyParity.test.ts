@@ -34,6 +34,8 @@
  * It does NOT verify rendered pixels (R2-vis) or real user data (R3).
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const USER_ID = vi.hoisted(() => 'home-parity-user');
 
@@ -143,6 +145,13 @@ vi.mock('@/lib/db', async () => {
           return {
             ...baseProp,
             findUnique: async ({ where }: { where: { id?: string } }) => structuredClone(withRelations(where?.id)),
+            // The portfolio/snapshot route now enriches via property.findMany's
+            // income/expenses/loans relations (the §12.2.1 consolidation) — so the
+            // mock must populate those includes, exactly as prod Prisma does
+            // (createGoldenDbFrom serves includes EMPTY by default). This is what
+            // makes the Home-tile path exercise the SAME assembler as detail.
+            findMany: async () =>
+              (ROWS.property as Array<{ id?: string }>).map((p) => structuredClone(withRelations(p.id))),
           };
         }
         return (base as Record<string, unknown>)[model];
@@ -255,5 +264,32 @@ describe('Ring 2 — HOME-shape per-property cashflow parity (MON-035/036)', () 
       expect(tile, `${id}: tile yield ${tile} vs detail ${detail}`).toBeCloseTo(detail, 2);
       expect(master, `${id}: master yield ${master} vs detail ${detail}`).toBeCloseTo(detail, 2);
     }
+  });
+});
+
+/**
+ * THE RATCHET (§23.2.2, Ring-1 source-lock) — the honest guard for the VR-005
+ * Stage-4 FAIL. The value-parity above cannot catch a WHERE-clause/fetch
+ * difference (the golden DB mock ignores WHERE — that's exactly why the earlier
+ * reproduction gave a false pass). The real bug CLASS was: the portfolio/snapshot
+ * route had its OWN inline per-property transaction fetch (`unifiedTransaction`)
+ * + `propertyTx` filter — a §12.2.1 DUPLICATE of `enrichPropertiesWithActuals` —
+ * which drifted from the enricher on live HOME data. This source-lock fails the
+ * build if a second inline producer is ever re-introduced.
+ */
+describe('MON-035/036 Ratchet — portfolio/snapshot has ONE per-property cashflow producer', () => {
+  const routeSrc = readFileSync(
+    resolve(__dirname, '../../app/api/portfolio/snapshot/route.ts'),
+    'utf8',
+  );
+
+  it('per-property cashflow is assembled by the canonical enricher (enrichPropertiesWithActuals)', () => {
+    expect(routeSrc).toMatch(/enrichPropertiesWithActuals\(/);
+  });
+
+  it('the route does NOT re-fetch transactions inline (no second producer)', () => {
+    // The enricher owns the reconciled-transaction fetch; the route must not do
+    // its own `unifiedTransaction.findMany` for per-property cashflow.
+    expect(routeSrc).not.toMatch(/unifiedTransaction\.findMany/);
   });
 });

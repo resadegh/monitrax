@@ -46,11 +46,17 @@ describe('MON-035 · the window is a trailing 12 months (one source)', () => {
   });
 });
 
-describe('MON-035 · §19.4 source-lock — all three fetch sites use the ONE window', () => {
+describe('MON-035 · §19.4 source-lock — every DIRECT fetch site uses the ONE window', () => {
+  // VR-005 consolidation: the portfolio/snapshot route (Home tile) no longer
+  // fetches transactions directly — it delegates to `enrichPropertiesWithActuals`
+  // (propertyActuals.ts), the ONE assembler the detail/list/Risk-Radar surfaces
+  // use. So there are now TWO direct fetch sites, not three; the Home tile
+  // inherits the window via the enricher (guarded by the source-lock in
+  // tests/golden/ring2.homePropertyParity.test.ts — the route has no inline
+  // unifiedTransaction.findMany).
   const FETCH_SITES = [
-    'lib/services/propertyActuals.ts', // detail + list (was all-time — the bug)
+    'lib/services/propertyActuals.ts', // enricher — detail + list + Risk Radar + Home tile
     'lib/services/masterFinancialService.ts', // master snapshot / buildPropertyMetrics
-    'app/api/portfolio/snapshot/route.ts', // Home dashboard tile
   ];
 
   it('every fetch site imports + calls the canonical window helper', () => {
