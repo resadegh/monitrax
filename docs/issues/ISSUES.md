@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**50 total** · 47 open · 🔵 4 · 🟡 4 · 🟠 30 · 🟢 9 · ✅ 2
+**50 total** · 47 open · 🔵 3 · 🟡 4 · 🟠 31 · 🟢 9 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -45,7 +45,7 @@
 | MON-036 | 🟢 VERIFIED | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | ##1397 | ✅ |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🟠 FIXING | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
-| MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
+| MON-039 | 🟠 FIXING | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | ##PENDING | ✅ |
 | MON-040 | 🟢 VERIFIED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🟢 VERIFIED | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | ##1403 | ✅ |
 | MON-042 | 🟠 FIXING | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | ##PENDING | n/a |
@@ -771,14 +771,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 ### MON-039 — Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr
 
-**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: display · opened 2026-07-14
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: display · opened 2026-07-14
 
-> **What was wrong:** A few small display inconsistencies: the tax estimate does not show the Medicare levy line, the cashflow page says 0 in but 1 source fed, and one property tile is missing its cashflow line.
+> **What was wrong:** Three small display issues: (a) the tax cards on My Guide and Cashflow didn't itemise the Medicare levy (only the Tax page did), (b) the Cashflow page said '1 income source fed this month' next to Money In $0 — implying income arrived when none did, and (c) the Guildford property tile in the list was missing its Cashflow/yr line even though its own detail page and the Home tile show it.
 >
-- **Holistic test (§19.4):** n/a (display/UX)
+> **What changed:** (a) Both tax cards now show an 'incl. $X Medicare levy' line, read from the same canonical tax position — it's shown as included, not an extra charge. (b) The Cashflow copy now reads 'N income source(s) · none received this month' when Money In is $0, so it no longer claims money arrived. (c) The property list tile now shows Cashflow/yr for any income-producing property (rent present), matching the detail and Home surfaces — via one shared visibility rule. No number changed.
+>
+> **What you should see:** On My Guide → Tax Position and Cashflow → Tax card, you'll see the Medicare levy itemised. On Cashflow, a $0 Money In now reads 'none received this month'. On My Wealth → Properties, the Guildford tile now shows its Cashflow/yr like its detail page does.
+
+- **Root cause:** `app/dashboard/cfo/page.tsx:887`, `app/(dashboard)/cashflow/components/intelligence/glass/GlassMoneyFlowTile.tsx:157`, `components/properties/PropertyTile.tsx:401`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `app/(dashboard)/cashflow/page.tsx`, `app/(dashboard)/cashflow/components/intelligence/glass/GlassTaxTile.tsx`, `app/(dashboard)/cashflow/components/intelligence/glass/GlassMoneyFlowTile.tsx`, `components/properties/PropertyTile.tsx`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** `tests/properties/propertyCashflowVisibility.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes display. Surface: tax cards / cashflow page / Properties list tile. Expected: Medicare shown; consistent Money In labelling; list tile shows cashflow/yr. Actual: Medicare absent on both tax cards; Money In 0 but text says 1 income source fed; Guildford list tile has no cashflow/yr line. Evidence/run: VR-002. | [VR-006 CONFIRMED 2026-07-14] All three parts reproduced live: (039a) /cashflow 'TAX·FY ESTIMATE $194,218 / 40.0%' AND CFO 'Tax Position -$194,218' both show NO Medicare line; Medicare $9,706 is itemised only on /dashboard/tax — both cards read the canonical getUserTaxPosition where taxPosition.tax.medicareLevy exists, so adding a line is SSOT-clean. (039b) /cashflow 'MONEY IN $0' beside '1 income source fed this month' — the copy claims income 'fed this month' while actuals=$0; the label must not assert receipt when $0 landed (moneyIn=0, declaredSourceCount=1, page does not distinguish actuals-vs-declared). (039c) Guildford (PRIMARY RESIDENCE that collects $26,089 rent + has a loan) — detail -$7,387 & Home -$7,392 SHOW cashflow/yr but the LIST tile OMITS the line entirely: a cross-surface render inconsistency (the number exists; one surface drops it). All changesNumbers=false (labels/render only). To fix in the MON-039 PR (Stage-1 root-cause of each surface first).
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes display. Surface: tax cards / cashflow page / Properties list tile. Expected: Medicare shown; consistent Money In labelling; list tile shows cashflow/yr. Actual: Medicare absent on both tax cards; Money In 0 but text says 1 income source fed; Guildford list tile has no cashflow/yr line. Evidence/run: VR-002. | [VR-006 CONFIRMED 2026-07-14] All three parts reproduced live: (039a) /cashflow 'TAX·FY ESTIMATE $194,218 / 40.0%' AND CFO 'Tax Position -$194,218' both show NO Medicare line; Medicare $9,706 is itemised only on /dashboard/tax — both cards read the canonical getUserTaxPosition where taxPosition.tax.medicareLevy exists, so adding a line is SSOT-clean. (039b) /cashflow 'MONEY IN $0' beside '1 income source fed this month' — the copy claims income 'fed this month' while actuals=$0; the label must not assert receipt when $0 landed (moneyIn=0, declaredSourceCount=1, page does not distinguish actuals-vs-declared). (039c) Guildford (PRIMARY RESIDENCE that collects $26,089 rent + has a loan) — detail -$7,387 & Home -$7,392 SHOW cashflow/yr but the LIST tile OMITS the line entirely: a cross-surface render inconsistency (the number exists; one surface drops it). All changesNumbers=false (labels/render only). To fix in the MON-039 PR (Stage-1 root-cause of each surface first). | [FIX 2026-07-14] (039a Medicare) threaded taxPosition.tax.medicareLevy — the CANONICAL source both cards already read (getUserTaxPosition, MON-020) — to the render sites: cashflow path = buildTaxOptimization (intelligence/route.ts) adds medicareLevy → TaxOptimization type (cashflow-intelligence/types.ts + the cashflow page's local type) → GlassTaxTile renders 'incl. $X Medicare levy' under the hero (shown as INCLUDED, not additive — adviser lens); CFO path = keyTaxMetrics.medicareLevy added in taxIntegration.ts (+ its local CFOTaxInsights type + cfo/types.ts + the cfo page's local type) → cfo/page.tsx renders a muted Medicare line (a cost, not the emerald benefit style). (039b) GlassMoneyFlowTile.tsx:157 now gates the copy on netIncome>0 — '$0 in' reads 'N income source(s) · none received this month' instead of 'fed this month'. (039c) extracted the ONE cashflow-visibility rule to lib/properties/propertyCashflowVisibility.ts (shouldShowPropertyCashflow: true for INVESTMENT or incomeCount>0) — PropertyTile now shows the Cashflow/yr cell for income-producing HOME/RENTAL too (yield stays investment-only, matching detail/Home). RATCHET: Ring-0 tests/properties/propertyCashflowVisibility.test.ts (the cross-surface-omission class — the most automatable); 039a/b (label presence) are covered by the standing Chrome-brief §3.3 'LABELS, not just numbers' + Part-A cross-surface checks. Neomatrix: 2 taxIntegration anchors re-pinned (calculateUnrealisedCGT 180→182, calculateNegativeGearingBenefit 197→199, shifted by the medicareLevy lines) + new visibility helper allowlisted. Gate: tsc + vitest + neomatrix:check + lint:financial-surfaces (27500 super-cap baseline re-lined 447→448) + issues:check all green. changesNumbers=false. Advances to FIXING with PR#; awaits Reza Ring-3.
 
 ### MON-040 — Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings)
 

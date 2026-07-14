@@ -419,6 +419,7 @@ function buildTaxOptimization(
   // full deductions + offsets), the SAME source My Guide uses — so the two
   // surfaces show the same estimated tax. No ad-hoc income-tax-only calc here.
   const estimatedTax = Math.round(taxPosition.tax.netTax); // income tax + Medicare − offsets
+  const medicareLevy = Math.round(taxPosition.tax.medicareLevy); // MON-039a: itemise the Medicare component
   const deductibleExpenses = Math.round(taxPosition.deductions.total);
   const annualGrossIncome = taxPosition.income.total; // canonical assessable income
   const effectiveTaxRate = taxPosition.tax.effectiveRate;
@@ -456,6 +457,7 @@ function buildTaxOptimization(
     recommendations,
     effectiveTaxRate,
     paygWithheld,
+    medicareLevy,
   };
 }
 

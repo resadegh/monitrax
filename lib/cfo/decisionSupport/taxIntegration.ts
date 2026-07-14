@@ -49,6 +49,7 @@ export interface CFOTaxInsights {
     frankingCreditsAvailable: number;
     unrealisedCGT: number;
     paygWithheld: number;
+    medicareLevy: number; // MON-039a
   };
 
   // Metadata
@@ -147,6 +148,7 @@ export async function calculateCFOTaxInsights(userId: string): Promise<CFOTaxIns
       frankingCreditsAvailable: Math.round(taxPosition.income.frankingCredits),
       unrealisedCGT: Math.round(unrealisedCGT),
       paygWithheld: taxPosition.paygWithheld,
+      medicareLevy: Math.round(taxPosition.tax.medicareLevy), // MON-039a: itemise the Medicare component
     },
     metadata: {
       calculatedAt: new Date(),

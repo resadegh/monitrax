@@ -220,6 +220,8 @@ export interface CFOTaxInsights {
     frankingCreditsAvailable: number;
     unrealisedCGT: number;
     paygWithheld: number;
+    /** MON-039a: Medicare levy (already included in the estimated position). */
+    medicareLevy: number;
   };
   metadata: {
     calculatedAt: Date;

@@ -34,6 +34,8 @@ interface Props {
   recommendations: TaxRecommendation[];
   effectiveTaxRate: number;
   paygWithheld: number;
+  /** MON-039a: Medicare levy component (already included in estimatedAnnualTax). */
+  medicareLevy: number;
 }
 
 export default function GlassTaxTile({
@@ -43,6 +45,7 @@ export default function GlassTaxTile({
   recommendations,
   effectiveTaxRate,
   paygWithheld,
+  medicareLevy,
 }: Props) {
   const topRecommendation = recommendations[0] ?? null;
   const paygCoverage = estimatedAnnualTax > 0 ? (paygWithheld / estimatedAnnualTax) * 100 : 0;
@@ -64,6 +67,10 @@ export default function GlassTaxTile({
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           Estimated annual tax · {effectiveTaxRate.toFixed(1)}% effective rate
+          {/* MON-039a: itemise the Medicare levy — it's INCLUDED in the figure
+              above (not additive), so the copy says "incl." to avoid implying
+              a separate charge. */}
+          {medicareLevy > 0 && <> · incl. {formatCurrency(medicareLevy)} Medicare levy</>}
         </p>
       </div>
 

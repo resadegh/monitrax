@@ -146,6 +146,9 @@ export interface TaxOptimization {
   }[];
   effectiveTaxRate: number;
   paygWithheld: number;
+  /** MON-039a: the Medicare levy component of estimatedAnnualTax (which already
+   *  includes it) — surfaced so the tax card can itemise it rather than hide it. */
+  medicareLevy: number;
 }
 
 // =============================================================================

@@ -19,6 +19,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { shouldShowPropertyCashflow } from '@/lib/properties/propertyCashflowVisibility';
 import { PropertyGlyph } from '@/components/wealth/wealthGlyphs';
 import { TaxTreatmentBadge } from '@/components/wealth/TaxTreatmentBadge';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -171,6 +172,16 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
   const lvr = lvrTone(metrics.lvr);
   const isPositiveGain = metrics.gainPercentage >= 0;
   const isInvestment = property.type === 'INVESTMENT';
+  // MON-039c: a property with rental income is income-producing even when it's
+  // typed HOME/primary-residence (e.g. a partially-let home). The detail page
+  // and Home tile show its Cashflow/yr; the list tile must too, or the same
+  // number is present on 2 of 3 surfaces (a §19.4 cross-surface omission).
+  // Yield stays investment-only (a home's yield isn't shown on detail/Home).
+  // ONE rule (§12.2.1): lib/properties/propertyCashflowVisibility.ts.
+  const showCashflow = shouldShowPropertyCashflow({
+    type: property.type,
+    incomeCount: property.incomeCount,
+  });
   const isRental = property.type === 'RENTAL';
 
   // Mobile sticky-stack scroll pattern (v2):
@@ -397,15 +408,18 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
               </div>
             </div>
 
-            {/* Investment-only: yield + cashflow */}
-            {isInvestment && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
+            {/* Yield (investment-only) + Cashflow (any income-producing property,
+                MON-039c). Grid is 2-col when both show, 1-col when only cashflow. */}
+            {showCashflow && (
+              <div className={`mt-3 grid gap-3 ${isInvestment ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {isInvestment && (
                 <div className="rounded-xl border border-violet-500/15 bg-violet-500/5 px-3.5 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">Yield</p>
                   <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
                     {metrics.rentalYield.toFixed(2)}%
                   </p>
                 </div>
+                )}
                 <div
                   className={`rounded-xl border px-3.5 py-3 ${
                     metrics.cashflow >= 0
