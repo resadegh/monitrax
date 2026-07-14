@@ -106,3 +106,50 @@
   registry; it FIXES nothing (rectification is a later phase, after NeoAudit is finished
   and VR-003 compiles the complete list). The VERIFIED flips rest on VR-002's live-data
   confirmation, not on a re-derivation of each number here.
+
+## Session: chat-audit-findings-issues-m9518i (continued) — §8 step-6: Tier 2 combinatorial oracle
+
+### Change: Tier 2 — mutate golden fixtures + compare the real snapshot to an INDEPENDENT Decimal oracle
+
+- **Type**: Test infra (NeoAudit §2 Tier 2) — §8 step-6 (4th of 6)
+- **Scope**: `tests/golden/tier2/snapshotOracle.ts` + `mutations.ts` + `tier2Oracle.test.ts` (new)
+- **Why**: NEOAUDIT §2 Tier 2 — the engine must never be checked against itself. A
+  second, independent derivation compared across many mutated fixtures catches the
+  COMBINATION / composition / mapping bugs no single enumerated example can.
+- **Solution**:
+  - `snapshotOracle.ts` — `deriveOracle(rows)`: a from-scratch **Decimal** re-derivation
+    of the snapshot headline numbers (net worth + asset/liability components, monthly
+    income/expenses/repayments/cashflow, savings rate). Shares NO code with the service
+    — re-encodes the documented rules directly (SMSF/SOLD exclusions; recurring-only
+    monthly expenses; frequency factors from periods-per-year). `@/lib/decimal`.
+  - `mutations.ts` — ~30 deterministic mutations across freq × ownership × loan type ×
+    one-offs × negative equity × entity-mix, plus a combined case.
+  - `tier2Oracle.test.ts` — (1) ANCHOR: `deriveOracle(golden)` == the hand-computed
+    `EXPECTED` (ties the oracle to the §19.2 hand computation *before* it judges the
+    engine — not a §22 hidden mini-engine); (2) production == oracle on the golden base;
+    (3) production ≈ oracle on every mutation; (4) two negative controls.
+  - **§19.2 finding during the build:** the oracle first modelled a CREDIT_CARD *account*
+    as a liability; reading `netWorthCalculator.ts:216-221` proved the engine treats all
+    accounts as assets and takes credit-card DEBT from CREDIT_CARD *loans* — the ORACLE
+    was corrected to match (engine confirmed correct, not a bug). Verified in source, not
+    guessed.
+
+### Files Modified
+- `tests/golden/tier2/{snapshotOracle,mutations}.ts` + `tier2Oracle.test.ts` — new (41 tests)
+- `docs/blueprint/NEOAUDIT.md` — §8 step-6 Tier 2 landed + backlog trimmed
+
+### Build Status
+- [x] `npx vitest run tests/golden` — 16 files, 142 tests pass (incl. the new 41)
+- [x] `npm run neomatrix:check` — OK (no graph node touched; runs the existing engine + an independent oracle)
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §2 Tier 2 — independent oracle + mutation axes exactly as
+  specified; §8 step-6 named component) · Requirements 10/10 (implements Tier 2; honest
+  scope stated) · Logic 10/10 (oracle anchored to the §19.2 manifest THEN to the engine;
+  the credit-card discrepancy was root-caused in source and fixed in the ORACLE, not
+  papered over; SSOT — reuses the ONE golden harness, no parallel platform per §22;
+  negative controls prove it can fail).
+- **Coverage boundary (honest — §22.2.4):** verifies the HEADLINE snapshot numbers agree
+  between the real service and an independent Decimal derivation across the mutation
+  matrix. Does NOT cover PAYG-gross income, rental fragmentation, actuals, tax, or the
+  GRDCS relational layer (other rings/harnesses).
