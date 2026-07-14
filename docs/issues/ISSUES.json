@@ -1147,7 +1147,7 @@
     {
       "id": "MON-037",
       "title": "One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-14",
@@ -1177,7 +1177,9 @@
         "lib/services/entityTaxFactsAssembler.ts",
         "app/api/tax/entity/[entityId]/route.ts"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1395"
+      ],
       "test": "tests/calculations/mon037OneOffEngines.test.ts",
       "tracker": "neoaudit-run:VR-002",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: HOME / Thornland Lot 1 / Guildford expense lists. Expected: one-off items not recurring per-month; no duplicate battery. Actual: Battery/Battery System/Battery Replacement on HOME incl ESTIMATE+ACTUAL both 136620/yr; CJM and Bankwest subdivision fees on Thornland Lot 1; Painting Home on Guildford all tagged MONTHLY. Evidence/run: VR-002. | [FIX 2026-07-14] RC-A resolved: added an isRecurring gate to the two engines the general MON-023 fix never reached — propertyCashflow.ts:172 excludes one-offs from the run-rate; taxPositionCalculator.ts:195/688 count a one-off once (not ×frequency). Threaded isRecurring through ALL 9 producers/callers (§19.4) + entity Prisma selects. aggregateExpenses deliberately NOT gated (master relies on it for its separate all/recurring/nonRecurring computation — gating would zero nonRecurring). Ratchet Ring-0 + source-lock: tests/calculations/mon037OneOffEngines.test.ts. Neomatrix anchors re-pinned (masterFinancialService 1822→1823, taxPositionCalculator 92→101, propertyCashflow 130→137). RC-B (reconcile duplicate) + RC-C (frequency detection) scoped as follow-ups. Advances to FIXING with the PR number."
