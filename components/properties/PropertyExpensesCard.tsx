@@ -114,6 +114,14 @@ export default function PropertyExpensesCard({
   const monthlyTotal = cf.monthlyExpenses;
   const lineById = new Map(cf.expenseLines.filter((l) => l.id).map((l) => [l.id as string, l]));
 
+  // MON-037: the engine excludes one-offs (isRecurring === false) from the
+  // recurring total. Render ONLY the recurring rows so Σ rows === the shown
+  // total (VR-004 caught raw one-off rows rendering under a total that excluded
+  // them → "$0 total over non-zero rows"). One-offs are surfaced as a footnote
+  // (they show as an actual in Spending, in the month they occurred — DECISION 1).
+  const recurringExpenses = expenses.filter((e) => e.isRecurring !== false);
+  const oneOffCount = expenses.length - recurringExpenses.length;
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense? This cannot be undone.')) return;
     setDeletingId(id);
@@ -169,9 +177,12 @@ export default function PropertyExpensesCard({
                 Expenses
               </span>
               <p className="text-xs text-muted-foreground">
-                {hasExpenses
-                  ? `${expenses.length} tracked on this property`
-                  : '0 tracked on this property'}
+                {recurringExpenses.length > 0
+                  ? `${recurringExpenses.length} recurring on this property`
+                  : hasExpenses
+                    ? 'No recurring expenses'
+                    : '0 tracked on this property'}
+                {oneOffCount > 0 ? ` · ${oneOffCount} one-off` : ''}
               </p>
             </div>
           </div>
@@ -192,7 +203,7 @@ export default function PropertyExpensesCard({
           <>
             {/* Expense list */}
             <ul className="mt-4 divide-y divide-foreground/10">
-              {expenses.map((e) => {
+              {recurringExpenses.map((e) => {
                 const line = lineById.get(e.id);
                 const isActual = line?.usedActuals ?? Boolean(e.hasTransactions);
                 const annual = line ? line.annual : e.amount; // fallback: raw amount if unmatched
@@ -246,6 +257,13 @@ export default function PropertyExpensesCard({
                 );
               })}
             </ul>
+
+            {/* MON-037: one-offs are not recurring costs — noted, not summed. */}
+            {oneOffCount > 0 && (
+              <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
+                + {oneOffCount} one-off {oneOffCount === 1 ? 'cost' : 'costs'} (not in the monthly total — shown in Spending in the month it occurred).
+              </p>
+            )}
 
             {/* Footer: add + view-all */}
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-foreground/10 pt-4">

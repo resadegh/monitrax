@@ -57,3 +57,40 @@ describe('MON-005: the detail page shows the card and drops the duplicate summar
     expect(page).not.toContain("id: 'exp-summary'");
   });
 });
+
+/**
+ * MON-037 (VR-004 regression) — the Expenses card must RECONCILE: the visible
+ * rows sum to the shown total. The engine excludes one-offs from the total, so
+ * the card must render only the recurring rows (VR-004 saw raw one-off rows
+ * under a total that excluded them → "$0 total over non-zero rows").
+ */
+import { computePropertyCashflow } from '../../lib/calculations/propertyCashflow';
+
+describe('MON-037: Expenses card reconciles rows to total (no one-offs in the recurring list)', () => {
+  const src = read('components/properties/PropertyExpensesCard.tsx');
+
+  it('renders ONLY recurring rows (filters isRecurring !== false), not raw expenses', () => {
+    expect(src).toContain("expenses.filter((e) => e.isRecurring !== false)");
+    expect(src).toContain('recurringExpenses.map(');
+    expect(src).not.toContain('{expenses.map((e) => {'); // the old raw-row map is gone
+  });
+
+  it('surfaces one-offs as a footnote (not summed into the recurring total)', () => {
+    expect(src).toContain('oneOffCount');
+    expect(src).toMatch(/one-off/i);
+  });
+
+  it('ENGINE INVARIANT: Σ recurring expenseLines === annualExpenses; one-offs excluded', () => {
+    const cf = computePropertyCashflow({
+      expenses: [
+        { id: 'rates', amount: 1300, frequency: 'QUARTERLY', isRecurring: true },
+        { id: 'ins', amount: 200, frequency: 'MONTHLY', isRecurring: true },
+        { id: 'battery', amount: 11385, frequency: 'MONTHLY', isRecurring: false }, // one-off
+      ],
+    });
+    const rowSum = cf.expenseLines.reduce((s, l) => s + l.annual, 0);
+    expect(rowSum).toBeCloseTo(cf.annualExpenses, 2); // rows reconcile to the total
+    expect(cf.expenseLines.some((l) => l.id === 'battery')).toBe(false); // one-off not a row
+    expect(cf.annualExpenses).toBeCloseTo(1300 * 4 + 200 * 12, 2); // 5,200 + 2,400 = 7,600 (no battery)
+  });
+});
