@@ -79,6 +79,7 @@ flowchart TB
 | **What is the law?** (rings, remove-the-culprit, Ratchet, VERIFIED-requires-Ring-3) | `CLAUDE.md` Part 23 |
 | **What is the platform?** (this doc — architecture, nodes, scenarios, tooling, build log, growth loop) | `docs/blueprint/NEOAUDIT.md` |
 | **How do I run a Ring-3 real-data check?** (briefs, baselines, procedure) | `docs/verification/VERIFICATION_PLAYBOOK.md` |
+| **How does Claude Chat AUTOMATE the relay?** (conductor between Code + Chrome — no manual copy-paste) | `docs/verification/NEOAUDIT_ORCHESTRATION.md` |
 | **How is ANY issue fixed, start to finish?** (the six-stage pipeline + per-fix Chrome verify) | `docs/issues/FIX_PROTOCOL.md` (law: `CLAUDE.md` Part 24) |
 | **What's found / fixed / pending?** (the plain-English ledger) | `docs/issues/ISSUES.md` (generated from `ISSUES.json`) |
 | **How is every number produced?** (the map) | `docs/financial-logic/graph/GENERATED_CORE.md` |
@@ -93,7 +94,7 @@ flowchart TB
 |---|---|---|---|
 | **System** (most of it) | rules + gates baked into CI, the Vercel build and CLAUDE.md — rings 0–2, parity matrix, scenario lab, Stryker, linters | itself, on every PR | nothing — green/red on the PR. Red blocks merge; Claude fixes it |
 | **Platform** | the in-app NeoAudit admin panel: one button → invariants + Release Scorecard computed on YOUR real data | you, one click | open it after money merges / before a release. **Green scorecard = safe to publish** — that IS the publish decision |
-| **Tool** | the Chrome brief library (Eyes & Ears) | you, by relay | paste the brief Claude hands you, let Chrome run, paste the report back (~10–15 min, scheduled; shrinks over time as checks are promoted into CI) |
+| **Tool** | the Chrome brief library (Eyes & Ears) | **Claude Chat as conductor** (`docs/verification/NEOAUDIT_ORCHESTRATION.md`) — or you, by manual relay | give Claude Chat the orchestration doc once; it ferries briefs/reports between Claude Code and Chrome verbatim and drives per-fix re-checks. Your role shrinks to approving forks + reviewing outcomes (manual paste relay remains the fallback) |
 
 **Your complete usage manual — four interactions:**
 1. **Merge PRs when green.** Nothing else at the system layer needs you.
