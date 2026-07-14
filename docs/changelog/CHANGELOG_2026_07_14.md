@@ -153,3 +153,45 @@
   between the real service and an independent Decimal derivation across the mutation
   matrix. Does NOT cover PAYG-gross income, rental fragmentation, actuals, tax, or the
   GRDCS relational layer (other rings/harnesses).
+
+## Session: chat-audit-findings-issues-m9518i (continued) — §8 step-6: full Release Scorecard CLI
+
+### Change: `npm run neoaudit:scorecard` — the publish-gate readout, gateable in CI
+
+- **Type**: Tooling (NeoAudit §6 Release Scorecard) — §8 step-6 (5th of 6)
+- **Scope**: `scripts/neoaudit/scorecard.ts` (new) + `package.json` (`neoaudit:scorecard`)
+- **Why**: the Scorecard existed only as an in-panel summary (`summarizeScorecard`,
+  rendered at `/admin/neoaudit`). §6 wants a single generated publish readout that a
+  release workflow can gate on. This makes it a CLI with a real exit code.
+- **Solution** — a ts-node CLI (same pattern as `lint:financial-surfaces`) that:
+  - **reuses the ONE producer** `summarizeScorecard` from `lib/verification/scorecard.ts`
+    (no second producer — §12.2.1); it reads `docs/issues/ISSUES.json`, computes the
+    registry half (OPEN number-issues, listed), and NAMES the external signals it can't
+    self-verify (Rings 0–2 CI · R3-self on live data · latest VR run vs baseline ·
+    Stryker) — §22.2.4 gate output, never a bare "safe to publish";
+  - **exits 1 when the registry half is unclean, 0 when clean** — so a release job that
+    `needs:` the ring jobs (only runs once Rings 0–2 are green) turns the whole picture
+    into one go/no-go;
+  - points at the newest `docs/verification/runs/VR-*.md` for the VR-clean check.
+  - The gate logic (`summarizeScorecard`) is already locked by
+    `tests/verification/scorecard.test.ts` (4 tests); the CLI is a thin, run-validated
+    formatter over it.
+
+### Files Modified
+- `scripts/neoaudit/scorecard.ts` — new (the CLI)
+- `package.json` — `neoaudit:scorecard` script
+- `docs/blueprint/NEOAUDIT.md` — §8 step-6 Scorecard landed + backlog trimmed (Stryker only left)
+
+### Build Status
+- [x] `npm run neoaudit:scorecard` — runs; exits 1 on the current registry (24 OPEN
+      number-issues incl. the VR-002 findings), 0 when clean (verified via summarizeScorecard)
+- [x] `npx vitest run tests/verification/scorecard.test.ts` — 4 pass
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §6 — reuses the ONE `summarizeScorecard`, names externals
+  per §22.2.4; §8 step-6 component) · Requirements 10/10 (makes the panel-only summary a
+  CI-gateable publish check; no gold-plating) · Logic 10/10 (SSOT — no second producer;
+  exit-code contract verified both paths; the gate logic is already unit-tested).
+- **Coverage boundary (honest — §22.2.4):** the CLI COMPUTES only the registry half; the
+  four external signals are NAMED for the operator/CI to confirm, never self-reported
+  green. It does not itself run the rings, the R3-self invariants, the VR diff, or Stryker.
