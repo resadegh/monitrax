@@ -5535,7 +5535,7 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 137,
+      "line": 139,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
