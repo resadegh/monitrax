@@ -1252,21 +1252,30 @@
     {
       "id": "MON-040",
       "title": "Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings)",
-      "status": "OPEN",
+      "status": "DIAGNOSED",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-14",
       "area": "tax",
       "plain": {
-        "issue": "The Tax page's savings suggestions show impossible numbers (e.g. 'save 3685%' and millions in savings), which look broken."
+        "issue": "The Tax page's savings suggestions show impossible numbers (e.g. 'save 3685%' and millions in savings), which look broken.",
+        "fix": "The savings calculator was reading your marginal tax rate as a fraction when it's stored as a percent (37, not 0.37) — so every rate-based figure was inflated ~100×. Fixed to use the rate correctly (kept the percent convention the rest of the tax page depends on).",
+        "check": "On the Tax page, the salary-sacrifice suggestion now shows a sane figure — e.g. 'save 22%' and a few thousand dollars — instead of 'save 3685%' and $1.1M / $6.27M."
       },
-      "rootCause": [],
-      "semanticKeys": [],
-      "downstreamConsumers": [],
+      "rootCause": [
+        "lib/tax-engine/position/taxPositionCalculator.ts:360"
+      ],
+      "semanticKeys": [
+        "engine.taxPositionCalculator.calculateTaxPosition"
+      ],
+      "downstreamConsumers": [
+        "app/api/tax/position/route.ts",
+        "app/dashboard/tax/page.tsx"
+      ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/tax/mon040TaxRecommendations.test.ts",
       "tracker": "neoaudit-run:VR-003",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/tax (recommendations panel). Expected: realistic savings figures and percentages. Actual: 'save 3685%', potential savings 1,105,500 and 6,274,704 rendered as real recommendations. Evidence/run: VR-003."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/tax (recommendations panel). Expected: realistic savings figures and percentages. Actual: 'save 3685%', potential savings 1,105,500 and 6,274,704 rendered as real recommendations. Evidence/run: VR-003. | [FIX 2026-07-14] Verified end-to-end: incomeTaxCalculator.ts:118 returns marginalRate*100 (a PERCENT) -> TaxCalculation.marginalRate=37 -> generateRecommendations misread it as a decimal at :356/361/366/376. Fix: local mr = marginalRate/100 for rate math; guard >=32 (percent); '% saved' = marginalRate-15. Did NOT touch incomeTaxCalculator or the marginalRate type (tax page depends on percent). Worked examples reproduce the reported numbers exactly (37-0.15)*100=3685, 30000*36.85=1,105,500. Ratchet Ring-0: tests/tax/mon040TaxRecommendations.test.ts (22% not 3685; savings<20k; class invariant savings<=netTax). Blast radius = tax recommendations panel only (does NOT feed netTax/CFO). Advances to FIXING with PR#."
     },
     {
       "id": "MON-041",

@@ -413,3 +413,20 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 
 ### Build Status
 - [x] tsc 0 · full vitest 3909 passed · neomatrix:check exit 0 · lint clean
+
+---
+
+## Session: chat-audit-findings — MON-040 fix (tax recommendations percent/decimal)
+
+### Changes Made
+- **Type**: Fix (financial, changesNumbers) — cleanest fix in the set
+- **Root Cause**: `generateRecommendations` (taxPositionCalculator.ts) read `tax.marginalRate` as a DECIMAL fraction, but it's a PERCENT (37 for the 37% bracket — `incomeTaxCalculator.ts:118` returns `marginalRate*100`; the tax page renders percent). So `(marginalRate - 0.15)` = 36.85, ×100 → "3685%"; `remainingCap × 36.85` → ~$1.1M; neg-gearing `× 37` → ~$6.27M.
+- **Solution**: local `mr = tax.marginalRate / 100` (decimal) for rate arithmetic; guard `>= 32` (percent); "% saved" = `marginalRate - 15`. Kept the percent convention (the tax page + `effectiveRate` depend on it — did NOT touch `incomeTaxCalculator` or the type).
+
+### Files Modified
+- `lib/tax-engine/position/taxPositionCalculator.ts` — `generateRecommendations` rate arithmetic
+- `tests/tax/mon040TaxRecommendations.test.ts` — Ring-0 (22% not 3685; savings realistic; class invariant savings ≤ netTax) (new)
+- `docs/issues/ISSUES.{json,md}` — MON-040 → DIAGNOSED (→ FIXING with PR)
+
+### Build Status
+- [x] tsc 0 · full vitest 3914 passed · neomatrix:check exit 0 · lint clean

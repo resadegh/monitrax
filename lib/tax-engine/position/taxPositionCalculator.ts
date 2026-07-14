@@ -352,18 +352,25 @@ function generateRecommendations(
 ): TaxRecommendation[] {
   const recommendations: TaxRecommendation[] = [];
 
+  // MON-040: `tax.marginalRate` is a PERCENT (e.g. 37 for the 37% bracket — set
+  // as `marginalRate * 100` in incomeTaxCalculator, and the tax page renders it
+  // as a percent). `mr` is the decimal form (0.37) for rate arithmetic. The 15%
+  // is the concessional-contributions tax rate; salary-sacrifice saves the
+  // difference. (Was reading marginalRate as a decimal → "save 3685%" / $6.27M.)
+  const mr = tax.marginalRate / 100;
+
   // Check salary sacrifice opportunity
-  if (income.salary > 100000 && tax.marginalRate >= 0.32) {
+  if (income.salary > 100000 && tax.marginalRate >= 32) {
     const currentConcessional = superContributions?.concessional || 0;
     const remainingCap = config.concessionalCap - currentConcessional;
 
     if (remainingCap > 5000) {
-      const potentialSavings = remainingCap * (tax.marginalRate - 0.15);
+      const potentialSavings = remainingCap * (mr - 0.15);
       recommendations.push({
         id: 'salary-sacrifice',
         type: 'SAVINGS',
         title: 'Salary Sacrifice Opportunity',
-        description: `You have $${Math.round(remainingCap).toLocaleString()} unused concessional cap. Salary sacrifice could save ${Math.round((tax.marginalRate - 0.15) * 100)}% compared to income tax.`,
+        description: `You have $${Math.round(remainingCap).toLocaleString()} unused concessional cap. Salary sacrifice could save ${Math.round(tax.marginalRate - 15)}% compared to income tax.`,
         potentialSavings: Math.round(potentialSavings),
         action: 'Consider increasing salary sacrifice contributions',
         priority: 'HIGH',
@@ -373,7 +380,7 @@ function generateRecommendations(
 
   // Check negative gearing
   if (deductions.property > income.rental && income.rental > 0) {
-    const taxBenefit = (deductions.property - income.rental) * tax.marginalRate;
+    const taxBenefit = (deductions.property - income.rental) * mr; // MON-040: decimal rate
     recommendations.push({
       id: 'negative-gearing',
       type: 'INFO',
