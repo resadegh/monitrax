@@ -17,6 +17,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateExtraRepaymentImpact,
   calculateRefinanceOpportunities,
+  generateRateAlerts,
 } from '../../lib/cfo/decisionSupport/loanDecisionSupport';
 
 const loan = (o: Record<string, unknown>) => ({
@@ -110,5 +111,41 @@ describe('MON-019: refinance recommendations respect an LVR ceiling', () => {
     );
     expect(opps).toHaveLength(1);
     expect(opps[0].worthRefinancing).toBe(true);
+  });
+});
+
+/**
+ * MON-038 — the cross-producer invariant. MON-019 gated ONE refinance producer
+ * (`calculateRefinanceOpportunities`); the other (`generateRateAlerts`'
+ * rate-above-market alert) still said "Consider refinancing" on a 104% LVR loan.
+ * The ONE `isRefinanceableLvr` gate now feeds BOTH → NO refinance advice above
+ * the LVR ceiling from ANY producer.
+ */
+describe('MON-038: no refinance advice above the LVR ceiling from ANY producer', () => {
+  const properties104 = [{ id: 'p1', currentValue: 500_000 }]; // 104% LVR below
+  const highLvrAboveMarket = [
+    loan({ id: 'l1', type: 'INVESTMENT', propertyId: 'p1', principal: 520_000, interestRateAnnual: 0.08, termMonthsRemaining: 300, minRepayment: 3000 }),
+  ];
+
+  it('calculateRefinanceOpportunities does NOT offer refinancing the 104% loan', () => {
+    const opps = calculateRefinanceOpportunities(highLvrAboveMarket, properties104);
+    expect(opps[0]?.worthRefinancing ?? false).toBe(false);
+  });
+
+  it('generateRateAlerts flags the above-market rate but does NOT frame it as refinance', () => {
+    const alerts = generateRateAlerts(highLvrAboveMarket, properties104);
+    const rateAlert = alerts.find((a) => a.type === 'rate_above_market');
+    expect(rateAlert).toBeDefined(); // the rate IS above market — real info, keep it
+    expect(rateAlert!.action).not.toMatch(/refinanc/i); // …but not "consider refinancing"
+  });
+
+  it('CONTROL — a sub-95% LVR above-market loan DOES still get refinance framing', () => {
+    const props60 = [{ id: 'p2', currentValue: 500_000 }]; // 60% LVR
+    const lowLvrAboveMarket = [
+      loan({ id: 'l2', type: 'INVESTMENT', propertyId: 'p2', principal: 300_000, interestRateAnnual: 0.08, termMonthsRemaining: 300, minRepayment: 2000 }),
+    ];
+    const alerts = generateRateAlerts(lowLvrAboveMarket, props60);
+    const rateAlert = alerts.find((a) => a.type === 'rate_above_market');
+    expect(rateAlert!.action).toMatch(/refinanc/i);
   });
 });

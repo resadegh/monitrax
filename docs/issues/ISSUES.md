@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 5 · 🟡 2 · 🟠 29 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 4 · 🟡 2 · 🟠 30 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -44,7 +44,7 @@
 | MON-035 | 🟠 FIXING | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
 | MON-036 | 🟠 FIXING | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | ##1397 | ✅ |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
-| MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
+| MON-038 | 🟠 FIXING | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
 | MON-040 | 🟠 FIXING | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
@@ -746,14 +746,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 ### MON-038 — CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: cfo · opened 2026-07-14
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: cfo · opened 2026-07-14
 
 > **What was wrong:** My Guide suggests refinancing a loan whose balance is more than the property is worth (104pct), which no lender would do.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** My Guide's rate-alert used to say 'Consider refinancing' on a loan you can't refinance (104% LVR). It now shares the SAME LVR gate as the refinance-opportunity list, so above ~95% LVR it steers you to pay down the loan first instead of suggesting a refinance no lender would do.
+>
+> **What you should see:** On the Thornland Lot 1 loan (104% LVR), the My Guide loan alert no longer offers a refinance — it says to focus extra repayments to reduce LVR first. Loans below 95% LVR still get the refinance suggestion.
+
+- **Root cause:** `lib/cfo/decisionSupport/loanDecisionSupport.ts:273`
+- **Downstream consumers (§19.4):** `lib/cfo/decisionSupport/loanDecisionSupport.ts`, `app/dashboard/cfo/page.tsx`, `lib/cfo/intelligenceEngine.ts`
+- **Fix PR(s):** ##1399
+- **Holistic test (§19.4):** `tests/cfo/loanDecisionSupportGuards.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#.
 
 ### MON-039 — Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr
 
