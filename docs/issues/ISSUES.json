@@ -1322,21 +1322,29 @@
     {
       "id": "MON-042",
       "title": "Household vehicle count (4) disagrees with the Assets list (5 vehicles)",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "low",
       "changesNumbers": false,
       "opened": "2026-07-14",
       "area": "household",
       "plain": {
-        "issue": "Your household summary says 4 vehicles but the Assets page lists 5."
+        "issue": "Your household summary said '4 vehicles' while the Assets page lists 5 — which read like an inconsistency, even though they measure different things.",
+        "fix": "The household field is relabelled 'Household Vehicles' with copy that makes clear it's a declared expense-estimate input (how many vehicles you run day-to-day, for rego/fuel/insurance estimates) and is separate from the vehicles in My Wealth → Assets (which can include plant like an excavator). No number changed.",
+        "check": "On Settings → Household, the Vehicles card now explains it's for running-cost estimates and is separate from your Assets list — so '4' here vs '5' in Assets reads as two different things, not a bug."
       },
-      "rootCause": [],
+      "rootCause": [
+        "app/dashboard/household-profile/page.tsx:622"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
+      "downstreamConsumers": [
+        "app/dashboard/household-profile/page.tsx"
+      ],
+      "fixPRs": [
+        "#PENDING"
+      ],
       "test": null,
       "tracker": "neoaudit-run:VR-003",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard household profile vs assets list. Expected: same vehicle count on both. Actual: Household profile says 4 vehicles; Assets lists 5 (Excavator, 300Z, Ford Ranger, VW Golf, Landcruiser). Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] Confirmed: vehicleCountHousehold=4, vehicleCountAssets=5. These are NOT the same metric — the Household 'Vehicles' value is a DECLARED onboarding dropdown (0–5, 'How many vehicles does your household have?', app/dashboard/household-profile/page.tsx:617, HouseholdProfile.carsCount) used for EXPENSE CALIBRATION; the Assets value is the actual ledger (5 VEHICLE-typed assets, the 5th being a Hitachi Excavator = plant, not a car). So '4 cars declared' vs '5 vehicle assets incl. an excavator' is a legitimate scope difference, not a count bug — NOT a §12.2.1 duplicate (different purposes). This is a PREFERENCE FORK for Reza: (A) relabel the household field so it doesn't read as competing with the asset ledger; (B) derive the count from actual vehicle assets (then decide whether the excavator counts as a household vehicle); or (C) leave (two independent numbers). Surfaced to Reza, not guessed (§20.5). changesNumbers=false."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard household profile vs assets list. Expected: same vehicle count on both. Actual: Household profile says 4 vehicles; Assets lists 5 (Excavator, 300Z, Ford Ranger, VW Golf, Landcruiser). Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] Confirmed: vehicleCountHousehold=4, vehicleCountAssets=5. These are NOT the same metric — the Household 'Vehicles' value is a DECLARED onboarding dropdown (0–5, 'How many vehicles does your household have?', app/dashboard/household-profile/page.tsx:617, HouseholdProfile.carsCount) used for EXPENSE CALIBRATION; the Assets value is the actual ledger (5 VEHICLE-typed assets, the 5th being a Hitachi Excavator = plant, not a car). So '4 cars declared' vs '5 vehicle assets incl. an excavator' is a legitimate scope difference, not a count bug — NOT a §12.2.1 duplicate (different purposes). This is a PREFERENCE FORK for Reza: (A) relabel the household field so it doesn't read as competing with the asset ledger; (B) derive the count from actual vehicle assets (then decide whether the excavator counts as a household vehicle); or (C) leave (two independent numbers). Surfaced to Reza, not guessed (§20.5). changesNumbers=false. | [DECISION + FIX 2026-07-14] Reza chose Option A (relabel). Fix: household-profile/page.tsx Vehicles card retitled 'Household Vehicles' + description clarifies it's a declared expense-calibration input (running costs) SEPARATE from My Wealth → Assets. Pure copy change, no source/number change (carsCount stays a declared field; the Assets ledger stays the actual count). No Ratchet test (label-only; no automatable numeric class — the class 'a correct number can carry a confusing label' is already a standing Chrome-brief check per §3.3). Neomatrix: no financial node touched. Advances to FIXING with PR#."
     },
     {
       "id": "MON-043",

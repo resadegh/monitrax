@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**50 total** · 47 open · 🔵 5 · 🟡 4 · 🟠 29 · 🟢 9 · ✅ 2
+**50 total** · 47 open · 🔵 4 · 🟡 4 · 🟠 30 · 🟢 9 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -48,7 +48,7 @@
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
 | MON-040 | 🟢 VERIFIED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🟢 VERIFIED | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | ##1403 | ✅ |
-| MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
+| MON-042 | 🟠 FIXING | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | ##PENDING | n/a |
 | MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
 | MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##PENDING | ✅ |
 | MON-045 | 🟡 DIAGNOSED | 🟠 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
@@ -819,14 +819,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 ### MON-042 — Household vehicle count (4) disagrees with the Assets list (5 vehicles)
 
-**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: household · opened 2026-07-14
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: household · opened 2026-07-14
 
-> **What was wrong:** Your household summary says 4 vehicles but the Assets page lists 5.
+> **What was wrong:** Your household summary said '4 vehicles' while the Assets page lists 5 — which read like an inconsistency, even though they measure different things.
 >
+> **What changed:** The household field is relabelled 'Household Vehicles' with copy that makes clear it's a declared expense-estimate input (how many vehicles you run day-to-day, for rego/fuel/insurance estimates) and is separate from the vehicles in My Wealth → Assets (which can include plant like an excavator). No number changed.
+>
+> **What you should see:** On Settings → Household, the Vehicles card now explains it's for running-cost estimates and is separate from your Assets list — so '4' here vs '5' in Assets reads as two different things, not a bug.
+
+- **Root cause:** `app/dashboard/household-profile/page.tsx:622`
+- **Downstream consumers (§19.4):** `app/dashboard/household-profile/page.tsx`
+- **Fix PR(s):** ##PENDING
 - **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `neoaudit-run:VR-003`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard household profile vs assets list. Expected: same vehicle count on both. Actual: Household profile says 4 vehicles; Assets lists 5 (Excavator, 300Z, Ford Ranger, VW Golf, Landcruiser). Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] Confirmed: vehicleCountHousehold=4, vehicleCountAssets=5. These are NOT the same metric — the Household 'Vehicles' value is a DECLARED onboarding dropdown (0–5, 'How many vehicles does your household have?', app/dashboard/household-profile/page.tsx:617, HouseholdProfile.carsCount) used for EXPENSE CALIBRATION; the Assets value is the actual ledger (5 VEHICLE-typed assets, the 5th being a Hitachi Excavator = plant, not a car). So '4 cars declared' vs '5 vehicle assets incl. an excavator' is a legitimate scope difference, not a count bug — NOT a §12.2.1 duplicate (different purposes). This is a PREFERENCE FORK for Reza: (A) relabel the household field so it doesn't read as competing with the asset ledger; (B) derive the count from actual vehicle assets (then decide whether the excavator counts as a household vehicle); or (C) leave (two independent numbers). Surfaced to Reza, not guessed (§20.5). changesNumbers=false.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard household profile vs assets list. Expected: same vehicle count on both. Actual: Household profile says 4 vehicles; Assets lists 5 (Excavator, 300Z, Ford Ranger, VW Golf, Landcruiser). Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] Confirmed: vehicleCountHousehold=4, vehicleCountAssets=5. These are NOT the same metric — the Household 'Vehicles' value is a DECLARED onboarding dropdown (0–5, 'How many vehicles does your household have?', app/dashboard/household-profile/page.tsx:617, HouseholdProfile.carsCount) used for EXPENSE CALIBRATION; the Assets value is the actual ledger (5 VEHICLE-typed assets, the 5th being a Hitachi Excavator = plant, not a car). So '4 cars declared' vs '5 vehicle assets incl. an excavator' is a legitimate scope difference, not a count bug — NOT a §12.2.1 duplicate (different purposes). This is a PREFERENCE FORK for Reza: (A) relabel the household field so it doesn't read as competing with the asset ledger; (B) derive the count from actual vehicle assets (then decide whether the excavator counts as a household vehicle); or (C) leave (two independent numbers). Surfaced to Reza, not guessed (§20.5). changesNumbers=false. | [DECISION + FIX 2026-07-14] Reza chose Option A (relabel). Fix: household-profile/page.tsx Vehicles card retitled 'Household Vehicles' + description clarifies it's a declared expense-calibration input (running costs) SEPARATE from My Wealth → Assets. Pure copy change, no source/number change (carsCount stays a declared field; the Assets ledger stays the actual count). No Ratchet test (label-only; no automatable numeric class — the class 'a correct number can carry a confusing label' is already a standing Chrome-brief check per §3.3). Neomatrix: no financial node touched. Advances to FIXING with PR#.
 
 ### MON-043 — Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile)
 

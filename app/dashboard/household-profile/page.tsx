@@ -619,10 +619,19 @@ export default function HouseholdProfilePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5" />
-              Vehicles
+              Household Vehicles
             </CardTitle>
             <CardDescription>
-              How many vehicles does your household have?
+              {/* MON-042: this is a DECLARED expense-calibration input (how many
+                  vehicles the household runs day-to-day), used to estimate
+                  running costs. It is deliberately separate from — and may
+                  differ from — the vehicles tracked in My Wealth → Assets
+                  (which can include plant/equipment like an excavator). The
+                  label makes that distinction explicit so the two counts
+                  reading differently is not read as an inconsistency. */}
+              How many vehicles does your household run day-to-day? We use this
+              to estimate running costs like rego, fuel and insurance — it&rsquo;s
+              separate from the vehicles you track in My Wealth &rarr; Assets.
             </CardDescription>
           </CardHeader>
           <CardContent>
