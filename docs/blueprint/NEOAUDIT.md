@@ -8,6 +8,83 @@
 
 ---
 
+## At a glance — the reference layer (added 2026-07-14)
+
+> Orientation for a new reader (or a future session) before the dense spec below. **The one-line model:** the **Neomatrix** is the MAP of every money number; **NeoAudit** proves the app is true to that map on four rings; every failure flows to the **ONE registry**; every fix ratchets **down** into a permanent lower-ring test — so coverage only grows and the human Chrome brief only shrinks.
+
+### The system in one picture
+
+```mermaid
+flowchart TB
+    subgraph SRC["Data the rings run on"]
+      GOLD["Golden Household + mutations<br/>(synthetic — tests/golden/)"]
+      REAL["Reza's REAL data<br/>(first-party only)"]
+    end
+
+    subgraph RINGS["The four rings — proof the app is true to the Neomatrix map"]
+      R0["Ring 0 · ENGINE<br/>formulas right on worked examples + generated properties<br/>vitest fixtures + fast-check · every CI"]
+      R1["Ring 1 · WIRING / SSOT<br/>exactly one producer, anchors resolve, no re-derivation<br/>neomatrix:check + surface linter · every CI + build"]
+      R2["Ring 2 · GOLDEN END-TO-END<br/>real route → serialization → page shows the exact number;<br/>same semanticKey surfaces agree · Playwright/route specs · every CI"]
+      R3["Ring 3 · REAL / RENDERED<br/>invariants + parity + judgment on live data<br/>self-audit endpoint + Claude-in-Chrome · post-merge / scheduled"]
+      R0 --> R1 --> R2 --> R3
+    end
+
+    GOLD --> R0 & R1 & R2
+    REAL --> R3
+
+    subgraph BUS["The ONE finding bus"]
+      REG["Issue Registry — MON-###<br/>docs/issues/ISSUES.json · issues:raise / issues:check"]
+    end
+
+    R0 & R1 & R2 & R3 -->|"every FAIL → a MON ticket (no side-channels)"| REG
+    REG -->|"fix REMOVES the culprit (§23.2)"| FIX["Fix PR — one issue, one PR"]
+    FIX -->|"THE RATCHET: permanent test at the LOWEST ring that could have caught it"| RINGS
+    FIX -->|"model the number/surface if it was a blind spot"| NEO["Neomatrix<br/>financial-graph.json → GENERATED_CORE.md"]
+    NEO -.->|"parity matrix generated from the map"| R2
+
+    RINGS --> SCORE["Release Scorecard<br/>neoaudit:scorecard · /admin/neoaudit<br/>ALL green = safe to publish"]
+
+    classDef ring fill:#0e7490,stroke:#0891b2,color:#fff
+    classDef bus fill:#7c3aed,stroke:#8b5cf6,color:#fff
+    class R0,R1,R2,R3 ring
+    class REG bus
+```
+
+**The growth loop (why it's a LIVE system, §10):** a Ring-3 finding → registry → root-caused fix → a permanent lower-ring test (the Ratchet) → the Chrome brief stops re-checking that class. Every run leaves NeoAudit stronger; the automated rings grow, the human eyeball shrinks. The workstream is **standing, never closed.**
+
+### Component / file index — where every piece lives (as-built, verified 2026-07-14)
+
+| Ring / role | Component | Path | Runs / command |
+|---|---|---|---|
+| **The map** | Neomatrix graph (SSOT) + human view | `docs/financial-logic/graph/financial-graph.json` → `GENERATED_CORE.md` | `npm run neomatrix:generate` |
+| R0 · engine | calc-audit fixtures + fast-check properties | `tests/golden/*.test.ts`, `tests/calculations/`, `tests/tax/` | every CI (`npm test`) |
+| R1 · wiring/SSOT | graph gate + surface linter | `scripts/neomatrix/` — `npm run neomatrix:check`, `lint:financial-surfaces` | every CI + `vercel-build` |
+| R2 · golden data | the Golden Household "Avalon" | `tests/golden/goldenHousehold.ts` | every CI |
+| R2 · route/service tier | end-to-end specs (real handler → JSON → parity) | `tests/golden/ring2.{masterSnapshot,propertyRoute,portfolioSnapshotRoute,safetyNetRoute,cashflowRoute,reportReconciliation,healthInput,cfoScoreDedup}.test.ts` | every CI |
+| R2 · parity matrix | map-driven cross-surface value parity + coverage ratchet | `tests/golden/parityMatrix.ts` (+ `.test.ts`) | every CI |
+| R2 · Tier-2 oracle | independent Decimal re-derivation over ~30 mutations | `tests/golden/tier2/` | every CI |
+| R2 · Tier-3 metamorphic | snapshot-level invariant laws (fast-check) | `tests/golden/ring3.metamorphic.test.ts` | every CI |
+| R3 · self-audit | invariants on real data (first-party) | `lib/verification/selfAuditInvariants.ts` → `app/api/verify/invariants/`, `app/api/admin/neoaudit/` | on demand (panel/endpoint) |
+| R3 · admin panel | one-click scorecard on real data | `app/admin/neoaudit/` | Reza, per release |
+| R3 · eyes & ears | Claude-in-Chrome brief library | `docs/verification/VERIFICATION_PLAYBOOK.md` | relay, scheduled |
+| R3 · agent (synthetic) | Playwright-MCP exploratory runbook | `docs/verification/PLAYWRIGHT_MCP_RUNBOOK.md` | on demand |
+| Finding bus | issue registry + gate + raiser | `docs/issues/ISSUES.json`, `scripts/issues/{check,raise}-issue.mjs`, `tests/issues/registry.test.ts` | `issues:check` (CI) · `issues:raise` |
+| Guard-tests | Stryker weekly mutation | `stryker.conf.json`, `.github/workflows/stryker-weekly.yml` | weekly cron |
+| Publish gate | Release Scorecard | `lib/verification/scorecard.ts` → `scripts/neoaudit/scorecard.ts` | `npm run neoaudit:scorecard` |
+
+### The doc map — which document answers which question
+
+| Question | Document |
+|---|---|
+| **What is the law?** (rings, remove-the-culprit, Ratchet, VERIFIED-requires-Ring-3) | `CLAUDE.md` Part 23 |
+| **What is the platform?** (this doc — architecture, nodes, scenarios, tooling, build log, growth loop) | `docs/blueprint/NEOAUDIT.md` |
+| **How do I run a Ring-3 real-data check?** (briefs, baselines, procedure) | `docs/verification/VERIFICATION_PLAYBOOK.md` |
+| **How is ANY issue fixed, start to finish?** (the six-stage pipeline + per-fix Chrome verify) | `docs/issues/FIX_PROTOCOL.md` (law: `CLAUDE.md` Part 24) |
+| **What's found / fixed / pending?** (the plain-English ledger) | `docs/issues/ISSUES.md` (generated from `ISSUES.json`) |
+| **How is every number produced?** (the map) | `docs/financial-logic/graph/GENERATED_CORE.md` |
+
+---
+
 ## 0. What NeoAudit is — and how Reza uses it (operator guide)
 
 **It is three things in layers; your personal surface is deliberately tiny.**
