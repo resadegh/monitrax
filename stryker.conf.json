@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/master/packages/api/schema/stryker-core.json",
+  "_comment": "NeoAudit Guard-tests node (NEOAUDIT.md §7). Weekly, SCOPED mutation testing of the canonical financial engines — 'would the suite actually catch a broken formula?'. A surviving mutant = a test-gap → a MON ticket (issues:raise). Report-only (break: null): this NEVER blocks a PR; it runs weekly (or via workflow_dispatch). Uses the COMMAND runner (`npm test`) deliberately: it reuses the exact known-good invocation (vitest run --no-file-parallelism), sidestepping both the vitest-runner peer-compat question and the Prisma concurrent-construction flake documented in .github/workflows/tests.yml.",
+  "testRunner": "command",
+  "commandRunner": { "command": "npm test" },
+  "coverageAnalysis": "off",
+  "mutate": [
+    "lib/calculations/**/*.ts",
+    "lib/tax-engine/**/*.ts",
+    "lib/health/**/*.ts",
+    "!lib/**/*.test.ts",
+    "!lib/**/*.d.ts",
+    "!lib/**/index.ts"
+  ],
+  "incremental": true,
+  "incrementalFile": ".stryker-tmp/incremental.json",
+  "reporters": ["clear-text", "progress", "json", "html"],
+  "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
+  "htmlReporter": { "fileName": "reports/mutation/mutation.html" },
+  "thresholds": { "high": 80, "low": 60, "break": null },
+  "timeoutMS": 120000,
+  "concurrency": 2,
+  "tempDirName": ".stryker-tmp"
+}

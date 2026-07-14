@@ -195,3 +195,47 @@
 - **Coverage boundary (honest — §22.2.4):** the CLI COMPUTES only the registry half; the
   four external signals are NAMED for the operator/CI to confirm, never self-reported
   green. It does not itself run the rings, the R3-self invariants, the VR diff, or Stryker.
+
+## Session: chat-audit-findings-issues-m9518i (continued) — §8 step-6: Stryker weekly (NeoAudit COMPLETE)
+
+### Change: Stryker weekly mutation job — the last step-6 item; NeoAudit core build complete
+
+- **Type**: CI tooling (NeoAudit §7 Guard-tests node) — §8 step-6 (6th of 6)
+- **Scope**: `stryker.conf.json` (new) + `.github/workflows/stryker-weekly.yml` (new)
+- **Why**: NEOAUDIT §7 — prove the test suite would actually catch a broken formula in
+  the canonical financial engines. A surviving mutant is a test gap → a MON ticket.
+- **Solution**:
+  - `stryker.conf.json` — SCOPED to `lib/calculations` + `lib/tax-engine` + `lib/health`;
+    **command runner `npm test`** (deliberately reuses the known-good
+    `vitest run --no-file-parallelism` invocation — sidesteps the vitest-runner
+    peer-compat question AND the Prisma concurrent-construction flake documented in
+    tests.yml); incremental; **report-only (`break: null`)** so it NEVER blocks a PR.
+  - `.github/workflows/stryker-weekly.yml` — weekly Sunday cron + `workflow_dispatch`;
+    Stryker installed **ad-hoc at job time** (`npm i --no-save`) so it stays OUT of
+    package.json / package-lock.json (zero main-build impact); uploads the report;
+    prints the surviving-mutant → `issues:raise` triage command.
+
+### Files Modified
+- `stryker.conf.json` + `.github/workflows/stryker-weekly.yml` — new
+- `docs/blueprint/NEOAUDIT.md` — §8 step-6 Stryker landed + **step-6 COMPLETE (6/6)**
+
+### Build Status
+- [x] Static validation: `stryker.conf.json` valid JSON (command runner, break null,
+      6 mutate globs matching 26 real engine files); workflow YAML well-formed (no tabs)
+- [ ] Mutation RUN — NOT executed in-session (minutes–hours); first run is the weekly
+      cron or a manual `workflow_dispatch` kick. **This is the honest boundary.**
+
+### Gate (§20.6)
+- Document 10/10 (doc: NEOAUDIT §7 — scoped to the named engines, surviving-mutant→MON,
+  weekly/non-blocking exactly as the tooling register specifies) · Requirements 10/10
+  (implements the approved Stryker adoption; ad-hoc install keeps the main build
+  untouched) · Logic 10/10 (command runner reuses the known-good test invocation — the
+  robust choice; report-only can't block a PR; validated what's validatable in-session).
+- **Coverage boundary (honest — §22.2.4):** the config + workflow are AUTHORED and
+  statically validated; the mutation run is NOT executed here. Kick `workflow_dispatch`
+  once to validate the toolchain end-to-end before relying on the weekly cadence.
+
+### NeoAudit build status
+**§8 steps 1–6 COMPLETE — the NeoAudit core build is done.** Step 7 (Argos/axe/
+DevTools-MCP/Checkly) stays deferred by design (only on a §7 trigger). Next: VR-003 —
+the comprehensive two-phase Chrome sweep to compile the complete issue list.

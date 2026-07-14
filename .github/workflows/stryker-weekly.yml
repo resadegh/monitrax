@@ -1,0 +1,64 @@
+name: Stryker (weekly mutation)
+
+# NeoAudit Guard-tests node (NEOAUDIT.md §7). SCOPED mutation testing of the
+# canonical financial engines (lib/calculations + lib/tax-engine + lib/health)
+# to prove the suite would actually catch a broken formula. A surviving mutant
+# is a TEST GAP → triage into a MON ticket via `npm run issues:raise`.
+#
+# NON-BLOCKING by design: runs weekly (Sundays) or on demand
+# (workflow_dispatch) — never on a PR/push, and Stryker's break threshold is
+# null (see stryker.conf.json), so it can never fail a merge. Stryker is
+# installed AD-HOC at job time (npm i --no-save) so it stays OUT of
+# package.json / package-lock.json and has ZERO impact on the main build.
+#
+# FIRST RUN: kick it manually via the "Run workflow" button (workflow_dispatch)
+# to validate the toolchain before relying on the weekly cadence — the config
+# has not been run in the authoring session (mutation runs are minutes–hours).
+
+on:
+  schedule:
+    - cron: '17 15 * * 0' # Sundays 15:17 UTC (off-peak; avoids the top of the hour)
+  workflow_dispatch:
+
+concurrency:
+  group: stryker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: mutation (scoped engines)
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # first (non-incremental) run over 3 engine dirs is slow; incremental runs are fast
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Install Stryker (ad-hoc — NOT added to package.json)
+        run: npm install --no-save @stryker-mutator/core@^8 @stryker-mutator/vitest-runner@^8
+      - name: Run scoped mutation testing
+        run: npx stryker run
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-mutation-report
+          path: reports/mutation/
+      - name: Surviving-mutant triage reminder
+        if: always()
+        run: |
+          echo "NeoAudit §7: any SURVIVING mutant is a test-gap."
+          echo "Triage each into a MON ticket:"
+          echo "  npm run issues:raise -- --title '<engine> mutant survived' --area <engine> \\"
+          echo "    --surface '<file>' --no-changes-numbers --run stryker-weekly \\"
+          echo "    --plain-issue 'The test suite did not catch a deliberately-broken version of this calculation.'"
+          echo "See the uploaded stryker-mutation-report artifact for the survivors."
