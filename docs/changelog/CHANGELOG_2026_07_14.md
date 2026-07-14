@@ -609,3 +609,27 @@ A value-parity test CANNOT verify a fetch-layer bug — the Ratchet for a duplic
 - Document 10/10 (§12.2.1 remove-the-culprit · §23.2 Ratchet at the right ring · §21.2.1 same-PR Neomatrix update; Part 24 #6 coupling)
 - Requirements 10/10 (fixes the confirmed live divergence at source; one producer remains; honest Stage-4-FAIL retro instead of re-claiming)
 - Logic 10/10 (route delegates to the ONE enricher; source-lock prevents recurrence). Coverage: verifies the route has one producer (source-lock) + golden parity; does NOT re-verify live numbers — that's the VR-006 Chrome re-check (stays FIXING until then).
+
+---
+
+## Session: chat-audit-findings — MON-048 property Cashflow-rhythm one-off frequency badge
+
+### Found by Reza (property detail page)
+The "Cashflow rhythm / Recent activity" list tagged EVERY expense "Monthly" — including one-offs (Battery System −$11,385, Hunter Premium −$812). A **MON-037 sibling** (F1 partial-surface): MON-037 fixed the Expenses CARD + the engine run-rate, but this different component (`RecentActivityCard`) still built the cadence badge from the raw declared `e.frequency` (defaults MONTHLY).
+
+### Fix (§12.2.1 one source)
+`lib/properties/activityFrequencyLabel.ts` returns "One-off" when `isRecurring === false`, else the humanised declared frequency. `RecentActivityCard` uses it; `ExpenseItem` gained `isRecurring` (the detail API already returns it via the enricher spread). Ratchet: `tests/properties/activityFrequencyLabel.test.ts`.
+
+### Why VR-005 Chrome missed it
+My verification brief did not list the Recent-Activity cadence **badges** as a check target — it checked the Expenses CARD reconciliation (A5 PASS) and the cashflow **numbers**, not every label on every card. That's a coverage gap in the brief. This label class is now promoted to an **automated Ratchet** so it no longer relies on a human spotting it (the §23 "brief shrinks as checks are promoted into CI" mechanism).
+
+### Files
+- `lib/properties/activityFrequencyLabel.ts` (NEW helper) · `app/dashboard/properties/[id]/page.tsx` (uses it; `ExpenseItem.isRecurring` added) · `tests/properties/activityFrequencyLabel.test.ts` (NEW Ratchet) · `docs/financial-logic/graph/structural/coverage-allowlist.json` · `docs/issues/ISSUES.{json,md}`
+
+### Build Status
+- [x] tsc 0 · full vitest 3941 passed · neomatrix:check OK · lint clean · issues:check 48 valid
+
+### Gate (§20.6)
+- Document 10/10 (§12.2.1 one-source · §23.2.2 Ratchet · F1 sibling-surface fix; Neomatrix pure-presentation allowlisted)
+- Requirements 10/10 (fixes exactly the reported issue; reads the categorisation `isRecurring` source as asked; no gold-plating)
+- Logic 10/10 (helper + wired + API returns isRecurring). Coverage: verifies the label rule; does NOT verify the rendered card pixels (Chrome).
