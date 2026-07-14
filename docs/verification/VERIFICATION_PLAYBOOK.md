@@ -115,22 +115,54 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
   - The SAME metric (net worth, savings rate, health score AND its letter grade, liquid savings, each property's cashflow) reads the SAME on every page it appears — list each occurrence. [MON-030: Home health score/grade === My Guide CFO score/grade.]
   - No sentinel leaks: "69 years", "999", decades-long payoff, "$0 repayment" on a property that has a loan.
 
-=== PART F — REGRESSION SNAPSHOT (fenced JSON, fixed keys, same every run) ===
-Output a fenced JSON block exactly like:
-{
-  "asOf": "<date+time>",
-  "netWorth": 0, "totalAssets": 0, "totalLiabilities": 0, "portfolioEquity": 0,
-  "properties": { "<name>": { "cashflowYrDetail": 0, "cashflowYrList": 0, "cashflowYrHome": 0, "yieldDetail": 0, "yieldList": 0 } },
-  "totalMonthlyExpenses": 0, "estimatedAnnualTax": 0,
-  "safetyScore": 0, "healthScoreHome": 0, "healthScoreCfo": 0, "healthGradeHome": null, "healthGradeCfo": null,
-  "emergencyFundMonths": 0, "savingsRateCfo": 0, "savingsRateHome": 0,
-  "balances": { "liquid": 0, "accessible": 0, "locked": 0 }
-}
-Use null for not-found. Numbers only (no $ or commas).
+=== PART F — REGRESSION SNAPSHOT (the fixed regression keys) ===
+Capture these figures for the snapshot — they are emitted inside the MACHINE REPORT's "partF" object below (do NOT also print a separate Part F block): netWorth, totalAssets, totalLiabilities, portfolioEquity; per-property cashflowYrDetail/List/Home + yieldDetail/List; totalMonthlyExpenses, estimatedAnnualTax; safetyScore, healthScoreHome, healthScoreCfo, healthGradeHome, healthGradeCfo; emergencyFundMonths, savingsRateCfo, savingsRateHome; balances.liquid/accessible/locked. Use null for not-found. Numbers only (no $ or commas).
 
-=== OUTPUT FORMAT ===
-Numbered list, one value per line: [Part] [what] = [exact figure] (page). Every cross-surface pair gets MATCH or MISMATCH by $X. FAIL in caps on anything breaking an invariant. End with the Part F JSON block.
+=== OUTPUT FORMAT — produce BOTH, in this order ===
+(1) HUMAN SUMMARY — numbered list, one value per line: [Part] [what] = [exact figure] (page). Every cross-surface pair gets MATCH or MISMATCH by $X. FAIL in caps on anything breaking an invariant.
+
+(2) MACHINE REPORT — a SINGLE fenced ```json block, FIXED KEYS, for automated NeoAudit comparison. Fill EVERY field from what you actually read; null for not-found; [] for no findings. Do NOT omit it — this is the block the tooling parses. Every MISMATCH/FAIL in the human summary MUST also appear as a "findings" entry (if all clean, "findings": []).
+{
+  "meta": { "asOf": "<date+time>", "account": "<email or label>", "env": "production" },
+  "partF": {
+    "netWorth": 0, "totalAssets": 0, "totalLiabilities": 0, "portfolioEquity": 0,
+    "properties": { "<name>": { "cashflowYrDetail": 0, "cashflowYrList": 0, "cashflowYrHome": 0, "yieldDetail": 0, "yieldList": 0 } },
+    "totalMonthlyExpenses": 0, "estimatedAnnualTax": 0,
+    "safetyScore": 0, "healthScoreHome": 0, "healthScoreCfo": 0, "healthGradeHome": null, "healthGradeCfo": null,
+    "emergencyFundMonths": 0, "savingsRateCfo": 0, "savingsRateHome": 0,
+    "balances": { "liquid": 0, "accessible": 0, "locked": 0 }
+  },
+  "crossSurface": {
+    "<propertyName>": {
+      "cashflowYr": { "detail": 0, "list": 0, "home": 0, "match": true, "maxAbsDelta": 0 },
+      "yield": { "detail": 0, "list": 0, "match": true }
+    }
+  },
+  "invariants": [
+    { "id": "assets_minus_liabilities_eq_networth", "pass": true, "delta": 0 },
+    { "id": "liquid_accessible_locked_eq_networth", "pass": true, "delta": 0 },
+    { "id": "sum_property_equity_eq_portfolio", "pass": true, "delta": 0 },
+    { "id": "essential_plus_discretionary_eq_recurring", "pass": true, "delta": 0 },
+    { "id": "all_percentages_0_100", "pass": true, "delta": null },
+    { "id": "neg_cashflow_no_full_positive_subscore", "pass": true, "delta": null },
+    { "id": "same_metric_consistent_everywhere", "pass": true, "delta": null },
+    { "id": "no_sentinel_leaks", "pass": true, "delta": null }
+  ],
+  "edgeCases": {
+    "homeShowsYield": false, "zeroPriceGainPill": false, "oneOffShownAsMonthly": false,
+    "discretionaryPctInRange": true, "loanSentinelText": false, "refinanceOfferedOver100Lvr": false
+  },
+  "mon030": {
+    "healthScoreHome": 0, "healthGradeHome": null, "cfoScore": 0, "cfoGrade": null,
+    "scoreMatch": true, "gradeMatch": true, "cfoBarLabels": [], "barsAreSevenWarmCategories": true
+  },
+  "findings": [
+    { "part": "A|B|C|D|E", "surface": "<page>", "what": "<metric/check>", "expected": "<should be>", "actual": "<showed>", "severity": "critical|high|medium|low" }
+  ]
+}
 ```
+
+**Consuming it (the comparing session):** `partF` diffs against `baselines/BASELINE.md` (§3.4 buckets); `mon030.scoreMatch && gradeMatch` gates MON-030 FIXING→VERIFIED; `invariants[].pass` + `crossSurface[].match` are hard PASS/FAIL; every `findings[]` entry that isn't an explained baseline delta becomes a MON via `npm run issues:raise` (§3.1) — `part`→area, `surface`→--surface, `expected`/`actual`→evidence.
 
 Optional `[ACTION]` add-flow test (MON-008 class): add a clearly-labelled test expense (e.g. "Test — smoke alarm service, $120, Annual") on one property's Expenses card, confirm it appears immediately and the annual total rises by exactly $120, then delete it.
 

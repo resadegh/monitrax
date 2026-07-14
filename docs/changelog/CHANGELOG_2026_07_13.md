@@ -208,3 +208,41 @@
 - **Coverage boundary (honest — §22.2.4):** this is a runbook (procedure), NOT
   executable code — it does not itself run any verification. Playwright MCP wiring +
   a golden-seeded preview endpoint are the operator's setup; the doc is the protocol.
+
+## Session: chat-audit-findings-issues-m9518i (continued) — Ring-3 brief: machine-consumable report
+
+### Change: the Chrome-relay brief now emits a fixed-schema MACHINE REPORT for automated NeoAudit comparison
+
+- **Type**: Docs (verification brief) — NeoAudit Ring-3 (Part 23 §23.2 rule 4)
+- **Scope**: `docs/verification/VERIFICATION_PLAYBOOK.md` §3.3 (OUTPUT FORMAT + Part F)
+- **Why**: the brief returned a human numbered list + a Part-F-only JSON — readable,
+  but the cross-surface / invariant / edge-case / finding results were prose, so the
+  comparing session couldn't consume them programmatically. Reza asked for a detailed
+  report the session can consume and check against NeoAudit directly.
+- **Solution**: OUTPUT FORMAT now requires BOTH (1) the human summary AND (2) a single
+  fixed-schema `MACHINE REPORT` JSON that maps 1:1 to what NeoAudit checks —
+  `partF` (baseline diff, same keys as before), `crossSurface` (per-property
+  detail/list/home cashflow + yield with match+maxAbsDelta), `invariants[]`
+  (Part E as id+pass+delta), `edgeCases` (Part D booleans), `mon030`
+  (score/grade/bars + scoreMatch/gradeMatch — the FIXING→VERIFIED gate), and
+  `findings[]` (every MISMATCH/FAIL as part/surface/what/expected/actual/severity).
+  Added a "consuming it" note wiring each field to its NeoAudit action (partF→baseline
+  buckets, mon030→MON-030 verdict, findings[]→`issues:raise`). Part F trimmed to a
+  key-list (no longer a separate block — it lives inside `partF`, no double emission).
+
+### Files Modified
+- `docs/verification/VERIFICATION_PLAYBOOK.md` — §3.3 OUTPUT FORMAT (machine report) + Part F key-list
+
+### Build Status
+- [x] Doc-only — no code/test surface touched
+
+### Gate (§20.6)
+- Document 10/10 (doc: VERIFICATION_PLAYBOOK.md §3.3 — the machine schema mirrors the
+  brief's own Parts A–F + the §3.4 baseline diff + the §3.1 finding bus exactly;
+  edited in a PR per §23.2 rule 4) · Requirements 10/10 (delivers the machine-consumable
+  report Reza asked for; keeps the human summary; partF stays baseline-compatible) ·
+  Logic 10/10 (fixed keys, null/[] conventions, every field tied to a concrete NeoAudit
+  consumption step; no double Part-F emission).
+- **Coverage boundary (honest — §22.2.4):** this changes the report FORMAT the relay
+  produces; it does not itself verify any number. The verification is still the live
+  Ring-3 run + the comparing session's diff/gate.
