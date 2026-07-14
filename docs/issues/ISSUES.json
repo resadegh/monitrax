@@ -1292,21 +1292,32 @@
     {
       "id": "MON-041",
       "title": "Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation)",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "low",
       "changesNumbers": false,
       "opened": "2026-07-14",
       "area": "assets",
       "plain": {
-        "issue": "Cars that went UP in value show a weird 'depreciation -200%' instead of an appreciation figure."
+        "issue": "On an asset that has gone UP in value (e.g. a classic car), the Assets detail showed a negative depreciation like \"-200.0%\" — treating appreciation as negative depreciation.",
+        "fix": "Asset value-change is now shown as a positive magnitude with a clear direction — an appreciating asset reads \"Appreciation 200.0%\" (green, up-arrow), a depreciating one reads \"Depreciation\" — using ONE shared presentation rule across the list tile and the detail dialog.",
+        "check": "Open an asset that’s worth more than you paid (e.g. the 300Z / Landcruiser): the detail now says Appreciation with a positive % and a green up-arrow, not \"-200.0% depreciation\"."
       },
-      "rootCause": [],
+      "rootCause": [
+        "app/dashboard/assets/page.tsx:636",
+        "app/dashboard/assets/page.tsx:1276",
+        "app/api/assets/route.ts:58"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/dashboard/assets/page.tsx",
+        "components/assets/AssetTile.tsx"
+      ],
+      "fixPRs": [
+        "#PENDING"
+      ],
+      "test": "tests/assets/valueChange.test.ts",
       "tracker": "neoaudit-run:VR-003",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/assets (vehicle dialogs). Expected: a percentage in a sane range with the right label (appreciation vs depreciation). Actual: 300Z shows depreciation -200.0pct and Landcruiser -66.7pct — an appreciating asset is labelled as negative depreciation. Evidence/run: VR-003."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/assets (vehicle dialogs). Expected: a percentage in a sane range with the right label (appreciation vs depreciation). Actual: 300Z shows depreciation -200.0pct and Landcruiser -66.7pct — an appreciating asset is labelled as negative depreciation. Evidence/run: VR-003. | [FIX 2026-07-14] Root cause: depreciation = purchasePrice − currentValue (positive=lost, negative=gained) and depreciationPercent same sign (app/api/assets/route.ts:58). AssetTile abs’d it + labelled Appreciated/Depreciated, but the Assets PAGE dialogs (page.tsx:636 inline %, :1276 KpiTile) printed the RAW signed percent + a hardcoded \"Depreciation\" label → an appreciating asset read \"-200.0%\". Fix (§12.2.1): extracted lib/assets/valueChange.ts (assetValueDirection + assetValueChangeMagnitudePercent) as the ONE presentation rule; wired both page sites (label by direction, % as magnitude) + repointed AssetTile’s lostValue/percent to it. Ratchet: tests/assets/valueChange.test.ts. Neomatrix: pure presentation helper, allowlisted (no money formula; graphify offline, self-prunes). changesNumbers=false (the signed value is unchanged; only the display sign/label)."
     },
     {
       "id": "MON-042",

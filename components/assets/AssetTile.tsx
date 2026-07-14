@@ -17,6 +17,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { assetValueDirection, assetValueChangeMagnitudePercent } from '@/lib/assets/valueChange';
 import { AssetGlyph } from '@/components/wealth/wealthGlyphs';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
 import type { ReminderUrgency } from '@/lib/reminders/reminderEngine';
@@ -214,7 +215,8 @@ export function AssetTile({ asset, index = 0, onView, onEdit, onDelete }: AssetT
   const Icon = meta.icon;
   const status = statusMeta(asset.status);
   const isActive = asset.status === 'ACTIVE';
-  const lostValue = asset.depreciation > 0;
+  // MON-041: direction from the ONE source (lib/assets/valueChange).
+  const lostValue = assetValueDirection(asset.depreciation) === 'depreciation';
 
   return (
     <motion.div
@@ -317,7 +319,7 @@ export function AssetTile({ asset, index = 0, onView, onEdit, onDelete }: AssetT
             >
               {lostValue ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
               {lostValue ? '−' : '+'}
-              {Math.abs(asset.depreciationPercent).toFixed(1)}%
+              {assetValueChangeMagnitudePercent(asset.depreciationPercent).toFixed(1)}%
             </div>
           )}
         </div>
