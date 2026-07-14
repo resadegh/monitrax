@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**46 total** · 43 open · 🔵 5 · 🟡 2 · 🟠 31 · 🟢 5 · ✅ 2
+**46 total** · 43 open · 🔵 4 · 🟡 3 · 🟠 31 · 🟢 5 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -51,7 +51,7 @@
 | MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
 | MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
 | MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##PENDING | ✅ |
-| MON-045 | 🔵 OPEN | 🟡 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
+| MON-045 | 🟡 DIAGNOSED | 🟡 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
 | MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##PENDING | ✅ |
 
 ---
@@ -848,14 +848,15 @@ Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card 
 
 ### MON-045 — CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
+**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
 
-> **What was wrong:** On My Guide the 'Negative Gearing Benefit' ($157,746) is about 4x the total tax deductions ($39,554), which doesn't add up.
+> **What was wrong:** On My Guide, the negative-gearing tax benefit (57,746) is shown as roughly 4× your total deductions (9,554) — which is impossible (a tax saving can’t exceed the deductions that create it).
 >
+- **Root cause:** `lib/cfo/decisionSupport/taxIntegration.ts:197`, `lib/cfo/decisionSupport/taxIntegration.ts:213`, `lib/tax-engine/position/taxPositionCalculator.ts:206`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-004`
 
-Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Property $39,444 with 'Neg. Gearing Benefit: $157,746' — the benefit is ~4x the total deductions, internally inconsistent. Needs §19.2 audit of the neg-gearing-benefit producer vs the canonical deductions. NOT one of the original 5; surfaced by the deduction recalculation.
+Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Property $39,444 with 'Neg. Gearing Benefit: $157,746' — the benefit is ~4x the total deductions, internally inconsistent. Needs §19.2 audit of the neg-gearing-benefit producer vs the canonical deductions. NOT one of the original 5; surfaced by the deduction recalculation. | [DIAGNOSED 2026-07-14 — §19.2] Root cause: calculateNegativeGearingBenefit (taxIntegration.ts:197) is a SECOND producer of per-property net rental income that AUTO-computes loan interest (Σ principal×interestRateAnnual, :213) and subtracts ALL expense rows ×frequency. The canonical tax position (taxPositionCalculator.ts) does NOT auto-compute loan interest — it deducts interest ONLY when the user logs a deductible LOAN_INTEREST/property expense row (:200/:206). So the two disagree: with a loan but no logged-interest expense, the tax position omits interest while the CFO benefit includes it → the benefit can exceed total deductions (the 4× incoherence). Proof it is a bug regardless: a negative-gearing tax BENEFIT = loss×marginalRate ≤ loss ≤ property deductions < total deductions, so 4× is mathematically impossible. FORK (Reza decision, §20.5 — NOT guessed): should property loan interest be AUTO-derived from the loan (principal×rate, the financially-correct AU model — interest is the primary neg-gearing deduction), or only counted when logged as an expense row? Monitrax has BOTH mechanisms today (loans carry a rate; expenses can be LOAN_INTEREST), which is the ambiguity. Option A (financially correct, bigger): make the canonical tax engine auto-deduct property loan interest via computePropertyCashflow.annualLoanInterest (reform-aware §12.14 Measure 1 gating) so deductions AND neg-gearing are correct AND consistent everywhere — own workstream. Option B (quick consistency patch): derive the CFO benefit from the canonical taxPosition (deductions.property − income.rental)×marginalRate, removing the rogue producer — stops the incoherent 4× number but UNDER-counts neg-gearing if interest is not logged. Recommendation: A (or B-now-then-A staged). BLOCKED pending Reza’s call — do not guess-fix.
 
 ### MON-046 — Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav)
 
