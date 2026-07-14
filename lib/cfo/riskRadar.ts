@@ -14,6 +14,9 @@ import {
   RiskEntity,
 } from './types';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { enrichPropertiesWithActuals } from '@/lib/services/propertyActuals';
+import { calculateRentalYield } from '@/lib/utils/calculations';
 import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
@@ -59,8 +62,13 @@ export async function scanForRisks(userId: string): Promise<RiskRadarOutput> {
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
     prisma.investmentAccount.findMany({ where: { userId }, include: { holdings: true } }),
-    prisma.property.findMany({ where: { userId }, include: { income: true, expenses: true } }),
+    prisma.property.findMany({ where: { userId }, include: { income: true, expenses: true, loans: true } }),
   ]);
+
+  // MON-036: enrich with reconciled actuals over the ONE canonical 12-month
+  // window so per-property YIELD comes from the SAME engine as every other
+  // surface (was declared-income only — the rogue 3rd yield producer).
+  const enrichedProperties = await enrichPropertiesWithActuals(userId, properties);
 
   // Short-term risks
   risks.push(...detectLowBalanceRisks(accounts, expenses));
@@ -71,11 +79,11 @@ export async function scanForRisks(userId: string): Promise<RiskRadarOutput> {
   // Medium-term risks
   risks.push(...detectDebtRatioDeteriorationRisks(loans, incomes));
   risks.push(...detectSavingsTrajectoryRisks(incomes, expenses));
-  risks.push(...detectPropertyUnderperformanceRisks(properties));
+  risks.push(...detectPropertyUnderperformanceRisks(enrichedProperties));
   risks.push(...detectSubscriptionCreepRisks(expenses));
 
   // Long-term risks
-  risks.push(...detectConcentrationRisks(investments, properties));
+  risks.push(...detectConcentrationRisks(investments, enrichedProperties));
   risks.push(...detectMortgageRenewalRisks(loans));
 
   // Sort by severity
@@ -380,8 +388,12 @@ interface PropertyWithFinancials {
   name: string;
   currentValue: number;
   type: string;
-  income: { amount: number; frequency: string }[];
-  expenses: { amount: number; frequency: string }[];
+  income: { id: string; type: string; amount: number; frequency: string }[];
+  expenses: { id: string; amount: number; frequency: string; isRecurring?: boolean | null }[];
+  // MON-036: loans + reconciled transactions (attached by enrichPropertiesWithActuals)
+  // let the yield come from the canonical computePropertyCashflow, not declared income.
+  loans?: { id: string; principal: number; interestRateAnnual: number; minRepayment: number | null; repaymentFrequency: string | null }[];
+  linkedTransactions?: { incomeId: string | null; expenseId: string | null; loanId: string | null; date: Date; amount: number }[];
 }
 
 function detectPropertyUnderperformanceRisks(
@@ -392,19 +404,27 @@ function detectPropertyUnderperformanceRisks(
   for (const property of properties) {
     if (property.type !== 'INVESTMENT') continue;
 
-    const annualIncome = property.income.reduce((sum, i) => sum + toAnnual(i.amount, i.frequency as Frequency), 0);
-    const annualExpenses = property.expenses.reduce((sum, e) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
-    const grossYield = annualIncome / property.currentValue;
-    const netYield = (annualIncome - annualExpenses) / property.currentValue;
+    // MON-036: yield from the ONE canonical engine on the ONE 12-month window
+    // (actuals-first), IDENTICAL to the detail page / list / Home tile — was a
+    // declared-income calc that bypassed the engine (the rogue 3rd yield value).
+    const cf = computePropertyCashflow({
+      income: property.income,
+      expenses: property.expenses,
+      loans: property.loans ?? [],
+      transactions: property.linkedTransactions ?? [],
+    });
+    // calculateRentalYield returns a PERCENT; riskRadar works in decimal fractions.
+    const grossYield = calculateRentalYield(cf.annualRent, property.currentValue) / 100;
+    const cashflowNegative = cf.annualCashflow < 0;
 
     if (grossYield < THRESHOLDS.propertyYieldWarning) {
       risks.push(createRisk({
         type: 'property_underperformance',
-        severity: netYield < 0 ? 'high' : 'medium',
+        severity: cashflowNegative ? 'high' : 'medium',
         timeframe: 'medium',
         title: `Low yield: ${property.name}`,
-        description: `${property.name} has a gross yield of ${(grossYield * 100).toFixed(2)}%${netYield < 0 ? ' and is cash-flow negative' : ''}. Consider reviewing rent or expenses.`,
-        impact: Math.abs(netYield < 0 ? annualIncome - annualExpenses : property.currentValue * 0.01),
+        description: `${property.name} has a gross yield of ${(grossYield * 100).toFixed(2)}%${cashflowNegative ? ' and is cash-flow negative' : ''}. Consider reviewing rent or expenses.`,
+        impact: Math.abs(cashflowNegative ? cf.annualCashflow : property.currentValue * 0.01),
         probability: 0.8,
         relatedEntities: [{ type: 'property', id: property.id, name: property.name }],
         suggestedActions: [

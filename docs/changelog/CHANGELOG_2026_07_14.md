@@ -395,3 +395,21 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 ### Testing
 - [x] Ratchet Ring-0 unit + source-lock (window single-source, no inline -12)
 - [ ] Ring-3 per-fix Chrome verification (consolidated brief — before VERIFIED)
+
+---
+
+## Session: chat-audit-findings — MON-036 fix (Risk Radar yield → canonical engine)
+
+### Changes Made
+- **Type**: Fix (financial, changesNumbers)
+- **Root Cause**: `detectPropertyUnderperformanceRisks` (riskRadar.ts) computed `grossYield = annualIncome / currentValue` from DECLARED income — a 4th independent yield producer bypassing the engine + `calculateRentalYield`. Showed 1.05% on the CFO Risk Radar while other surfaces (actuals-based) showed 0.12% (detail/list) / 0.9% (Home). The MON-035 window fix converged the latter three; this removes the last rogue producer.
+- **Solution**: `scanForRisks` now enriches properties over the ONE canonical 12-month window (`enrichPropertiesWithActuals`, incl. loans) and `detectPropertyUnderperformanceRisks` takes yield from `computePropertyCashflow` + `calculateRentalYield(cf.annualRent, value)/100` — the SAME source as every other surface. Cash-flow-negative flag now uses `cf.annualCashflow` (canonical, loan-inclusive) instead of declared rent−expenses.
+
+### Files Modified
+- `lib/cfo/riskRadar.ts` — enrich + canonical yield; `PropertyWithFinancials` widened (loans + linkedTransactions)
+- `tests/cfo/mon036RiskRadarYield.test.ts` — Ring-1 source-lock (new)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — `calculateSummary` anchor re-pinned 601→621
+- `docs/issues/ISSUES.{json,md}` — MON-036 → DIAGNOSED (→ FIXING with PR)
+
+### Build Status
+- [x] tsc 0 · full vitest 3909 passed · neomatrix:check exit 0 · lint clean

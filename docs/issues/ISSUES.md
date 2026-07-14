@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 7 · 🟡 2 · 🟠 27 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 6 · 🟡 3 · 🟠 27 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -42,7 +42,7 @@
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
 | MON-035 | 🟠 FIXING | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
-| MON-036 | 🔵 OPEN | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | — | — |
+| MON-036 | 🟡 DIAGNOSED | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | — | ✅ |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
@@ -708,14 +708,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 
 ### MON-036 — HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
 
 > **What was wrong:** The HOME property's rental yield shows three different percentages depending on which screen you look at.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** The CFO Risk Radar's 'Low yield' check now reads the SAME actuals-based yield engine as every other screen (it used to work off your typed-in rent only, over no shared window), so the yield matches everywhere. Combined with the MON-035 window fix, all four surfaces converge.
+>
+> **What you should see:** The property's rental yield now reads the SAME on the property detail page, the Properties list, the Home dashboard tile, and the My Guide Risk Radar (was 0.12% / 0.9% / 1.05% across them).
+
+- **Root cause:** `lib/cfo/riskRadar.ts:417`
+- **Neomatrix:** `number.propertyCashflow`
+- **Downstream consumers (§19.4):** `lib/cfo/riskRadar.ts`, `lib/cfo/intelligenceEngine.ts`, `lib/cfo/aiAdvisor.ts`, `app/api/cfo/advice/chat/route.ts`, `app/dashboard/cfo/page.tsx`
+- **Holistic test (§19.4):** `tests/cfo/mon036RiskRadarYield.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: HOME detail/list vs Home tile vs CFO Risk Radar. Expected: same yield on every surface. Actual: 0.12pct detail/list, 0.9pct home tile, 1.05pct CFO risk radar. Evidence/run: VR-002. | [2026-07-14] The MON-035 window fix converges detail/list vs Home YIELD (0.12 vs 0.9 — yield derives from the window-based annualRent). REMAINING third value (CFO Risk Radar 1.05%) is riskRadar.ts:393 computing yield from DECLARED income (a separate producer, bypassing the engine) — the focused MON-036 fix (repoint to canonical), next PR.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: HOME detail/list vs Home tile vs CFO Risk Radar. Expected: same yield on every surface. Actual: 0.12pct detail/list, 0.9pct home tile, 1.05pct CFO risk radar. Evidence/run: VR-002. | [2026-07-14] The MON-035 window fix converges detail/list vs Home YIELD (0.12 vs 0.9 — yield derives from the window-based annualRent). REMAINING third value (CFO Risk Radar 1.05%) is riskRadar.ts:393 computing yield from DECLARED income (a separate producer, bypassing the engine) — the focused MON-036 fix (repoint to canonical), next PR. | [FIX 2026-07-14] Removed the 4th rogue yield producer: detectPropertyUnderperformanceRisks computed grossYield = annualIncome/currentValue from DECLARED income (riskRadar.ts), bypassing the engine. Now enrichPropertiesWithActuals (ONE 12-month window, MON-035) + computePropertyCashflow + calculateRentalYield — the SAME source as detail/list/Home. Cash-flow-negative flag now uses cf.annualCashflow (canonical). Ratchet source-lock: tests/cfo/mon036RiskRadarYield.test.ts. Neomatrix calculateSummary anchor re-pinned 601->621. Advances to FIXING with PR#.
 
 ### MON-037 — One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow
 
