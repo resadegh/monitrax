@@ -555,3 +555,57 @@ Reza directive (2026-07-14): "the Neomatrix was designed on the basis of the exi
 - Document 10/10 (Reza directive + Part 24 #6 coupling extended to node semantics; no design-doc deviation)
 - Requirements 10/10 (corrects exactly the stale/buggy nodes found; property-cashflow formula now matches the shipped code; neg-gearing flagged suspected-issue pending MON-045 — honest, not silently changed)
 - Logic 10/10 (formula text verified against propertyCashflow.ts:174 isRecurring gate + propertyActualsWindow; suspected-issue is a valid status enum; gate + tests green). Coverage: verifies schema/anchors/markdown-freshness + these 2 nodes' accuracy; does NOT re-audit all 262 nodes (broader pass ongoing).
+
+---
+
+## Session: chat-audit-findings — Neomatrix audit pass 2: MON-047 (dead cost-basis net-worth helper)
+
+### Context
+Continuing the Neomatrix accuracy audit (Reza directive 2026-07-14). Auditing the cfo/health/reports/intelligence node formulas surfaced a real issue.
+
+### Finding — MON-047 (DIAGNOSED, changesNumbers=false)
+`calculateMonthlyProgressNetWorth` (+ Decimal sibling, `lib/cfo/intelligenceEngine.ts`) computes net-worth investments as `Σ(units×averagePrice)` = **COST** basis, whereas the canonical `netWorthCalculator.calculateNetWorth` uses `units×currentPrice` = **MARKET** (§12.2.1). **Verified unwired**: production CFO monthly-progress reads `getNetWorthHistory(userId,2)→deltaAbsolute/deltaPct` (the MON-018 fix superseded this function); the only references are tests + the calc-audit Decimal shadow. So **no live number is wrong today** — it's dead code with a latent cost-basis bug, still modelled as a `documented` live engine in the graph.
+
+### Changes
+- `docs/issues/ISSUES.{json,md}` — MON-047 raised (DIAGNOSED) with the verified diagnosis + remove-when.
+- `docs/financial-logic/graph/financial-graph.json` — node `engine.intelligenceEngine.calculateMonthlyProgressNetWorth` flagged `documented → suspected-issue` with the MON-047 note (map stops presenting dead code as a live engine). `GENERATED_CORE.md` regenerated.
+- Full removal (function + Decimal + calc-audit shadow + tests + node) deferred to MON-047's own PR (careful re the calc census).
+
+### Build Status
+- [x] neomatrix:check OK · 142 graph+registry tests pass · issues:check 47 valid
+
+### Gate (§20.6)
+- Document 10/10 (Reza Neomatrix directive · §12.1 dead-code · §21.2 flag-not-silently-change · Part 24 #6)
+- Requirements 10/10 (real graph-reflected issue found + verified unwired via caller trace; raised + flagged honestly; risky removal deferred)
+- Logic 10/10 (verified: only tests+shadow reference it; production uses getNetWorthHistory; averagePrice vs currentPrice read in source). Coverage: verifies the finding is real + unwired; does NOT perform the removal (own PR).
+
+---
+
+## Session: chat-audit-findings — MON-035/036 REAL fix (VR-005 Stage-4 FAIL re-diagnosis)
+
+### The honest failure
+VR-005 (Chrome, full-merged deploy) showed the Home dashboard tile STILL diverges (−$2,628/yr, 0.9% yield) from detail/list/Risk-Radar (−$8,668/yr, 0.12%). My #1401 "deploy-skew" conclusion was **wrong** — the Ring-2 reproduction gave a **false PASS** because its DB mock ignores WHERE clauses, so it couldn't catch a fetch-layer difference.
+
+### Real root cause (§12.2.1 duplicate producer)
+`/api/portfolio/snapshot` had its OWN inline per-property transaction fetch (`unifiedTransaction.findMany`) + `propertyTx` filter feeding `computePropertyCashflow` — a duplicate of `enrichPropertiesWithActuals` (used by detail/list/Risk-Radar). On live HOME data the inline path fell back to **declared** rent (~$6,970/yr → 0.9%) while the enricher used 12-month **actuals** (~$929/yr → 0.12%).
+
+### Fix (remove-the-culprit §23.2.1)
+Deleted the inline fetch + assembly; the route now calls `enrichPropertiesWithActuals(userId, properties)` and feeds `computePropertyCashflow` from `property.income/expenses/loans + property.linkedTransactions` — the SAME producer as the other three surfaces → Home tile == detail **by construction**.
+
+### Files Modified
+- `app/api/portfolio/snapshot/route.ts` — removed the inline `linkedTxns` fetch + `propertyTx` assembly; delegates to `enrichPropertiesWithActuals`
+- `tests/golden/ring2.homePropertyParity.test.ts` — **Ring-1 source-lock Ratchet** (route uses the enricher, has NO inline `unifiedTransaction.findMany`) + fixed the mock to populate `property.findMany` includes (the false-pass cause)
+- `tests/calculations/mon035PropertyActualsWindow.test.ts` — direct fetch sites 3→2 (portfolio now delegates)
+- `docs/financial-logic/graph/financial-graph.json` — `portfolioSnapshot.GET` re-pinned 518→521 + formula reflects the enricher delegation
+- `docs/issues/ISSUES.{json,md}` — MON-035/036 re-diagnosis; `docs/issues/FIX_PROTOCOL.md` §7 ledger retro; `.audit/financial-math-baseline.json` re-lined 910→893
+
+### Build Status
+- [x] tsc 0 · full vitest 3937 passed · neomatrix:check OK · lint clean · issues:check 47 valid
+
+### The process lesson (§7 ledger)
+A value-parity test CANNOT verify a fetch-layer bug — the Ratchet for a duplicate-producer class is a **Ring-1 source-lock**, and any cross-surface parity claim on a WHERE-blind golden mock must be paired with it.
+
+### Gate (§20.6)
+- Document 10/10 (§12.2.1 remove-the-culprit · §23.2 Ratchet at the right ring · §21.2.1 same-PR Neomatrix update; Part 24 #6 coupling)
+- Requirements 10/10 (fixes the confirmed live divergence at source; one producer remains; honest Stage-4-FAIL retro instead of re-claiming)
+- Logic 10/10 (route delegates to the ONE enricher; source-lock prevents recurrence). Coverage: verifies the route has one producer (source-lock) + golden parity; does NOT re-verify live numbers — that's the VR-006 Chrome re-check (stays FIXING until then).
