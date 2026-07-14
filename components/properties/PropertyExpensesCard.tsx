@@ -59,6 +59,7 @@ export interface PropertyExpense {
   sourceType?: string | null;
   isEssential?: boolean | null;
   isTaxDeductible?: boolean | null;
+  isRecurring?: boolean | null; // MON-037: one-offs excluded from the recurring card total
   propertyId?: string | null;
   loanId?: string | null;
   investmentAccountId?: string | null;

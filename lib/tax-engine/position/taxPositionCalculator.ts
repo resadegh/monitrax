@@ -51,6 +51,15 @@ export interface ExpenseItem {
   propertyId?: string;
   loanId?: string;
   investmentAccountId?: string;
+  /**
+   * MON-037: a one-off deductible cost (`isRecurring === false`) is a real
+   * deduction in the year it's incurred, but it must be counted ONCE — not
+   * annualised ×frequency. A $11,385 battery stored MONTHLY is an $11,385
+   * deduction, not $136,620. Undefined/true = recurring (annualised as before).
+   * (The capital-vs-immediate treatment of a one-off — §12.14 — is a separate
+   * question this does not resolve; this only removes the ×frequency inflation.)
+   */
+  isRecurring?: boolean;
 }
 
 export interface DepreciationItem {
@@ -182,7 +191,10 @@ export function calculateTaxPosition(
   for (const expense of input.expenses) {
     if (!expense.isTaxDeductible) continue;
 
-    const annualAmount = annualize(expense.amount, expense.frequency);
+    // MON-037: count a one-off ONCE (its actual amount), never ×frequency.
+    const annualAmount = expense.isRecurring === false
+      ? expense.amount
+      : annualize(expense.amount, expense.frequency);
 
     if (expense.propertyId) {
       deductionBreakdown.property += annualAmount;
@@ -672,7 +684,10 @@ export function calculateTaxPositionDecimal(
 
   for (const expense of input.expenses) {
     if (!expense.isTaxDeductible) continue;
-    const annualAmount = annualizeDecimal(expense.amount, expense.frequency);
+    // MON-037: count a one-off ONCE (its actual amount), never ×frequency.
+    const annualAmount = expense.isRecurring === false
+      ? (toDecimal(expense.amount) ?? new Decimal(0))
+      : annualizeDecimal(expense.amount, expense.frequency);
 
     if (expense.propertyId) {
       deductionBreakdown.property = deductionBreakdown.property.plus(annualAmount);

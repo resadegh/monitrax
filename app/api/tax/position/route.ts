@@ -40,6 +40,7 @@ interface ExpenseRecord {
   amount: number;
   frequency: string;
   isTaxDeductible: boolean;
+  isRecurring: boolean;
   propertyId: string | null;
   loanId: string | null;
   property: { id: string; name: string } | null;
@@ -140,6 +141,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       amount: expense.amount,
       frequency: expense.frequency,
       isTaxDeductible: expense.isTaxDeductible,
+      isRecurring: expense.isRecurring, // MON-037: count one-offs once, not ×frequency
       propertyId: expense.propertyId || undefined,
       loanId: expense.loanId || undefined,
     }));

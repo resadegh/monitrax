@@ -112,6 +112,7 @@ export async function getUserTaxPosition(
     amount: expense.amount,
     frequency: expense.frequency,
     isTaxDeductible: expense.isTaxDeductible,
+    isRecurring: expense.isRecurring, // MON-037: count one-offs once, not ×frequency
     propertyId: expense.propertyId || undefined,
     loanId: expense.loanId || undefined,
   }));
