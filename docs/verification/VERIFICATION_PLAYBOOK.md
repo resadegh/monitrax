@@ -91,6 +91,7 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
   - Depreciation/yr and the schedules feeding it (asset cost, rate %, method).
   - Tax card figure vs the cash Cashflow figure — which is more negative?
   - Yield on all three surfaces — MATCH or MISMATCH.
+  - If this property's LIST tile shows NO "Cashflow / yr" line at all, record its OWNERSHIP TYPE (owner-occupied home / investment / tenant-rented) — an owner-occupied home legitimately has no rental cashflow line, but an INVESTMENT property with a blank cashflow line is a defect. (MON-039c)
 
 === PART B — NET-WORTH TIE-OUTS ===
   - Portfolio/total equity on the Properties page AND anywhere else it appears — MATCH?
@@ -99,7 +100,8 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
 
 === PART C — TAX / CASHFLOW ONE STORY ===
   - Estimated annual tax on /cashflow vs My Guide (CFO) — identical? Medicare levy visible/included?
-  - /cashflow "Money In" figures — do the two agree? If no income landed this month, do BOTH read $0?
+  - /cashflow "Money In" figures — do the two agree? If no income landed this month, do BOTH read $0? Also capture the "N income source(s)" note next to it: how many income sources are DECLARED vs the actual "Money In" $. If Money In is $0 but N≥1 sources are declared, state whether the page distinguishes ACTUALS ("Money In" = what landed) from the DECLARED source COUNT (expected, not a bug) or presents them as the same basis (confusing — a labelling defect). (MON-039b)
+  - INCOME BASIS RECONCILIATION (MON-043): capture the ANNUAL INCOME figure on EVERY surface that shows one — Home, Activity/Spending, and Tax — each with its BASIS label ("Last 12 months" / trailing-12-mo actuals / declared gross / etc.). Then open the income BREAKDOWN and list each category + amount. If an "Other" or uncategorised income component exists (e.g. a large ~$190k line), state whether it is TRANSACTION-BACKED (real deposits in the statement/activity) or DECLARED-ONLY (a manually-entered income row with no matching transactions). This one capture decides whether a cross-surface income gap is a REAL actuals under-count (to fix) or a basis/labelling difference (to clarify) — so it must be read, not inferred.
   - "Month-End Balance" on My Guide vs the Cashflow forecast — same number?
   - [MON-030] My Guide (CFO) overall score AND letter grade vs the Home "Health" score AND grade — IDENTICAL? (both now come from the ONE health engine, so they MUST match to the digit and the letter; any gap is a FAIL.) Then look at the CFO score's coloured bars: they should be the SEVEN warm categories — Cash on hand / Cash flow / Debt health / Investments / Property / Protection / Long-term outlook — NOT a different set of six CFO metrics. Report the score, the grade, and the bar labels you see on each surface.
 
@@ -120,6 +122,7 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
   - Negative portfolio cashflow ⇒ no "Positive Cashflow" full-marks sub-score; Safety score < 100.
   - The SAME metric (net worth, savings rate, health score AND its letter grade, liquid savings, each property's cashflow) reads the SAME on every page it appears — list each occurrence. [MON-030: Home health score/grade === My Guide CFO score/grade.]
   - No sentinel leaks: "69 years", "999", decades-long payoff, "$0 repayment" on a property that has a loan.
+  - COUNTS across surfaces: the Household "Vehicles" count (Settings › Household) vs the number of VEHICLE assets on My Wealth › Assets — report BOTH numbers. The Household value is a DECLARED dropdown (0–5, used for expense estimates); the Assets value is the actual ledger. If they differ, LIST what each vehicle asset is (so plant/equipment such as an excavator is distinguishable from cars — an excavator is not a household car). (MON-042)
 
 === PART F — REGRESSION SNAPSHOT (the fixed regression keys) ===
 Capture these figures for the snapshot — they are emitted inside the MACHINE REPORT's "partF" object below (do NOT also print a separate Part F block): netWorth, totalAssets, totalLiabilities, portfolioEquity; per-property cashflowYrDetail/List/Home + yieldDetail/List; totalMonthlyExpenses, estimatedAnnualTax; safetyScore, healthScoreHome, healthScoreCfo, healthGradeHome, healthGradeCfo; emergencyFundMonths, savingsRateCfo, savingsRateHome; balances.liquid/accessible/locked. Use null for not-found. Numbers only (no $ or commas).
@@ -141,7 +144,15 @@ Capture these figures for the snapshot — they are emitted inside the MACHINE R
     "totalMonthlyExpenses": 0, "estimatedAnnualTax": 0,
     "safetyScore": 0, "healthScoreHome": 0, "healthScoreCfo": 0, "healthGradeHome": null, "healthGradeCfo": null,
     "emergencyFundMonths": 0, "savingsRateCfo": 0, "savingsRateHome": 0,
-    "balances": { "liquid": 0, "accessible": 0, "locked": 0 }
+    "balances": { "liquid": 0, "accessible": 0, "locked": 0 },
+    "vehicleCountHousehold": null, "vehicleCountAssets": null
+  },
+  "incomeBasis": {
+    "home": { "annual": null, "basisLabel": null },
+    "activity": { "annual": null, "basisLabel": null },
+    "tax": { "annual": null, "basisLabel": null },
+    "otherComponent": { "amount": null, "backing": null },
+    "moneyIn": null, "declaredSourceCount": null
   },
   "crossSurface": {
     "<propertyName>": {
@@ -173,7 +184,7 @@ Capture these figures for the snapshot — they are emitted inside the MACHINE R
 }
 ```
 
-**Consuming it (the comparing session):** `partF` diffs against `baselines/BASELINE.md` (§3.4 buckets); `mon030.scoreMatch && gradeMatch` gates MON-030 FIXING→VERIFIED; `invariants[].pass` + `crossSurface[].match` are hard PASS/FAIL; every `findings[]` entry that isn't an explained baseline delta becomes a MON via `npm run issues:raise` (§3.1) — `part`→area, `surface`→--surface, `expected`/`actual`→evidence.
+**Consuming it (the comparing session):** `partF` diffs against `baselines/BASELINE.md` (§3.4 buckets); `mon030.scoreMatch && gradeMatch` gates MON-030 FIXING→VERIFIED; `invariants[].pass` + `crossSurface[].match` are hard PASS/FAIL; every `findings[]` entry that isn't an explained baseline delta becomes a MON via `npm run issues:raise` (§3.1) — `part`→area, `surface`→--surface, `expected`/`actual`→evidence. The `incomeBasis` object resolves the 2026-07-14 open forks from captured GROUND TRUTH instead of a guess: `otherComponent.backing === "transaction"` ⇒ MON-043 is a real actuals under-count (fix); `=== "declared"` ⇒ a basis/labelling refinement. `moneyIn === 0 && declaredSourceCount ≥ 1` with the page distinguishing actuals-vs-declared ⇒ MON-039b is correct-as-is (close). `partF.vehicleCountHousehold !== vehicleCountAssets` with the difference explained by declared-dropdown vs actual-ledger (e.g. an excavator) ⇒ MON-042 is a label clarification, not a count bug.
 
 Optional `[ACTION]` add-flow test (MON-008 class): add a clearly-labelled test expense (e.g. "Test — smoke alarm service, $120, Annual") on one property's Expenses card, confirm it appears immediately and the annual total rises by exactly $120, then delete it.
 
