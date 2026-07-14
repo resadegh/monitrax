@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
+import { sumUnmatchedDeclaredAnnualIncome } from '@/lib/income/unmatchedDeclaredIncome';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { getNetAnnualIncome, getNetMonthlyIncome } from '@/lib/income/netIncomeCalculator';
@@ -613,6 +614,15 @@ function IncomePageContent() {
   // Use net monthly for display (matches dashboard)
   const totalMonthly = totalNetMonthly;
 
+  // MON-043: declared income with NO matching actual transactions. It inflates
+  // the DECLARED/tax total (e.g. the Tax page's gross income) but never enters
+  // the trailing-12-month ACTUALS (§19.1), which is why Home (actuals) reads
+  // lower than Tax (declared gross). Surfacing it explains the gap AND is an
+  // actionable data-completeness nudge (link statements so it counts). ONE
+  // aggregation (§12.2.1): lib/income/unmatchedDeclaredIncome.ts.
+  const { annualTotal: declaredOnlyAnnualIncome, sourceCount: declaredOnlySourceCount } =
+    sumUnmatchedDeclaredAnnualIncome(income);
+
   // Phase 45.1 polish — show the salary-sacrifice What-If affordance only
   // when the user has at least one SALARY income source (otherwise the CTA
   // is irrelevant). Keeps the page calm for users who haven't entered salary
@@ -833,6 +843,25 @@ function IncomePageContent() {
           </Button>
         }
       />
+
+      {/* MON-043: data-completeness nudge. When declared income has no matching
+          transactions, the DECLARED/tax total (gross) runs ahead of the
+          trailing-12-month ACTUALS shown on Home/Cashflow (§19.1). Surface the
+          gap honestly + actionably — no shame, just "link statements". Muted
+          sky/informational (not an error). */}
+      {declaredOnlyAnnualIncome > 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3.5 backdrop-blur-sm">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" strokeWidth={1.75} />
+          <div className="text-sm text-foreground/90">
+            <span className="font-semibold tabular-nums">{formatCurrency(declaredOnlyAnnualIncome)}</span>{' '}
+            of your declared income {declaredOnlySourceCount === 1 ? 'source has' : `across ${declaredOnlySourceCount} sources has`}{' '}
+            no matching transactions yet.{' '}
+            <span className="text-muted-foreground">
+              Home and Cashflow show your last-12-months <em>actuals</em>, so declared-only income isn&rsquo;t counted there — while your Tax estimate uses the declared gross. Link or import the statements to see it in your real numbers.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Phase 45.1.1 polish — contextual "What if you salary-sacrificed?"
           CTA. Deep-links into the salarySacrificeToSuper lever where the

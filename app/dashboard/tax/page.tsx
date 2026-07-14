@@ -558,7 +558,12 @@ export default function TaxPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Income Summary</CardTitle>
-                  <CardDescription>Breakdown of all income sources</CardDescription>
+                  {/* MON-043: name the basis. This is DECLARED gross income (what
+                      you told us you earn), which drives the tax estimate — it
+                      differs from the trailing-12-month ACTUALS shown on Home /
+                      Cashflow when some declared income has no matching
+                      transactions yet (§19.1). */}
+                  <CardDescription>Declared gross income — all sources (drives your tax estimate; may exceed the last-12-months actuals on Home/Cashflow)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
