@@ -61,3 +61,48 @@
   flagged ones). The brief restructure changes the METHOD; it verifies nothing itself.
   The registry follow-through (flip MON-028/029/030 → VERIFIED, file F2/F3, investigate
   F4/F5/F6) is a separate PR that cites VR-002.
+
+## Session: chat-audit-findings-issues-m9518i (continued) — VR-002 registry disposition
+
+### Change: flip the verified fixes → VERIFIED; file the new findings as MON tickets
+
+- **Type**: Issue registry (NeoAudit §19.5) — documenting the VR-002 outcome
+- **Scope**: `docs/issues/ISSUES.json` (+ generated `ISSUES.md`)
+- **Why**: Reza directive 2026-07-14 — *"document all these issues and the fixes."* The
+  registry is the ONE issue list (§19.5 SSOT), so VR-002's outcome is recorded there,
+  not in a parallel doc.
+- **Solution**:
+  - **VERIFIED (Ring-3 confirmed on Reza's live data, VR-002 is the §23.2-rule-3
+    evidence):** MON-028 (property detail cashflow/yield == list == Home), MON-029
+    (savings rate one value −30.5%), MON-030 (CFO 50/C == Home 50/C, 7 warm bars),
+    MON-017 (Positive Cashflow 8/15, Safety 70→63). Each already carried the §19.4
+    holistic test + a resolving Neomatrix semanticKey + downstream sweep + fix PRs — the
+    registry gate enforces that a number-changing issue cannot reach VERIFIED without
+    them (validated: `npm run issues:check` = 39 valid; `tests/issues` = 16 pass).
+  - **Still FIXING:** MON-031 (liquid-savings $2,496 gap — VR-002 confirms still
+    present); MON-021 (a $68 Month-End residual noted, F6 — pending investigation).
+  - **New OPEN findings filed via `npm run issues:raise`:** MON-035 (F2 — HOME
+    home-tile cashflow Δ6,040), MON-036 (F3 — HOME yield triple-discrepancy), MON-037
+    (F4 — **critical**: one-offs shown as monthly + apparent Battery duplicate), MON-038
+    (F5 — refinance offered on 104% LVR), MON-039 (F7 — minor display cluster). Each is
+    OPEN with the VR-002 evidence in `notes`; rootCause + semanticKeys get the §19.2
+    investigation in the rectification phase.
+
+### Files Modified
+- `docs/issues/ISSUES.json` — 4 → VERIFIED, MON-021 residual note, 5 new OPEN (MON-035..039)
+- `docs/issues/ISSUES.md` — regenerated
+
+### Build Status
+- [x] `npm run issues:check` — 39 issues valid (the VERIFIED gate enforced test+key+sweep+PR)
+- [x] `npx vitest run tests/issues` — 16 pass
+
+### Gate (§20.6)
+- Document 10/10 (registry follows §19.5 lifecycle + §23.2 rule 3 — VERIFIED cites the
+  VR-002 Ring-3 run; findings filed in the ONE registry, not a parallel list) ·
+  Requirements 10/10 (does exactly "document all these issues and the fixes"; keeps the
+  unfixed ones open) · Logic 10/10 (VERIFIED flips are gate-valid — proven by
+  issues:check + the registry vitest; new findings are OPEN pending §19.2 diagnosis).
+- **Coverage boundary (honest — §22.2.4):** this DOCUMENTS the VR-002 disposition in the
+  registry; it FIXES nothing (rectification is a later phase, after NeoAudit is finished
+  and VR-003 compiles the complete list). The VERIFIED flips rest on VR-002's live-data
+  confirmation, not on a re-derivation of each number here.
