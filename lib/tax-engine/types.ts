@@ -665,6 +665,7 @@ export interface EntityTaxFacts {
     amount: number;
     frequency: string;
     isTaxDeductible: boolean;
+    isRecurring?: boolean; // MON-037: count one-offs once, not ×frequency
     propertyId?: string;
     loanId?: string;
     investmentAccountId?: string;

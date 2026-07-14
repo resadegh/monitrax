@@ -726,7 +726,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
         );
         const cf = computePropertyCashflow({
           income: propertyIncome.map((i: any) => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
-          expenses: propertyExpenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency })),
+          expenses: propertyExpenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring })), // MON-037: exclude one-offs from run-rate
           loans: propertyLoans.map((l: any) => ({
             id: l.id,
             principal: l.principal,

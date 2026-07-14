@@ -42,6 +42,15 @@ export interface CashflowExpense {
   id?: string;
   amount: number;
   frequency: string;
+  /**
+   * MON-037: one-off costs (`isRecurring === false` — a battery, a subdivision
+   * fee, a paint job) are NOT part of the property's recurring run-rate. They
+   * are excluded from the annualised Cashflow/yr (they show as an actual in the
+   * month they occur, not ×frequency). Undefined/null/true = recurring (default)
+   * — only an explicit `false` excludes; the `=== false` gate is null-safe, so a
+   * nullable DB column maps straight in.
+   */
+  isRecurring?: boolean | null;
 }
 export interface CashflowLoan {
   id?: string;
@@ -160,6 +169,9 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
   let expensesUsedActuals = false;
   const expenseLines: CashflowExpenseLine[] = [];
   for (const e of expenses) {
+    // MON-037: a one-off is not a recurring monthly cost — it never enters the
+    // run-rate total (it appears as an actual in its month, not ×frequency).
+    if (e.isRecurring === false) continue;
     const r = resolveMonthly({
       declaredMonthly: toMonthly(e.amount, e.frequency as never),
       cadenceHintFrequency: e.frequency,

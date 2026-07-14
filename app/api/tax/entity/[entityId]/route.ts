@@ -187,6 +187,7 @@ export const POST = withPermission<RouteContext>(
             frequency: true,
             category: true,
             isTaxDeductible: true,
+            isRecurring: true, // MON-037: count one-offs once, not ×frequency
             propertyId: true,
             loanId: true,
           },
@@ -469,6 +470,7 @@ export const POST = withPermission<RouteContext>(
           amount: Number(e.amount),
           frequency: e.frequency,
           isTaxDeductible: e.isTaxDeductible,
+          isRecurring: e.isRecurring, // MON-037: count one-offs once, not ×frequency
           propertyId: e.propertyId ?? undefined,
           loanId: e.loanId ?? undefined,
         })),

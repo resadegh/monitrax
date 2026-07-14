@@ -68,7 +68,7 @@ Run the per-fix Chrome verification loop (§4) against the PR preview or prod af
 ### Stage 5 — PROMOTE → `CLOSED`  *(NeoAudit grows — the "live system" contract)*
 An issue may be VERIFIED and still not CLOSED. Closing requires the finding to be permanently absorbed into NeoAudit's structure (§23.2.6):
 1. **Ratchet test is merged + running in CI** at the lowest ring — this class never reaches Ring 3 again; the Chrome brief shrinks accordingly.
-2. **Neomatrix reflects the fixed topology** — rogue producers deleted from the graph, surfaces repointed, blind spots modelled with their `semanticKey` (so A3 convergence guards them from now on).
+2. **Neomatrix reflects the fixed topology — COUPLED to the NeoAudit update, same PR (CLAUDE.md Part 24 #6, Reza 2026-07-14).** The map and the proof move together: whenever you add a Ratchet test / parity resolver / modelled surface to NeoAudit, you update the Neomatrix in the SAME PR — rogue producers deleted from the graph, surfaces repointed, blind spots modelled with their `semanticKey` (so A3 convergence guards them from now on), and any drifted `file:line` anchor re-pinned (`neomatrix:check` fails the build on drift). You never update one without the other.
 3. **Parity-matrix / golden coverage grown** where the issue exposed a coverage hole (including fixing any resolver that MASKED the bug by reading a shared source instead of the real independent paths — the MON-035 parity lesson).
 4. **Baseline updated** (`docs/verification/baselines/BASELINE.md`) with the new correct numbers; plan/changelog synced (§15/§16).
 - **Exit gate (→ CLOSED):** promotion evidence listed in the issue entry. **A fixed-but-not-promoted issue is an incomplete fix and stays VERIFIED.**

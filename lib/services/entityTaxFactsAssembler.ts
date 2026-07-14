@@ -720,6 +720,7 @@ async function loadAttributedIncomeExpense(
     frequency: true,
     category: true,
     isTaxDeductible: true,
+    isRecurring: true, // MON-037: count one-offs once, not ×frequency
     ownerEntityId: true,
     propertyId: true,
     loanId: true,
@@ -803,6 +804,7 @@ async function loadAttributedIncomeExpense(
       amount: Number(e.amount) * w,
       frequency: e.frequency,
       isTaxDeductible: e.isTaxDeductible,
+      isRecurring: e.isRecurring, // MON-037: count one-offs once, not ×frequency
       propertyId: e.propertyId ?? undefined,
       loanId: e.loanId ?? undefined,
     });

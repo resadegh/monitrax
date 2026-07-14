@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 9 · 🟡 2 · 🟠 25 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 8 · 🟡 2 · 🟠 26 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -43,7 +43,7 @@
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
 | MON-035 | 🔵 OPEN | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | — | — |
 | MON-036 | 🔵 OPEN | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | — | — |
-| MON-037 | 🔵 OPEN | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | — | — |
+| MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
 | MON-040 | 🔵 OPEN | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | — | — |
@@ -712,14 +712,22 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 
 ### MON-037 — One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: expenses · opened 2026-07-14
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: expenses · opened 2026-07-14
 
 > **What was wrong:** Several one-off costs (a battery, a subdivision fee, a paint job) are being treated as if you pay them every month, which massively overstates your monthly expenses; there also looks to be a duplicate battery entry.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** One-offs (marked not-recurring) are excluded from your property's yearly cashflow and expense totals — they show as a real cost in the month they happened, not every month. In tax, a one-off deductible cost is now counted ONCE at its real amount instead of ×12.
+>
+> **What you should see:** On a property with a one-off cost (e.g. the battery), the Cashflow/yr and the property Expenses card no longer treat it as a monthly cost; and your tax deductions drop to the real figure (an $11,385 one-off counts as $11,385, not $136,620).
+
+- **Root cause:** `lib/calculations/propertyCashflow.ts:172`, `lib/tax-engine/position/taxPositionCalculator.ts:195`, `lib/tax-engine/position/taxPositionCalculator.ts:688`
+- **Neomatrix:** `number.propertyCashflow`, `engine.taxPositionCalculator.calculateTaxPosition`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`, `app/api/portfolio/snapshot/route.ts`, `components/properties/PropertyExpensesCard.tsx`, `lib/services/masterFinancialService.ts`, `app/api/tax/position/route.ts`, `lib/tax-engine/position/userTaxPosition.ts`, `lib/services/entityTaxFactsAssembler.ts`, `app/api/tax/entity/[entityId]/route.ts`
+- **Fix PR(s):** ##1395
+- **Holistic test (§19.4):** `tests/calculations/mon037OneOffEngines.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: HOME / Thornland Lot 1 / Guildford expense lists. Expected: one-off items not recurring per-month; no duplicate battery. Actual: Battery/Battery System/Battery Replacement on HOME incl ESTIMATE+ACTUAL both 136620/yr; CJM and Bankwest subdivision fees on Thornland Lot 1; Painting Home on Guildford all tagged MONTHLY. Evidence/run: VR-002.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: HOME / Thornland Lot 1 / Guildford expense lists. Expected: one-off items not recurring per-month; no duplicate battery. Actual: Battery/Battery System/Battery Replacement on HOME incl ESTIMATE+ACTUAL both 136620/yr; CJM and Bankwest subdivision fees on Thornland Lot 1; Painting Home on Guildford all tagged MONTHLY. Evidence/run: VR-002. | [FIX 2026-07-14] RC-A resolved: added an isRecurring gate to the two engines the general MON-023 fix never reached — propertyCashflow.ts:172 excludes one-offs from the run-rate; taxPositionCalculator.ts:195/688 count a one-off once (not ×frequency). Threaded isRecurring through ALL 9 producers/callers (§19.4) + entity Prisma selects. aggregateExpenses deliberately NOT gated (master relies on it for its separate all/recurring/nonRecurring computation — gating would zero nonRecurring). Ratchet Ring-0 + source-lock: tests/calculations/mon037OneOffEngines.test.ts. Neomatrix anchors re-pinned (masterFinancialService 1822→1823, taxPositionCalculator 92→101, propertyCashflow 130→137). RC-B (reconcile duplicate) + RC-C (frequency detection) scoped as follow-ups. Advances to FIXING with the PR number.
 
 ### MON-038 — CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct)
 

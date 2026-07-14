@@ -1232,7 +1232,7 @@ function buildPropertyMetrics(
     );
     const cf = computePropertyCashflow({
       income: propertyIncome.map(i => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
-      expenses: propertyExpenses.map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency })),
+      expenses: propertyExpenses.map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring })),
       loans: propertyLoans.map(l => ({
         id: l.id,
         principal: l.principal,
@@ -1369,6 +1369,7 @@ function buildTaxSummary(
     amount: e.amount,
     frequency: e.frequency,
     isTaxDeductible: e.isTaxDeductible,
+    isRecurring: e.isRecurring, // MON-037: count one-offs once, not ×frequency
     propertyId: e.propertyId ?? undefined,
     loanId: e.loanId ?? undefined,
   }));

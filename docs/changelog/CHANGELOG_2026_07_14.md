@@ -331,3 +331,41 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 - **Coverage boundary (honest — §22.2.4):** this ANALYSES + PLANS; it FIXES nothing. The
   cluster groupings are fix-planning hypotheses to be confirmed by §19.2 diagnosis at fix
   time; the rectification itself (starting with cluster ①) is the next phase, on Reza's go.
+
+---
+
+## Session: chat-audit-findings — MON-037 fix (expense one-off hub)
+
+### Changes Made
+- **Type**: Fix (financial, changesNumbers) + process rule
+- **Scope**: property cashflow + tax deduction engines; CLAUDE.md Part 24 #6
+- **Root Cause**: one-off expenses (`isRecurring === false`) stored MONTHLY were annualised ×12 in the two engines the general MON-023 fix never reached — the per-property cashflow engine (`propertyCashflow.ts`) and the tax deduction loops (`taxPositionCalculator.ts`, Float + Decimal). A $11,385 battery read as $136,620/yr on the property expense card/cashflow AND in tax deductions.
+- **Solution** (DECISION 1 — Reza 2026-07-14): a one-off is EXCLUDED from the property recurring run-rate (`propertyCashflow.ts:172`), and COUNTED ONCE (its amount, not ×frequency) in tax deductions (`taxPositionCalculator.ts:195` + `:688`). `isRecurring` threaded through all 9 producers/callers (§19.4) + entity Prisma selects. `aggregateExpenses` deliberately NOT gated (the master uses it for its separate all/recurring/nonRecurring computation — gating would zero `nonRecurring`).
+
+### Files Modified
+- `lib/calculations/propertyCashflow.ts` — `CashflowExpense.isRecurring` + run-rate gate
+- `lib/tax-engine/position/taxPositionCalculator.ts` — `ExpenseItem.isRecurring` + count-once (both engines)
+- `lib/tax-engine/types.ts` — `EntityTaxFacts.expenses.isRecurring`
+- `lib/services/masterFinancialService.ts`, `app/api/portfolio/snapshot/route.ts` — property caller threading
+- `app/api/tax/position/route.ts`, `lib/tax-engine/position/userTaxPosition.ts`, `lib/services/entityTaxFactsAssembler.ts`, `app/api/tax/entity/[entityId]/route.ts` — tax caller threading + entity selects
+- `components/properties/PropertyExpensesCard.tsx` — `PropertyExpense.isRecurring`
+- `tests/calculations/mon037OneOffEngines.test.ts` — Ring-0 lock + §19.4 source-lock (new)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — 3 anchors re-pinned (Neomatrix lockstep)
+- `CLAUDE.md` Part 24 #6 + `docs/issues/FIX_PROTOCOL.md` §5 — Neomatrix⟺NeoAudit coupling rule
+- `docs/issues/ISSUES.json` + `ISSUES.md` — MON-037 → DIAGNOSED (→ FIXING with PR)
+
+### §19.2 evidence
+- Input: `Expense.amount` (AUD), `frequency` (enum), `isRecurring` (bool, `schema.prisma:1949`).
+- Rule: a one-off is not a recurring per-period cost; DECISION 1 excludes it from run-rate, counts it once for FY tax.
+- Worked example: $11,385 battery MONTHLY → run-rate contribution $0 (was $136,620); tax deduction $11,385 (was $136,620). Recurring $1,000/mo → $12,000/yr unchanged.
+- Verified: `tests/calculations/mon037OneOffEngines.test.ts` (8 tests) + no regression across 1138 property/tax/golden tests.
+
+### Build Status
+- [x] Ring-0 + source-lock tests pass (14)
+- [x] property/tax/golden suites pass (1138)
+- [x] `neomatrix:check` green (anchors re-pinned)
+- [x] `issues:check` green (43 valid)
+
+### Testing
+- [x] Ratchet Ring-0 lock; §19.4 downstream sweep verified via golden end-to-end suites
+- [ ] Ring-3 per-fix Chrome verification (in the consolidated brief — before VERIFIED)
