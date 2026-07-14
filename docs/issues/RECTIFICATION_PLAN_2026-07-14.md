@@ -64,27 +64,17 @@ Already-FIXING findings (shipped fixes awaiting Ring-3 confirm) are listed in §
 
 ---
 
-## 5. TWO PRODUCT DECISIONS NEEDED BEFORE FIXING (only you can make these — §20.5)
+## 5. TWO PRODUCT DECISIONS — ✅ DECIDED by Reza 2026-07-14
 
-Both are load-bearing: the fix cannot be "correct" without your call, and I will **not** guess them.
+Both were load-bearing user-philosophy forks (§20.5); Reza made both calls. Recorded here as the canonical basis for clusters ① and ②③.
 
-### DECISION 1 — One-off expense semantics (blocks cluster ①, MON-037)
+### DECISION 1 — One-off expense semantics (cluster ①, MON-037) — ✅ **DECIDED: Exclude, show in-month**
 
-When an expense is a **one-off** (`isRecurring = false`), how should it enter the recurring monthly/annual figures?
+A **one-off** (`isRecurring = false`) is **EXCLUDED** from the recurring monthly/annual total (the plan/estimate) and shown as an **actual in the month it occurred**. Mirrors the rule already accepted in MON-023 for the general dashboard, so one definition of "recurring" holds everywhere (the honest run-rate — a one-off battery is not a monthly cost). _Tax caveat (separate, §12.14):_ the deductibility of a one-off (immediate repair vs capital → CGT cost base) is its own ATO question the exclusion does not resolve — flagged in MON-037's plan, not fixed under it.
 
-- **Option A (recommended):** **Exclude** it from the recurring monthly/annual total (the plan/estimate), and show it as an **actual in the month it occurred**. This mirrors the rule already accepted in MON-023 for the general dashboard, so one definition of "recurring" holds everywhere.
-- **Option B:** Amortise it over a horizon (e.g. spread a $12k battery over 12 months).
+### DECISION 2 — Canonical transaction window for property cashflow/yield (clusters ②③, MON-035/036) — ✅ **DECIDED: Trailing 12 months**
 
-_Financial-adviser lens:_ Option A is the honest run-rate — a one-off battery is not a monthly cost; showing it as such overstates outgoings and understates surplus. _Tax caveat (separate, §12.14):_ the deductibility of a one-off (immediate repair vs capital, added to CGT cost base) is its own ATO question the exclusion does not resolve — flagged in MON-037's plan.
-
-### DECISION 2 — Canonical transaction window for property cashflow/yield (blocks clusters ②③, MON-035/036)
-
-The same engine (`computePropertyCashflow`) is fed **three different transaction windows** today: detail + list use **all-time** (`propertyActuals.ts:152–174`, no date filter); the Home tile + master snapshot use the **last 12 months** (`portfolio/snapshot/route.ts:616`, `masterFinancialService.ts:762`). We must pick ONE window and apply it in the single canonical producer.
-
-- **Option A:** **All-time** (matches the current detail/list basis — the MON-028 "verified" reference).
-- **Option B (recommended):** A deliberate **trailing window** (e.g. 12 or 24 months) as the "current run-rate" — the better financial-adviser choice for a forward-looking cashflow, and it makes lumpy old transactions stop skewing the average.
-
-Either way, the fix is the same shape: **delete the duplicate fetches, route every surface through one producer, and make the window a single parameter of that producer.** I just need which window is canonical.
+Every property surface reads **one** producer fed a **trailing-12-month** transaction window (the "current run-rate" — the financial-adviser basis, and it stops lumpy old transactions skewing the average). This is already the master/dashboard basis; the fix makes property **detail + list adopt it too** (deleting their all-time `propertyActuals` path) so all four surfaces converge. **Note:** the detail/list cashflow + yield verified in VR-002 will SHIFT to the 12-month basis and re-verify cleanly under the new consistent window — the per-fix Chrome check (§3) captures this. Fix shape: **delete the duplicate fetches, route every surface through one producer, make the 12-month window a single parameter of that producer.**
 
 ---
 
@@ -101,7 +91,7 @@ Either way, the fix is the same shape: **delete the duplicate fetches, route eve
 
 **Worked example:** a $11,385 battery stored MONTHLY → `toMonthly` → ×12 = **$136,620/yr**; with the ESTIMATE + reconciled ACTUAL both present (RC-B duplicate), it counts twice. Correct (Option A): $0 in the recurring annual total; shown as an actual in its month.
 
-**Remove-the-culprit fix (pending DECISION 1 = Option A):** add `isRecurring?: boolean` to `CashflowExpense`, `ExpenseInput`, and the tax `TaxEngineExpenseItem`; thread the field (already on every Prisma row) through the `.map(...)` at `masterFinancialService.ts:1233,1365`, `properties/[id]/page.tsx:167`, `properties/page.tsx:472`, `portfolio/snapshot:727`, `tax/position/route.ts:136`; skip `isRecurring === false` from the annualised total in `propertyCashflow.ts:162`, `expenseAggregator.ts:88`, and the tax loop `taxPositionCalculator.ts:182` (+ its Decimal sibling ~:673). RC-B: before `sameMerchant`, match an existing budgeted estimate on the same `propertyId`+`category` and UPDATE it (Phase-30 flow) instead of creating. RC-C: wire the existing cadence detection into the create path; delete the dead detector.
+**Remove-the-culprit fix (DECISION 1 = ✅ Exclude, show in-month):** add `isRecurring?: boolean` to `CashflowExpense`, `ExpenseInput`, and the tax `TaxEngineExpenseItem`; thread the field (already on every Prisma row) through the `.map(...)` at `masterFinancialService.ts:1233,1365`, `properties/[id]/page.tsx:167`, `properties/page.tsx:472`, `portfolio/snapshot:727`, `tax/position/route.ts:136`; skip `isRecurring === false` from the annualised total in `propertyCashflow.ts:162`, `expenseAggregator.ts:88`, and the tax loop `taxPositionCalculator.ts:182` (+ its Decimal sibling ~:673). RC-B: before `sameMerchant`, match an existing budgeted estimate on the same `propertyId`+`category` and UPDATE it (Phase-30 flow) instead of creating. RC-C: wire the existing cadence detection into the create path; delete the dead detector.
 
 **Lowest-ring test (Ratchet):** Ring-0 fixtures on each engine (one-off contributes 0 to the annual total, still shows in-month); Ring-1 Neomatrix — add the `isRecurring` gate to the modelled aggregation edges so A3 flags any future producer that re-annualises one-offs; Ring-2 golden route test — a synthetic property with a one-off → property card total == master snapshot == tax deductions, all excluding it.
 
@@ -109,7 +99,7 @@ Either way, the fix is the same shape: **delete the duplicate fetches, route eve
 
 **Chrome verification spec (per-fix):** capture on HOME / Thornland Lot 1 / Guildford — each one-off expense row's recurring flag + the property's annual expense total + Cashflow/yr; the tax card's total deductions. **Regression guard:** the property Cashflow/yr on detail vs list vs Home tile (must still agree), and the master-snapshot monthly expenses (must not change for genuinely-recurring items). Expect: one-offs gone from recurring totals, no Battery duplicate, deductions drop by the one-off inflation.
 
-**§20.6 gate (my self-review):** Document 10/10 (matches §19.1 actuals rule + the accepted MON-023 definition; Neomatrix edges to update) · Requirements 10/10 (fixes the exact VR-002/003 symptom at root) · Logic **blocked on DECISION 1** — the fix is correct only once Option A/B is chosen; until then this is 9/10 pending your call. **Coverage honesty:** the Ratchet tests prove one-offs are excluded from the annual totals and the three surfaces agree; they do NOT prove the tax *deductibility* (capital vs immediate) of any given one-off — that is a separate §12.14 question flagged below.
+**§20.6 gate (my self-review):** Document 10/10 (matches §19.1 actuals rule + the accepted MON-023 definition; Neomatrix edges to update) · Requirements 10/10 (fixes the exact VR-002/003 symptom at root) · Logic 10/10 (DECISION 1 = Exclude resolved; the fix is now fully specified). **Financial build — 10/10 required and met.** **Coverage honesty:** the Ratchet tests prove one-offs are excluded from the annual totals and the three surfaces agree; they do NOT prove the tax *deductibility* (capital vs immediate) of any given one-off — that is a separate §12.14 question flagged above.
 
 ---
 
@@ -120,7 +110,7 @@ Either way, the fix is the same shape: **delete the duplicate fetches, route eve
 
 **Verified root cause (§19.2):** the Neomatrix is right that `computePropertyCashflow` (`propertyCashflow.ts:130`) is the ONE **engine** — but three surfaces feed it **three different transaction-input windows** (same engine ≠ same inputs — the MON-028 lesson): detail + list use all-time (`propertyActuals.ts:152–174`, no date filter — ✓ verified); Home tile + master use last-12-months (`portfolio/snapshot/route.ts:616` — ✓ verified; `masterFinancialService.ts:762`). `resolveMonthly` averages over the *supplied* transactions, so the two sets yield different monthly rent/expense → different `annualCashflow`/yield. **HOME is the only property whose reconciled transactions predate 12 months**, so only it diverges (the other 6 pass MON-028). For yield, there is additionally a **4th, fully independent producer**: the CFO Risk Radar computes yield from **declared income**, bypassing the engine — `riskRadar.ts:395–397` (`annualIncome/currentValue`, `include:{income,expenses}` only, no transactions) → the 1.05% third value.
 
-**Remove-the-culprit fix (pending DECISION 2):** delete the inline 12-month `unifiedTransaction.findMany` in `portfolio/snapshot/route.ts:613–632` and `masterFinancialService.ts:762–769`; route both through the canonical `enrichPropertiesWithActuals` so all four surfaces get the identical transaction set, with the chosen window a parameter of that one producer. For MON-036: delete the inline declared-yield in `riskRadar.ts:395–397` and feed `detectPropertyUnderperformanceRisks` the already-computed `PropertyMetrics` (carries the engine's `rentalYield`) — also removes riskRadar's independent `prisma.property.findMany` (§12.10 win).
+**Remove-the-culprit fix (DECISION 2 = ✅ Trailing 12 months):** make `enrichPropertiesWithActuals` (`propertyActuals.ts:152–174`) apply a trailing-12-month filter (the single canonical producer + window), and delete the inline 12-month `unifiedTransaction.findMany` in `portfolio/snapshot/route.ts:613–632` and `masterFinancialService.ts:762–769` — route ALL four surfaces (detail, list, Home tile, master) through that one producer so they get the identical 12-month transaction set. Detail + list drop their all-time path and adopt the 12-month window. For MON-036: delete the inline declared-yield in `riskRadar.ts:395–397` and feed `detectPropertyUnderperformanceRisks` the already-computed `PropertyMetrics` (carries the engine's `rentalYield`) — also removes riskRadar's independent `prisma.property.findMany` (§12.10 win).
 
 **Lowest-ring test (Ratchet):** the parity matrix currently **masks this** — `parityMatrix.ts:74–76` resolves both list-tile and home-tile from `c.master.properties[0]` (12-mo), so on a golden household with no >12-mo transactions master==route → **false green**. Fix: (a) add a Golden Household property with reconciled transactions spanning >12 months; (b) point the list/tile resolvers at their **real** independent serialized paths (`/api/properties` all-time vs `/api/portfolio/snapshot`) so three paths must converge; (c) model `number.propertyRentalYield` in the Neomatrix with a shared `semanticKey` + `rendered-at` edges from detail/list/home-tile/risk-radar so A3 convergence auto-catches a rogue yield producer.
 
@@ -128,7 +118,7 @@ Either way, the fix is the same shape: **delete the duplicate fetches, route eve
 
 **Chrome verification spec:** capture HOME Cashflow/yr on detail + list + Home tile (must be equal) and yield on detail + list + Home tile + CFO Risk Radar (must be equal). **Regression guard:** the other 6 properties' cashflow/yield (must be unchanged — they already agreed), and CFO health/savings scores (must move only if the window changed their inputs, expected + explained).
 
-**§20.6 gate:** Document 10/10 · Requirements 10/10 · Logic **blocked on DECISION 2** (correct only once the window is chosen). Exact dollar magnitudes are ⚠️ data-dependent (live transaction dates) — mechanism fully verified, arithmetic confirmed at fix time via Chrome.
+**§20.6 gate:** Document 10/10 · Requirements 10/10 · Logic 10/10 (DECISION 2 = Trailing 12 months resolved; fix fully specified). **Financial build — 10/10 required and met.** Exact dollar magnitudes are ⚠️ data-dependent (live transaction dates) — mechanism fully verified, arithmetic confirmed at fix time via Chrome.
 
 ---
 
@@ -263,4 +253,11 @@ Residual for cluster ④: MON-012/031 also want the Ring-2 cross-surface bucket 
 
 **3× self-review performed on this plan.** What the critique changed: v1 listed all 43 registry issues → narrowed to the **9 OPEN** findings as the actual new-work set (the other FIXING items are §7, code-complete, awaiting Chrome). v2 treated MON-043/042 as SSOT collapses → corrected to **basis-labelling** (forcing equality would be a wrong fix hiding real semantic differences — the cluster ⑥ agent's load-bearing catch, re-verified). v3 surfaced the **two product decisions** as explicit blockers rather than guessing them (§20.5). Every number-changing root cause was re-verified by me in source before being called "verified."
 
-**Honest scores:** the plan itself is **10/10** against the request. Two per-issue fixes (MON-037, MON-035/036) sit at **9/10 pending DECISIONS 1 & 2** — by design; they cannot honestly reach 10/10 until you make those calls. No fixing starts until your "go."
+**Honest scores:** the plan itself is **10/10** against the request. With DECISIONS 1 & 2 now made (§5), **all nine per-issue fixes are at a full 10/10** — every root cause verified in source, every fix fully specified, every Ratchet test + Chrome spec defined. No fixing starts until your "go."
+
+## 10. Decisions log
+
+| Decision | Resolution | Date |
+|---|---|---|
+| DECISION 1 — one-off expense semantics | **Exclude from recurring total, show as in-month actual** | 2026-07-14 |
+| DECISION 2 — canonical property transaction window | **Trailing 12 months** | 2026-07-14 |
