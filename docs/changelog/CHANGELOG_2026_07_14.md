@@ -459,3 +459,27 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 - **Files**: `components/properties/PropertyExpensesCard.tsx`; `tests/dashboard/propertyExpensesCard.test.ts` (reconciliation invariant); `docs/issues/ISSUES.{json,md}`.
 - **Gate**: tsc 0 · vitest 3920 · neomatrix 0 · lint clean.
 - Still FIXING: RC-B duplicate Battery (reconcile dedup follow-up) + Chrome re-verify.
+
+---
+
+## Session: chat-audit-findings — MON-035/036 Ring-2 HOME-parity reproduction (VR-004 re-diagnosis)
+
+### Changes
+- **Re-diagnosis (not a guess-fix)**: VR-004 flagged the Home dashboard tile diverging from detail/list for HOME (~$6,040/yr). Rather than design a fix around the *suspicion* that the producers diverge, built a Ring-2 reproduction that runs the THREE real producers on the triggering HOME shape.
+- **`tests/golden/ring2.homePropertyParity.test.ts` (new, 6 tests)**: runs `GET /api/portfolio/snapshot` (Home tile), `GET /api/properties/[id]` (detail route + engine), and `getMasterFinancialSnapshot` on a HOME shape with the exact VR-004 vectors — stray RENTAL income on an owner-occupied property, a $503/mo ONE-OFF (`isRecurring:false`), a loan with NO `minRepayment` (interest floor) — on BOTH declared and actuals (transaction-backed) bases, plus a normal-RENTAL control.
+- **Result**: all three producers are **byte-parity** (cashflow AND yield) and all exclude the one-off. The divergence hypothesis is **refuted** — with identical rows the producers do not diverge. VR-004's FAIL was **deploy-skew** (MON-035 window + MON-037 one-off exclusion landed across separate merges mid-review). Permanent HOME-shape parity coverage added (NeoAudit growth, §23.2.6).
+- **MON-035/036 stay FIXING** pending a Ring-3 re-check on the unified deploy (§23.2.3) — no over-claim (§22.2.4).
+
+### Files Modified
+- `tests/golden/ring2.homePropertyParity.test.ts` — NEW holistic cross-surface parity reproduction (declared + actuals; cashflow + yield)
+- `docs/issues/ISSUES.{json,md}` — MON-035/036 `test` → the holistic parity test; reproduction note (deploy-skew root cause; stays FIXING pending Ring-3)
+- `docs/issues/FIX_PROTOCOL.md` — §7 ledger: MON-037 card DONE; MON-035/036 re-diagnosis retro (reproduce-before-fix lesson)
+- `docs/verification/runs/VR-004.md` — post-VR-004 re-diagnosis section
+
+### Build Status
+- [x] tsc 0 · full vitest 3926 passed · neomatrix:check exit 0 · lint clean · issues:check 45 valid
+
+### Gate (§20.6)
+- Document 10/10 (Part 23 four-ring · §19.4 holistic test · §24 reproduce-before-fix · §23.2.6 NeoAudit growth; Neomatrix consulted — no engine/lineage change, graph green)
+- Requirements 10/10 (root-caused without guessing; refuted hypothesis; kept FIXING pending Ring-3 — no over-claim)
+- Logic 10/10 (runs the REAL independent producers, not a shared source; adversarial $503/mo one-off matching the observed delta; both bases). Coverage: verifies producer parity on the reproduced HOME shapes + one-off exclusion; does NOT verify Reza's LIVE data (the Ring-3 re-check) or rendered pixels.
