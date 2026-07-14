@@ -10,6 +10,7 @@
 |------|----------|
 | **Live operational SSOT (now / next / blocked)** | [docs/IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) |
 | **Lighthouse adviser pitch playbook** | [docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md](../pitch/LIGHTHOUSE_ADVISER_PITCH.md) |
+| **Launch program — 31 July 2026 gates** | [LAUNCH_PROGRAM_2026-07.md](LAUNCH_PROGRAM_2026-07.md) |
 | **Run the demo seed** | `npm run seed:lighthouse` (idempotent; `--reset` for clean re-seed) |
 | System overview / "how does it work?" | [System Overview](architecture/01_SYSTEM_OVERVIEW.md) |
 | Which environment am I looking at? | [Environment Strategy](architecture/02_ENVIRONMENT_STRATEGY.md) |
