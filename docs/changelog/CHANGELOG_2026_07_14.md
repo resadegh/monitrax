@@ -239,3 +239,50 @@
 **§8 steps 1–6 COMPLETE — the NeoAudit core build is done.** Step 7 (Argos/axe/
 DevTools-MCP/Checkly) stays deferred by design (only on a §7 trigger). Next: VR-003 —
 the comprehensive two-phase Chrome sweep to compile the complete issue list.
+
+## Session: chat-audit-findings-issues-m9518i (continued) — NeoAudit is a LIVE system (the growth loop)
+
+### Change: codify "every Chrome/Ring-3 finding is promoted into the NeoAudit structure; NeoAudit is never done"
+
+- **Type**: Governance / docs — a standing principle (plan + handbook + law)
+- **Scope**: `docs/blueprint/NEOAUDIT.md` (new §10 + §0 pointer + §9(g)) + `CLAUDE.md`
+  (§23.2 rule 6) + `docs/implementation/01_ACTIVE_WORKSTREAMS.md` (LIVE workstream + decision)
+- **Why**: Reza directive 2026-07-14 — *"any issue found through the Claude Chrome brief
+  needs to be added to the NeoAudit structure for future tests. As planned NeoAudit is a
+  live system that needs to keep getting better and more complete for auditing Monitrax."*
+  The mechanism already existed (the Ratchet), but the LIVING-SYSTEM framing — NeoAudit is
+  never "closed", every Chrome finding grows the permanent structure, coverage marches to
+  100% — needed to be explicit in the plan, the handbook, and the law.
+- **Solution**:
+  - **Handbook (`NEOAUDIT.md`)** — new **§10 "The growth loop — NeoAudit is a LIVE system,
+    never done"**: the mandatory feedback loop (file → root-cause → **PROMOTE into the
+    lowest permanent ring via the Ratchet** → model + grow coverage), the consequence
+    (automated rings GROW, the Chrome brief SHRINKS), and "the workstream is standing,
+    never closed." A §0 operator-guide pointer + a §9(g) reviewer-rejection (fix without
+    promotion = incomplete).
+  - **Law (`CLAUDE.md` §23.2 rule 6)** — the living-system rule, quoting the directive:
+    every Chrome/Ring-3 finding is ADDED TO THE STRUCTURE for future tests; a finding fixed
+    but not promoted is an incomplete fix; NeoAudit's coverage only grows for the life of
+    the product. (§23.3(b) already rejects "closes a Ring-3 bug without its Ratchet test".)
+  - **Plan (`01_ACTIVE_WORKSTREAMS.md`)** — the NeoAudit workstream is now **STANDING/LIVE,
+    never closed**; the directive recorded as a DO-NOT-DRIFT decision.
+
+### Files Modified
+- `docs/blueprint/NEOAUDIT.md` — §10 growth loop + §0 pointer + §9(g)
+- `CLAUDE.md` — §23.2 rule 6 (living system)
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — LIVE workstream + growth-loop decision
+
+### Build Status
+- [x] Doc/governance only — no code/test surface touched
+
+### Gate (§20.6)
+- Document 10/10 (the growth loop = the existing Ratchet made explicit as a living-system
+  principle; placed in plan + handbook + law exactly as Reza asked; no new mechanism
+  invented — reuses issues:raise + the Ratchet + the parity coverage ratchet) ·
+  Requirements 10/10 (adds it to the plan and the handbook, and reinforces the law for
+  "always followed") · Logic 10/10 (consistent with §23.2 rule 2 + §5 coverage ratchet +
+  §21.2.1; no duplication — points at the one finding bus + the one Ratchet).
+- **Coverage boundary (honest — §22.2.4):** this is a governance/doc change — it codifies
+  the standing principle; it adds no test itself. The principle is ENFORCED by the existing
+  §23.3(b) reviewer rule + §9(g) + the registry gate (a number-changing issue can't reach
+  VERIFIED without its holistic test).

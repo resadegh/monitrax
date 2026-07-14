@@ -26,6 +26,8 @@
 
 You never memorise rules: CLAUDE.md Part 23 binds every Claude session to this machine automatically, and the playbook lets any future session run it cold.
 
+**NeoAudit is LIVE — it never stops getting better (§10).** Every issue a Chrome brief finds is fed back into the structure as a permanent lower-ring test (the Ratchet), so the same class can never escape again and coverage grows toward 100% of Monitrax. The §8 build is complete; the **growth loop runs for the life of the product** — the workstream is standing, never closed.
+
 ## 1. Architecture — rings, nodes, and the ONE handshake
 
 ### 1.1 The rings (from CLAUDE.md Part 23, unchanged)
@@ -167,4 +169,24 @@ One generated readout — publish when ALL green: Rings 0–2 green on CI · R3-
 
 ## 9. Reviewer enforcement
 
-Reject any PR/session that: (a) adds a check without naming its owning node, or at a node when a lower one could host it (anti-overlap); (b) lets a tool assert outside its sole-responsibility column; (c) routes findings anywhere but the registry; (d) exposes real data to any third-party/agentic tool; (e) grows permanent assertions inside R3 instead of promoting them down; (f) claims coverage as words instead of the scorecard's printout.
+Reject any PR/session that: (a) adds a check without naming its owning node, or at a node when a lower one could host it (anti-overlap); (b) lets a tool assert outside its sole-responsibility column; (c) routes findings anywhere but the registry; (d) exposes real data to any third-party/agentic tool; (e) grows permanent assertions inside R3 instead of promoting them down; (f) claims coverage as words instead of the scorecard's printout; (g) **fixes/closes a Chrome/Ring-3 finding without adding its permanent lower-ring test (§10 — the finding must enter the NeoAudit structure).**
+
+## 10. The growth loop — NeoAudit is a LIVE system, never "done" (Reza directive 2026-07-14)
+
+> **Reza directive 2026-07-14:** *"any issue found through the Claude Chrome brief needs to be added to the NeoAudit structure for future tests. As planned NeoAudit is a live system that needs to keep getting better and more complete for auditing Monitrax."*
+
+**NeoAudit is never finished — it is a living system whose coverage only ever grows.** The §8 build plan built the *machinery*; the machinery's whole purpose is to keep ingesting reality and hardening into permanent tests. Every Ring-3 run (Chrome brief / self-audit) is not just a check — it is a **source of new structure**.
+
+**The mandatory feedback loop (every Chrome/Ring-3 finding follows it — no exceptions):**
+
+1. **File it** — every finding becomes a `MON-###` in the registry via `npm run issues:raise` (the ONE finding bus, §1.2). Nothing is left in chat.
+2. **Root-cause it** — §19.2 in code (never guess); the fix REMOVES the culprit (§4), never wraps it.
+3. **PROMOTE it into the structure (the Ratchet, §1.2 rule 2) — this is the load-bearing step Reza is naming.** The fix PR MUST add a **permanent automated test at the LOWEST ring that could have caught it**, so the same class can NEVER escape the Chrome brief again:
+   - wrong formula → a **Ring-0** fixture/property;
+   - duplicate producer / SSOT drift → a **Ring-1** Neomatrix model + `neomatrix:check` + surface-linter rule;
+   - plumbing / serialization / composition → a **Ring-2** golden route/oracle/parity test (e.g. a new `SURFACE_RESOLVERS` entry in the parity matrix, a new mutation axis, a golden-route assertion);
+   - render-only / display → a **Ring-2** UI-tier or display-guard check.
+   The Chrome brief then STOPS re-checking that class — promotion, not duplication. **A finding that is fixed but not promoted is an incomplete fix (§9(g)).**
+4. **Grow the model + coverage** — if the finding touched an UNMODELLED number/surface, model it in the Neomatrix (§21.2.1) and add its parity-matrix resolver, so the coverage ratchet (§5) counts it. Coverage marches toward 100% of Monitrax's money surfaces; a new surface can't enter the graph without being covered or visibly tracked.
+
+**The consequence — the Chrome brief SHRINKS over time, the automated rings GROW.** Anything a human/agent had to eyeball once becomes a deterministic test that runs on every PR forever. That is how the same bug never surfaces twice, and how NeoAudit keeps getting *more complete* at auditing Monitrax with every run — exactly as planned. NeoAudit's workstream is therefore **standing/live, never closed**: the §8 build is done, but the growth loop runs for the life of the product.
