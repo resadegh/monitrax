@@ -448,3 +448,14 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 
 ### Build Status
 - [x] tsc 0 · full vitest 3917 passed · neomatrix:check exit 0 · lint clean
+
+---
+
+## Session: chat-audit-findings — MON-037 Expenses-card reconciliation (VR-004 regression)
+
+### Changes
+- **Root Cause (VR-004)**: MON-037 made the engine exclude one-offs from the recurring total, but `PropertyExpensesCard` still rendered raw one-off rows → "$0 total over non-zero rows" (Thornland/Guildford) and HOME total ≠ sum of rows.
+- **Fix**: render only recurring rows (`expenses.filter(isRecurring !== false)`), so Σ rows === the shown total; one-offs surfaced as a footnote ("+ N one-off costs — shown in Spending"). Count text now says "N recurring · M one-off".
+- **Files**: `components/properties/PropertyExpensesCard.tsx`; `tests/dashboard/propertyExpensesCard.test.ts` (reconciliation invariant); `docs/issues/ISSUES.{json,md}`.
+- **Gate**: tsc 0 · vitest 3920 · neomatrix 0 · lint clean.
+- Still FIXING: RC-B duplicate Battery (reconcile dedup follow-up) + Chrome re-verify.

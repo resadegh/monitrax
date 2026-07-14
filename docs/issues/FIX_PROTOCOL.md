@@ -150,7 +150,8 @@ Until E1–E3 land, the reviewer enforces those gates manually per CLAUDE.md Par
 
 | Date | Trigger | What escaped | Stage at fault | Change made |
 |---|---|---|---|---|
-| — | *(ledger opens empty — 2026-07-14)* | | | |
+| 2026-07-14 | VR-004 Stage-4 FAIL (MON-035) | Home dashboard tile still diverges from detail/list for HOME (~$6,040/yr) though both use `computePropertyCashflow` on a 12-month window in code — a runtime input difference on the portfolio/snapshot per-property path (F2). | Ring-2 (parity matrix). The parity resolver reads list+tile from a SHARED source (`c.master.properties[0]`) — the known false-green — so it never exercised the real independent portfolio/snapshot serialization path vs the property-detail path. | (planned) Repoint the parity resolvers to the REAL independent routes (`/api/portfolio/snapshot` tile vs `/api/properties/[id]` detail) + add a golden HOME-like property (loan w/o minRepayment + a one-off + >12-month txns) that reproduces the divergence. Re-diagnose MON-035 from Stage 1 on that fixture. |
+| 2026-07-14 | VR-004 Stage-4 FAIL (MON-037) | Expenses card lists raw one-off rows (labelled MONTHLY) while the card TOTAL excludes them → "$0 total over non-zero rows". | Ring-2. The MON-037 source-lock proved the ENGINE excludes one-offs, but no Ring-2 test exercised the PropertyExpensesCard row↔total reconciliation on a household WITH one-offs. | (planned) Render `cf.expenseLines` (recurring only) for the card rows + surface one-offs distinctly (not a MONTHLY recurring row); add a Ring-2 card-reconciliation test (Σ rows === card total) on a one-off-bearing golden property. |
 
 ---
 
