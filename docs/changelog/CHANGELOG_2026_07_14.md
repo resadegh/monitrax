@@ -532,3 +532,26 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 - Document 10/10 (§12.2.1 one-source presentation helper · §23.2.2 Ratchet; Neomatrix — pure presentation, allowlisted, graph green)
 - Requirements 10/10 (fixes the exact mislabel; signed data untouched; no gold-plating)
 - Logic 10/10 (direction enum + Math.abs magnitude; all 3 surfaces share it). Coverage: verifies the direction + non-negative magnitude rule; does NOT verify the rendered dialog pixels (manual/Ring-3).
+
+---
+
+## Session: chat-audit-findings — Neomatrix accuracy: correct nodes that reflected pre-fix (buggy) Monitrax
+
+### Context
+Reza directive (2026-07-14): "the Neomatrix was designed on the basis of the existing Monitrax, so all Monitrax issues are also reflected into the Neomatrix — fixes should be applied there as well." When a Monitrax bug is fixed, the matching graph node's **formula/lineage/status** must be corrected too (not just its `file:line` anchor — Part 24 #6 coupling extended to semantics).
+
+### Changes
+- **`engine.propertyCashflow.computePropertyCashflow`** — formula was STALE (described pre-fix behaviour). Updated to reflect the shipped fixes: **MON-037** (one-off expenses `isRecurring===false` are EXCLUDED from the recurring run-rate) + **MON-035** (actuals resolved over the trailing-12-month `propertyActualsWindow`). Added the `expense.isRecurring` input.
+- **`engine.taxIntegration.calculateNegativeGearingBenefit`** — this node models the **rogue** MON-045 producer. Flagged `status: "documented" → "suspected-issue"` with the full MON-045 diagnosis + Reza's Option-1 decision in the authority note, so the map honestly reflects the known defect. The node is deleted/repointed by the MON-045 fix PR (§21.2: a suspected bug is flagged, never silently changed).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — the two node corrections
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated
+
+### Build Status
+- [x] neomatrix:check OK (schema valid, invariants hold, markdown fresh) · 134 graph tests pass
+
+### Gate (§20.6)
+- Document 10/10 (Reza directive + Part 24 #6 coupling extended to node semantics; no design-doc deviation)
+- Requirements 10/10 (corrects exactly the stale/buggy nodes found; property-cashflow formula now matches the shipped code; neg-gearing flagged suspected-issue pending MON-045 — honest, not silently changed)
+- Logic 10/10 (formula text verified against propertyCashflow.ts:174 isRecurring gate + propertyActualsWindow; suspected-issue is a valid status enum; gate + tests green). Coverage: verifies schema/anchors/markdown-freshness + these 2 nodes' accuracy; does NOT re-audit all 262 nodes (broader pass ongoing).

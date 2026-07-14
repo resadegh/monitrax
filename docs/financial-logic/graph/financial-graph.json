@@ -4060,13 +4060,13 @@
       "semanticKey": null,
       "produces": "Estimated annual tax benefit from negatively-geared investment properties.",
       "formula": "per INVESTMENT property: net = annualIncome − annualExpenses − annualLoanInterest (Σ principal×interestRateAnnual); if net<0, benefit += |net|×(marginalRate/100). interestRateAnnual is a DECIMAL; marginalRate is a percent.",
-      "authority": "ITAA1997 rental-loss deductibility at marginal rate (PRE-reform). NOT gated for the Phase 41E reform (neg gearing → new builds only, 1 Jul 2027) — flagged for Reza (§12.14).",
+      "authority": "ITAA1997 rental-loss deductibility at marginal rate (PRE-reform). NOT gated for the Phase 41E reform (neg gearing → new builds only, 1 Jul 2027) — flagged for Reza (§12.14). MON-045 SUSPECTED ISSUE: this is a ROGUE SECOND producer — it auto-computes property loan interest (Σ principal×rate) that the canonical tax position does NOT auto-deduct (only counts logged LOAN_INTEREST/property expense rows), so the benefit can exceed total deductions (observed $157,746 ≈ 4× $39,554 — mathematically impossible: benefit=loss×rate ≤ loss ≤ property deductions < total deductions). A separate reform-aware canonical engine already exists (engine.tax.negativeGearing.applyNegativeGearing) but is production-unwired. Reza-approved fix (Option 1, 2026-07-14): auto-derive property loan interest in the canonical tax engine (de-duped vs logged LOAN_INTEREST, reform-gated §12.14), derive the benefit from that ONE source, and DELETE this rogue producer + its Decimal sibling (§12.2.1). This node is removed/repointed by the MON-045 PR.",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit engine cfo.taxIntegration.calculateNegativeGearingBenefit (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:293",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
-      "status": "documented"
+      "status": "suspected-issue"
     },
     {
       "id": "engine.taxIntegration.calculateUnrealisedCGT",
@@ -5542,7 +5542,7 @@
       "regime": null,
       "semanticKey": null,
       "produces": "Per-property annual + MONTHLY rent, expenses, loan repayment (P&I) + loan interest, headline cash cashflow and tax cashflow, plus the rental cadence detected from the dates. ONE source for every property surface (list, detail, master snapshot).",
-      "formula": "Each line → true monthly via monthlyResolver (day-span from transaction dates when ≥2 tx, declared×freq otherwise). RENT pooled at the property-STREAM level (all rental tx) so records fragmented by reconciliation are counted once. loanRepayment = actual → manual → interest floor (never $0). annual = monthly×12; cashflow = rent−expenses−repayment; taxCashflow = rent−expenses−interest.",
+      "formula": "Each line → true monthly via monthlyResolver (day-span from transaction dates when ≥2 tx, declared×freq otherwise); actuals resolved over the trailing-12-month property-actuals window (MON-035, propertyActualsWindow). RENT pooled at the property-STREAM level (all rental tx) so records fragmented by reconciliation are counted once. ONE-OFF expenses (expense.isRecurring===false) are EXCLUDED from the recurring run-rate (MON-037 — a one-off battery/subdivision fee is not a monthly cost; it shows as an in-month actual, never ×frequency). loanRepayment = actual → manual → interest floor (never $0). annual = monthly×12; cashflow = rent−expenses−repayment; taxCashflow = rent−expenses−interest.",
       "authority": "Property cashflow = rent − holding costs − loan servicing. §19.1 actuals-first; interest-only is the deductible figure (principal is not deductible). Loan cost never silently $0.",
       "inputs": [
         {
@@ -5556,6 +5556,12 @@
           "unit": "AUD",
           "type": "number",
           "note": "declared fallback"
+        },
+        {
+          "name": "expense.isRecurring",
+          "unit": "boolean",
+          "type": "boolean",
+          "note": "MON-037: false = one-off → EXCLUDED from the recurring run-rate (=== false gate is null-safe; undefined/null/true = recurring)"
         },
         {
           "name": "loan.principal",
