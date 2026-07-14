@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 4 · 🟡 3 · 🟠 29 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 4 · 🟡 2 · 🟠 30 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -44,7 +44,7 @@
 | MON-035 | 🟠 FIXING | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
 | MON-036 | 🟠 FIXING | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | ##1397 | ✅ |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
-| MON-038 | 🟡 DIAGNOSED | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | ✅ |
+| MON-038 | 🟠 FIXING | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
 | MON-040 | 🟠 FIXING | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
@@ -746,7 +746,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 ### MON-038 — CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **no** · area: cfo · opened 2026-07-14
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: cfo · opened 2026-07-14
 
 > **What was wrong:** My Guide suggests refinancing a loan whose balance is more than the property is worth (104pct), which no lender would do.
 >
@@ -756,6 +756,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 - **Root cause:** `lib/cfo/decisionSupport/loanDecisionSupport.ts:273`
 - **Downstream consumers (§19.4):** `lib/cfo/decisionSupport/loanDecisionSupport.ts`, `app/dashboard/cfo/page.tsx`, `lib/cfo/intelligenceEngine.ts`
+- **Fix PR(s):** ##1399
 - **Holistic test (§19.4):** `tests/cfo/loanDecisionSupportGuards.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
