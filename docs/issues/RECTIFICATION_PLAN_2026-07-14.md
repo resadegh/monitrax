@@ -18,6 +18,8 @@ Governing request (Reza, 2026-07-14):
 
 ## 2. The non-negotiable per-issue process (applied to EVERY issue)
 
+> **Canonical process (2026-07-14):** the permanent, issue-agnostic pipeline now lives in **`docs/issues/FIX_PROTOCOL.md`** (law: CLAUDE.md Part 24) — six stages with hard gates, the three-census holistic rule, the per-fix Chrome loop, and the promotion-into-NeoAudit close gate. This section and §3 below are that pipeline's *applied instance* for these 9 issues; on any conflict, FIX_PROTOCOL.md + CLAUDE.md win.
+
 Each issue is fixed **on its own**, start to finish, before the next is touched:
 
 1. **Understand the full process first (§10, §21.5).** Consult the Neomatrix for the number's canonical engine + lineage + `file:line`; read the producer and EVERY consumer end-to-end. Never assume; never guess.
