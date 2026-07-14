@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 8 · 🟡 2 · 🟠 26 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 7 · 🟡 3 · 🟠 26 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -41,7 +41,7 @@
 | MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
-| MON-035 | 🔵 OPEN | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | — | — |
+| MON-035 | 🟡 DIAGNOSED | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | — | ✅ |
 | MON-036 | 🔵 OPEN | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | — | — |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
@@ -689,15 +689,21 @@ Found by the NeoAudit §3 report-reconciliation lock on its FIRST run (§8 step-
 
 ### MON-035 — HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-14
 
 > **What was wrong:** On the Home dashboard, the HOME property's yearly cashflow tile shows a different number than the property's own detail page and the Properties list (which now agree).
 >
+> **What changed:** Every property surface now reads your reconciled transactions over the SAME trailing-12-month window (before, the detail page + list read all history while the Home dashboard read the last 12 months), so the same property shows the same Cashflow/yr and yield everywhere.
+>
+> **What you should see:** Open the HOME property: its Cashflow/yr on the detail page, the Properties list tile, and the Home dashboard tile now read the SAME number (and the same yield). The detail/list figures shift onto the 12-month run-rate basis.
+
+- **Root cause:** `lib/services/propertyActuals.ts:157`, `lib/calculations/propertyActualsWindow.ts:32`
 - **Neomatrix:** `number.propertyCashflow`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`, `app/api/portfolio/snapshot/route.ts`, `lib/services/masterFinancialService.ts`, `components/dashboard/tiles/DashboardPropertyTile.tsx`
+- **Holistic test (§19.4):** `tests/calculations/mon035PropertyActualsWindow.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home dashboard tile (HOME property cashflow). Expected: -321280/yr == detail/list. Actual: home tile -26270/mo => -315240/yr (delta 6040). Evidence/run: VR-002.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home dashboard tile (HOME property cashflow). Expected: -321280/yr == detail/list. Actual: home tile -26270/mo => -315240/yr (delta 6040). Evidence/run: VR-002. | [FIX 2026-07-14] DECISION 2 = trailing-12-month. Root cause: computePropertyCashflow (one engine) fed THREE windows — all-time (detail/list via enrichPropertiesWithActuals) vs 12-month (Home/master). Fix: ONE window source lib/calculations/propertyActualsWindow.ts referenced by all three fetch sites (added the window to enrich — the bug site; master/snapshot already 12-month, now reference the constant). Ratchet: tests/calculations/mon035PropertyActualsWindow.test.ts (unit + source-lock: all 3 sites use the one window, no inline -12 remains). Neomatrix 3 anchors re-pinned + new file allowlisted (graphify offline, self-prunes). Advances to FIXING with PR#.
 
 ### MON-036 — HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05)
 
@@ -708,7 +714,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: HOME detail/list vs Home tile vs CFO Risk Radar. Expected: same yield on every surface. Actual: 0.12pct detail/list, 0.9pct home tile, 1.05pct CFO risk radar. Evidence/run: VR-002.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: HOME detail/list vs Home tile vs CFO Risk Radar. Expected: same yield on every surface. Actual: 0.12pct detail/list, 0.9pct home tile, 1.05pct CFO risk radar. Evidence/run: VR-002. | [2026-07-14] The MON-035 window fix converges detail/list vs Home YIELD (0.12 vs 0.9 — yield derives from the window-based annualRent). REMAINING third value (CFO Risk Radar 1.05%) is riskRadar.ts:393 computing yield from DECLARED income (a separate producer, bypassing the engine) — the focused MON-036 fix (repoint to canonical), next PR.
 
 ### MON-037 — One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow
 
