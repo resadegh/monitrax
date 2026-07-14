@@ -154,7 +154,13 @@ export default function GlassMoneyFlowTile({ items, netIncome, totalExpenses, su
             <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" strokeWidth={1.5} />
           )}
           <span>
-            {incomeLines.length} income source{incomeLines.length === 1 ? '' : 's'} fed this month
+            {/* MON-039b: "fed this month" asserts income was RECEIVED. When
+                netIncome is 0 (no income landed in the actuals window) that is
+                false — the sources are declared, not fed. Distinguish the two
+                so a $0 Money In doesn't read as a contradiction. */}
+            {netIncome > 0
+              ? `${incomeLines.length} income source${incomeLines.length === 1 ? '' : 's'} fed this month`
+              : `${incomeLines.length} income source${incomeLines.length === 1 ? '' : 's'} · none received this month`}
           </span>
         </p>
       )}

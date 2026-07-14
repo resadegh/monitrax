@@ -163,6 +163,7 @@ interface IntelligenceData {
     }[];
     effectiveTaxRate: number;
     paygWithheld: number;
+    medicareLevy: number; // MON-039a
   };
   smartActions: {
     id: string;
@@ -664,6 +665,7 @@ export default function CashflowPage() {
               recommendations={intelligence.taxOptimization.recommendations}
               effectiveTaxRate={intelligence.taxOptimization.effectiveTaxRate}
               paygWithheld={intelligence.taxOptimization.paygWithheld}
+              medicareLevy={intelligence.taxOptimization.medicareLevy}
             />
           ) : (
             <GlassTaxTile
@@ -673,6 +675,7 @@ export default function CashflowPage() {
               recommendations={[]}
               effectiveTaxRate={0}
               paygWithheld={0}
+              medicareLevy={0}
             />
           )}
         </div>

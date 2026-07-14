@@ -140,6 +140,7 @@ interface TaxInsights {
     frankingCreditsAvailable: number;
     unrealisedCGT: number;
     paygWithheld: number;
+    medicareLevy: number;
   };
 }
 
@@ -888,6 +889,16 @@ export default function CFODashboardPage() {
               <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-3 w-3" />
                 Neg. Gearing Benefit: {formatCurrency(taxInsights.keyTaxMetrics.negativeGearingBenefit)}
+              </div>
+            )}
+
+            {/* MON-039a: itemise the Medicare levy (a COST — muted, not the
+                emerald benefit style). It is already included in the estimated
+                position above, so the copy says so to avoid implying it's extra. */}
+            {taxInsights.keyTaxMetrics.medicareLevy > 0 && (
+              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                <Percent className="h-3 w-3" />
+                Medicare levy: {formatCurrency(taxInsights.keyTaxMetrics.medicareLevy)} · included in tax above
               </div>
             )}
 
