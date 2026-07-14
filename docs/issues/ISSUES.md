@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**43 total** · 40 open · 🔵 5 · 🟡 3 · 🟠 28 · 🟢 4 · ✅ 2
+**43 total** · 40 open · 🔵 5 · 🟡 2 · 🟠 29 · 🟢 4 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -46,7 +46,7 @@
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
 | MON-038 | 🔵 OPEN | 🟠 | yes | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | — | — |
 | MON-039 | 🔵 OPEN | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | — | n/a |
-| MON-040 | 🟡 DIAGNOSED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | — | ✅ |
+| MON-040 | 🟠 FIXING | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
 | MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
 | MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
@@ -768,7 +768,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes display
 
 ### MON-040 — Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings)
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
 
 > **What was wrong:** The Tax page's savings suggestions show impossible numbers (e.g. 'save 3685%' and millions in savings), which look broken.
 >
@@ -779,6 +779,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes display
 - **Root cause:** `lib/tax-engine/position/taxPositionCalculator.ts:360`
 - **Neomatrix:** `engine.taxPositionCalculator.calculateTaxPosition`
 - **Downstream consumers (§19.4):** `app/api/tax/position/route.ts`, `app/dashboard/tax/page.tsx`
+- **Fix PR(s):** ##1398
 - **Holistic test (§19.4):** `tests/tax/mon040TaxRecommendations.test.ts`
 - **Detail:** `neoaudit-run:VR-003`
 

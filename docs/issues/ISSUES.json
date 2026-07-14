@@ -1252,7 +1252,7 @@
     {
       "id": "MON-040",
       "title": "Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-14",
@@ -1272,7 +1272,9 @@
         "app/api/tax/position/route.ts",
         "app/dashboard/tax/page.tsx"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1398"
+      ],
       "test": "tests/tax/mon040TaxRecommendations.test.ts",
       "tracker": "neoaudit-run:VR-003",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: app/dashboard/tax (recommendations panel). Expected: realistic savings figures and percentages. Actual: 'save 3685%', potential savings 1,105,500 and 6,274,704 rendered as real recommendations. Evidence/run: VR-003. | [FIX 2026-07-14] Verified end-to-end: incomeTaxCalculator.ts:118 returns marginalRate*100 (a PERCENT) -> TaxCalculation.marginalRate=37 -> generateRecommendations misread it as a decimal at :356/361/366/376. Fix: local mr = marginalRate/100 for rate math; guard >=32 (percent); '% saved' = marginalRate-15. Did NOT touch incomeTaxCalculator or the marginalRate type (tax page depends on percent). Worked examples reproduce the reported numbers exactly (37-0.15)*100=3685, 30000*36.85=1,105,500. Ratchet Ring-0: tests/tax/mon040TaxRecommendations.test.ts (22% not 3685; savings<20k; class invariant savings<=netTax). Blast radius = tax recommendations panel only (does NOT feed netTax/CFO). Advances to FIXING with PR#."
