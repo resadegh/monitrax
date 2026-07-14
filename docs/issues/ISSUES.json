@@ -1238,7 +1238,7 @@
       ],
       "test": "tests/cfo/loanDecisionSupportGuards.test.ts",
       "tracker": "neoaudit-run:VR-002",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#. | [VR-004 2026-07-14] Ring-3 MOSTLY-PASS: the 104% Bankwest line shows 'High LVR: 104%' with NO 'Consider refinancing' text (the action gate works). BUT it sits under a 'Refinance Savings — $5,141/yr — 3 opportunities' card header, and the drill-down /dashboard/debt returns 404 so the per-loan action couldn't be fully confirmed. TODO: confirm the '3 opportunities' count EXCLUDES the 104% loan (worthRefinancing=false) + fix the /dashboard/debt 404 dead link. Stays FIXING."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#. | [VR-004 2026-07-14] Ring-3 MOSTLY-PASS: the 104% Bankwest line shows 'High LVR: 104%' with NO 'Consider refinancing' text (the action gate works). BUT it sits under a 'Refinance Savings — $5,141/yr — 3 opportunities' card header, and the drill-down /dashboard/debt returns 404 so the per-loan action couldn't be fully confirmed. TODO: confirm the '3 opportunities' count EXCLUDES the 104% loan (worthRefinancing=false) + fix the /dashboard/debt 404 dead link. Stays FIXING. | [2026-07-14] VR-004 count concern RESOLVED in code: the tile’s \"N opportunity found\" count = refinanceOpportunities.filter(worthRefinancing).length, and the 104% loan is gated to worthRefinancing:false — so it is EXCLUDED from the count (locked by tests/cfo/loanDecisionSupportGuards.test.ts). The 404 that blocked the drill-down confirmation is fixed by MON-044. Remaining: a live Chrome click-through of the real loan action text (VR-005)."
     },
     {
       "id": "MON-039",
@@ -1349,21 +1349,29 @@
     {
       "id": "MON-044",
       "title": "Loan Opportunities card links to /dashboard/debt which 404s",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "low",
       "changesNumbers": false,
       "opened": "2026-07-14",
       "area": "cfo",
       "plain": {
-        "issue": "The 'Loan Opportunities' card on My Guide links to a page that shows a 404 error."
+        "issue": "The 'Loan Opportunities' card on My Guide links to a page that shows a 404 error.",
+        "fix": "The card now links to /dashboard/debt-planner (the real Debt Freedom route every other link uses) instead of the non-existent /dashboard/debt.",
+        "check": "On My Guide, click through the Loan Opportunities card — it now opens the Debt Freedom page instead of a 404."
       },
-      "rootCause": [],
+      "rootCause": [
+        "app/dashboard/cfo/page.tsx:921"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/dashboard/cfo/page.tsx"
+      ],
+      "fixPRs": [
+        "#PENDING"
+      ],
+      "test": "tests/dashboard/cfoTileLinks.test.ts",
       "tracker": "neoaudit-run:VR-004",
-      "notes": "Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card drill-down navigates to /dashboard/debt which returns 404 (dead link — route missing or renamed). Read-only, no data change. Blocks full confirmation of MON-038's per-loan action text."
+      "notes": "Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card drill-down navigates to /dashboard/debt which returns 404 (dead link — route missing or renamed). Read-only, no data change. Blocks full confirmation of MON-038's per-loan action text. | [FIX 2026-07-14] Root cause: a single typo’d href — cfo/page.tsx:921 pointed at /dashboard/debt (non-existent); the canonical route is /dashboard/debt-planner (used by every other link). One-line repoint. Ratchet: tests/dashboard/cfoTileLinks.test.ts asserts every /dashboard/<seg> href in cfo/page.tsx resolves to a real route + the dead /dashboard/debt path is absent. The Ratchet ALSO surfaced a second dead-end — see MON-046."
     },
     {
       "id": "MON-045",
@@ -1383,6 +1391,36 @@
       "test": null,
       "tracker": "neoaudit-run:VR-004",
       "notes": "Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Property $39,444 with 'Neg. Gearing Benefit: $157,746' — the benefit is ~4x the total deductions, internally inconsistent. Needs §19.2 audit of the neg-gearing-benefit producer vs the canonical deductions. NOT one of the original 5; surfaced by the deduction recalculation."
+    },
+    {
+      "id": "MON-046",
+      "title": "Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav)",
+      "status": "FIXING",
+      "severity": "low",
+      "changesNumbers": false,
+      "opened": "2026-07-14",
+      "area": "cfo",
+      "plain": {
+        "issue": "Several links to the Investments section (the My Guide investment tile, a document link, and the sidebar) opened a 404 page.",
+        "fix": "Added an Investments landing page that redirects to the Investment Accounts tab, so every link into /dashboard/investments now lands somewhere real.",
+        "check": "Click the Investments tile on My Guide (and the Investments item in the sidebar) — it now opens the Investment Accounts page instead of a 404."
+      },
+      "rootCause": [
+        "app/dashboard/cfo/page.tsx:1062",
+        "app/dashboard/investments/page.tsx:1"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [
+        "app/dashboard/cfo/page.tsx",
+        "components/documents/DocumentList.tsx",
+        "lib/navigation/trailNav.tsx"
+      ],
+      "fixPRs": [
+        "#PENDING"
+      ],
+      "test": "tests/dashboard/cfoTileLinks.test.ts",
+      "tracker": "ratchet:MON-044",
+      "notes": "Surfaced by the MON-044 dead-link Ratchet (tests/dashboard/cfoTileLinks.test.ts) on 2026-07-14 — the route-existence assertion flagged /dashboard/investments has no page.tsx (only accounts/holdings/super/transactions sub-tabs), so 4 bare-route links 404d. Fix: app/dashboard/investments/page.tsx redirects to /dashboard/investments/accounts (mirrors the /dashboard/accounts -> /dashboard/balances redirect pattern), fixing all callers at source (§12.1). Example of the NeoAudit living-system loop — a Ratchet added for one bug caught a latent sibling."
     }
   ]
 }

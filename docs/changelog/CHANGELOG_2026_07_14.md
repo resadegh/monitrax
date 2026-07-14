@@ -483,3 +483,28 @@ the comprehensive two-phase Chrome sweep to compile the complete issue list.
 - Document 10/10 (Part 23 four-ring · §19.4 holistic test · §24 reproduce-before-fix · §23.2.6 NeoAudit growth; Neomatrix consulted — no engine/lineage change, graph green)
 - Requirements 10/10 (root-caused without guessing; refuted hypothesis; kept FIXING pending Ring-3 — no over-claim)
 - Logic 10/10 (runs the REAL independent producers, not a shared source; adversarial $503/mo one-off matching the observed delta; both bases). Coverage: verifies producer parity on the reproduced HOME shapes + one-off exclusion; does NOT verify Reza's LIVE data (the Ring-3 re-check) or rendered pixels.
+
+---
+
+## Session: chat-audit-findings — MON-044/046 dead-links + MON-038 count lock (CFO)
+
+### Changes
+- **MON-044** — the CFO "Loan Opportunities" tile drilled to `/dashboard/debt` (404). Root cause: a single typo'd href at `app/dashboard/cfo/page.tsx:921`; the canonical route is `/dashboard/debt-planner` (used by every other link). One-line repoint.
+- **MON-046 (new, surfaced by the MON-044 Ratchet)** — the route-existence Ratchet flagged a second dead-end: bare `/dashboard/investments` has no `page.tsx` (only accounts/holdings/super/transactions sub-tabs), so 4 links (CFO tile, DocumentList, sidebar nav ×2) 404'd. Fix: `app/dashboard/investments/page.tsx` redirects to `/dashboard/investments/accounts` (mirrors the `/dashboard/accounts` → `/dashboard/balances` pattern) — fixes all callers at source (§12.1). A NeoAudit living-system win: a Ratchet added for one bug caught a latent sibling.
+- **MON-038** — the VR-004 count concern is resolved in code: the tile's "N opportunity found" count = `refinanceOpportunities.filter(worthRefinancing).length`, and the 104% loan is gated to `worthRefinancing:false` → excluded from the count. Now test-locked.
+
+### Files Modified
+- `app/dashboard/cfo/page.tsx` — href `/dashboard/debt` → `/dashboard/debt-planner`
+- `app/dashboard/investments/page.tsx` — NEW redirect landing → `/dashboard/investments/accounts`
+- `tests/dashboard/cfoTileLinks.test.ts` — NEW Ratchet: every `/dashboard/<seg>` href in cfo/page.tsx resolves to a real route + dead `/dashboard/debt` absent
+- `tests/cfo/loanDecisionSupportGuards.test.ts` — MON-038 opportunities-count-excludes-104%-loan assertion
+- `docs/financial-logic/graph/structural/coverage-allowlist.json` — the trivial redirect page allowlisted (graphify offline; no financial calc)
+- `docs/issues/ISSUES.{json,md}` — MON-044 → FIXING; MON-046 added (FIXING); MON-038 count note
+
+### Build Status
+- [x] tsc 0 · full vitest 3930 passed · neomatrix:check exit 0 · lint clean · issues:check 46 valid
+
+### Gate (§20.6)
+- Document 10/10 (§6.7 no-dead-ends · §12.1 root-cause redirect fixes all callers · §23.2.2 Ratchet + §23.2.6 living-system sibling catch; Neomatrix — no engine touched, redirect page allowlisted, graph green)
+- Requirements 10/10 (MON-044 repoint exact; MON-046 sibling fixed at source; MON-038 count confirmed+locked; no gold-plating)
+- Logic 10/10 (one-line href · standard redirect page · count filter already correct, now locked). Coverage: verifies hrefs resolve to real route dirs + dead path absent + count excludes the gated loan; does NOT verify the rendered browser navigation (manual/Ring-3 click-through — VR-005).

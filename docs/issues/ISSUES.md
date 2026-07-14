@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**45 total** · 42 open · 🔵 6 · 🟡 2 · 🟠 29 · 🟢 5 · ✅ 2
+**46 total** · 43 open · 🔵 5 · 🟡 2 · 🟠 31 · 🟢 5 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -50,8 +50,9 @@
 | MON-041 | 🔵 OPEN | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | — | n/a |
 | MON-042 | 🔵 OPEN | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | — | n/a |
 | MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
-| MON-044 | 🔵 OPEN | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | — | n/a |
+| MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##PENDING | ✅ |
 | MON-045 | 🔵 OPEN | 🟡 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
+| MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##PENDING | ✅ |
 
 ---
 
@@ -762,7 +763,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 - **Holistic test (§19.4):** `tests/cfo/loanDecisionSupportGuards.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#. | [VR-004 2026-07-14] Ring-3 MOSTLY-PASS: the 104% Bankwest line shows 'High LVR: 104%' with NO 'Consider refinancing' text (the action gate works). BUT it sits under a 'Refinance Savings — $5,141/yr — 3 opportunities' card header, and the drill-down /dashboard/debt returns 404 so the per-loan action couldn't be fully confirmed. TODO: confirm the '3 opportunities' count EXCLUDES the 104% loan (worthRefinancing=false) + fix the /dashboard/debt 404 dead link. Stays FIXING.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#. | [VR-004 2026-07-14] Ring-3 MOSTLY-PASS: the 104% Bankwest line shows 'High LVR: 104%' with NO 'Consider refinancing' text (the action gate works). BUT it sits under a 'Refinance Savings — $5,141/yr — 3 opportunities' card header, and the drill-down /dashboard/debt returns 404 so the per-loan action couldn't be fully confirmed. TODO: confirm the '3 opportunities' count EXCLUDES the 104% loan (worthRefinancing=false) + fix the /dashboard/debt 404 dead link. Stays FIXING. | [2026-07-14] VR-004 count concern RESOLVED in code: the tile’s "N opportunity found" count = refinanceOpportunities.filter(worthRefinancing).length, and the 104% loan is gated to worthRefinancing:false — so it is EXCLUDED from the count (locked by tests/cfo/loanDecisionSupportGuards.test.ts). The 404 that blocked the drill-down confirmation is fixed by MON-044. Remaining: a live Chrome click-through of the real loan action text (VR-005).
 
 ### MON-039 — Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr
 
@@ -829,14 +830,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 
 ### MON-044 — Loan Opportunities card links to /dashboard/debt which 404s
 
-**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
 
 > **What was wrong:** The 'Loan Opportunities' card on My Guide links to a page that shows a 404 error.
 >
-- **Holistic test (§19.4):** n/a (display/UX)
+> **What changed:** The card now links to /dashboard/debt-planner (the real Debt Freedom route every other link uses) instead of the non-existent /dashboard/debt.
+>
+> **What you should see:** On My Guide, click through the Loan Opportunities card — it now opens the Debt Freedom page instead of a 404.
+
+- **Root cause:** `app/dashboard/cfo/page.tsx:921`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** `tests/dashboard/cfoTileLinks.test.ts`
 - **Detail:** `neoaudit-run:VR-004`
 
-Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card drill-down navigates to /dashboard/debt which returns 404 (dead link — route missing or renamed). Read-only, no data change. Blocks full confirmation of MON-038's per-loan action text.
+Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card drill-down navigates to /dashboard/debt which returns 404 (dead link — route missing or renamed). Read-only, no data change. Blocks full confirmation of MON-038's per-loan action text. | [FIX 2026-07-14] Root cause: a single typo’d href — cfo/page.tsx:921 pointed at /dashboard/debt (non-existent); the canonical route is /dashboard/debt-planner (used by every other link). One-line repoint. Ratchet: tests/dashboard/cfoTileLinks.test.ts asserts every /dashboard/<seg> href in cfo/page.tsx resolves to a real route + the dead /dashboard/debt path is absent. The Ratchet ALSO surfaced a second dead-end — see MON-046.
 
 ### MON-045 — CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent
 
@@ -848,4 +856,22 @@ Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card 
 - **Detail:** `neoaudit-run:VR-004`
 
 Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Property $39,444 with 'Neg. Gearing Benefit: $157,746' — the benefit is ~4x the total deductions, internally inconsistent. Needs §19.2 audit of the neg-gearing-benefit producer vs the canonical deductions. NOT one of the original 5; surfaced by the deduction recalculation.
+
+### MON-046 — Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav)
+
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
+
+> **What was wrong:** Several links to the Investments section (the My Guide investment tile, a document link, and the sidebar) opened a 404 page.
+>
+> **What changed:** Added an Investments landing page that redirects to the Investment Accounts tab, so every link into /dashboard/investments now lands somewhere real.
+>
+> **What you should see:** Click the Investments tile on My Guide (and the Investments item in the sidebar) — it now opens the Investment Accounts page instead of a 404.
+
+- **Root cause:** `app/dashboard/cfo/page.tsx:1062`, `app/dashboard/investments/page.tsx:1`
+- **Downstream consumers (§19.4):** `app/dashboard/cfo/page.tsx`, `components/documents/DocumentList.tsx`, `lib/navigation/trailNav.tsx`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** `tests/dashboard/cfoTileLinks.test.ts`
+- **Detail:** `ratchet:MON-044`
+
+Surfaced by the MON-044 dead-link Ratchet (tests/dashboard/cfoTileLinks.test.ts) on 2026-07-14 — the route-existence assertion flagged /dashboard/investments has no page.tsx (only accounts/holdings/super/transactions sub-tabs), so 4 bare-route links 404d. Fix: app/dashboard/investments/page.tsx redirects to /dashboard/investments/accounts (mirrors the /dashboard/accounts -> /dashboard/balances redirect pattern), fixing all callers at source (§12.1). Example of the NeoAudit living-system loop — a Ratchet added for one bug caught a latent sibling.
 
