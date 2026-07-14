@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**50 total** · 47 open · 🔵 3 · 🟡 4 · 🟠 31 · 🟢 9 · ✅ 2
+**50 total** · 47 open · 🔵 2 · 🟡 4 · 🟠 32 · 🟢 9 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -49,7 +49,7 @@
 | MON-040 | 🟢 VERIFIED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🟢 VERIFIED | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | ##1403 | ✅ |
 | MON-042 | 🟠 FIXING | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | ##PENDING | n/a |
-| MON-043 | 🔵 OPEN | 🟡 | yes | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | — | — |
+| MON-043 | 🟠 FIXING | 🟡 | no | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | ##PENDING | ✅ |
 | MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##PENDING | ✅ |
 | MON-045 | 🟡 DIAGNOSED | 🟠 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | — | — |
 | MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##PENDING | ✅ |
@@ -844,14 +844,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 
 ### MON-043 — Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile)
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-14
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-14
 
-> **What was wrong:** Your annual income shows as three different numbers depending on the page (Home vs Activity vs Tax) with nothing explaining why.
+> **What was wrong:** Your annual income showed three different figures with nothing to explain why: Home ~$239K, and Tax $524,831. The gap is 'Other' income you declared but that has no matching bank transactions.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** Home/Cashflow keep showing your last-12-months ACTUALS (correct, §19.1) and the Tax page now labels its figure as 'Declared gross income'. The Income page adds an honest nudge: it tells you how much of your declared income ($ and source count) has no matching transactions yet, so you can link statements — that's exactly the gap between the actuals and the declared/tax total.
+>
+> **What you should see:** On the Tax page the Income Summary now says 'Declared gross income …'. On the Income page, if some declared income has no transactions, a sky info banner shows the unmatched amount (e.g. ~$192,698) and invites you to link statements. Home/Cashflow are unchanged.
+
+- **Root cause:** `app/dashboard/tax/page.tsx:561`, `app/dashboard/income/page.tsx:614`
+- **Downstream consumers (§19.4):** `app/dashboard/tax/page.tsx`, `app/dashboard/income/page.tsx`
+- **Fix PR(s):** ##PENDING
+- **Holistic test (§19.4):** `tests/income/unmatchedDeclaredIncome.test.ts`
 - **Detail:** `neoaudit-run:VR-003`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home tile vs Activity YTD vs Tax total income. Expected: either one consistent figure or clearly-labelled distinct bases. Actual: Home 239K/yr, Activity YTD 484K/yr, Tax total income 524,831 — three different income figures with no visible basis label. Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] The brief's income-basis capture resolved this from ground truth: Home $239,000 labelled 'Last 12 months' (trailing-12-mo ACTUALS); Tax $524,831 'declared gross, 21 sources'. The gap is 'Other' income $192,698 (9 sources) + part of Rental — and the income list shows these rows as Actual $0 / -100% variance, i.e. DECLARED-ONLY with NO matching transactions (ATO $9,098, ATO $952, Ingeus salary lines, Service NSW). So the numbers are each CORRECT for their basis: Home (actuals, §19.1) rightly EXCLUDES declared income with no transactions; Tax (assessable/declared) rightly INCLUDES it. This is therefore NOT a calc bug — it is (a) a LABELLING refinement (surface the basis so a user understands why Home < Tax), and (b) a deeper DATA-COMPLETENESS signal worth surfacing to the user honestly ('$192,698 of declared income has no matching transactions — link statements or it will not count toward actuals'). changesNumbers should be re-set to false (no number is wrong). PREFERENCE FORK for Reza: how prominent to make the basis label + whether to add the data-completeness nudge. Surfaced, not guessed (§20.5). NB: 'Activity YTD 484K' from VR-003 was not re-confirmed in VR-006 (Activity showed this-month only); treat the Home-vs-Tax basis as the canonical reconciliation.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home tile vs Activity YTD vs Tax total income. Expected: either one consistent figure or clearly-labelled distinct bases. Actual: Home 239K/yr, Activity YTD 484K/yr, Tax total income 524,831 — three different income figures with no visible basis label. Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] The brief's income-basis capture resolved this from ground truth: Home $239,000 labelled 'Last 12 months' (trailing-12-mo ACTUALS); Tax $524,831 'declared gross, 21 sources'. The gap is 'Other' income $192,698 (9 sources) + part of Rental — and the income list shows these rows as Actual $0 / -100% variance, i.e. DECLARED-ONLY with NO matching transactions (ATO $9,098, ATO $952, Ingeus salary lines, Service NSW). So the numbers are each CORRECT for their basis: Home (actuals, §19.1) rightly EXCLUDES declared income with no transactions; Tax (assessable/declared) rightly INCLUDES it. This is therefore NOT a calc bug — it is (a) a LABELLING refinement (surface the basis so a user understands why Home < Tax), and (b) a deeper DATA-COMPLETENESS signal worth surfacing to the user honestly ('$192,698 of declared income has no matching transactions — link statements or it will not count toward actuals'). changesNumbers should be re-set to false (no number is wrong). PREFERENCE FORK for Reza: how prominent to make the basis label + whether to add the data-completeness nudge. Surfaced, not guessed (§20.5). NB: 'Activity YTD 484K' from VR-003 was not re-confirmed in VR-006 (Activity showed this-month only); treat the Home-vs-Tax basis as the canonical reconciliation. | [FIX 2026-07-14] Reza chose 'Label + data nudge'. (labels) Home 'Annual income' tile already carries the 'Last 12 months' actuals basis (VR-006) — left as-is; the Tax Income-Summary CardDescription now reads 'Declared gross income — all sources (drives your tax estimate; may exceed the last-12-months actuals on Home/Cashflow)'. (nudge) app/dashboard/income/page.tsx renders a sky/info banner when declared income has no matching transactions, showing the unmatched $ + source count + a 'link statements' prompt. The unmatched figure is ONE aggregation (§12.2.1) lib/income/unmatchedDeclaredIncome.ts (sum GROSS annual via canonical toAnnual of rows with transactionCount 0) — a presentation aggregation feeding no downstream engine (allowlisted). §19.2 worked example: a $16,058/mo declared row with 0 tx → $192,696/yr ≈ VR-006's $192,698. RATCHET Ring-0: tests/income/unmatchedDeclaredIncome.test.ts (4 cases incl. the worked example + exclusion of matched rows). changesNumbers reset false — no EXISTING number altered; Home actuals + Tax declared are each CORRECT for their basis (§19.1), the fix is labelling + a new nudge figure. lint baseline re-lined (income/page frankingCredits 1985→2014, tax/page 793/796→798/801 shifted by the added lines). Gate: tsc + vitest + neomatrix:check + lint:financial-surfaces + issues:check green. Advances to FIXING with PR#; awaits Reza Ring-3.
 
 ### MON-044 — Loan Opportunities card links to /dashboard/debt which 404s
 

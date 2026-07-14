@@ -5,19 +5,19 @@
   "entries": [
     {
       "file": "app/dashboard/income/page.tsx",
-      "line": 1985,
+      "line": 2014,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits"
     },
     {
       "file": "app/dashboard/tax/page.tsx",
-      "line": 793,
+      "line": 798,
       "pattern": "INLINE_ARITHMETIC",
       "match": "taxPosition.tax.marginalRate - taxConfig.superContributionsTaxRate"
     },
     {
       "file": "app/dashboard/tax/page.tsx",
-      "line": 796,
+      "line": 801,
       "pattern": "INLINE_ARITHMETIC",
       "match": "taxConfig.concessionalCap - taxPosition.super.concessional"
     },
