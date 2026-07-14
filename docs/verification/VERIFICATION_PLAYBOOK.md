@@ -48,6 +48,8 @@ Rings 0–2 are fully automated in CI. Ring 3 is semi-automated (Chrome reads, a
 
 ### 3.2 The relay protocol (who does what)
 
+> **Automated mode (2026-07-14):** the manual relay below can be conducted by **Claude Chat** instead of Reza — Chat ferries the brief and the machine report VERBATIM between the Claude Code session and Claude-in-Chrome, and drives the per-fix re-check loop. Canonical conductor manual: `docs/verification/NEOAUDIT_ORCHESTRATION.md`. The brief's single home remains §3.3 of THIS doc either way (the conductor never stores or edits it).
+
 1. **Session** hands Reza the run brief (§3.3, verbatim — do not improvise a new one; edit THIS doc if the brief must change). **The brief is a LIVING document (NEOAUDIT.md §10 step 5):** whenever a run finds a defect that reveals a NEW CLASS of human scrutiny the brief never directed the auditor to apply (e.g. MON-048 → "read the LABEL, not just the number"), broaden §3.3 in the SAME fix PR so every future run inherits the lens. The brief only ever gets more complete — automatable specifics leave it (become Ratchet tests, §5), newly-recognised categories of judgement enter it.
 2. **Reza** opens Monitrax (prod, or a PR preview URL when verifying a specific fix) → opens Claude-in-Chrome → pastes the brief → allows navigation/reading, denies writes → asks for the final report in the output format → pastes the report back to the session.
 3. **Session** compares (§3.5) and produces the PASS/FAIL table mapped to MON-### issues; registers new MON-### for every new FAIL; applies the Ratchet (§5).
