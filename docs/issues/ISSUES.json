@@ -1205,7 +1205,8 @@
         "app/api/tax/entity/[entityId]/route.ts"
       ],
       "fixPRs": [
-        "#1395"
+        "#1395",
+        "#1427 (RC-B: near-duplicate dedup)"
       ],
       "test": "tests/calculations/mon037OneOffEngines.test.ts",
       "tracker": "neoaudit-run:VR-002",

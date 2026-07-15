@@ -43,7 +43,7 @@
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
 | MON-035 | 🟢 VERIFIED | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
 | MON-036 | 🟢 VERIFIED | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | ##1397 | ✅ |
-| MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395 | ✅ |
+| MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395, ##1427 (RC-B: near-duplicate dedup) | ✅ |
 | MON-038 | 🟠 FIXING | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
 | MON-039 | 🟢 VERIFIED | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | ##1412 | ✅ |
 | MON-040 | 🟢 VERIFIED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
@@ -772,7 +772,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 - **Root cause:** `lib/calculations/propertyCashflow.ts:172`, `lib/tax-engine/position/taxPositionCalculator.ts:195`, `lib/tax-engine/position/taxPositionCalculator.ts:688`
 - **Neomatrix:** `number.propertyCashflow`, `engine.taxPositionCalculator.calculateTaxPosition`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`, `app/api/portfolio/snapshot/route.ts`, `components/properties/PropertyExpensesCard.tsx`, `lib/services/masterFinancialService.ts`, `app/api/tax/position/route.ts`, `lib/tax-engine/position/userTaxPosition.ts`, `lib/services/entityTaxFactsAssembler.ts`, `app/api/tax/entity/[entityId]/route.ts`
-- **Fix PR(s):** ##1395
+- **Fix PR(s):** ##1395, ##1427 (RC-B: near-duplicate dedup)
 - **Holistic test (§19.4):** `tests/calculations/mon037OneOffEngines.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
