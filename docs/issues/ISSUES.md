@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**50 total** · 47 open · 🔵 2 · 🟡 4 · 🟠 32 · 🟢 9 · ✅ 2
+**52 total** · 49 open · 🔵 4 · 🟡 4 · 🟠 32 · 🟢 9 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -57,6 +57,8 @@
 | MON-048 | 🟢 VERIFIED | 🟡 | no | Property Cashflow-rhythm shows one-off expenses as MONTHLY (badge read declared frequency, not isRecurring) | ##1406 | ✅ |
 | MON-049 | 🔵 OPEN | 🟢 | no | Document count & storage disagree: Settings '24 documents · 12MB' vs Vault '6 all-time · 14.0 MB' | — | n/a |
 | MON-050 | 🔵 OPEN | 🟢 | no | Month-end balance differs: CFO $301,712 vs Cashflow 30-day forecast $301,639 ($73) | — | n/a |
+| MON-051 | 🔵 OPEN | 🟡 | yes | CFO intelligence metrics hardcoded: savingsOpportunities=3, pendingActions=5 rendered as real figures | — | — |
+| MON-052 | 🔵 OPEN | 🟡 | yes | PAYG withholding omits HECS-HELP component (TODO stub) — withholding estimate understated for HELP-debt users | — | — |
 
 ---
 
@@ -969,4 +971,28 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 - **Detail:** `neoaudit-run:VR-006`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard/cfo. Expected: same month-end / forecast balance on My Guide and the Cashflow forecast. Actual: CFO month-end $301,712 vs cashflow 30-day forecast $301,639 (differ $73). Evidence/run: VR-006.
+
+### MON-051 — CFO intelligence metrics hardcoded: savingsOpportunities=3, pendingActions=5 rendered as real figures
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: cfo · opened 2026-07-14
+
+> **What was wrong:** My Guide shows 'savings opportunities' and 'pending actions' counts that are hardcoded placeholders, not computed from your data.
+>
+- **Root cause:** `lib/cfo/intelligenceEngine.ts:274`, `lib/cfo/intelligenceEngine.ts:275`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:MATRIX-INGEST-2026-07-15`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/intelligenceEngine.ts. Evidence/run: MATRIX-INGEST-2026-07-15.
+
+### MON-052 — PAYG withholding omits HECS-HELP component (TODO stub) — withholding estimate understated for HELP-debt users
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-14
+
+> **What was wrong:** If you have a HECS/HELP debt, the PAYG withholding estimate ignores the compulsory HELP repayment component, so take-home estimates can be too high.
+>
+- **Root cause:** `lib/tax-engine/core/paygCalculator.ts:197`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:MATRIX-INGEST-2026-07-15`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/core/paygCalculator.ts. Evidence/run: MATRIX-INGEST-2026-07-15.
 

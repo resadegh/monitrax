@@ -1563,6 +1563,49 @@
       "test": null,
       "tracker": "neoaudit-run:VR-006",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: app/dashboard/cfo. Expected: same month-end / forecast balance on My Guide and the Cashflow forecast. Actual: CFO month-end $301,712 vs cashflow 30-day forecast $301,639 (differ $73). Evidence/run: VR-006."
+    },
+    {
+      "id": "MON-051",
+      "title": "CFO intelligence metrics hardcoded: savingsOpportunities=3, pendingActions=5 rendered as real figures",
+      "status": "OPEN",
+      "severity": "medium",
+      "changesNumbers": true,
+      "opened": "2026-07-14",
+      "area": "cfo",
+      "plain": {
+        "issue": "My Guide shows 'savings opportunities' and 'pending actions' counts that are hardcoded placeholders, not computed from your data."
+      },
+      "rootCause": [
+        "lib/cfo/intelligenceEngine.ts:274",
+        "lib/cfo/intelligenceEngine.ts:275"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:MATRIX-INGEST-2026-07-15",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/intelligenceEngine.ts. Evidence/run: MATRIX-INGEST-2026-07-15."
+    },
+    {
+      "id": "MON-052",
+      "title": "PAYG withholding omits HECS-HELP component (TODO stub) — withholding estimate understated for HELP-debt users",
+      "status": "OPEN",
+      "severity": "medium",
+      "changesNumbers": true,
+      "opened": "2026-07-14",
+      "area": "tax",
+      "plain": {
+        "issue": "If you have a HECS/HELP debt, the PAYG withholding estimate ignores the compulsory HELP repayment component, so take-home estimates can be too high."
+      },
+      "rootCause": [
+        "lib/tax-engine/core/paygCalculator.ts:197"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:MATRIX-INGEST-2026-07-15",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/core/paygCalculator.ts. Evidence/run: MATRIX-INGEST-2026-07-15."
     }
   ]
 }
