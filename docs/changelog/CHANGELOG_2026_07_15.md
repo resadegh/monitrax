@@ -80,3 +80,23 @@ Recorded in the PR body — Document 10/10 · Requirements 10/10 · Logic 10/10.
 ### PR
 - PR: #TBD (draft — changesNumbers: Reza's merge approval + Ring-3 re-verify
   against the healed base Total Income $412,768 / Est. tax $141,548)
+
+---
+
+## Session (continued): MON-045 Ring-3 disposition + MON-037 RC-B
+
+### Registry patch (Part 0 + VR-009 disposition)
+- **MON-045 → VERIFIED** (Ring-3 VR-009 PASS, exact to the dollar: deduction rise $108,965 = Σ investment loan interest $61,465 + $32,246 + $15,253; Guildford PR excluded $0; taxable $255,819 / tax $86,373 exact; regression clean). Stage 3 stays deferred (FW-2).
+- **MON-075 raised → DIAGNOSED** (medium): standing NeoAudit detector for the one-off fingerprint (recurring row ∧ 1 linked txn ∧ $0 in-window actuals). Owned by the Matrix; gates MON-053 → CLOSED.
+- **MON-076 raised → OPEN** (high): duplicate/fragmented income rows (Ingeus ×3, Cienna ×3, Hipcamp ×2).
+- **MON-077 raised → DIAGNOSED** (medium): "Potential Missed Deductions" (My Guide) still lists the three investment loans' interest as missed though MON-045 auto-claims it — stale raw-row advisory (`identifyMissedDeductions`, taxIntegration.ts:369); reconcile against the canonical position.
+- **MON-053**: VR-008 coverage-sweep note added (8 rows reclassified; source-aware default decision; backfill abandoned).
+- **FIX_PROTOCOL §7 retro added**: the one-off class was 4× broader than the diagnosed rows — Stage-1 census must enumerate the full affected POPULATION by defect fingerprint, not just reported instances.
+
+### MON-037 RC-B — near-duplicate expense dedup (the "Battery" class)
+- **Root cause (verified)**: both intake dedup guards matched only on (normalised) name EQUALITY / exact-string+exact-amount — so one battery cost existed as "Battery" / "Battery System" / "Battery Replacement" (doc-import estimate + txn-link actual + manual), each minting its own row.
+- **Fix**: ONE canonical near-duplicate decision `isNearDuplicateEntry` (lib/utils/reconciliation.ts — name equality OR token-containment `relatedMerchant` + amount within 10%), consumed by BOTH intake paths: the transaction-link route (falls back after the exact match) and doc-import `reconcileSuggestedAction` (replaces the exact findFirst). Plus MON-053 expense-side parity on the doc-import create (`isRecurring` passthrough — a one-off invoice no longer silently minted recurring-MONTHLY).
+- **Existing duplicate rows**: user-reviewed remediation (per the abandoned-backfill precedent) — Ring-3 directs; intake can no longer re-create them.
+- **Ratchet**: `tests/utils/mon037RcbNearDuplicate.test.ts` (14 — Ring-0 battery fixtures + false-merge guards; Ring-1 source-lock: both paths consume the ONE decision); `tests/documents/reconcileSuggestedAction.test.ts` updated to the new contract (+2 RC-B cases).
+- **Neomatrix**: anchor re-pin `engine.utils.reconciliation.detectFrequency` 90→91 (import shift); no financial-number lineage changed (the matcher produces a decision, not a money number).
+- **Gates**: tsc clean · 731/731 utils/documents/bank/bookkeeping/calculations/dashboard · neomatrix:check OK · lint:financial-surfaces 0 new · issues:check 77 valid.

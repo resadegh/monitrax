@@ -7,15 +7,15 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { expenseFindFirst, incomeFindFirst, loanFindFirst } = vi.hoisted(() => ({
-  expenseFindFirst: vi.fn(),
+const { expenseFindMany, incomeFindFirst, loanFindFirst } = vi.hoisted(() => ({
+  expenseFindMany: vi.fn(),
   incomeFindFirst: vi.fn(),
   loanFindFirst: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    expense: { findFirst: expenseFindFirst },
+    expense: { findMany: expenseFindMany },
     income: { findFirst: incomeFindFirst },
     loan: { findFirst: loanFindFirst },
   },
@@ -24,7 +24,8 @@ vi.mock('@/lib/db', () => ({
 import { reconcileSuggestedAction } from '@/lib/documents/intelligence/reconcile/reconcileSuggestedAction';
 
 beforeEach(() => {
-  expenseFindFirst.mockReset();
+  expenseFindMany.mockReset();
+  expenseFindMany.mockResolvedValue([]);
   incomeFindFirst.mockReset();
   loanFindFirst.mockReset();
 });
@@ -33,40 +34,60 @@ describe('reconcileSuggestedAction', () => {
   it('returns no-match when there is nothing to match on (no amount)', async () => {
     const r = await reconcileSuggestedAction('u1', 'EXPENSE', { vendor: 'QBE' });
     expect(r).toEqual({ duplicate: false });
-    expect(expenseFindFirst).not.toHaveBeenCalled();
+    expect(expenseFindMany).not.toHaveBeenCalled();
   });
 
   it('returns no-match when there is no name/vendor', async () => {
     const r = await reconcileSuggestedAction('u1', 'EXPENSE', { amount: 215.59 });
     expect(r).toEqual({ duplicate: false });
-    expect(expenseFindFirst).not.toHaveBeenCalled();
+    expect(expenseFindMany).not.toHaveBeenCalled();
   });
 
   it('flags a duplicate expense on same user + amount + vendor', async () => {
-    expenseFindFirst.mockResolvedValue({ id: 'exp-1' });
+    expenseFindMany.mockResolvedValue([
+      { id: 'exp-1', name: 'QBE Insurance', vendorName: null, amount: 215.59 },
+    ]);
     const r = await reconcileSuggestedAction('u1', 'EXPENSE', {
       vendor: 'QBE Insurance',
       amount: 215.59,
     });
     expect(r).toEqual({ duplicate: true, existingId: 'exp-1' });
-    const where = expenseFindFirst.mock.calls[0][0].where;
+    const where = expenseFindMany.mock.calls[0][0].where;
     expect(where.userId).toBe('u1');
-    expect(where.amount).toBe(215.59);
-    expect(where.OR).toEqual([{ vendorName: 'QBE Insurance' }, { name: 'QBE Insurance' }]);
+  });
+
+  it('MON-037 RC-B: flags a NAME-VARIANT duplicate ("Battery System" estimate vs "Battery" import)', async () => {
+    expenseFindMany.mockResolvedValue([
+      { id: 'exp-bat', name: 'Battery System', vendorName: null, amount: 11385 },
+    ]);
+    const r = await reconcileSuggestedAction('u1', 'EXPENSE', {
+      name: 'Battery',
+      amount: 11385,
+      propertyId: 'prop-home',
+    });
+    expect(r).toEqual({ duplicate: true, existingId: 'exp-bat' });
+  });
+
+  it('MON-037 RC-B: same name but far amount is NOT a duplicate (two real costs)', async () => {
+    expenseFindMany.mockResolvedValue([
+      { id: 'exp-bat', name: 'Battery', vendorName: null, amount: 11385 },
+    ]);
+    const r = await reconcileSuggestedAction('u1', 'EXPENSE', { name: 'Battery', amount: 2500 });
+    expect(r).toEqual({ duplicate: false });
   });
 
   it('scopes the expense match to the linked asset when provided', async () => {
-    expenseFindFirst.mockResolvedValue(null);
+    expenseFindMany.mockResolvedValue([]);
     await reconcileSuggestedAction('u1', 'EXPENSE', {
       vendor: 'QBE',
       amount: 100,
       assetId: 'asset-9',
     });
-    expect(expenseFindFirst.mock.calls[0][0].where.assetId).toBe('asset-9');
+    expect(expenseFindMany.mock.calls[0][0].where.assetId).toBe('asset-9');
   });
 
   it('returns no-match for an expense with no existing row', async () => {
-    expenseFindFirst.mockResolvedValue(null);
+    expenseFindMany.mockResolvedValue([]);
     const r = await reconcileSuggestedAction('u1', 'EXPENSE', { vendor: 'New', amount: 50 });
     expect(r).toEqual({ duplicate: false });
   });
