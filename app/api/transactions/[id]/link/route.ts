@@ -362,6 +362,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               propertyId?: string;
               investmentAccountId?: string;
               isTaxable?: boolean;
+              isRecurring?: boolean;
             } = {
               userId,
               ownerEntityId,
@@ -369,6 +370,9 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               type: (body.category as IncomeTypeType) || 'OTHER',
               amount: transaction.amount,
               frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+              // MON-053: a single linked deposit is a one-off unless the client
+              // says otherwise — never let the MONTHLY default silently ×12 it.
+              isRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : true,
             };
 
             // If custom category is provided, add it and validate ownership

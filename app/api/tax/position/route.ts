@@ -23,6 +23,7 @@ interface IncomeRecord {
   type: string;
   amount: number;
   frequency: string;
+  isRecurring: boolean; // MON-053: one-off income counts once, not ×frequency
   propertyId: string | null;
   investmentAccountId: string | null;
   grossAmount: number | null;
@@ -125,6 +126,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       type: income.type,
       amount: income.amount,
       frequency: income.frequency,
+      isRecurring: income.isRecurring, // MON-053
       propertyId: income.propertyId || undefined,
       investmentAccountId: income.investmentAccountId || undefined,
       grossAmount: income.grossAmount || undefined,

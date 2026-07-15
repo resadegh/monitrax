@@ -41,6 +41,11 @@ export interface IncomeForCalculation {
   type: string;
   salaryType?: string | null;
   netAmount?: number | null;
+  /** MON-053: false = a one-off receipt (e.g. a single ATO refund). A one-off
+   *  is NOT part of the monthly rhythm — it contributes 0 to the run-rate,
+   *  mirroring the MON-037 expense semantics. The tax engine counts it ONCE
+   *  (taxPositionCalculator guards), never ×12. */
+  isRecurring?: boolean | null;
 }
 
 /**
@@ -52,6 +57,12 @@ export interface IncomeForCalculation {
  * - NET salary / other income: just convert to monthly (already net)
  */
 export function getNetMonthlyIncome(item: IncomeForCalculation): number {
+  // MON-053: a one-off receipt is not part of the monthly run-rate. Its value
+  // is counted ONCE where annual/tax figures are built (the engine guards),
+  // never extrapolated ×12 — the exact bug that turned two lone ATO deposits
+  // into ~$120,600/yr of phantom taxed income.
+  if (item.isRecurring === false) return 0;
+
   if (item.type === 'SALARY' && item.salaryType === 'GROSS') {
     // GROSS salary: use pre-calculated netAmount if available
     if (item.netAmount != null) {

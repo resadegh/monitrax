@@ -97,6 +97,7 @@ export async function getUserTaxPosition(
     type: income.type,
     amount: income.amount,
     frequency: income.frequency,
+    isRecurring: income.isRecurring, // MON-053: one-off income counts once, not ×frequency
     propertyId: income.propertyId || undefined,
     investmentAccountId: income.investmentAccountId || undefined,
     grossAmount: income.grossAmount || undefined,

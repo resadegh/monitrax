@@ -1874,6 +1874,11 @@ model Income {
   sourceType          IncomeSourceType @default(GENERAL)
   amount              Float
   frequency           Frequency
+  // MON-053: a one-off income (single ATO refund/deposit) was INEXPRESSIBLE —
+  // stored as frequency MONTHLY and annualised ×12 into the tax base. Mirrors
+  // Expense.isRecurring exactly; default(true) keeps every existing row
+  // behaving as today (no silent reclassification).
+  isRecurring         Boolean          @default(true)
 
   // Phase 20: Salary-specific fields (only applicable when type = SALARY)
   salaryType   SalaryType? // GROSS or NET (null for non-salary)

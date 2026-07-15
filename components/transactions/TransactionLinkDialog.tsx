@@ -374,6 +374,12 @@ export function TransactionLinkDialog({
       if (tp?.detectedFrequency && (tp.count ?? 0) >= 2) {
         setNewFrequency(tp.detectedFrequency);
         setIsRecurringExpense(true);
+      } else if ((tp?.count ?? 0) <= 1) {
+        // MON-053 / MON-037 RC-C: a SINGLE transaction is CLASSIFIED as one-off,
+        // never silently defaulted — this is exactly how two lone ATO deposits
+        // became "$9,098/mo × 12" of phantom taxed income. The user can still
+        // tick "recurring" to override (first-of-many case).
+        setIsRecurringExpense(false);
       }
       // Phase 51.2: structural resolution matches (loan repayment / transfer)
       setResolution(data.resolution ?? { loanRepayments: [], transfers: [] });
@@ -1778,6 +1784,29 @@ export function TransactionLinkDialog({
                   allowCustom={true}
                 />
               </div>
+
+              {/* MON-053: income needs the same recurring/one-off control the
+                  expense path has — without it, the MONTHLY default silently
+                  turned single deposits into ×12 phantom income. */}
+              {isIncome && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isRecurringIncome"
+                      checked={isRecurringExpense}
+                      onCheckedChange={(checked) => setIsRecurringExpense(checked as boolean)}
+                    />
+                    <Label htmlFor="isRecurringIncome" className="text-sm font-normal cursor-pointer">
+                      Recurring income
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-6">
+                    {isRecurringExpense
+                      ? 'This income repeats on the schedule above and counts toward your regular income.'
+                      : 'One-off deposits (e.g. a tax refund) are counted once — never repeated monthly.'}
+                  </p>
+                </div>
+              )}
 
               {/* Expense-specific options */}
               {!isIncome && (

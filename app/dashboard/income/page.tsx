@@ -46,6 +46,7 @@ import {
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { sumUnmatchedDeclaredAnnualIncome } from '@/lib/income/unmatchedDeclaredIncome';
+import { activityFrequencyLabel } from '@/lib/properties/activityFrequencyLabel';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { getNetAnnualIncome, getNetMonthlyIncome } from '@/lib/income/netIncomeCalculator';
@@ -91,6 +92,7 @@ interface Income {
   sourceType: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'HALF_YEARLY';
+  isRecurring?: boolean; // MON-053: false = one-off receipt (counted once, no run-rate)
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
@@ -136,6 +138,7 @@ type IncomeFormData = {
   sourceType: Income['sourceType'];
   amount: number;
   frequency: Income['frequency'];
+  isRecurring: boolean; // MON-053
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
@@ -170,6 +173,7 @@ function IncomePageContent() {
     sourceType: 'GENERAL',
     amount: 0,
     frequency: 'MONTHLY',
+    isRecurring: true, // MON-053
     isTaxable: true,
     propertyId: null,
     investmentAccountId: null,
@@ -467,6 +471,7 @@ function IncomePageContent() {
       sourceType: formData.sourceType,
       amount: Number(formData.amount),
       frequency: formData.frequency,
+      isRecurring: formData.isRecurring, // MON-053
       isTaxable: formData.isTaxable,
       propertyId: formData.sourceType === 'PROPERTY' ? formData.propertyId : null,
       investmentAccountId: formData.sourceType === 'INVESTMENT' ? formData.investmentAccountId : null,
@@ -547,6 +552,7 @@ function IncomePageContent() {
       sourceType: 'GENERAL',
       amount: 0,
       frequency: 'MONTHLY',
+      isRecurring: true, // MON-053
       isTaxable: true,
       propertyId: null,
       investmentAccountId: null,
@@ -567,6 +573,7 @@ function IncomePageContent() {
       sourceType: item.sourceType || 'GENERAL',
       amount: item.amount,
       frequency: item.frequency,
+      isRecurring: item.isRecurring ?? true, // MON-053
       isTaxable: item.isTaxable,
       propertyId: item.propertyId,
       investmentAccountId: item.investmentAccountId,
@@ -1050,10 +1057,20 @@ function IncomePageContent() {
                             {item.property && (
                               <span className="text-blue-500">{item.property.name}</span>
                             )}
-                            <span className="capitalize">{item.frequency.toLowerCase()}</span>
+                            {/* MON-053: cadence via the ONE label rule (MON-048) —
+                                a one-off reads "One-off", never its stored frequency. */}
+                            <span className="capitalize">{activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveMonthly)}</td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {item.isRecurring === false ? (
+                            <span title={`One-off of ${formatCurrency(item.amount)} — not part of the monthly run-rate`}>
+                              — <span className="text-xs text-muted-foreground">({formatCurrency(item.amount)} once)</span>
+                            </span>
+                          ) : (
+                            formatCurrency(effectiveMonthly)
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-right">
                           {hasActual ? (
                             <div>
@@ -1789,6 +1806,22 @@ function IncomePageContent() {
                   step="0.01"
                   required
                 />
+              </div>
+            )}
+
+            {/* MON-053: one-off control — a single receipt (e.g. an ATO refund)
+                must be expressible, or the MONTHLY default silently ×12s it
+                into phantom income. Hidden for SALARY (inherently recurring). */}
+            {formData.type !== 'SALARY' && (
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="isRecurringIncome"
+                  checked={!formData.isRecurring}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isRecurring: !(checked as boolean) })}
+                />
+                <Label htmlFor="isRecurringIncome" className="text-sm font-normal cursor-pointer">
+                  One-off income (received once — don&rsquo;t repeat it {formData.frequency.toLowerCase()})
+                </Label>
               </div>
             )}
 
