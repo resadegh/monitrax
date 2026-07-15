@@ -222,4 +222,9 @@ repo-wide** until resolved.
 3. The failed migration made no schema change (the ALTER failed atomically), so `--rolled-back`
    is the correct resolution — never `--applied`.
 
+**Resolution record:** the temporary resolve step was added in #1421 and **removed on 2026-07-15**
+(same day) once BOTH databases had applied `20260715000000_add_income_is_recurring` — dev via the
+self-healed preview build (dpl_8TWCoXL… READY), prod via the #1421 merge deploy (dpl_2pJRVLA… READY).
+Obligation closed; the pipeline is back to its canonical form.
+
 *Last Updated: 2026-07-15*
