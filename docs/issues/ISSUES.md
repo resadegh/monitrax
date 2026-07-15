@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**77 total** · 74 open · 🔵 25 · 🟡 6 · 🟠 29 · 🟢 14 · ✅ 2
+**77 total** · 74 open · 🔵 24 · 🟡 7 · 🟠 29 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -82,7 +82,7 @@
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
 | MON-074 | 🔵 OPEN | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
 | MON-075 | 🟡 DIAGNOSED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | — | n/a |
-| MON-076 | 🔵 OPEN | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
+| MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 
 ---
@@ -1308,14 +1308,25 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engi
 
 ### MON-076 — Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-15
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-15
 
 > **What was wrong:** The income list holds multiple rows for what looks like the same income source (three Ingeus salary rows, three Cienna rent rows, two Hipcamp rows). If these are true duplicates rather than deliberate splits, the declared annual income is overstated — the tax estimate and run-rate would be too high. Needs a proper diagnosis before any row is touched.
 >
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:413`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:88`, `app/api/income/route.ts:241`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-008`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx. Evidence/run: VR-008.
+
+[STAGE-1 MECHANISM DIAGNOSIS, 2026-07-15 — §19.2 verified at source; population census PENDING (needs live data)]
+MECHANISM CENSUS (how duplicate/fragmented income rows come to exist):
+(1) transactions/[id]/link income branch — the ONLY dedup guard is MON-009's existingRentalStream (:413-421), scoped to type RENT/RENTAL + propertyId. SALARY/OTHER income has NO guard: each linked deposit the user routes to 'new income' mints a fresh row → the Ingeus ×3 shape. 
+(2) doc-import reconcileSuggestedAction INCOME branch (:80-92) — exact amount + exact name + type; misses name variants and amount drift (the same weakness class RC-B fixed for EXPENSES; income branch deliberately left unchanged in #1427). 
+(3) manual POST /api/income (:241) — no guard (deliberate user action). 
+(4) Cienna rent ×3 on Thornland — the MON-009 guard would catch these TODAY; the three rows likely predate MON-009 (mechanism fixed, data remains) or carry mismatched type/propertyId — VERIFY per-row on live data. 
+(5) Hipcamp ×2 ($75, $579) — NOT necessarily duplicates: different amounts, both now classified one-off (VR-008) — plausibly two REAL bookings. The census must judge each group by its linked-transaction evidence, not by name alone.
+POPULATION FINGERPRINT (§7 rule — enumerate ALL groups, not the three reported): income rows grouped by (relatedMerchant(name) ∨ sameMerchant(name)) ∧ same scope (propertyId/investmentAccountId or none) — each group with >1 row is a candidate; classify per group: TRUE-DUPLICATE (same stream split) vs REAL-DISTINCT (separate receipts/streams). Requires live data — Matrix/Chrome or an admin query; NOT executable from a Code session.
+DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-duplicate salary/other stream, the fix shape is (A) extend the MON-009 stream-reuse pattern to non-rental income at intake, keyed by the RC-B canonical near-duplicate decision (isNearDuplicateEntry), + user-reviewed merge of existing rows (abandoned-backfill precedent), or (B) keep rows but pool them into one logical stream at read time (bigger, touches every consumer — NOT recommended, violates one-producer simplicity). RECOMMENDATION: (A) intake guard + user-reviewed remediation, mirroring RC-B exactly. Gate: no fix code until Reza picks and the live population census lands.
 
 ### MON-077 — 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it
 
