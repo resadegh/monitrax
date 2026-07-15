@@ -184,7 +184,11 @@ export interface GearingAnalysis {
   portfolioLVR: number;
   propertyLVRs: Array<{ propertyId: string; propertyName: string; lvr: number }>;
   interestCoverageRatio: number;
-  negativeGearingBenefit: number;
+  // MON-045: `negativeGearingBenefit` removed — it was a rogue duplicate
+  // producer (and mislabeled: it returned the raw property LOSS, not a
+  // benefit at the marginal rate). The canonical negative-gearing figures
+  // live in the tax position (deductions.property vs income.rental) and
+  // the CFO insights derived from it.
 }
 
 export interface RiskAnalysis {
@@ -233,7 +237,8 @@ export interface PropertyAnalysis {
   cashflowPositive: boolean;
   monthlyProfit: number;
   annualDepreciation: number;
-  negativeGearingBenefit: number;
+  // MON-045: `negativeGearingBenefit` removed — duplicate producer of the
+  // per-property loss; the tax position is the one source for gearing tax math.
 }
 
 export interface InvestmentAnalysisResult {
@@ -475,25 +480,12 @@ export function calculateGearing(input: PortfolioInput): GearingAnalysis {
     ? cashflow.annualIncome / totalAnnualInterest
     : 999;
 
-  // Negative gearing benefit (simplified)
-  const investmentPropertyIncome = input.income
-    .filter(i => i.propertyId && i.type === 'RENT')
-    .reduce((sum, i) => sum + toAnnual(i.amount, i.frequency), 0);
-
-  const investmentPropertyExpenses = input.expenses
-    .filter(e => e.propertyId)
-    .reduce((sum, e) => sum + toAnnual(e.amount, e.frequency), 0);
-
-  const investmentLoanInterest = input.loans
-    .filter(l => l.type === 'INVESTMENT')
-    .reduce((sum, l) => {
-      const effectivePrincipal = Math.max(0, l.principal - (l.offsetBalance || 0));
-      return sum + effectivePrincipal * l.interestRate;
-    }, 0);
-
-  const negativeGearingBenefit = Math.max(0,
-    investmentPropertyExpenses + investmentLoanInterest - investmentPropertyIncome
-  );
+  // MON-045: the "negative gearing benefit (simplified)" block that lived
+  // here was deleted — a rogue duplicate producer that re-derived property
+  // loss from raw rows (and returned the loss itself, not a tax benefit).
+  // The canonical source is the tax position engine
+  // (lib/tax-engine/position/taxPositionCalculator.ts — deductions.property
+  // vs income.rental, deductible interest auto-derived per loan).
 
   return {
     totalDebt,
@@ -503,7 +495,6 @@ export function calculateGearing(input: PortfolioInput): GearingAnalysis {
     portfolioLVR,
     propertyLVRs,
     interestCoverageRatio,
-    negativeGearingBenefit
   };
 }
 
@@ -802,7 +793,7 @@ export function generatePortfolioIntelligence(input: PortfolioInput): PortfolioI
       cashflowPositive: annualProfit > 0,
       monthlyProfit: annualProfit / 12,
       annualDepreciation: 0, // Would need depreciation schedule
-      negativeGearingBenefit: Math.max(0, -annualProfit)
+      // MON-045: negativeGearingBenefit removed (duplicate loss producer)
     };
   });
 

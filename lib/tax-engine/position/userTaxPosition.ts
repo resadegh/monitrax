@@ -88,8 +88,43 @@ export async function getUserTaxPosition(
 
   const properties = await prisma.property.findMany({
     where: { userId },
-    include: { income: true, expenses: true, loans: true },
+    // MON-045: offsetAccount balance is an input to the auto-derived deductible
+    // loan interest ((principal − offset) × rate × fraction, actuals-first).
+    include: { income: true, expenses: true, loans: { include: { offsetAccount: true } } },
   });
+
+  // MON-045: actuals-first interest — Σ INTEREST_CHARGED ledger rows this FY,
+  // per loan (the same source app/api/loans/[id]/ledger reads). One grouped
+  // query for all property loans (§12.10 — no N+1).
+  const allPropertyLoanIds = properties.flatMap((p: any) => p.loans.map((l: any) => l.id));
+  const interestSums = allPropertyLoanIds.length
+    ? await prisma.loanTransaction.groupBy({
+        by: ['loanId'],
+        where: {
+          loanId: { in: allPropertyLoanIds },
+          kind: 'INTEREST_CHARGED',
+          date: { gte: fyInfo.startDate, lte: fyInfo.endDate },
+        },
+        _sum: { amount: true },
+      })
+    : [];
+  const actualInterestByLoan = new Map<string, number>(
+    interestSums.map((r: any) => [r.loanId, Math.abs(r._sum.amount ?? 0)]),
+  );
+
+  // MON-045: the engine applies the ONE deductibility rule (type !== 'HOME');
+  // the caller just supplies every property loan with its property type.
+  const propertyLoanItems = properties.flatMap((p: any) =>
+    p.loans.map((l: any) => ({
+      id: l.id,
+      propertyType: p.type,
+      principal: l.principal,
+      interestRateAnnual: l.interestRateAnnual,
+      offsetBalance: l.offsetAccount?.currentBalance ?? null,
+      deductibleFraction: l.deductibleFraction ?? null,
+      actualInterestCharged: actualInterestByLoan.get(l.id) ?? null,
+    })),
+  );
 
   const incomeItems: IncomeItem[] = incomes.map((income: any) => ({
     id: income.id,
@@ -137,6 +172,7 @@ export async function getUserTaxPosition(
     incomes: incomeItems,
     expenses: expenseItems,
     depreciations: depreciationItems,
+    propertyLoans: propertyLoanItems, // MON-045: auto-derived deductible interest
     superContributions: superTotals,
     financialYear: fyInfo.year,
   });

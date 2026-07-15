@@ -268,7 +268,7 @@ All endpoints must be implemented under:
 - `/calculate/loan`  
 - `/calculate/cashflow`  
 - `/calculate/rent`  
-- `/calculate/property-roi`  
+- ~~`/calculate/property-roi`~~ *(removed 2026-07-15, MON-045: orphaned — zero frontend callers — and a rogue duplicate producer: hardcoded 37% marginal rate + its own negative-gearing and depreciation formulas. The tax position engine is the one source.)*  
 - `/calculate/investment`  
 - `/calculate/depreciation`  
 
@@ -343,14 +343,14 @@ Phase 03 is complete when:
 | Income/Expense Engine | ✅ COMPLETE | `/lib/intelligence/portfolioEngine.ts` |
 | Depreciation Engine | ✅ COMPLETE | `/lib/depreciation/index.ts` |
 | Investment Engine | ✅ COMPLETE | `/lib/investments/index.ts` |
-| Property ROI Engine | ✅ COMPLETE | `/api/calculate/property-roi` |
+| Property ROI Engine | 🗑️ REMOVED 2026-07-15 (MON-045) | orphaned route deleted — duplicate NG/depreciation producers; canonical: tax position engine |
 | Frequency Harmonisation | ✅ COMPLETE | `/lib/utils/frequencies.ts` |
 | Time-Series Generator | ✅ COMPLETE | `/lib/utils/timeSeries.ts` |
 | `/api/calculate/debt-plan` | ✅ COMPLETE | Operational |
 | `/api/calculate/tax` | ✅ COMPLETE | Operational |
 | `/api/calculate/loan` | ✅ COMPLETE | `/app/api/calculate/loan/route.ts` |
 | `/api/calculate/cashflow` | ✅ COMPLETE | `/app/api/calculate/cashflow/route.ts` |
-| `/api/calculate/property-roi` | ✅ COMPLETE | `/app/api/calculate/property-roi/route.ts` |
+| `/api/calculate/property-roi` | 🗑️ REMOVED 2026-07-15 (MON-045) | orphaned, zero callers; deleted with the rogue neg-gearing producers |
 | `/api/calculate/investment` | ✅ COMPLETE | `/app/api/calculate/investment/route.ts` |
 | `/api/calculate/depreciation` | ✅ COMPLETE | `/app/api/calculate/depreciation/route.ts` |
 | Engine Diagnostics | ✅ COMPLETE | All endpoints include diagnostics |
@@ -385,7 +385,7 @@ Phase 03 is complete when:
 All required endpoints have been implemented:
 - ✅ `/app/api/calculate/loan/route.ts` - Loan amortisation with Zod validation
 - ✅ `/app/api/calculate/cashflow/route.ts` - Cashflow analysis (GET/POST)
-- ✅ `/app/api/calculate/property-roi/route.ts` - Property ROI metrics
+- 🗑️ `/app/api/calculate/property-roi/route.ts` - Property ROI metrics — REMOVED 2026-07-15 (MON-045: orphaned + duplicate producers)
 - ✅ `/app/api/calculate/investment/route.ts` - Investment performance & franking
 - ✅ `/app/api/calculate/depreciation/route.ts` - Depreciation schedules & forecasts
 

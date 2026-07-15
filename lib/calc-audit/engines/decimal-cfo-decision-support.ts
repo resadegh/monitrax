@@ -9,7 +9,9 @@
  *   - `investmentDecisionSupport.calculateDividendYieldDecimal`
  *   - `investmentDecisionSupport.calculateMaxConcentrationDecimal`
  *   - `taxIntegration.calculateUnrealisedCGTDecimal`
- *   - `taxIntegration.calculateNegativeGearingBenefitDecimal`
+ *   (`taxIntegration.calculateNegativeGearingBenefitDecimal` was deleted by
+ *   MON-045 — rogue duplicate producer; benefit now derives from the
+ *   canonical tax position)
  *
  * Categorical helpers (alert generation, performance extremes, allocation
  * analysis, rebalance actions) and the async `calculateCFO*Insights`
@@ -38,13 +40,9 @@ import {
 } from '@/lib/cfo/decisionSupport/investmentDecisionSupport';
 import {
   calculateUnrealisedCGTDecimal,
-  calculateNegativeGearingBenefitDecimal,
   type CgtHoldingDecimalInput,
-  type NegativeGearingPropertyDecimalInput,
 } from '@/lib/cfo/decisionSupport/taxIntegration';
 import { Decimal } from '@/lib/decimal';
-import { toAnnual } from '@/lib/utils/frequencies';
-import { Frequency } from '@/lib/types/prisma-enums';
 import type { PropertyMetrics } from '@/lib/services/masterFinancialService';
 import type { ShadowEngine } from '@/lib/calc-audit/shadowComparison';
 
@@ -445,33 +443,6 @@ function unrealisedCGTFloat(holdings: CgtHoldingDecimalInput[]): number {
   return totalUnrealisedGains;
 }
 
-function negativeGearingBenefitFloat(
-  properties: NegativeGearingPropertyDecimalInput[],
-  marginalRate: number,
-): number {
-  let total = 0;
-  for (const property of properties) {
-    if (property.type !== 'INVESTMENT') continue;
-    const annualIncome = property.income.reduce(
-      (sum, i) => sum + toAnnual(Number(i.amount), i.frequency as Frequency),
-      0,
-    );
-    const annualExpenses = property.expenses.reduce(
-      (sum, e) => sum + toAnnual(Number(e.amount), e.frequency as Frequency),
-      0,
-    );
-    const annualLoanInterest = property.loans.reduce(
-      (sum, l) => sum + Number(l.principal) * Number(l.interestRateAnnual ?? 0),
-      0,
-    );
-    const netPropertyIncome = annualIncome - annualExpenses - annualLoanInterest;
-    if (netPropertyIncome < 0) {
-      total += Math.abs(netPropertyIncome) * (marginalRate / 100);
-    }
-  }
-  return total;
-}
-
 export const unrealisedCGTShadow: ShadowEngine<
   { holdings: CgtHoldingDecimalInput[] },
   number,
@@ -516,98 +487,12 @@ export const unrealisedCGTShadow: ShadowEngine<
   ],
 };
 
-interface NegativeGearingFixture {
-  properties: NegativeGearingPropertyDecimalInput[];
-  marginalRate: number;
-}
-
-export const negativeGearingBenefitShadow: ShadowEngine<
-  NegativeGearingFixture,
-  number,
-  Decimal
-> = {
-  name: 'cfo.taxIntegration.calculateNegativeGearingBenefit.shadow',
-  description: 'Shadow Float vs Decimal negative-gearing benefit aggregation.',
-  sourcePath: 'lib/cfo/decisionSupport/taxIntegration.ts',
-  floatExecute: ({ properties, marginalRate }) =>
-    negativeGearingBenefitFloat(properties, marginalRate),
-  decimalExecute: ({ properties, marginalRate }) =>
-    calculateNegativeGearingBenefitDecimal(properties, marginalRate),
-  fieldPolicy: {},
-  fixtures: [
-    {
-      name: 'empty properties → 0',
-      description: 'Baseline.',
-      input: { properties: [], marginalRate: 37 },
-    },
-    {
-      name: 'OO property excluded',
-      description: 'Only INVESTMENT properties contribute.',
-      input: {
-        properties: [
-          {
-            type: 'OWNER_OCCUPIED',
-            income: [],
-            expenses: [{ amount: 1_000, frequency: 'MONTHLY' }],
-            loans: [{ principal: 500_000, interestRateAnnual: 0.065 }],
-          },
-        ],
-        marginalRate: 37,
-      },
-    },
-    {
-      name: 'negative-geared IP at 37%',
-      description: 'Rental short of costs → tax deduction at marginal rate.',
-      input: {
-        properties: [
-          {
-            type: 'INVESTMENT',
-            income: [{ amount: 2_000, frequency: 'MONTHLY' }],
-            expenses: [{ amount: 800, frequency: 'MONTHLY' }],
-            loans: [{ principal: 400_000, interestRateAnnual: 0.06 }],
-          },
-        ],
-        marginalRate: 37,
-      },
-    },
-    {
-      name: 'positively-geared IP → 0 benefit',
-      description: 'Net positive income → no negative-gearing benefit.',
-      input: {
-        properties: [
-          {
-            type: 'INVESTMENT',
-            income: [{ amount: 3_000, frequency: 'MONTHLY' }],
-            expenses: [{ amount: 500, frequency: 'MONTHLY' }],
-            loans: [{ principal: 200_000, interestRateAnnual: 0.05 }],
-          },
-        ],
-        marginalRate: 45,
-      },
-    },
-    {
-      name: 'multi-IP portfolio at 45%',
-      description: 'Mixed pos+neg IPs, top marginal rate.',
-      input: {
-        properties: [
-          {
-            type: 'INVESTMENT',
-            income: [{ amount: 2_500, frequency: 'MONTHLY' }],
-            expenses: [{ amount: 1_000, frequency: 'MONTHLY' }],
-            loans: [{ principal: 500_000, interestRateAnnual: 0.065 }],
-          },
-          {
-            type: 'INVESTMENT',
-            income: [{ amount: 3_000, frequency: 'MONTHLY' }],
-            expenses: [{ amount: 600, frequency: 'MONTHLY' }],
-            loans: [{ principal: 200_000, interestRateAnnual: 0.05 }],
-          },
-        ],
-        marginalRate: 45,
-      },
-    },
-  ],
-};
+// MON-045: `negativeGearingBenefitShadow` was REMOVED — its subject
+// (`taxIntegration.calculateNegativeGearingBenefit{,Decimal}`) was a rogue
+// duplicate producer deleted in the same PR. The CFO benefit is now derived
+// from the canonical tax position (deductions.property − income.rental at
+// marginal rate); deductible interest is proven by the propertyLoanInterest
+// fixtures in tests/tax/mon045PropertyLoanInterest.test.ts.
 
 export const cfoDecisionSupportShadowEngines = [
   propertyPortfolioSummaryShadow,
@@ -617,5 +502,4 @@ export const cfoDecisionSupportShadowEngines = [
   dividendYieldShadow,
   maxConcentrationShadow,
   unrealisedCGTShadow,
-  negativeGearingBenefitShadow,
 ] as const;
