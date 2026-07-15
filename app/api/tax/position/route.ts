@@ -119,6 +119,41 @@ export const GET = withPermission('report.read', async (request, auth) => {
       }),
     ]);
 
+    // MON-045: property loans (with offset balances) + FY INTEREST_CHARGED
+    // actuals for auto-derived deductible interest — the SAME inputs
+    // getUserTaxPosition passes, so the Tax page and CFO/cashflow read one
+    // consistent position (the MON-028 same-engine-different-inputs lesson).
+    const loanProps = await prisma.property.findMany({
+      where: { userId },
+      select: { id: true, type: true, loans: { include: { offsetAccount: true } } },
+    });
+    const propLoanIds = loanProps.flatMap((p) => p.loans.map((l) => l.id));
+    const interestSums = propLoanIds.length
+      ? await prisma.loanTransaction.groupBy({
+          by: ['loanId'],
+          where: {
+            loanId: { in: propLoanIds },
+            kind: 'INTEREST_CHARGED',
+            date: { gte: currentFY.startDate, lte: currentFY.endDate },
+          },
+          _sum: { amount: true },
+        })
+      : [];
+    const actualInterestByLoan = new Map<string, number>(
+      interestSums.map((r) => [r.loanId, Math.abs(r._sum.amount ?? 0)]),
+    );
+    const propertyLoanItems = loanProps.flatMap((p) =>
+      p.loans.map((l) => ({
+        id: l.id,
+        propertyType: p.type,
+        principal: l.principal,
+        interestRateAnnual: l.interestRateAnnual,
+        offsetBalance: l.offsetAccount?.currentBalance ?? null,
+        deductibleFraction: l.deductibleFraction ?? null,
+        actualInterestCharged: actualInterestByLoan.get(l.id) ?? null,
+      })),
+    );
+
     // Transform incomes to IncomeItem format
     const incomeItems: IncomeItem[] = (incomes as IncomeRecord[]).map((income: IncomeRecord) => ({
       id: income.id,
@@ -184,6 +219,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       incomes: incomeItems,
       expenses: expenseItems,
       depreciations: depreciationItems,
+      propertyLoans: propertyLoanItems, // MON-045
       superContributions: superTotals,
       financialYear,
     });
@@ -191,6 +227,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       incomes: incomeItems,
       expenses: expenseItems,
       depreciations: depreciationItems,
+      propertyLoans: propertyLoanItems, // MON-045
       superContributions: superTotals,
       financialYear,
     });

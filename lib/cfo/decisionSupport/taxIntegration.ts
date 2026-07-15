@@ -10,8 +10,6 @@
 // with /cashflow) — this file no longer fetches data or calls calculateTaxPosition itself.
 import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
-import { toAnnual, toAnnualDecimal } from '@/lib/utils/frequencies';
-import { Frequency } from '@/lib/types/prisma-enums';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
 // ============================================================================
@@ -105,8 +103,17 @@ export async function calculateCFOTaxInsights(userId: string): Promise<CFOTaxIns
   // Calculate unrealised CGT from holdings
   const unrealisedCGT = calculateUnrealisedCGT(holdings);
 
-  // Calculate negative gearing benefit
-  const negativeGearingBenefit = calculateNegativeGearingBenefit(properties, taxPosition.tax.marginalRate);
+  // MON-045: negative-gearing benefit is DERIVED from the canonical tax
+  // position, not re-computed from raw property rows. The engine already
+  // holds the one deductible-interest rule (auto-derived per property loan,
+  // actuals-first, HOME excluded — lib/tax-engine/deductions/propertyLoanInterest.ts),
+  // so the benefit is simply the property loss sheltered at the marginal rate:
+  //   max(0, property deductions − rental income) × marginalRate.
+  // The previous local producer (Σ principal×rate per property, declared-only)
+  // was the rogue duplicate this issue deletes (§12.2.1 — one producer).
+  const negativeGearingBenefit =
+    Math.max(0, taxPosition.deductions.property - taxPosition.income.rental) *
+    (taxPosition.tax.marginalRate / 100);
 
   // Detect tax risks
   const taxRisks = detectTaxRisks({
@@ -194,39 +201,6 @@ function calculateUnrealisedCGT(holdings: any[]): number {
   }
 
   return totalUnrealisedGains;
-}
-
-function calculateNegativeGearingBenefit(properties: any[], marginalRate: number): number {
-  let totalNegativeGearing = 0;
-
-  for (const property of properties) {
-    if (property.type !== 'INVESTMENT') continue;
-
-    const annualIncome = property.income.reduce(
-      (sum: number, i: any) => sum + toAnnual(i.amount, i.frequency as Frequency),
-      0
-    );
-
-    const annualExpenses = property.expenses.reduce(
-      (sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency),
-      0
-    );
-
-    const annualLoanInterest = property.loans.reduce(
-      (sum: number, l: any) => sum + (l.principal * (l.interestRateAnnual || 0)),
-      0
-    );
-
-    const netPropertyIncome = annualIncome - annualExpenses - annualLoanInterest;
-
-    if (netPropertyIncome < 0) {
-      // Negative gearing = tax deduction at marginal rate
-      // marginalRate is stored as percentage (e.g., 37), so divide by 100
-      totalNegativeGearing += Math.abs(netPropertyIncome) * (marginalRate / 100);
-    }
-  }
-
-  return totalNegativeGearing;
 }
 
 interface TaxRiskDetectionParams {
@@ -479,59 +453,9 @@ export function calculateUnrealisedCGTDecimal(
   return total;
 }
 
-/**
- * Compact shape compatible with the property rows `calculateNegativeGearingBenefit`
- * reads (only the fields it actually uses).
- */
-export interface NegativeGearingPropertyDecimalInput {
-  type: string;
-  income: Array<{ amount: number | string | Decimal; frequency: string }>;
-  expenses: Array<{ amount: number | string | Decimal; frequency: string }>;
-  loans: Array<{ principal: number | string | Decimal; interestRateAnnual?: number | string | Decimal | null }>;
-}
-
-/**
- * Decimal sibling of the private `calculateNegativeGearingBenefit`. Per
- * INVESTMENT property: `annualIncome − annualExpenses − annualLoanInterest`.
- * Negative net income is treated as a tax deduction at the user's marginal
- * rate (passed as percentage, e.g. 37 = 37%). Mirrors Float bit-for-bit.
- *
- * Reform-aware: §12.14 FW-1 Measure 1 (negative gearing → new-builds only
- * for post-cutover acquisitions) is enforced in the canonical
- * `applyNegativeGearingDecimal` engine in `lib/tax-engine/divisions/negativeGearing.ts`.
- * This helper is a portfolio-overview heuristic that aggregates net
- * property cashflow assuming pre-reform grandfathered treatment — the
- * caller-side regime gating happens in the AI advisor + the master tax
- * position. FW-1 outcome (a) here.
- */
-export function calculateNegativeGearingBenefitDecimal(
-  properties: NegativeGearingPropertyDecimalInput[],
-  marginalRate: number | string | Decimal,
-): Decimal {
-  const zero = new Decimal(0);
-  const mRate = (toDecimal(marginalRate) ?? zero).div(100);
-  let total = zero;
-  for (const property of properties) {
-    if (property.type !== 'INVESTMENT') continue;
-
-    const annualIncome = property.income.reduce(
-      (acc, i) => acc.plus(toAnnualDecimal(i.amount, i.frequency as Frequency)),
-      zero,
-    );
-    const annualExpenses = property.expenses.reduce(
-      (acc, e) => acc.plus(toAnnualDecimal(e.amount, e.frequency as Frequency)),
-      zero,
-    );
-    const annualLoanInterest = property.loans.reduce((acc, l) => {
-      const p = toDecimal(l.principal) ?? zero;
-      const r = toDecimal(l.interestRateAnnual ?? 0) ?? zero;
-      return acc.plus(p.times(r));
-    }, zero);
-
-    const netPropertyIncome = annualIncome.minus(annualExpenses).minus(annualLoanInterest);
-    if (netPropertyIncome.lt(0)) {
-      total = total.plus(netPropertyIncome.abs().times(mRate));
-    }
-  }
-  return total;
-}
+// MON-045: `calculateNegativeGearingBenefit` (Float) + its Decimal sibling and
+// input shape were DELETED here — they were a rogue duplicate producer
+// (Σ principal×rate per property from raw rows, declared-only, no offset, no
+// HOME/fraction handling). The negative-gearing benefit is now derived from
+// the canonical tax position in `calculateCFOTaxInsights` above; the ONE
+// deductible-interest producer is lib/tax-engine/deductions/propertyLoanInterest.ts.

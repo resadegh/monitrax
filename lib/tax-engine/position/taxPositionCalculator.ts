@@ -21,6 +21,7 @@ import { calculateAllOffsets, applyOffsets, calculateAllOffsetsDecimal, applyOff
 import { toAnnual, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { determineTaxability, determineTaxabilityDecimal } from '../income/taxabilityRules';
+import { deductiblePropertyLoanInterest } from '../deductions/propertyLoanInterest';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
@@ -72,10 +73,37 @@ export interface DepreciationItem {
   type: string; // DIV_40 or DIV_43
 }
 
+/** MON-045 stage 2 — a property loan whose DEDUCTIBLE interest the engine
+ *  auto-derives (via lib/tax-engine/deductions/propertyLoanInterest.ts, the ONE
+ *  interest source). The engine applies the ONE deductibility rule itself
+ *  (§12.2.1 — never in the callers, or they drift): interest is deductible only
+ *  when the property is rental-assessable, i.e. `propertyType !== 'HOME'`
+ *  (a primary residence's loan interest is NOT deductible — e.g. Guildford —
+ *  even if the home is partially let; use Loan.deductibleFraction for a manual
+ *  apportionment override). */
+export interface PropertyLoanItem {
+  id: string;
+  /** Property.type of the owning property — the deductibility gate. */
+  propertyType: 'HOME' | 'INVESTMENT' | 'RENTAL' | string;
+  principal: number;
+  /** DECIMAL, e.g. 0.0649 (Loan.interestRateAnnual convention). */
+  interestRateAnnual: number;
+  /** Linked offset Account.currentBalance (reduces the interest-bearing base). */
+  offsetBalance?: number | null;
+  /** ATO TR 2000/2 apportionment (Loan.deductibleFraction, default 1.0). */
+  deductibleFraction?: number | null;
+  /** Σ INTEREST_CHARGED ledger rows this FY — the actuals-first source. */
+  actualInterestCharged?: number | null;
+}
+
 export interface TaxPositionCalculationInput {
   incomes: IncomeItem[];
   expenses: ExpenseItem[];
   depreciations: DepreciationItem[];
+  /** MON-045: property loans for auto-derived deductible interest. Optional —
+   *  callers that don't pass them get the pre-MON-045 behaviour (logged
+   *  expense rows only). */
+  propertyLoans?: PropertyLoanItem[];
   superContributions?: {
     concessional: number;
     nonConcessional: number;
@@ -194,9 +222,34 @@ export function calculateTaxPosition(
     total: 0,
   };
 
+  // MON-045: auto-derive DEDUCTIBLE property loan interest from the loans
+  // themselves (the ONE canonical source — actuals-first INTEREST_CHARGED →
+  // (principal − offset) × rate × deductibleFraction). Only rental-assessable
+  // properties (type !== 'HOME'); a primary residence's interest is never
+  // auto-deducted. Loan-linked expense rows for THESE loans are skipped below
+  // (§12.2.1 de-dup — the loan-derived figure supersedes; interest is never
+  // double-counted). Loss-offset gating vs the Phase 41E reform is a SEPARATE
+  // step (applyNegativeGearing, stage 3) — grandfathered/always-offset today.
+  const autoDerivedLoanIds = new Set<string>();
+  for (const loan of input.propertyLoans ?? []) {
+    if (loan.propertyType === 'HOME') continue; // primary residence — not deductible
+    const { deductibleInterest } = deductiblePropertyLoanInterest({
+      principal: loan.principal,
+      interestRateAnnual: loan.interestRateAnnual,
+      offsetBalance: loan.offsetBalance,
+      deductibleFraction: loan.deductibleFraction,
+      actualInterestCharged: loan.actualInterestCharged,
+    });
+    deductionBreakdown.property += deductibleInterest;
+    autoDerivedLoanIds.add(loan.id);
+  }
+
   // Process deductible expenses
   for (const expense of input.expenses) {
     if (!expense.isTaxDeductible) continue;
+
+    // MON-045 de-dup: this loan's interest is already auto-derived above.
+    if (expense.loanId && autoDerivedLoanIds.has(expense.loanId)) continue;
 
     // MON-037: count a one-off ONCE (its actual amount), never ×frequency.
     const annualAmount = expense.isRecurring === false
@@ -700,8 +753,31 @@ export function calculateTaxPositionDecimal(
     total: new Decimal(0),
   };
 
+  // MON-045: auto-derived deductible property loan interest — Decimal twin of
+  // the Float block (§12.2.1: the two paths must never disagree). Same ONE
+  // rule: type !== 'HOME'; loan-linked expense rows for these loans are
+  // de-duped below. The Float helper's output is exact for our precision needs
+  // (a product of stored Floats); it is converted once here.
+  const autoDerivedLoanIdsDec = new Set<string>();
+  for (const loan of input.propertyLoans ?? []) {
+    if (loan.propertyType === 'HOME') continue;
+    const { deductibleInterest } = deductiblePropertyLoanInterest({
+      principal: loan.principal,
+      interestRateAnnual: loan.interestRateAnnual,
+      offsetBalance: loan.offsetBalance,
+      deductibleFraction: loan.deductibleFraction,
+      actualInterestCharged: loan.actualInterestCharged,
+    });
+    deductionBreakdown.property = deductionBreakdown.property.plus(
+      toDecimal(deductibleInterest) ?? new Decimal(0),
+    );
+    autoDerivedLoanIdsDec.add(loan.id);
+  }
+
   for (const expense of input.expenses) {
     if (!expense.isTaxDeductible) continue;
+    // MON-045 de-dup: this loan's interest is already auto-derived above.
+    if (expense.loanId && autoDerivedLoanIdsDec.has(expense.loanId)) continue;
     // MON-037: count a one-off ONCE (its actual amount), never ×frequency.
     const annualAmount = expense.isRecurring === false
       ? (toDecimal(expense.amount) ?? new Decimal(0))

@@ -1061,14 +1061,14 @@
       "kind": "engine",
       "label": "Income tax position",
       "file": "lib/tax-engine/position/taxPositionCalculator.ts",
-      "line": 104,
+      "line": 132,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "TaxPositionResult — assessable income breakdown, deductions, taxable income, tax on income (marginal brackets), Medicare, marginal rate, PAYG, net tax payable/refund.",
-      "formula": "grossTax = incomeTax.taxPayable + medicare.total (taxPositionCalculator.ts:242); net tax after LITO/offsets − PAYG withheld. Brackets/Medicare/LITO from the FY config.",
+      "produces": "TaxPositionResult — assessable income breakdown, deductions, taxable income, tax on income (marginal brackets), Medicare, marginal rate, PAYG, net tax payable/refund. MON-045: deductions.property now includes AUTO-DERIVED deductible property-loan interest (via engine.tax.deductiblePropertyLoanInterest) for every non-HOME property loan passed in propertyLoans[]; loan-linked expense rows for those loans are de-duped (never double-counted).",
+      "formula": "grossTax = incomeTax.taxPayable + medicare.total; net tax after LITO/offsets − PAYG withheld. Brackets/Medicare/LITO from the FY config. MON-045 auto-derive loop at taxPositionCalculator.ts:233-245 (Float) / :761-775 (Decimal); de-dup guard at :252 / :780.",
       "authority": "ITAA 1997 (income tax) + ATO individual income tax rates + Medicare Levy Act 1986",
       "inputs": [
         {
@@ -1082,12 +1082,18 @@
           "unit": "thresholds",
           "type": "TaxYearConfig",
           "note": "getCurrentTaxYearConfig() default (:96)"
+        },
+        {
+          "name": "propertyLoans",
+          "unit": "items[]",
+          "type": "PropertyLoanItem[]",
+          "note": "MON-045 optional — id, propertyType (HOME excluded), principal, interestRateAnnual (decimal), offsetBalance, deductibleFraction, actualInterestCharged (Σ INTEREST_CHARGED this FY)"
         }
       ],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/position/taxPositionCalculator.ts:92 (read this session)",
+      "verifiedBy": "lib/tax-engine/position/taxPositionCalculator.ts:132 + tests/tax/mon045PropertyLoanInterest.test.ts (Ring-0/2 + source-lock) + tests/tax/mon053OneOffIncome.test.ts",
       "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedDate": "2026-07-15",
       "status": "documented"
     },
     {
@@ -4048,32 +4054,11 @@
       "status": "documented"
     },
     {
-      "id": "engine.taxIntegration.calculateNegativeGearingBenefit",
-      "kind": "engine",
-      "label": "CFO: negative-gearing benefit (estimate)",
-      "file": "lib/cfo/decisionSupport/taxIntegration.ts",
-      "line": 199,
-      "layer": "engine",
-      "domain": "cfo",
-      "trailStage": "I",
-      "regime": "pre-reform",
-      "semanticKey": null,
-      "produces": "Estimated annual tax benefit from negatively-geared investment properties.",
-      "formula": "per INVESTMENT property: net = annualIncome − annualExpenses − annualLoanInterest (Σ principal×interestRateAnnual); if net<0, benefit += |net|×(marginalRate/100). interestRateAnnual is a DECIMAL; marginalRate is a percent.",
-      "authority": "ITAA1997 rental-loss deductibility at marginal rate (PRE-reform). NOT gated for the Phase 41E reform (neg gearing → new builds only, 1 Jul 2027) — flagged for Reza (§12.14). MON-045 SUSPECTED ISSUE: this is a ROGUE SECOND producer — it auto-computes property loan interest (Σ principal×rate) that the canonical tax position does NOT auto-deduct (only counts logged LOAN_INTEREST/property expense rows), so the benefit can exceed total deductions (observed $157,746 ≈ 4× $39,554 — mathematically impossible: benefit=loss×rate ≤ loss ≤ property deductions < total deductions). A separate reform-aware canonical engine already exists (engine.tax.negativeGearing.applyNegativeGearing) but is production-unwired. Reza-approved fix (Option 1, 2026-07-14): auto-derive property loan interest in the canonical tax engine (de-duped vs logged LOAN_INTEREST, reform-gated §12.14), derive the benefit from that ONE source, and DELETE this rogue producer + its Decimal sibling (§12.2.1). This node is removed/repointed by the MON-045 PR.",
-      "inputs": [],
-      "astHash": null,
-      "verifiedBy": "calc-audit engine cfo.taxIntegration.calculateNegativeGearingBenefit (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:293",
-      "workedExample": null,
-      "verifiedDate": "2026-06-26",
-      "status": "suspected-issue"
-    },
-    {
       "id": "engine.taxIntegration.calculateUnrealisedCGT",
       "kind": "engine",
       "label": "CFO: unrealised CGT (simplified estimate)",
       "file": "lib/cfo/decisionSupport/taxIntegration.ts",
-      "line": 182,
+      "line": 189,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": "I",
@@ -4661,7 +4646,7 @@
       "kind": "engine",
       "label": "Portfolio net-worth adapter",
       "file": "lib/intelligence/portfolioEngine.ts",
-      "line": 308,
+      "line": 313,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -5857,8 +5842,8 @@
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "The ONE user-level tax position (income + deductions + Medicare + offsets + PAYG). Fetches once, calls calculateTaxPosition, and is read by BOTH /cashflow and My Guide so their tax numbers converge (MON-020).",
-      "formula": "getUserTaxPosition(userId) → calculateTaxPosition({incomes,expenses,depreciations,super}). No tax math here — delegates to the reform-aware engine (§12.14 inherited).",
+      "produces": "The ONE user-level tax position (income + deductions + Medicare + offsets + PAYG). Fetches once, calls calculateTaxPosition, and is read by BOTH /cashflow and My Guide so their tax numbers converge (MON-020). MON-045: also fetches property loans (+offset accounts) and Σ INTEREST_CHARGED per loan this FY, passing propertyLoans[] so deductible interest is auto-derived by the engine.",
+      "formula": "getUserTaxPosition(userId) → calculateTaxPosition({incomes,expenses,depreciations,propertyLoans,super}). No tax math here — delegates to the reform-aware engine (§12.14 inherited). INTEREST_CHARGED aggregation at userTaxPosition.ts:100-113.",
       "authority": "CLAUDE.md §12.2.1 (one source); calculateTaxPosition = ATO/ITAA engine",
       "inputs": [
         {
@@ -5869,9 +5854,9 @@
         }
       ],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:50 + tests/tax/userTaxPositionConvergence.test.ts",
+      "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:54 + tests/tax/userTaxPositionConvergence.test.ts",
       "workedExample": null,
-      "verifiedDate": "2026-07-10",
+      "verifiedDate": "2026-07-15",
       "status": "documented"
     },
     {
@@ -5988,6 +5973,79 @@
       "verifiedBy": "tests/verification/vr001Ratchet.test.ts",
       "workedExample": "in 10000, out 8000, no trailing history -> 20%; trailing -30.5% with 12 months data -> -30.5%",
       "verifiedDate": "2026-07-11",
+      "status": "documented"
+    },
+    {
+      "id": "engine.tax.deductiblePropertyLoanInterest",
+      "kind": "engine",
+      "label": "Deductible property-loan interest (actuals-first)",
+      "file": "lib/tax-engine/deductions/propertyLoanInterest.ts",
+      "line": 71,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The ONE deductible property-loan-interest figure per loan (MON-045). Actuals-first: Σ INTEREST_CHARGED ledger rows this FY × deductibleFraction when present; else theoretical max(0, principal − offsetBalance) × interestRateAnnual × deductibleFraction. Reform-INDEPENDENT — the Phase 41E reform gates the LOSS offset (applyNegativeGearing, stage 3), not interest deductibility.",
+      "formula": "actual: |ΣINTEREST_CHARGED| × clamp(deductibleFraction,0,1); theoretical: max(0, principal − offset) × rate × clamp(fraction,0,1). Returns {deductibleInterest, basis: 'actual'|'theoretical'}.",
+      "authority": "ITAA 1997 s8-1 (interest on borrowings for income-producing property deductible); ATO TR 2000/2 (mixed-purpose apportionment → deductibleFraction). The HOME gate (primary-residence interest NOT deductible) is applied by the CONSUMER engine (taxPositionCalculator.ts:235/:763) so the rule lives in exactly one calc path.",
+      "inputs": [
+        {
+          "name": "principal",
+          "unit": "AUD",
+          "type": "number",
+          "note": "Loan.principal"
+        },
+        {
+          "name": "interestRateAnnual",
+          "unit": "decimal (0.0649)",
+          "type": "number",
+          "note": "Loan.interestRateAnnual — DECIMAL, not percent (§19.2)"
+        },
+        {
+          "name": "offsetBalance",
+          "unit": "AUD",
+          "type": "number|null",
+          "note": "linked offset Account.currentBalance"
+        },
+        {
+          "name": "deductibleFraction",
+          "unit": "0..1",
+          "type": "number|null",
+          "note": "Loan.deductibleFraction (default 1.0)"
+        },
+        {
+          "name": "actualInterestCharged",
+          "unit": "AUD/FY",
+          "type": "number|null",
+          "note": "Σ LoanTransaction kind=INTEREST_CHARGED this FY (actuals win)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "lib/tax-engine/deductions/propertyLoanInterest.ts:71 + tests/tax/propertyLoanInterest.test.ts (9 §19.2 worked examples) + tests/tax/mon045PropertyLoanInterest.test.ts (engine wiring)",
+      "workedExample": "947,076 × 0.0649 = 61,465.23 theoretical; with 100,000 offset → 54,975.23; actuals 60,000 charged → 60,000 (basis 'actual')",
+      "verifiedDate": "2026-07-15",
+      "status": "documented"
+    },
+    {
+      "id": "input.LoanTransaction.interestCharged",
+      "kind": "input-field",
+      "label": "Loan ledger: interest charged (actuals)",
+      "file": "prisma/schema.prisma",
+      "line": null,
+      "layer": "db",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Per-loan INTEREST_CHARGED ledger rows — the ACTUAL interest the bank charged (the same source the loan ledger UI reads). Aggregated per FY as the actuals-first input to deductible interest.",
+      "formula": null,
+      "authority": "Prisma LoanTransaction (kind='INTEREST_CHARGED'); §19.1 actuals-vs-declared — actuals win when present.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:100 (groupBy kind=INTEREST_CHARGED, FY window, Math.abs)",
+      "workedExample": null,
+      "verifiedDate": "2026-07-15",
       "status": "documented"
     }
   ],
@@ -8128,27 +8186,6 @@
       "evidence": "lib/cfo/riskRadar.ts:70-76,89 — risks[] built from snapshot loans/incomes/expenses/properties/investments, then calculateSummary aggregates them (:601)"
     },
     {
-      "from": "input.Income.declared",
-      "to": "engine.taxIntegration.calculateNegativeGearingBenefit",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/taxIntegration.ts:298 — Σ toAnnual(property.income)"
-    },
-    {
-      "from": "input.Expense.declared",
-      "to": "engine.taxIntegration.calculateNegativeGearingBenefit",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/taxIntegration.ts:303 — Σ toAnnual(property.expenses)"
-    },
-    {
-      "from": "input.Loan.principal",
-      "to": "engine.taxIntegration.calculateNegativeGearingBenefit",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/cfo/decisionSupport/taxIntegration.ts:308 — Σ l.principal × l.interestRateAnnual"
-    },
-    {
       "from": "input.Investment.value",
       "to": "engine.taxIntegration.calculateUnrealisedCGT",
       "type": "feeds",
@@ -9104,6 +9141,46 @@
       "toUnit": "%",
       "evidence": "MON-029: app/api/dashboard/insights/route.ts (insight + KPI tile, 3 call sites) + lib/cfo/intelligenceEngine.ts calculateMonthlyProgress all read getCanonicalSavingsRate(snapshot, moneyStoryTrend).rate",
       "verifiedDate": "2026-07-11"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.tax.deductiblePropertyLoanInterest",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "userTaxPosition.ts:122 principal → propertyLoanInterest.ts theoretical base",
+      "verifiedDate": "2026-07-15"
+    },
+    {
+      "from": "input.Loan.interestRateAnnual",
+      "to": "engine.tax.deductiblePropertyLoanInterest",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "userTaxPosition.ts:123 interestRateAnnual (decimal) → theoretical rate",
+      "verifiedDate": "2026-07-15"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.tax.deductiblePropertyLoanInterest",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "userTaxPosition.ts:123 offsetAccount.currentBalance → offsetBalance",
+      "verifiedDate": "2026-07-15"
+    },
+    {
+      "from": "input.LoanTransaction.interestCharged",
+      "to": "engine.tax.deductiblePropertyLoanInterest",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "userTaxPosition.ts:100-113 FY groupBy Σ|amount| → actualInterestCharged (actuals-first)",
+      "verifiedDate": "2026-07-15"
+    },
+    {
+      "from": "engine.tax.deductiblePropertyLoanInterest",
+      "to": "engine.taxPositionCalculator.calculateTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "taxPositionCalculator.ts:236-244 (Float) / :764-773 (Decimal) — deductibleInterest → deductionBreakdown.property; HOME gate :235/:763; de-dup :252/:780",
+      "verifiedDate": "2026-07-15"
     }
   ]
 }

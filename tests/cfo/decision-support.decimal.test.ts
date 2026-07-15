@@ -6,7 +6,12 @@
  *   - loanDecisionSupport.{calculateMonthlyPayment, calculatePayoffMonths,
  *     calculateTotalInterest}Decimal
  *   - investmentDecisionSupport.{calculateDividendYield, calculateMaxConcentration}Decimal
- *   - taxIntegration.{calculateUnrealisedCGT, calculateNegativeGearingBenefit}Decimal
+ *   - taxIntegration.calculateUnrealisedCGTDecimal
+ *
+ * MON-045: `calculateNegativeGearingBenefit{,Decimal}` + its shadow were
+ * deleted (rogue duplicate producer). The CFO negative-gearing benefit now
+ * derives from the canonical tax position; deductible interest is proven in
+ * tests/tax/mon045PropertyLoanInterest.test.ts.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,7 +23,6 @@ import {
   dividendYieldShadow,
   maxConcentrationShadow,
   unrealisedCGTShadow,
-  negativeGearingBenefitShadow,
   cfoDecisionSupportShadowEngines,
 } from '@/lib/calc-audit/engines/decimal-cfo-decision-support';
 import {
@@ -36,10 +40,7 @@ import {
   calculateDividendYieldDecimal,
   calculateMaxConcentrationDecimal,
 } from '@/lib/cfo/decisionSupport/investmentDecisionSupport';
-import {
-  calculateUnrealisedCGTDecimal,
-  calculateNegativeGearingBenefitDecimal,
-} from '@/lib/cfo/decisionSupport/taxIntegration';
+import { calculateUnrealisedCGTDecimal } from '@/lib/cfo/decisionSupport/taxIntegration';
 
 // ---------------------------------------------------------------------------
 // Shadow sweeps
@@ -53,7 +54,6 @@ const ENGINES = [
   ['dividendYield', dividendYieldShadow] as const,
   ['maxConcentration', maxConcentrationShadow] as const,
   ['unrealisedCGT', unrealisedCGTShadow] as const,
-  ['negativeGearingBenefit', negativeGearingBenefitShadow] as const,
 ];
 
 for (const [label, engine] of ENGINES) {
@@ -268,67 +268,12 @@ describe('calculateUnrealisedCGTDecimal — contract', () => {
   });
 });
 
-describe('calculateNegativeGearingBenefitDecimal — contract', () => {
-  it('empty → 0', () => {
-    expect(calculateNegativeGearingBenefitDecimal([], 37).toString()).toBe('0');
-  });
-
-  it('OO property excluded', () => {
-    const r = calculateNegativeGearingBenefitDecimal(
-      [
-        {
-          type: 'OWNER_OCCUPIED',
-          income: [],
-          expenses: [{ amount: 1_000, frequency: 'MONTHLY' }],
-          loans: [{ principal: 500_000, interestRateAnnual: 0.065 }],
-        },
-      ],
-      37,
-    );
-    expect(r.toString()).toBe('0');
-  });
-
-  it('positively geared IP → 0 benefit', () => {
-    const r = calculateNegativeGearingBenefitDecimal(
-      [
-        {
-          type: 'INVESTMENT',
-          income: [{ amount: 3_000, frequency: 'MONTHLY' }],
-          expenses: [{ amount: 500, frequency: 'MONTHLY' }],
-          loans: [{ principal: 200_000, interestRateAnnual: 0.05 }],
-        },
-      ],
-      45,
-    );
-    expect(r.toString()).toBe('0');
-  });
-
-  it('negatively geared IP at 37% marginal rate', () => {
-    // Annual income: 2000 × 12 = 24000
-    // Annual expenses: 800 × 12 = 9600
-    // Loan interest: 400000 × 0.06 = 24000
-    // Net: 24000 − 9600 − 24000 = −9600 → benefit = 9600 × 0.37 = 3552
-    const r = calculateNegativeGearingBenefitDecimal(
-      [
-        {
-          type: 'INVESTMENT',
-          income: [{ amount: 2_000, frequency: 'MONTHLY' }],
-          expenses: [{ amount: 800, frequency: 'MONTHLY' }],
-          loans: [{ principal: 400_000, interestRateAnnual: 0.06 }],
-        },
-      ],
-      37,
-    );
-    expect(r.toString()).toBe('3552');
-  });
-});
-
 // ---------------------------------------------------------------------------
 // Aggregate shadow report
 // ---------------------------------------------------------------------------
 
 describe('PR 2.E.3 — full shadow report', () => {
-  it('every fixture across 8 decision-support engines PASSes', async () => {
+  it('every fixture across the decision-support engines PASSes', async () => {
     const report = await runShadowComparisonReport([...cfoDecisionSupportShadowEngines]);
     expect(report.errored).toBe(0);
     if (report.diffed > 0) {
