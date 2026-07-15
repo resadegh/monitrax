@@ -6,7 +6,8 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-07-15 (**Cursor truth-restore + The Matrix HQ (Cowork)** — STATE.md re-pinned to `38abeee`/#1416; `docs/operational/LAUNCH_PROGRAM_2026-07.md` added; Q-GTM-3 reconciled; Reza decisions 2026-07-15: rectify GO + 31-July scope = friendlies beta + broker outbound.)
+**Last updated:** 2026-07-15 (**VR-007 consolidated into the issue registry (Matrix, renumbered +2 → MON-053…MON-074 to avoid the #1418 MON-051/052 collision)** — Ring-3 real-data run VR-007 recorded (`docs/verification/runs/VR-007.md` + raw capture); registry now **74 MON issues** (MON-053…MON-074 raised, `tracker: neoaudit-run:VR-007`); MON-039/042/018 → VERIFIED, MON-049 → DIAGNOSED; six `#PENDING` fixPR placeholders resolved. **MON-053 (critical)** — one-off income annualised ×12, ~$120.6K phantom income in the tax base — is **MON-037's income-side twin** and **must land before MON-045 stage 2**. Baseline replacement is **PROPOSED, awaiting Reza** (§3.4 "Reza confirms"). _Verification Machine workstream detail NOT updated in `01_ACTIVE_WORKSTREAMS.md` — that spoke is **390 KB**, far above the ~63 KB ceiling this hub records as unreliable for a verbatim connector rewrite; it needs a git-capable session (see § Per-spoke size budget)._)
+> _Prior: 2026-07-15 (**Cursor truth-restore + The Matrix HQ (Cowork)** — STATE.md re-pinned to `38abeee`/#1416; `docs/operational/LAUNCH_PROGRAM_2026-07.md` added; Q-GTM-3 reconciled; Reza decisions 2026-07-15: rectify GO + 31-July scope = friendlies beta + broker outbound.) — that truth-restore stands; VR-007 only ADDS to it._
 ---
 
 ## How this plan is structured (read me first)
