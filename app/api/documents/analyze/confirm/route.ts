@@ -391,6 +391,10 @@ async function createExpenseFromAnalysis(
         frequency,
         isTaxDeductible: Boolean(data.taxDeductible),
         isEssential: Boolean(data.isEssential ?? true),
+        // MON-037 RC-B: expense-side parity with the income create below
+        // (MON-053) — a one-off invoice must be expressible as one-off, not
+        // silently minted as recurring-MONTHLY (the ×12 class).
+        isRecurring: Boolean(data.isRecurring ?? true),
         propertyId: data.propertyId ? String(data.propertyId) : null,
         loanId: data.loanId ? String(data.loanId) : null,
       },

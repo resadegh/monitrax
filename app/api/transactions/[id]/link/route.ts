@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { sameMerchant } from '@/lib/bank/merchantNormalize';
+import { isNearDuplicateEntry } from '@/lib/utils/reconciliation';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
@@ -611,8 +612,20 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               },
               orderBy: { createdAt: 'asc' },
             });
+            // MON-037 RC-B: exact (normalised) name match first — then the
+            // canonical near-duplicate check (token-containment + ≤10% amount:
+            // "Battery" vs "Battery System"/"Battery Replacement"), so an
+            // ACTUAL being linked reconciles INTO the existing estimate row
+            // instead of minting a same-cost sibling under a name variant.
             const existingExpense =
-              scopeExpenses.find((e) => sameMerchant(e.name, expenseData.name)) ?? null;
+              scopeExpenses.find((e) => sameMerchant(e.name, expenseData.name)) ??
+              scopeExpenses.find((e) =>
+                isNearDuplicateEntry(
+                  { name: expenseData.name, vendorName: expenseData.vendorName, amount: expenseData.amount },
+                  { name: e.name, vendorName: e.vendorName, amount: e.amount },
+                ),
+              ) ??
+              null;
 
             const expense = existingExpense ?? (await prisma.expense.create({ data: expenseData }));
 

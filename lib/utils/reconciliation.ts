@@ -12,6 +12,7 @@
 
 import { Frequency } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual, periodsPerYear } from './frequencies';
+import { sameMerchant, relatedMerchant } from '@/lib/bank/merchantNormalize';
 
 // =============================================================================
 // TYPES
@@ -525,4 +526,57 @@ export function convertFrequency(
 ): number {
   const annual = toAnnual(amount, fromFrequency);
   return annual / periodsPerYear(toFrequency);
+}
+
+// =============================================================================
+// MON-037 RC-B — near-duplicate entry detection (the ONE decision, §12.2.1)
+// =============================================================================
+
+/** The fields the near-duplicate decision reads — satisfied by Expense rows
+ *  and by intake candidates before they're written. */
+export interface EntryForDuplicateCheck {
+  name: string;
+  vendorName?: string | null;
+  amount: number;
+}
+
+/**
+ * MON-037 RC-B — is `candidate` a near-duplicate of `existing`?
+ *
+ * The battery case: one real cost entered via different intake paths under
+ * name variants — "Battery" (manual) / "Battery System" (document-import
+ * estimate) / "Battery Replacement" (transaction-link actual) — each minting
+ * its own row because both intake guards matched only on (normalised) name
+ * EQUALITY. Result: one $11,385 battery counted three times.
+ *
+ * Decision (deliberately conservative — a false "duplicate" silently merges
+ * two REAL costs, which is worse than a missed match the user can clean up):
+ *   names related  = normalised equality OR token-containment across any
+ *                    name/vendorName pairing (relatedMerchant), AND
+ *   amounts close  = within `amountTolerance` of the larger |amount|
+ *                    (default 10% — covers estimate-vs-actual drift on the
+ *                    same cost; two genuinely different same-name costs
+ *                    rarely land within 10% on the same scope).
+ *
+ * SCOPE IS THE CALLER'S JOB: callers must only compare entries on the same
+ * linking scope (same propertyId/loanId/assetId) — this predicate is pure.
+ */
+export function isNearDuplicateEntry(
+  candidate: EntryForDuplicateCheck,
+  existing: EntryForDuplicateCheck,
+  amountTolerance = 0.1,
+): boolean {
+  const a = Math.abs(candidate.amount);
+  const b = Math.abs(existing.amount);
+  if (!(a > 0) || !(b > 0)) return false;
+  if (Math.abs(a - b) > Math.max(a, b) * amountTolerance) return false;
+
+  const candNames = [candidate.name, candidate.vendorName].filter(Boolean) as string[];
+  const existNames = [existing.name, existing.vendorName].filter(Boolean) as string[];
+  for (const cn of candNames) {
+    for (const en of existNames) {
+      if (sameMerchant(cn, en) || relatedMerchant(cn, en)) return true;
+    }
+  }
+  return false;
 }

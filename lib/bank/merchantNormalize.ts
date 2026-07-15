@@ -40,3 +40,25 @@ export function sameMerchant(a: string | null | undefined, b: string | null | un
   const nb = normalizeMerchant(b);
   return na.length > 0 && na === nb;
 }
+
+/**
+ * MON-037 RC-B — true when one normalised name is a TOKEN-SUBSET of the other
+ * ("Battery" ⊂ "Battery System" / "Battery Replacement"), the fingerprint of
+ * the same real-world cost entered twice under name variants via different
+ * intake paths (document-import estimate vs transaction-link actual).
+ * Deliberately conservative: containment only (never partial overlap), so
+ * "home insurance" vs "car insurance" stay distinct. Equal names are related.
+ * NOT sufficient alone to declare a duplicate — pair with an amount check
+ * (see lib/utils/reconciliation.ts `isNearDuplicateEntry`, the ONE decision).
+ */
+export function relatedMerchant(a: string | null | undefined, b: string | null | undefined): boolean {
+  const na = normalizeMerchant(a);
+  const nb = normalizeMerchant(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const ta = new Set(na.split(' '));
+  const tb = new Set(nb.split(' '));
+  const [small, large] = ta.size <= tb.size ? [ta, tb] : [tb, ta];
+  for (const t of small) if (!large.has(t)) return false;
+  return true;
+}
