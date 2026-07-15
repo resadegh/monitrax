@@ -5,7 +5,7 @@
   "entries": [
     {
       "file": "app/dashboard/income/page.tsx",
-      "line": 2014,
+      "line": 2047,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits"
     },

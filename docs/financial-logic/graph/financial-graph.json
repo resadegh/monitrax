@@ -1061,7 +1061,7 @@
       "kind": "engine",
       "label": "Income tax position",
       "file": "lib/tax-engine/position/taxPositionCalculator.ts",
-      "line": 101,
+      "line": 104,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,

@@ -33,6 +33,9 @@ export interface IncomeItem {
   type: string;
   amount: number;
   frequency: string;
+  /** MON-053: false = a one-off receipt (single ATO deposit) — counted ONCE,
+   *  never ×frequency. Mirrors ExpenseItem.isRecurring (MON-037). */
+  isRecurring?: boolean;
   propertyId?: string;
   investmentAccountId?: string;
   grossAmount?: number;
@@ -123,9 +126,13 @@ export function calculateTaxPosition(
 
   // Process each income
   for (const income of input.incomes) {
+    // MON-053: count a one-off ONCE (its actual amount), never ×frequency —
+    // the income-side twin of the MON-037 expense guard below.
     const annualAmount = income.grossAmount
       ? income.grossAmount
-      : annualize(income.amount, income.frequency);
+      : income.isRecurring === false
+        ? income.amount
+        : annualize(income.amount, income.frequency);
 
     // Determine taxability
     const taxResult = determineTaxability({
@@ -631,9 +638,13 @@ export function calculateTaxPositionDecimal(
   let totalPaygWithheld = new Decimal(0);
 
   for (const income of input.incomes) {
+    // MON-053: count a one-off ONCE — Decimal twin of the Float guard above
+    // (§12.2.1: the two paths must never disagree on this semantics).
     const annualAmount = income.grossAmount != null
       ? (toDecimal(income.grossAmount) ?? new Decimal(0))
-      : annualizeDecimal(income.amount, income.frequency);
+      : income.isRecurring === false
+        ? (toDecimal(income.amount) ?? new Decimal(0))
+        : annualizeDecimal(income.amount, income.frequency);
 
     const taxResult = determineTaxabilityDecimal({
       incomeType: income.type,

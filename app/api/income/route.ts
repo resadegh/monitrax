@@ -175,6 +175,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
         type,
         amount,
         frequency,
+        isRecurring, // MON-053: false = one-off receipt, counted once (never ×frequency)
         isTaxable,
         propertyId,
         investmentAccountId,
@@ -245,6 +246,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
           type,
           amount: toNumber(amount) ?? 0,
           frequency,
+          isRecurring: isRecurring !== undefined ? Boolean(isRecurring) : true, // MON-053
           isTaxable: isTaxable !== undefined ? Boolean(isTaxable) : true,
           propertyId: propertyId || null,
           investmentAccountId: investmentAccountId || null,

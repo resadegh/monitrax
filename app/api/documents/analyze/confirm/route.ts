@@ -464,6 +464,7 @@ async function createIncomeFromAnalysis(
         amount: Number(data.amount) || 0,
         type: incomeType,
         frequency,
+        isRecurring: Boolean(data.isRecurring ?? true), // MON-053
         isTaxable: Boolean(data.isTaxable ?? true),
         propertyId: data.propertyId ? String(data.propertyId) : null,
       },

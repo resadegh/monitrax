@@ -201,4 +201,25 @@ The following principles protect legacy tables:
 
 ---
 
-*Last Updated: 2026-04-15*
+## Failure mode: hand-authored migration used the MODEL name, not the `@@map`-ed table name (2026-07-15, MON-053)
+
+**What happened.** A cloud session (no dev-DB access, so no `prisma migrate dev`) hand-authored
+`20260715000000_add_income_is_recurring` as `ALTER TABLE "Income" ...`. The Prisma model is
+`@@map("income")` (lowercase — as are `"expenses"` etc.), so the preview build's
+`prisma migrate deploy` failed with `42P01 relation "Income" does not exist` (P3018) and the FAILED
+record in `monitrax-db-dev`'s `_prisma_migrations` ledger then **blocked every preview deploy
+repo-wide** until resolved.
+
+**The rules this adds:**
+1. **Hand-authoring a migration? Check `@@map` FIRST.** The SQL table name is the `@@map` value,
+   never the model name. Grep an existing migration for the same table as a sanity check.
+2. **Recovery without a DB shell:** fix the SQL in the SAME migration folder, then add a
+   temporary self-healing step to `vercel-build` **before** `migrate deploy`:
+   `(prisma migrate resolve --rolled-back <migration_name> || true)` — on the broken dev DB it
+   marks the failed record rolled-back so the corrected SQL re-applies; on prod (no record) and on
+   healthy DBs it errors harmlessly into `|| true`. **Remove the step in the next PR after both
+   environments have applied the migration** — it must not live in the pipeline permanently.
+3. The failed migration made no schema change (the ALTER failed atomically), so `--rolled-back`
+   is the correct resolution — never `--applied`.
+
+*Last Updated: 2026-07-15*
