@@ -131,6 +131,15 @@ interface Income {
   // D1 (MON-075): a "recurring" row whose whole evidence is one transaction
   // with $0 this month — likely a one-off; review nudge only.
   oneOffFingerprint?: { transactionCount: number } | null;
+  // D4 (Phase 59): rental deposits materially below declared gross with no
+  // agent-cost expense captured — likely missing deductions; nudge only.
+  rentGap?: {
+    grossPerPeriod: number;
+    netPerPeriod: number;
+    gapPerPeriod: number;
+    gapAnnual: number;
+    disbursementFrequency: string;
+  } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -1107,6 +1116,18 @@ function IncomePageContent() {
                                 title="This recurring entry is backed by a single payment and nothing this month. If it was a one-time receipt, edit it and tick 'One-off income' so it isn't repeated in your totals."
                               >
                                 Single payment — one-off?
+                              </span>
+                            )}
+                            {/* D4 (Phase 59): rent deposits run below the
+                                declared rent with no agent costs captured —
+                                likely missing deductions (a win to claim,
+                                so emerald). One status per row: D2/D1 win. */}
+                            {!item.cadenceMismatch && !item.oneOffFingerprint && item.rentGap && (
+                              <span
+                                className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
+                                title={`Deposits arrive about ${formatCurrency(item.rentGap.gapPerPeriod)} below your declared rent each ${item.rentGap.disbursementFrequency.toLowerCase()} period — that gap is usually your agent's management & costs, which are tax-deductible. Upload your rental statement (or mark this stream as agent-managed) to claim them.`}
+                              >
+                                Missing management-fee deductions?
                               </span>
                             )}
                           </div>
