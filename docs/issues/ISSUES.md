@@ -3,11 +3,11 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**78 total** · 75 open · 🔵 24 · 🟡 7 · 🟠 30 · 🟢 14 · ✅ 2
+**78 total** · 75 open · 🔵 24 · 🟡 6 · 🟠 31 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
-| MON-001 | 🟡 DIAGNOSED | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | — | — |
+| MON-001 | 🟠 FIXING | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | ##1430 (wall Part 2: C1 evidence cadence + D2 detector) | ✅ |
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
 | MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
@@ -90,21 +90,24 @@
 
 ### MON-001 — Fortnightly rent stored/treated as MONTHLY (rent ~54% off)
 
-**🟡 DIAGNOSED** · 🔴 critical · changes numbers: **yes** · area: properties · opened 2026-07-03
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: properties · opened 2026-07-03
 
-> **What was wrong:** Rent you receive fortnightly was being recorded as if it were monthly, so the property's annual rent — and everything built on it — was wrong.
+> **What was wrong:** Rents paid weekly (Broadbeach $2,947/wk, Thornland Lot 2 $2,817/wk) were stored as MONTHLY entries, so a year of rent counted 12 payments instead of 52 — rental income understated roughly 4.3×, and the tax estimate with it.
 >
-> **What changed:** (planned) Drive the property's rent from your actual reconciled rent transactions so the real fortnightly cadence is used, and let you set/correct the frequency where you reconcile.
+> **What changed:** Two guards: (1) when the app creates an income/expense from linked bank payments, it now derives the true rhythm from the payment dates themselves (weekly stays WEEKLY — never silently monthly); (2) a standing detector flags any existing row whose stored rhythm disagrees with what its own payments show, with a gentle 'Payments look weekly' chip on the income list. You review and edit the flagged rows — nothing changes by itself.
 >
-> **What you should see:** (after fix) On the property, Annual rent should match your real rent (roughly your fortnightly amount × 26), not × 12.
+> **What you should see:** On My Accounts › Income: the weekly rent rows show an amber 'Payments look weekly' chip. Edit each to WEEKLY — the monthly figure, annual rental income, and the tax estimate rise to the true ×52 basis. Rows whose payments genuinely arrive monthly show no chip.
 
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:318`, `app/api/transactions/[id]/link/route.ts:156`, `app/dashboard/properties/[id]/page.tsx:141`
 - **Neomatrix:** `engine.incomeAggregator.aggregateIncome`
-- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/properties/page.tsx`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `classifyIntake evidence path → all 8 intake producers (future rows store the true cadence; existing rows untouched)`, `app/api/income GET → cadenceMismatch flag per row → income page nudge chip (D2 surface)`, `GET /api/transactions/[id]/link matches — inline cadence block repointed to the ONE canonical detectFrequency (identical thresholds, behaviour-identical)`, `after Reza edits the flagged rows: income aggregator → tax position → CFO/My Guide → cashflow all inherit the corrected ×52 basis (SSOT — no code change needed downstream)`, `RESIDUAL (documented, follow-up): lib/bank/recurringExpenseDetection.ts keeps its private detectFrequency copy — its confidence formula feeds pattern-match thresholds; repointing would change suggestion behaviour and needs its own justification`
+- **Fix PR(s):** ##1430 (wall Part 2: C1 evidence cadence + D2 detector)
+- **Holistic test (§19.4):** `tests/intake/classifyIntake.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 
 Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time. Folded into MON-002: the shared engine uses monthlyAverageActual (a true monthly average from the reconciled fortnightly cadence) so fortnightly rent annualises at ×26 not ×12. Advances to VERIFIED with MON-002 once Reza confirms on his data.
+
+[C1 + D2 SHIPPED — wall Part 2, 2026-07-16] classifyIntake gains transactionDates evidence: ≥2 valid dates → the ONE canonical detectFrequency (declared/explicit user choice still WINS — suggest-and-confirm preserved). Link route threads primary+batch txn dates into all 3 classifier calls. GET-matches inline cadence block deleted → canonical (thresholds identical). D2: lib/intake/detectors.ts detectCadenceMismatch (pure; ≥3 txns, confidence ≥0.7, never one-offs) → income GET cadenceMismatch flag → income-page amber nudge chip (review-only; no auto-change — the abandoned-backfill precedent). Ring-0: classifyIntake evidence tests (weekly census fixture: 7-day deltas → WEEKLY) + detectors.test.ts (7). EXISTING rows remediation = Reza edits the flagged rows (Ring-3: flip Broadbeach + Thornland Lot 2 to WEEKLY; rental income/tax rise to the ×52 basis; regression guard: monthly-cadence rows unflagged, MON-053 one-offs unflagged).
 
 ### MON-002 — Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift
 

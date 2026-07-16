@@ -53,9 +53,46 @@ describe('MON-078 · frequency resolution', () => {
     expect(() => classifyIntake({ kind: 'income', source: 'ONBOARDING', declaredFrequency: 'SOMETIMES' })).toThrow();
   });
 
-  it('LEGACY (C1 target): import paths without evidence fall back to MONTHLY — in the classifier only', () => {
+  it('LEGACY (C2 residual): import paths with NO evidence at all fall back to MONTHLY — in the classifier only', () => {
     expect(classifyIntake({ kind: 'income', source: 'TRANSACTION_LINK' }).frequency).toBe('MONTHLY');
     expect(classifyIntake({ kind: 'expense', source: 'DOCUMENT_IMPORT' }).frequency).toBe('MONTHLY');
+  });
+
+  // ── C1 (MON-001): cadence from transaction EVIDENCE ──
+  const weekly = (n: number) =>
+    Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 0, 2 + i * 7)));
+
+  it('C1 census case: weekly rent payments → stored WEEKLY, never monthly (the ~4.3× class)', () => {
+    const r = classifyIntake({
+      kind: 'income',
+      source: 'TRANSACTION_LINK',
+      transactionDates: weekly(5), // 7-day deltas
+    });
+    expect(r.frequency).toBe('WEEKLY');
+  });
+
+  it('C1: fortnightly evidence → FORTNIGHTLY', () => {
+    const dates = Array.from({ length: 4 }, (_, i) => new Date(Date.UTC(2026, 0, 2 + i * 14)));
+    expect(classifyIntake({ kind: 'expense', source: 'TRANSACTION_LINK', transactionDates: dates }).frequency).toBe('FORTNIGHTLY');
+  });
+
+  it('C1: the user\'s explicit choice still WINS over evidence (suggest-and-confirm)', () => {
+    const r = classifyIntake({
+      kind: 'income',
+      source: 'TRANSACTION_LINK',
+      declaredFrequency: 'MONTHLY',
+      transactionDates: weekly(5),
+    });
+    expect(r.frequency).toBe('MONTHLY');
+  });
+
+  it('C1: fewer than 2 valid dates is NOT evidence — falls through as before', () => {
+    expect(
+      classifyIntake({ kind: 'income', source: 'TRANSACTION_LINK', transactionDates: [new Date()] }).frequency,
+    ).toBe('MONTHLY');
+    expect(
+      classifyIntake({ kind: 'income', source: 'TRANSACTION_LINK', transactionDates: ['garbage', new Date()] }).frequency,
+    ).toBe('MONTHLY');
   });
 });
 

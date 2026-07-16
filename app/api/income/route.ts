@@ -6,6 +6,7 @@ import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
+import { detectCadenceMismatch } from '@/lib/intake/detectors';
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
@@ -142,6 +143,17 @@ export const GET = withPermission('income.read', async (request, auth) => {
           ...wrapped,
           // Budget = entry.amount (what user entered)
           budgetAmount: inc.amount,
+          // D2 (MON-001): flag when the STORED cadence disagrees with the
+          // cadence this row's own transactions imply (e.g. weekly rent
+          // stored MONTHLY → ~4.3× understated). Nudge only — the user
+          // reviews and edits; nothing is auto-changed.
+          cadenceMismatch: actuals
+            ? detectCadenceMismatch({
+                frequency: inc.frequency,
+                isRecurring: inc.isRecurring,
+                transactionDates: actuals.transactions.map((t) => t.date),
+              })
+            : null,
           // Actual = total from ALL linked transactions
           actualFromTransactions: actuals ? actuals.totalAmount : null,
           // Current month actual
