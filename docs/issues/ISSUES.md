@@ -1381,8 +1381,9 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/c
 
 > **What was wrong:** Rent from your agent arrives after their fees are taken out, so Monitrax can't see your real gross rent or claim the agent's fees as deductions.
 >
+- **Neomatrix:** `number.rental.agentCostDeduction`, `number.rental.grossDeclared`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `phase-59`
 
-Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9.
+Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside.
 

@@ -20,6 +20,7 @@ import './engines/tax-divisions';
 import './engines/tax-state';
 import './engines/core';
 import './engines/property';
+import './engines/rental-reconciliation'; // Phase 59: managed-rental gap
 
 export { calcEngineRegistry } from './registry';
 export { runDifferential, runOne } from './runDifferential';
