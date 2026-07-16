@@ -180,3 +180,15 @@ Recorded in the PR body.
 - Ring-0: +5 detector tests. Baseline re-lined (income page 2060→2073).
 - Gates: tsc clean · intake/income/api suites green · neomatrix 0 uncovered ·
   linters OK · issues 78 valid. MON-075 → FIXING.
+
+---
+
+## Session (continued, 2026-07-16): R3 golden intake-trap fixtures — wall Part 5
+
+- `tests/golden/ring2.intakeWall.test.ts` (10) — the three trap shapes locked
+  end-to-end: weekly rent (classifies WEEKLY + D2 flags a mis-stored MONTHLY +
+  ×52 Float/Decimal parity), single ATO deposit (one-off classification +
+  counted-once parity + D1 flags the leftover shape), fragmented stream
+  (exact + near-duplicate reuse, scope-singleton rental rule, no false merges).
+  Additive — GOLDEN_DB untouched (its EXPECTED values pin other suites).
+- Gates: tsc clean · golden+intake 196/196 · neomatrix 0 uncovered · linters OK.
