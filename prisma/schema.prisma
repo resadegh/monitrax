@@ -4273,6 +4273,7 @@ enum DocumentAnalysisType {
   LEASE_AGREEMENT
   VALUATION_REPORT
   TAX_DOCUMENT
+  RENTAL_STATEMENT // Phase 59: agent owner/rental statement (Neobrain parser)
   UNKNOWN
 }
 

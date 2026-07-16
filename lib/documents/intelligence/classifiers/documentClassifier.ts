@@ -84,6 +84,24 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
+    // Phase 59: agent owner/rental statement — gross rent, itemised agent
+    // costs, net disbursement. Higher priority than LEASE_AGREEMENT so
+    // "rental statement" never classifies as a lease.
+    type: DocumentAnalysisType.RENTAL_STATEMENT,
+    priority: 92,
+    requiredKeywords: ['statement'],
+    optionalKeywords: ['rent', 'rental', 'owner', 'landlord', 'disbursement', 'management fee', 'letting fee', 'remittance', 'agent'],
+    excludeKeywords: ['loan', 'lease agreement', 'tenancy agreement'],
+    patterns: [
+      /rent(al)?\s*statement/i,
+      /owner\s*statement/i,
+      /landlord\s*statement/i,
+      /statement\s*of\s*disbursement/i,
+      /management\s*fee/i,
+    ],
+  },
+
+  {
     type: DocumentAnalysisType.LEASE_AGREEMENT,
     priority: 90,
     requiredKeywords: ['lease'],
@@ -348,6 +366,7 @@ export function getDocumentTypeName(type: DocumentAnalysisType): string {
     [DocumentAnalysisType.LEASE_AGREEMENT]: 'Lease Agreement',
     [DocumentAnalysisType.VALUATION_REPORT]: 'Valuation Report',
     [DocumentAnalysisType.TAX_DOCUMENT]: 'Tax Document',
+    [DocumentAnalysisType.RENTAL_STATEMENT]: 'Rental Statement', // Phase 59
     [DocumentAnalysisType.UNKNOWN]: 'Unknown Document',
   };
 

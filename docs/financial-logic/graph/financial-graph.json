@@ -3081,7 +3081,7 @@
       "kind": "engine",
       "label": "Document type classifier",
       "file": "lib/documents/intelligence/classifiers/documentClassifier.ts",
-      "line": 204,
+      "line": 222,
       "layer": "engine",
       "domain": "neobrain",
       "trailStage": null,
@@ -3094,7 +3094,7 @@
       "astHash": null,
       "verifiedBy": null,
       "workedExample": null,
-      "verifiedDate": "2026-06-25",
+      "verifiedDate": "2026-07-16",
       "status": "documented"
     },
     {
@@ -3123,7 +3123,7 @@
       "kind": "engine",
       "label": "Complex-doc extractor (Gemini)",
       "file": "lib/documents/intelligence/analyzers/aiDocumentAnalyzer.ts",
-      "line": 139,
+      "line": 140,
       "layer": "engine",
       "domain": "neobrain",
       "trailStage": null,
@@ -3136,7 +3136,7 @@
       "astHash": null,
       "verifiedBy": null,
       "workedExample": null,
-      "verifiedDate": "2026-06-25",
+      "verifiedDate": "2026-07-16",
       "status": "documented"
     },
     {

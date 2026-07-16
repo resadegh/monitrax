@@ -13,6 +13,9 @@ CREATE TYPE "ExpenseDerivationSource" AS ENUM ('RECONCILIATION', 'STATEMENT');
 -- AlterEnum: agent management & property costs category for derived expenses
 ALTER TYPE "ExpenseCategory" ADD VALUE 'PROPERTY_MANAGEMENT';
 
+-- AlterEnum: the agent rental/owner statement document type (Neobrain parser)
+ALTER TYPE "DocumentAnalysisType" ADD VALUE 'RENTAL_STATEMENT';
+
 -- AlterTable: managed-rental mode on the income stream (declared gross stays
 -- in amount/frequency; MANAGED is opt-in per stream)
 ALTER TABLE "income" ADD COLUMN "rentalMode" "RentalMode" NOT NULL DEFAULT 'DIRECT';

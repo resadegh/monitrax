@@ -25,6 +25,7 @@ export enum DocumentAnalysisType {
   LEASE_AGREEMENT = 'LEASE_AGREEMENT',
   VALUATION_REPORT = 'VALUATION_REPORT',
   TAX_DOCUMENT = 'TAX_DOCUMENT',
+  RENTAL_STATEMENT = 'RENTAL_STATEMENT', // Phase 59: agent owner/rental statement
   UNKNOWN = 'UNKNOWN',
 }
 
