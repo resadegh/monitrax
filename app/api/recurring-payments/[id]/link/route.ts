@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -58,6 +59,14 @@ export const POST = withPermission<RouteContext>('expense.write', async (request
         } = body;
 
         // Create the expense
+        // MON-078: the user's explicit cadence wins; else the DETECTED pattern
+        // cadence (evidence) — resolved by the ONE intake classifier.
+        const intake = classifyIntake({
+          kind: 'expense',
+          source: 'RECURRING_DETECTION',
+          declaredFrequency: frequency,
+          detectedFrequency: mapPatternToFrequency(recurringPayment.pattern),
+        });
         const ownerEntityId = await getDefaultLegalEntityId(userId);
         const newExpense = await prisma.expense.create({
           data: {
@@ -68,7 +77,8 @@ export const POST = withPermission<RouteContext>('expense.write', async (request
             category: category || 'OTHER',
             sourceType: sourceType || 'GENERAL',
             amount: amount || recurringPayment.expectedAmount,
-            frequency: frequency || mapPatternToFrequency(recurringPayment.pattern),
+            frequency: intake.frequency,
+            isRecurring: intake.isRecurring,
             isEssential: isEssential ?? true,
             isTaxDeductible: isTaxDeductible ?? false,
             propertyId: propertyId || null,

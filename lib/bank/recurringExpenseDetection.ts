@@ -6,6 +6,7 @@
 import prisma from '@/lib/db';
 import { Frequency } from '@prisma/client';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 // =============================================================================
 // TYPES
@@ -446,6 +447,13 @@ export async function processExpenseMatches(
     } else if (match.suggestedAction === 'CREATE') {
       // Create new expense
       const ownerEntityId = await getDefaultLegalEntityId(userId);
+      // MON-078: cadence from the DETECTED pattern (evidence), via the ONE
+      // intake classifier.
+      const intake = classifyIntake({
+        kind: 'expense',
+        source: 'RECURRING_DETECTION',
+        detectedFrequency: match.pattern.frequency,
+      });
       const expense = await prisma.expense.create({
         data: {
           userId,
@@ -454,8 +462,8 @@ export async function processExpenseMatches(
           vendorName: match.pattern.merchantStandardised,
           category: match.pattern.categoryLevel1 as any || 'OTHER',
           amount: match.pattern.averageAmount,
-          frequency: match.pattern.frequency,
-          isRecurring: true,
+          frequency: intake.frequency,
+          isRecurring: intake.isRecurring,
           isEssential: match.pattern.isEssential,
           isTaxDeductible: false,
         },

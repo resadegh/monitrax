@@ -26,6 +26,7 @@ import {
   type ReconcileRecordType,
 } from '@/lib/documents/intelligence/reconcile/reconcileSuggestedAction';
 import { recordVendorEntityHint } from '@/lib/documents/intelligence/learnedRouting';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
@@ -33,7 +34,6 @@ type ExpenseCategory =
   | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION'
   | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
 
-type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
 
 type IncomeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 
@@ -368,16 +368,16 @@ async function createExpenseFromAnalysis(
     const categoryStr = String(data.category || 'OTHER').toUpperCase();
     const category = categoryMap[categoryStr] || 'OTHER';
 
-    // Map frequency
-    const frequencyMap: Record<string, Frequency> = {
-      WEEKLY: 'WEEKLY',
-      FORTNIGHTLY: 'FORTNIGHTLY',
-      MONTHLY: 'MONTHLY',
-      QUARTERLY: 'QUARTERLY',
-      ANNUAL: 'ANNUAL',
-    };
-    const frequencyStr = String(data.frequency || 'MONTHLY').toUpperCase();
-    const frequency = frequencyMap[frequencyStr] || 'MONTHLY';
+    // MON-078: cadence + recurrence via the ONE intake classifier — the
+    // legacy monthly fallback for imports lives there (named), not here.
+    // (MON-037 RC-B: a one-off invoice must be expressible as one-off, not
+    // silently minted as recurring-MONTHLY — the ×12 class.)
+    const intake = classifyIntake({
+      kind: 'expense',
+      source: 'DOCUMENT_IMPORT',
+      declaredFrequency: data.frequency ? String(data.frequency) : null,
+      declaredIsRecurring: data.isRecurring != null ? Boolean(data.isRecurring) : null,
+    });
 
     const ownerEntityId = await getDefaultLegalEntityId(userId);
     const expense = await prisma.expense.create({
@@ -388,13 +388,10 @@ async function createExpenseFromAnalysis(
         vendorName: data.vendor ? String(data.vendor) : null,
         amount: Number(data.amount) || 0,
         category,
-        frequency,
+        frequency: intake.frequency,
         isTaxDeductible: Boolean(data.taxDeductible),
         isEssential: Boolean(data.isEssential ?? true),
-        // MON-037 RC-B: expense-side parity with the income create below
-        // (MON-053) — a one-off invoice must be expressible as one-off, not
-        // silently minted as recurring-MONTHLY (the ×12 class).
-        isRecurring: Boolean(data.isRecurring ?? true),
+        isRecurring: intake.isRecurring,
         propertyId: data.propertyId ? String(data.propertyId) : null,
         loanId: data.loanId ? String(data.loanId) : null,
       },
@@ -448,16 +445,15 @@ async function createIncomeFromAnalysis(
     const typeStr = String(data.type || 'OTHER').toUpperCase();
     const incomeType = typeMap[typeStr] || 'OTHER';
 
-    // Map frequency
-    const frequencyMap: Record<string, Frequency> = {
-      WEEKLY: 'WEEKLY',
-      FORTNIGHTLY: 'FORTNIGHTLY',
-      MONTHLY: 'MONTHLY',
-      QUARTERLY: 'QUARTERLY',
-      ANNUAL: 'ANNUAL',
-    };
-    const frequencyStr = String(data.frequency || 'MONTHLY').toUpperCase();
-    const frequency = frequencyMap[frequencyStr] || 'MONTHLY';
+    // MON-078: cadence + recurrence via the ONE intake classifier (MON-053:
+    // the analyzer's explicit one-off flag wins; the legacy import fallback
+    // lives in the classifier, named, until C1/C2 tighten it).
+    const intake = classifyIntake({
+      kind: 'income',
+      source: 'DOCUMENT_IMPORT',
+      declaredFrequency: data.frequency ? String(data.frequency) : null,
+      declaredIsRecurring: data.isRecurring != null ? Boolean(data.isRecurring) : null,
+    });
 
     const ownerEntityId = await getDefaultLegalEntityId(userId);
     const income = await prisma.income.create({
@@ -467,8 +463,8 @@ async function createIncomeFromAnalysis(
         name: String(data.name || 'Income'),
         amount: Number(data.amount) || 0,
         type: incomeType,
-        frequency,
-        isRecurring: Boolean(data.isRecurring ?? true), // MON-053
+        frequency: intake.frequency,
+        isRecurring: intake.isRecurring, // MON-053
         isTaxable: Boolean(data.isTaxable ?? true),
         propertyId: data.propertyId ? String(data.propertyId) : null,
       },

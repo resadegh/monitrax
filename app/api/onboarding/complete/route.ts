@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import type { Frequency } from '@prisma/client';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 /**
  * POST /api/onboarding/complete — the end-of-wizard finaliser.
@@ -227,6 +228,12 @@ async function wireCrossDomainLinks(
         .find((id): id is string => isRealId(id)) ?? null;
     const ownerEntityId = await getDefaultLegalEntityId(userId);
     for (const inc of investmentIncome) {
+      // MON-078: the wizard's explicit cadence, via the ONE intake classifier.
+      const intake = classifyIntake({
+        kind: 'income',
+        source: 'ONBOARDING',
+        declaredFrequency: inc.frequency as Frequency,
+      });
       await prisma.income.create({
         data: {
           userId,
@@ -238,7 +245,8 @@ async function wireCrossDomainLinks(
           sourceType: 'INVESTMENT',
           investmentAccountId: firstInvestmentAccountId,
           amount: inc.amount as number,
-          frequency: inc.frequency as Frequency,
+          frequency: intake.frequency,
+          isRecurring: intake.isRecurring,
         },
       });
     }

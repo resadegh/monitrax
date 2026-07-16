@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**77 total** · 74 open · 🔵 24 · 🟡 7 · 🟠 29 · 🟢 14 · ✅ 2
+**78 total** · 75 open · 🔵 25 · 🟡 7 · 🟠 29 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -84,6 +84,7 @@
 | MON-075 | 🟡 DIAGNOSED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | — | n/a |
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
+| MON-078 | 🔵 OPEN | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | — | n/a |
 
 ---
 
@@ -1341,4 +1342,16 @@ DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-dupl
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/decisionSupport/taxIntegration.ts. Evidence/run: VR-009.
 
 [DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct).
+
+### MON-078 — Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **no** · area: intake · opened 2026-07-16
+
+> **What was wrong:** Every place the app creates an income or expense row decides frequency and recurrence on its own — there is no shared classifier, so unsafe defaults (silent monthly, silent recurring, mint-a-new-row) keep producing the same bug families. This keystone routes every intake path through ONE classifier and adds a build gate so bypassing it fails CI.
+>
+- **Root cause:** `app/api/income/route.ts:240`, `app/api/transactions/[id]/link/route.ts:417`, `app/api/documents/analyze/confirm/route.ts:459`
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `spec:docs/architecture/INTAKE_INTEGRITY_GUARDRAIL.md`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/classifyIntake.ts.
 

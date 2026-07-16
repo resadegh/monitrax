@@ -85,10 +85,16 @@ describe('MON-037 RC-B · Ring-1 SOURCE-LOCK: both intake paths use the ONE deci
   const root = resolve(__dirname, '../..');
   const read = (p: string) => readFileSync(resolve(root, p), 'utf-8');
 
-  it('the transaction-link route consumes isNearDuplicateEntry (after the exact match)', () => {
+  it('the transaction-link route consumes the ONE decision (via classifyIntake merchant policy — MON-078 keystone)', () => {
     const src = read('app/api/transactions/[id]/link/route.ts');
-    expect(src).toMatch(/isNearDuplicateEntry\(/);
-    expect(src).toMatch(/from '@\/lib\/utils\/reconciliation'/);
+    // Post-MON-078 the route reaches the decision through the canonical
+    // classifier rather than calling the predicate inline — the chain is
+    // route → classifyIntake(streamPolicy 'merchant') → isNearDuplicateEntry.
+    expect(src).toMatch(/streamPolicy: 'merchant'/);
+    expect(src).toMatch(/from '@\/lib\/intake\/classifyIntake'/);
+    const classifier = read('lib/intake/classifyIntake.ts');
+    expect(classifier).toMatch(/isNearDuplicateEntry\(/);
+    expect(classifier).toMatch(/from '@\/lib\/utils\/reconciliation'/);
   });
 
   it('the document-import reconcile consumes isNearDuplicateEntry (no exact-string findFirst left)', () => {
@@ -98,12 +104,15 @@ describe('MON-037 RC-B · Ring-1 SOURCE-LOCK: both intake paths use the ONE deci
     expect(src).not.toMatch(/OR: \[\{ vendorName: name \}, \{ name \}\]/);
   });
 
-  it('the doc-import expense create carries the MON-053 isRecurring passthrough (one-off invoices expressible)', () => {
+  it('the doc-import expense create carries the MON-053 recurrence passthrough (one-off invoices expressible, via classifyIntake post-MON-078)', () => {
     const src = read('app/api/documents/analyze/confirm/route.ts');
     const expenseCreate = src.slice(
       src.indexOf('async function createExpenseFromAnalysis'),
       src.indexOf('async function createIncomeFromAnalysis'),
     );
-    expect(expenseCreate).toMatch(/isRecurring: Boolean\(data\.isRecurring \?\? true\)/);
+    // The analyzer's explicit flag threads into the canonical classifier...
+    expect(expenseCreate).toMatch(/declaredIsRecurring: data\.isRecurring != null \? Boolean\(data\.isRecurring\) : null/);
+    // ...and the row is written from the classification, never a local default.
+    expect(expenseCreate).toMatch(/isRecurring: intake\.isRecurring/);
   });
 });

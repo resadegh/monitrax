@@ -12,8 +12,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
-import { sameMerchant } from '@/lib/bank/merchantNormalize';
-import { isNearDuplicateEntry } from '@/lib/utils/reconciliation';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
@@ -344,13 +343,26 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
           }
 
           const name = body.name || transaction.merchantStandardised || transaction.description;
-          const frequency = body.frequency || 'MONTHLY';
+          // MON-078: no silent-MONTHLY literal here — the declared cadence
+          // passes into the ONE intake classifier per branch below; the legacy
+          // fallback lives (named) in classifyIntake until C1 replaces it.
+          const declaredFrequency = body.frequency ?? null;
 
           if (body.type === 'income') {
             // Create new Income entry with source type support
             type IncomeTypeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 
             const ownerEntityId = await getDefaultLegalEntityId(userId);
+
+            // MON-078: frequency + recurrence via the ONE intake classifier
+            // (MON-053: the dialog sends an explicit one-off/recurring choice;
+            // the server never silently ×12s a lone deposit).
+            const incomeIntake = classifyIntake({
+              kind: 'income',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency,
+              declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
+            });
             const incomeData: {
               userId: string;
               ownerEntityId: string;
@@ -370,10 +382,8 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               name,
               type: (body.category as IncomeTypeType) || 'OTHER',
               amount: transaction.amount,
-              frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
-              // MON-053: a single linked deposit is a one-off unless the client
-              // says otherwise — never let the MONTHLY default silently ×12 it.
-              isRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : true,
+              frequency: incomeIntake.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+              isRecurring: incomeIntake.isRecurring,
             };
 
             // If custom category is provided, add it and validate ownership
@@ -411,13 +421,25 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // cashflow engine resolves the true cadence from the pooled
             // transaction dates, so one stream stays one record.
             const isRentalIncome = incomeData.type === 'RENT' || incomeData.type === 'RENTAL';
-            const existingRentalStream =
+            const rentalScopeRows =
               isRentalIncome && incomeData.propertyId
-                ? await prisma.income.findFirst({
+                ? await prisma.income.findMany({
                     where: { userId, propertyId: incomeData.propertyId, type: { in: ['RENT', 'RENTAL'] } },
                     orderBy: { createdAt: 'asc' },
                   })
-                : null;
+                : [];
+            // MON-078: stream reuse decided by the ONE classifier — the
+            // property's rental scope admits ONE stream (scope-singleton).
+            const rentalMatch = classifyIntake({
+              kind: 'income',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency: incomeIntake.frequency,
+              streamPolicy: 'scope-singleton',
+              existingRows: rentalScopeRows.map((r: any) => ({ id: r.id, name: r.name, amount: r.amount })),
+            }).streamMatch;
+            const existingRentalStream = rentalMatch
+              ? rentalScopeRows.find((r: any) => r.id === rentalMatch.id) ?? null
+              : null;
 
             const income = existingRentalStream ?? (await prisma.income.create({ data: incomeData }));
 
@@ -549,7 +571,13 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               vendorName: transaction.merchantStandardised,
               category: (body.category as ExpenseCategoryType) || 'OTHER',
               amount: transaction.amount,
-              frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+              // MON-078: cadence via the ONE intake classifier (declared wins;
+              // legacy fallback lives in the classifier until C1).
+              frequency: classifyIntake({
+                kind: 'expense',
+                source: 'TRANSACTION_LINK',
+                declaredFrequency,
+              }).frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
             };
 
             // If custom category is provided, add it and validate ownership
@@ -589,8 +617,14 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             if (body.isTaxDeductible !== undefined) {
               expenseData.isTaxDeductible = body.isTaxDeductible;
             }
-            // Set isRecurring based on the checkbox - defaults to false for one-off/discretionary
-            expenseData.isRecurring = body.isRecurring ?? false;
+            // MON-078: recurrence via the ONE intake classifier (the dialog's
+            // checkbox is the explicit choice; expense-side default = one-off).
+            expenseData.isRecurring = classifyIntake({
+              kind: 'expense',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency,
+              declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
+            }).isRecurring;
 
             // MON-011: don't duplicate an expense on re-reconcile. If an expense
             // with the same name + linking scope already exists (e.g. an orphan
@@ -612,20 +646,25 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               },
               orderBy: { createdAt: 'asc' },
             });
-            // MON-037 RC-B: exact (normalised) name match first — then the
+            // MON-037 RC-B → MON-078: stream reuse via the ONE classifier's
+            // merchant policy — exact (normalised) name match first, then the
             // canonical near-duplicate check (token-containment + ≤10% amount:
             // "Battery" vs "Battery System"/"Battery Replacement"), so an
             // ACTUAL being linked reconciles INTO the existing estimate row
             // instead of minting a same-cost sibling under a name variant.
-            const existingExpense =
-              scopeExpenses.find((e) => sameMerchant(e.name, expenseData.name)) ??
-              scopeExpenses.find((e) =>
-                isNearDuplicateEntry(
-                  { name: expenseData.name, vendorName: expenseData.vendorName, amount: expenseData.amount },
-                  { name: e.name, vendorName: e.vendorName, amount: e.amount },
-                ),
-              ) ??
-              null;
+            const expenseMatch = classifyIntake({
+              kind: 'expense',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency,
+              streamPolicy: 'merchant',
+              candidate: { name: expenseData.name, vendorName: expenseData.vendorName, amount: expenseData.amount },
+              existingRows: scopeExpenses.map((e: any) => ({
+                id: e.id, name: e.name, vendorName: e.vendorName, amount: e.amount,
+              })),
+            }).streamMatch;
+            const existingExpense = expenseMatch
+              ? scopeExpenses.find((e: any) => e.id === expenseMatch.id) ?? null
+              : null;
 
             const expense = existingExpense ?? (await prisma.expense.create({ data: expenseData }));
 
