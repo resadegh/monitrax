@@ -124,6 +124,9 @@ interface Income {
   // D2 (MON-001): stored cadence disagrees with the cadence the row's own
   // transactions imply — a review nudge, nothing auto-changes.
   cadenceMismatch?: { stored: string; implied: string; confidence: number; transactionCount: number } | null;
+  // D1 (MON-075): a "recurring" row whose whole evidence is one transaction
+  // with $0 this month — likely a one-off; review nudge only.
+  oneOffFingerprint?: { transactionCount: number } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -1071,6 +1074,16 @@ function IncomePageContent() {
                                 title={`Your ${item.cadenceMismatch.transactionCount} linked payments arrive ${item.cadenceMismatch.implied.toLowerCase().replace('_', '-')} — this entry is set to ${item.cadenceMismatch.stored.toLowerCase()}. If ${item.cadenceMismatch.implied.toLowerCase()} is right, edit the entry so totals use the true rhythm.`}
                               >
                                 Payments look {item.cadenceMismatch.implied.toLowerCase().replace('_', '-')}
+                              </span>
+                            )}
+                            {/* D1 (MON-075): the one-off fingerprint — a
+                                recurring entry backed by a single payment. */}
+                            {!item.cadenceMismatch && item.oneOffFingerprint && item.isRecurring !== false && (
+                              <span
+                                className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300"
+                                title="This recurring entry is backed by a single payment and nothing this month. If it was a one-time receipt, edit it and tick 'One-off income' so it isn't repeated in your totals."
+                              >
+                                Single payment — one-off?
                               </span>
                             )}
                           </div>

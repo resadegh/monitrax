@@ -35,6 +35,37 @@ export interface CadenceMismatchFlag {
   transactionCount: number;
 }
 
+/**
+ * D1 — ONE-OFF FINGERPRINT (MON-075, gates MON-053 → CLOSED): a row marked
+ * RECURRING whose entire evidence is a SINGLE linked transaction with $0 of
+ * in-window actuals — the exact fingerprint of the MON-023→037→053 class
+ * (a lone deposit/receipt silently minted as a recurring monthly stream).
+ *
+ * Review nudge only (Reza decision 2026-07-15: source-aware default, blanket
+ * backfill REJECTED): some single-txn recurring rows are legitimate — a real
+ * stream whose other payments are out-of-window (the VR-008 Cienna case).
+ * The user reviews; nothing auto-changes. Future intake is already
+ * source-aware (#1421 + the classifier), so this detector exists to surface
+ * the RESIDUAL rows that pre-date the guard.
+ */
+export interface OneOffFingerprintFlag {
+  /** How many transactions back this "recurring" row. */
+  transactionCount: 1;
+}
+
+export function detectOneOffFingerprint(row: {
+  isRecurring?: boolean | null;
+  /** Total linked transactions across all time. */
+  transactionCount: number;
+  /** Actuals inside the current reporting window (e.g. this month). */
+  inWindowActual: number;
+}): OneOffFingerprintFlag | null {
+  if (row.isRecurring === false) return null; // already a one-off
+  if (row.transactionCount !== 1) return null; // needs exactly the lone-txn shape
+  if (Math.abs(row.inWindowActual) > 0) return null; // active this window → looks live
+  return { transactionCount: 1 };
+}
+
 export function detectCadenceMismatch(row: {
   frequency: string | null | undefined;
   isRecurring?: boolean | null;

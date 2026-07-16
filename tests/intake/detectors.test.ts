@@ -7,7 +7,7 @@
  * The detector flags exactly this shape for user review.
  */
 import { describe, it, expect } from 'vitest';
-import { detectCadenceMismatch } from '../../lib/intake/detectors';
+import { detectCadenceMismatch, detectOneOffFingerprint } from '../../lib/intake/detectors';
 
 const weekly = (n: number) =>
   Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 0, 2 + i * 7)));
@@ -68,5 +68,29 @@ describe('MON-001 · D2 detectCadenceMismatch', () => {
     expect(
       detectCadenceMismatch({ frequency: 'MONTHLY', isRecurring: true, transactionDates: ['x', 'y', 'z'] }),
     ).toBe(null);
+  });
+});
+
+describe('MON-075 · D1 detectOneOffFingerprint', () => {
+  it('the MON-053 fingerprint: recurring row ∧ exactly 1 txn ∧ $0 this month → flagged', () => {
+    expect(
+      detectOneOffFingerprint({ isRecurring: true, transactionCount: 1, inWindowActual: 0 }),
+    ).toEqual({ transactionCount: 1 });
+  });
+
+  it('already one-off → null (nothing to nudge)', () => {
+    expect(detectOneOffFingerprint({ isRecurring: false, transactionCount: 1, inWindowActual: 0 })).toBe(null);
+  });
+
+  it('multiple transactions → null (a real stream)', () => {
+    expect(detectOneOffFingerprint({ isRecurring: true, transactionCount: 3, inWindowActual: 0 })).toBe(null);
+  });
+
+  it('active this month → null (looks live, even with one txn)', () => {
+    expect(detectOneOffFingerprint({ isRecurring: true, transactionCount: 1, inWindowActual: 2500 })).toBe(null);
+  });
+
+  it('zero transactions (declared-only row) → null — no evidence either way', () => {
+    expect(detectOneOffFingerprint({ isRecurring: true, transactionCount: 0, inWindowActual: 0 })).toBe(null);
   });
 });

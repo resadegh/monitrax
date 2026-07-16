@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**78 total** · 75 open · 🔵 24 · 🟡 6 · 🟠 31 · 🟢 14 · ✅ 2
+**78 total** · 75 open · 🔵 24 · 🟡 5 · 🟠 32 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -81,7 +81,7 @@
 | MON-072 | 🔵 OPEN | 🟢 | no | CFO formatting/copy defects: missing thousands separators, pluralisation, doubled word, risk count mismatch | — | n/a |
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
 | MON-074 | 🔵 OPEN | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
-| MON-075 | 🟡 DIAGNOSED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | — | n/a |
+| MON-075 | 🟠 FIXING | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
@@ -1298,17 +1298,25 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/i
 
 ### MON-075 — Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-15
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-15
 
-> **What was wrong:** Some income or expense rows marked 'recurring' are only backed by a single bank transaction — the fingerprint of the bug that turned one-off deposits into phantom monthly income. A standing detector should flag these rows for review so the class can never silently return.
+> **What was wrong:** Some entries marked 'recurring' are backed by just one bank payment and nothing this month — the fingerprint of the bug that turned one-time deposits into phantom monthly income (the MON-053 class). Nothing was flagging these leftovers for review.
 >
+> **What changed:** A standing detector now flags every such entry — on both the income and expense lists — with a gentle 'Single payment — one-off?' chip. You review each: genuinely one-time → tick one-off; a real stream whose other payments are just out of view → leave it. Nothing changes by itself.
+>
+> **What you should see:** On Income and Spending: entries backed by a single payment with $0 this month show the blue 'Single payment — one-off?' chip. Rows with several payments, active rows, and rows already marked one-off show nothing.
+
 - **Root cause:** `components/transactions/TransactionLinkDialog.tsx:1`, `app/api/transactions/[id]/link/route.ts:1`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Downstream consumers (§19.4):** `app/api/income GET + app/api/expenses GET → oneOffFingerprint flag per row`, `income page → 'Single payment — one-off?' nudge chip (D2 cadence chip takes precedence when both fire)`, `no number changes — the flag is advisory; totals move only when the user reclassifies a row (MON-053 semantics then apply)`
+- **Fix PR(s):** ##1431 (wall Part 3: D1 detector)
+- **Holistic test (§19.4):** `tests/intake/detectors.test.ts`
 - **Detail:** `neoaudit-run:VR-008`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/position/taxPositionCalculator.ts. Evidence/run: VR-008.
 
 [VR-008 DIAGNOSIS, 2026-07-15 — OWNED BY THE MATRIX] The promote step for the MON-023→037→053 one-off class. Reza decision 2026-07-15: SOURCE-AWARE default (manual/declared = recurring; single-transaction imports = one-off; blanket default-to-one-off REJECTED; backfill migration ABANDONED as unsafe). #1421 already conforms at intake. Remaining build: a standing NeoAudit detector flagging any recurring income/expense row evidenced by exactly ONE linked transaction and $0 in-window actuals (the bug fingerprint) for user review — Ring-1/2 promotion so the Chrome brief never re-checks this class. GATES MON-053 → CLOSED (its promotion evidence).
+
+[D1 SHIPPED — wall Part 3, 2026-07-16] lib/intake/detectors.ts detectOneOffFingerprint (pure): isRecurring !== false ∧ transactionCount === 1 ∧ inWindowActual === 0 → flag; else null. Wired into income GET + expenses GET; income-page chip (sky, review-only; cadence chip wins when both fire). Ring-0: 5 tests (fingerprint + all never-flag guards incl. declared-only rows). This IS the MON-053 promotion step — on merge + Matrix confirmation, MON-075 → VERIFIED and MON-053 → CLOSED (the class is now: prevented at intake by the classifier, locked by R1 in CI, and residuals surfaced by this standing detector).
 
 ### MON-076 — Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2)
 

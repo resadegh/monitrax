@@ -6,7 +6,7 @@ import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
-import { detectCadenceMismatch } from '@/lib/intake/detectors';
+import { detectCadenceMismatch, detectOneOffFingerprint } from '@/lib/intake/detectors';
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
@@ -152,6 +152,16 @@ export const GET = withPermission('income.read', async (request, auth) => {
                 frequency: inc.frequency,
                 isRecurring: inc.isRecurring,
                 transactionDates: actuals.transactions.map((t) => t.date),
+              })
+            : null,
+          // D1 (MON-075): a "recurring" row whose whole evidence is ONE
+          // transaction with $0 this month — the one-off fingerprint
+          // (MON-053 class). Review nudge; the user decides.
+          oneOffFingerprint: actuals
+            ? detectOneOffFingerprint({
+                isRecurring: inc.isRecurring,
+                transactionCount: actuals.totalCount,
+                inWindowActual: actuals.currentMonthAmount,
               })
             : null,
           // Actual = total from ALL linked transactions
