@@ -171,6 +171,7 @@ enum ExpenseCategory {
   MODIFICATIONS // Vehicle modifications, upgrades
   HEALTH // Health, medical, pharmacy
   EDUCATION // Education, courses, training
+  PROPERTY_MANAGEMENT // Phase 59: agent management & property costs (derived from managed-rental reconciliation/statement)
   OTHER
 }
 
@@ -230,6 +231,27 @@ enum IncomeSourceType {
   GENERAL
   PROPERTY
   INVESTMENT
+}
+
+// Phase 59 (docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md §4):
+// DIRECT  — the bank credit IS the gross rent (today's implicit behaviour).
+// MANAGED — an agent collects gross, deducts costs, disburses the NET
+//           (often on a different cadence). Declared gross stays the
+//           assessable income; the reconciliation gap becomes a derived
+//           deductible expense via the ONE producer reconcileManagedRental().
+enum RentalMode {
+  DIRECT
+  MANAGED
+}
+
+// Phase 59: how a DERIVED expense was produced.
+// RECONCILIATION — Tier-2 fallback: gap = cadence-normalised declared gross −
+//                  net disbursement (single un-itemised estimate).
+// STATEMENT      — Tier-1: parsed from the agent's rental statement
+//                  (one row per line item, each with its own category).
+enum ExpenseDerivationSource {
+  RECONCILIATION
+  STATEMENT
 }
 
 enum ExpenseSourceType {
@@ -1260,16 +1282,17 @@ model User {
   deletionScheduledFor DateTime?
 
   // Relationships
-  properties         Property[]
-  loans              Loan[]
-  accounts           Account[]
-  income             Income[]
-  expenses           Expense[]
-  transactions       Transaction[]
-  basiqConnections   BasiqConnection[] // Basiq Open Banking connections
-  debtPlans          DebtPlan[]
-  investmentAccounts InvestmentAccount[]
-  assets             Asset[] // Phase 21: Personal assets
+  properties             Property[]
+  loans                  Loan[]
+  accounts               Account[]
+  income                 Income[]
+  expenses               Expense[]
+  transactions           Transaction[]
+  basiqConnections       BasiqConnection[] // Basiq Open Banking connections
+  debtPlans              DebtPlan[]
+  investmentAccounts     InvestmentAccount[]
+  assets                 Asset[] // Phase 21: Personal assets
+  agentDisbursementRules AgentDisbursementRule[] // Phase 59: managed-rental learn-once rules
 
   // Phase 47: Signup consent + legal-document acceptance (CLAUDE.md §13, Privacy Act APP 5)
   consents UserConsent[]
@@ -1880,6 +1903,13 @@ model Income {
   // behaving as today (no silent reclassification).
   isRecurring         Boolean          @default(true)
 
+  // Phase 59: managed rentals (PHASE_59_MANAGED_RENTAL_INCOME.md §4).
+  // DIRECT default keeps every existing row behaving exactly as today —
+  // MANAGED is opt-in per rental stream. `amount` + `frequency` above remain
+  // the DECLARED GROSS rent (never the net disbursement).
+  rentalMode        RentalMode @default(DIRECT)
+  managingAgentName String?
+
   // Phase 20: Salary-specific fields (only applicable when type = SALARY)
   salaryType   SalaryType? // GROSS or NET (null for non-salary)
   payFrequency PayFrequency? // Pay cycle frequency
@@ -1923,12 +1953,51 @@ model Income {
   transactions       Transaction[]
   superContributions SuperContribution[]
 
+  // Phase 59: derived agent-cost expenses + the learn-once disbursement rule
+  derivedExpenses       Expense[]              @relation("ExpenseDerivedFromIncome")
+  agentDisbursementRule AgentDisbursementRule?
+
   @@index([userId])
   @@index([ownerEntityId])
   @@index([propertyId])
   @@index([investmentAccountId])
   @@index([customCategoryId])
   @@map("income")
+}
+
+// =============================================================================
+// PHASE 59: AGENT DISBURSEMENT RULE (learn-once per managed rental stream)
+// =============================================================================
+// After the user confirms ONE reconciliation ("yes — the gap is management &
+// costs"), this rule silently auto-derives the same gap on future
+// disbursements for the stream. When a new gap deviates from
+// `baselineGapAmount` by more than `tolerancePct`, the anomaly re-confirm
+// card fires instead (likely a repair — re-prompt/itemise). Spec §3/§4.
+
+model AgentDisbursementRule {
+  id             String @id @default(uuid())
+  userId         String
+  incomeStreamId String @unique // one rule per managed rental stream
+
+  // The declared gross the rule was learned against, normalised to the
+  // DISBURSEMENT period (e.g. $650/wk rent, fortnightly disbursement → 1300).
+  expectedGrossPerPeriod Float
+  // Cadence of the agent's disbursements (may differ from the rent cadence).
+  cadence                Frequency
+  // The confirmed gap per disbursement period (= expected agent costs).
+  baselineGapAmount      Float
+  // Deviation tolerance as a fraction of baselineGapAmount (0.2 = ±20%)
+  // before the anomaly re-confirm fires.
+  tolerancePct           Float     @default(0.2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incomeStream Income @relation(fields: [incomeStreamId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("agent_disbursement_rules")
 }
 
 // =============================================================================
@@ -1954,6 +2023,17 @@ model Expense {
   isTaxDeductible     Boolean           @default(false)
   isRecurring         Boolean           @default(true) // Is this a recurring expense or one-off/discretionary?
 
+  // Phase 59: DERIVED agent-cost expenses (PHASE_59_MANAGED_RENTAL_INCOME.md §4).
+  // derived=true rows are produced by the ONE producer reconcileManagedRental()
+  // (never hand-entered): the managed-rental gap (RECONCILIATION, un-itemised
+  // estimate) or a parsed statement line item (STATEMENT, itemised). The spec
+  // names the enum field `source`; it is `derivedSource` here to avoid
+  // colliding with the existing `sourceType ExpenseSourceType` linking field.
+  derived             Boolean                  @default(false)
+  derivedSource       ExpenseDerivationSource?
+  itemised            Boolean                  @default(false)
+  derivedFromIncomeId String? // the managed rental stream this cost was derived from
+
   // Phase 30: Budget vs Actual Reconciliation
   budgetedAmount Float? // Original budgeted/estimated amount (preserved when actual updates)
   lastReconciled DateTime? // When amount was last updated from real transactions
@@ -1971,6 +2051,9 @@ model Expense {
   customCategory    Category?          @relation("ExpenseCustomCategory", fields: [customCategoryId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
 
+  // Phase 59: the managed rental stream a derived cost came from
+  derivedFromIncome Income? @relation("ExpenseDerivedFromIncome", fields: [derivedFromIncomeId], references: [id], onDelete: SetNull)
+
   // Phase 29: Linked recurring payments from bank detection
   linkedRecurringPayments RecurringPayment[] @relation("RecurringPaymentExpense")
 
@@ -1981,6 +2064,7 @@ model Expense {
   @@index([investmentAccountId])
   @@index([assetId])
   @@index([customCategoryId])
+  @@index([derivedFromIncomeId])
   @@map("expenses")
 }
 
@@ -7148,30 +7232,30 @@ enum ConsentSource {
 /// `userId` is a bare string (no FK) so system-level calls log cleanly and
 /// this telemetry table never blocks a User delete.
 model AiUsageEvent {
-  id                String   @id @default(uuid())
-  createdAt         DateTime @default(now())
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
 
   /// Logical surface that made the call (e.g. "categorisation", "cfo-advisor",
   /// "debt-analysis", "financial-advisor"). "unknown" when a caller is unlabelled.
-  surface           String
+  surface String
 
   /// The Gemini model the call actually used (post-fallback), e.g. "gemini-3.5-flash".
-  model             String
+  model String
 
   /// Owning user, if the call was made in a user context. Null for system calls.
-  userId            String?
+  userId String?
 
-  promptTokens      Int
-  completionTokens  Int
-  totalTokens       Int
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
 
   /// Estimated USD cost, computed at the call site from token counts ×
   /// `getModelPricing()` (lib/ai/google/modelConfig.ts) — the SAME pricing SSOT
   /// already used for per-call cost. No content, no PII.
-  estimatedCostUsd  Float
+  estimatedCostUsd Float
 
   /// False when the call ultimately failed (all fallbacks exhausted).
-  success           Boolean  @default(true)
+  success Boolean @default(true)
 
   @@index([createdAt])
   @@index([surface, createdAt])
