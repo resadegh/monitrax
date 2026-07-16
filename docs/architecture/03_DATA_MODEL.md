@@ -4286,3 +4286,41 @@ Q-DEC is precision-only — no regime semantics introduced. New Decimal columns 
 Anchors:
 - `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5 (Q-DEC is the gate)
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` + Up Next row 69
+
+## Managed rentals — rentalMode, derived expenses, AgentDisbursementRule (Phase 59, 2026-07-16)
+
+> Spec: `docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md` §4 · Issue MON-079 · Migration `20260716000000_phase59_managed_rental` (additive only).
+
+An agent-managed rental never hits the bank as gross rent — the agent collects gross, deducts costs, disburses the **net**, often on a different cadence. The model keeps **gross-income integrity**: `Income.amount`/`frequency` stay the DECLARED GROSS; the reconciliation gap becomes a **derived deductible expense** produced by the ONE engine (`lib/calculations/rentalReconciliation.ts`).
+
+### `Income` extensions
+
+| Field | Type | Notes |
+|---|---|---|
+| `rentalMode` | `RentalMode` (`DIRECT` \| `MANAGED`) `@default(DIRECT)` | `DIRECT` = the bank credit IS the gross rent (every existing row keeps today's behaviour). `MANAGED` = agent-disbursed net; opt-in per rental stream (guarded server-side to `RENT`/`RENTAL` types). |
+| `managingAgentName` | `String?` | Display + card copy ("Ray White kept $200 this fortnight…"). |
+
+### `Expense` extensions (derived agent-cost rows)
+
+| Field | Type | Notes |
+|---|---|---|
+| `derived` | `Boolean @default(false)` | True = produced by `reconcileManagedRental()`/statement parse, never hand-entered. |
+| `derivedSource` | `ExpenseDerivationSource?` (`RECONCILIATION` \| `STATEMENT`) | Tier-2 gap estimate vs Tier-1 parsed statement line item. (Spec names this field `source`; renamed to avoid colliding with the existing `sourceType` linking field.) |
+| `itemised` | `Boolean @default(false)` | True for statement line items (one row each, own category). |
+| `derivedFromIncomeId` | `String?` → `Income` (SetNull) | The managed rental stream the cost came from. Indexed. |
+
+`ExpenseCategory` gains **`PROPERTY_MANAGEMENT`** (agent management & property costs). `DocumentAnalysisType` gains **`RENTAL_STATEMENT`** (the Neobrain parser's document type).
+
+### `AgentDisbursementRule` (new model — learn-once, `agent_disbursement_rules`)
+
+One rule per managed stream (`incomeStreamId @unique`). After the user confirms one reconciliation, future in-tolerance disbursements auto-derive silently; a gap deviating from `baselineGapAmount` by more than `tolerancePct` (default 0.2) fires the amber anomaly re-confirm instead.
+
+| Field | Type |
+|---|---|
+| `incomeStreamId` | `String @unique` → `Income` (Cascade) |
+| `expectedGrossPerPeriod` | `Float` — declared gross normalised to the disbursement period |
+| `cadence` | `Frequency` — the agent's disbursement cadence (may differ from the rent's) |
+| `baselineGapAmount` | `Float` — the confirmed gap per disbursement period |
+| `tolerancePct` | `Float @default(0.2)` |
+
+**SSOT (§12.2.1):** the gap is computed ONLY by `reconcileManagedRental()`; derived rows are persisted ONLY by `app/api/rental-reconciliation` (R1 source-lock `tests/tax/rentalReconciliationSourceLock.test.ts`). The derived row (`isTaxDeductible` + `propertyId` + `PROPERTY_MANAGEMENT`) flows into `calculateTaxPosition().deductions.property` through the existing deductible-expense loop — gross income unchanged.

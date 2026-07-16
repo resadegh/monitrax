@@ -8,6 +8,23 @@
 
 ## 🟡 Active Workstreams
 
+### 0·P59. Phase 59 — Managed Rental Income & Agent-Cost Reconciliation (MON-079)
+
+- **Status:** 🟡 **BUILT (Parts 0–5, one draft PR) — awaiting Reza's schema-migration approval + money-touching merge, then the Matrix's Ring-3 (Part 6).**
+- **Started:** 2026-07-16 · **Owner:** Claude (Code, Fable 5) build · Reza (merge gates) · the Matrix (Ring-3).
+- **Last touched:** 2026-07-16 — full build shipped on `claude/phase-59-managed-rental-yhm8ug`.
+- **Spec of record:** [`docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md`](../blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md) (PR #1433) §9; queue entry + detail in [`02_UP_NEXT.md`](02_UP_NEXT.md).
+- **Phase checklist (spec §9):**
+  - [x] **1. Data model** — `Income.rentalMode DIRECT|MANAGED` + `managingAgentName`; derived Expense fields (`derived`/`derivedSource RECONCILIATION|STATEMENT`/`itemised`/`derivedFromIncomeId`); `AgentDisbursementRule`; `PROPERTY_MANAGEMENT` + `RENTAL_STATEMENT` enums; additive migration `20260716000000` — **Reza approves before merge (§12.11/§12.12)**.
+  - [x] **2. Engine** — `reconcileManagedRental()` (ONE producer, Float+Decimal, cadence via the canonical detector) + Neomatrix Model step same PR (engine + 2 inputs + `number.rental.agentCostDeduction`/`grossDeclared` + 6 verified edges); R0 calc-audit fixtures + R1 source-lock.
+  - [x] **3. Suggest-and-confirm card** — spec §8 tokens verbatim; learn-once rule; amber anomaly re-confirm; the single locked producer `app/api/rental-reconciliation`; income-form MANAGED opt-in. *(Stitch screen artefact: §18.2.1 backfill flagged for Reza.)*
+  - [x] **4. NeoBrain parser** — `lib/neobrain/rentalStatement.ts`, grounded (refuse-never-estimate) + document-intelligence wiring.
+  - [x] **5. NeoAudit** — D4 rent-gap detector (income API + emerald nudge) + Golden managed-rental fixture (both engines).
+  - [ ] **6. Ring-3 (the Matrix)** — confirm card fires on a real disbursement; deduction in Total Deductions; gross unchanged; no double-count → MON-079 VERIFIED → re-baseline → CLOSED.
+- **Risk:** low-moderate — additive schema; every existing row keeps DIRECT behaviour; ratchets lock the semantics.
+- **Blocking:** Reza (migration approval + merge) → the Matrix (Ring-3).
+- **Why this matters:** an investor's rent almost never hits the bank as gross; without this Monitrax understates gross income or silently drops legitimate deductions — both wrong for tax.
+
 ### 0·NEOAUDIT-COMPLETE. NeoAudit — build the verification platform to completion (Reza directive 2026-07-12)
 
 - **Status:** ✅ **CORE BUILD COMPLETE (2026-07-14)** — §8 steps 1–6 all shipped. Step 7 (Argos/axe/DevTools-MCP/Checkly) stays deferred by design (only on a §7 trigger). Reza directive 2026-07-12: *"…when completed then let me know."* → **DONE, reported.** **This workstream is now STANDING/LIVE — NEVER closed (see the growth-loop decision below).** Remaining live thread: rectify the VR-002/VR-003 findings (the agreed post-completion plan: run VR-003 → compile the complete issue list → root-cause-clustered rectification).
