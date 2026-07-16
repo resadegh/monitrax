@@ -100,3 +100,51 @@ Recorded in the PR body — Document 10/10 · Requirements 10/10 · Logic 10/10.
 - **Ratchet**: `tests/utils/mon037RcbNearDuplicate.test.ts` (14 — Ring-0 battery fixtures + false-merge guards; Ring-1 source-lock: both paths consume the ONE decision); `tests/documents/reconcileSuggestedAction.test.ts` updated to the new contract (+2 RC-B cases).
 - **Neomatrix**: anchor re-pin `engine.utils.reconciliation.detectFrequency` 90→91 (import shift); no financial-number lineage changed (the matcher produces a decision, not a money number).
 - **Gates**: tsc clean · 731/731 utils/documents/bank/bookkeeping/calculations/dashboard · neomatrix:check OK · lint:financial-surfaces 0 new · issues:check 77 valid.
+
+---
+
+## Session (continued): MON-078 — the Intake-Integrity keystone (wall Part 1)
+
+### Changes Made
+- **Type**: Fix/Refactor (guardrail — foundation; behaviour-preserving)
+- **Scope**: intake layer (every Income/Expense producer) + CI build gate
+- **Spec of record**: `docs/architecture/INTAKE_INTEGRITY_GUARDRAIL.md` (PR #1428)
+- **What shipped**:
+  1. **`lib/intake/classifyIntake.ts`** — the ONE canonical intake classifier:
+     `classifyIntake(signal) → { frequency, isRecurring, streamMatch }`. Pure
+     (§6.4). Frequency: declared (normalised; ANNUALLY→ANNUAL; WEEKLY/FORTNIGHTLY
+     preserved) → detected evidence → MANUAL/ONBOARDING throw (never silent) →
+     the ONE named `LEGACY_FALLBACK_FREQUENCY='MONTHLY'` for import paths (C1
+     target). Recurrence: explicit choice wins; source-default table per spec §3
+     (manual/onboarding/detection = recurring; link-expense = one-off #1421;
+     link-income + doc-import = recurring, marked LEGACY/C2 targets). Stream:
+     'scope-singleton' (MON-009 rental rule) + 'merchant' (MON-011/025 + RC-B
+     near-duplicate) policies.
+  2. **All 8 production producers routed through it** (re-verified live):
+     income POST · expenses POST · expenses bulk · transactions/[id]/link
+     (income + expense branches incl. both stream-reuse decisions) ·
+     documents/analyze/confirm (income + expense; local frequencyMap +
+     `|| 'MONTHLY'` literals deleted) · onboarding/complete · recurring-payments
+     link (declared ?? detected pattern) · recurringExpenseDetection.
+  3. **R1 source-lock** (`tests/intake/intakeSourceLock.test.ts`): CI census of
+     every `prisma.income/expense.create` in app/+lib/ — a new producer file, a
+     bypass, or a silent `'MONTHLY'` literal/fallback outside the classifier
+     fails the build. Allowlist (reviewed): lib/db/tenant.ts (pass-through, 0
+     callers), lib/testing/loader.ts (fixtures). Exempt cadence fields:
+     repaymentFrequency/investmentFrequency (not Income/Expense).
+  4. **Ring-0 contract tests** (`tests/intake/classifyIntake.test.ts`, 15) pin
+     the behaviour-preserving defaults so C1/C2/C3 change them deliberately.
+  5. **RC-B source-lock updated to the new topology** (route →
+     classifyIntake('merchant') → isNearDuplicateEntry — class still locked).
+- **Honest behaviour deltas (all safer-degradation, no number changes)**:
+  invalid frequency strings on import paths now degrade to evidence/fallback
+  instead of a 500; doc-import accepts ANNUALLY; bulk/onboarding now set
+  isRecurring explicitly (= schema default, no change).
+
+### Build Status
+- [x] tsc clean · 2142/2142 (intake/utils/documents/bank/income/calculations/tax/golden/cfo/dashboard/bookkeeping)
+- [x] neomatrix:check OK · lint:financial-surfaces 0 new · lint:ai-grounding OK
+- MON-078 raised → FIXING (registry follow-up commit with the PR number)
+
+### Gate (§20.6)
+Recorded in the PR body.

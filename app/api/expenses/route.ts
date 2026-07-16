@@ -5,6 +5,7 @@ import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 export const GET = withPermission('expense.read', async (request, auth) => {
     try {
@@ -257,6 +258,14 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         }
       }
 
+      // MON-078: frequency + recurrence decided by the ONE intake classifier.
+      const intake = classifyIntake({
+        kind: 'expense',
+        source: 'MANUAL',
+        declaredFrequency: frequency,
+        declaredIsRecurring: isRecurring !== undefined ? Boolean(isRecurring) : null,
+      });
+
       const expense = await prisma.expense.create({
         data: {
           userId: auth.userId,
@@ -265,10 +274,10 @@ export const POST = withPermission('expense.write', async (request, auth) => {
           category: category || 'OTHER',
           customCategoryId: customCategoryId || null,
           amount: parseFloat(amount),
-          frequency,
+          frequency: intake.frequency,
           isTaxDeductible: isTaxDeductible !== undefined ? Boolean(isTaxDeductible) : false,
           isEssential: isEssential !== undefined ? Boolean(isEssential) : true,
-          isRecurring: isRecurring !== undefined ? Boolean(isRecurring) : true,
+          isRecurring: intake.isRecurring,
           propertyId: propertyId || null,
           loanId: loanId || null,
           investmentAccountId: investmentAccountId || null,

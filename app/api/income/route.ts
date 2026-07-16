@@ -5,6 +5,7 @@ import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
@@ -238,6 +239,15 @@ export const POST = withPermission('income.write', async (request, auth) => {
 
       const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
 
+      // MON-078: frequency + recurrence are decided by the ONE intake
+      // classifier — never defaulted locally (intake source-lock enforced).
+      const intake = classifyIntake({
+        kind: 'income',
+        source: 'MANUAL',
+        declaredFrequency: frequency,
+        declaredIsRecurring: isRecurring !== undefined ? Boolean(isRecurring) : null, // MON-053
+      });
+
       const incomeRecord = await prisma.income.create({
         data: {
           userId: auth.userId,
@@ -245,8 +255,8 @@ export const POST = withPermission('income.write', async (request, auth) => {
           name,
           type,
           amount: toNumber(amount) ?? 0,
-          frequency,
-          isRecurring: isRecurring !== undefined ? Boolean(isRecurring) : true, // MON-053
+          frequency: intake.frequency,
+          isRecurring: intake.isRecurring,
           isTaxable: isTaxable !== undefined ? Boolean(isTaxable) : true,
           propertyId: propertyId || null,
           investmentAccountId: investmentAccountId || null,
