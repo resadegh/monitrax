@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**79 total** · 76 open · 🔵 25 · 🟡 5 · 🟠 32 · 🟢 14 · ✅ 2
+**79 total** · 76 open · 🔵 24 · 🟡 5 · 🟠 33 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -85,7 +85,7 @@
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
-| MON-079 | 🔵 OPEN | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | — | — |
+| MON-079 | 🟠 FIXING | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
 
 ---
 
@@ -1377,13 +1377,20 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/c
 
 ### MON-079 — Managed rental income + agent-cost reconciliation (Phase 59)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: rental · opened 2026-07-16
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: rental · opened 2026-07-16
 
 > **What was wrong:** Rent from your agent arrives after their fees are taken out, so Monitrax can't see your real gross rent or claim the agent's fees as deductions.
 >
+> **What changed:** Mark a rental as "through a property manager" and enter the full rent. When a deposit arrives below it, Monitrax asks one calm question and records the confirmed gap as a tax-deductible agent cost — remembered for next time, re-asked only when a month looks unusual, and itemisable from an uploaded rental statement.
+>
+> **What you should see:** On the Income page, a rental stream gets a "How the rent arrives" choice. Link a rent deposit to a managed stream: the emerald card shows the math (e.g. $1,300 fortnight rent − $1,100 received = $200 tax-deductible). Confirm it and Total Deductions rises by the annualised gap while gross rental income stays unchanged.
+
+- **Root cause:** `prisma/schema.prisma:1865`
 - **Neomatrix:** `number.rental.agentCostDeduction`, `number.rental.grossDeclared`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `lib/tax-engine/position/taxPositionCalculator.ts:248-272 (Float deductible-expense loop → deductions.property)`, `lib/tax-engine/position/taxPositionCalculator.ts:777-798 (Decimal twin — must never disagree)`, `app/api/tax/position/route.ts:96-181 (maps ALL expense rows, no category filter — derived rows flow)`, `lib/services/masterFinancialService.ts buildTaxSummary (same canonical engine — Tax page + dashboard tax tiles)`, `app/dashboard/income/page.tsx (D4 nudge + MANAGED opt-in; gross display unchanged)`, `components/transactions/TransactionLinkDialog.tsx (the confirm card surface)`
+- **Fix PR(s):** ##1434
+- **Holistic test (§19.4):** `tests/golden/ring2.managedRental.test.ts (holistic: gross-unchanged + gap-as-deduction + taxable==net-received + no-double-count on BOTH engines) + tests/tax/rentalReconciliationSourceLock.test.ts (R1) + tests/calculations/rentalReconciliation.test.ts (R0)`
 - **Detail:** `phase-59`
 
-Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside.
+Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside. Parts 0–5 built in PR #1434 (draft — Reza merge gate); Ring-3 (Part 6) = the Matrix after deploy READY. Root cause: the Income model had no rentalMode — a managed rental was inexpressible (net recorded as income = understated gross + dropped deductions, OR gross declared with no way to capture agent costs).
 

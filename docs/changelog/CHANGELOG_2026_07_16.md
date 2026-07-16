@@ -63,5 +63,5 @@ Recorded in the PR body — Document / Requirements / Logic 10/10 each part, wit
 | fe29d0b | test(phase-59): Part 5 — D4 rent-gap detector + Golden managed-rental fixture (R2) |
 
 ### PR
-- PR URL: (draft — recorded on creation)
+- PR URL: https://github.com/resadegh/monitrax/pull/1434 (draft)
 - Status: DRAFT for Reza's review (schema migration approval §12.11/§12.12 + money-touching merge gate). After merge + deploy READY → hand back to the Matrix for Ring-3 (Part 6).
