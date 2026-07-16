@@ -39,6 +39,8 @@ import { CategorySelect } from '@/components/categories/CategorySelect';
 import { VendorCardDrawer } from '@/components/bookkeeping/VendorCardDrawer';
 import { TransactionSplitEditor } from '@/components/transactions/TransactionSplitEditor';
 import { FormDocumentUpload, type FieldMapping } from '@/components/documents/FormDocumentUpload';
+import { ManagedRentalReconcileCard } from '@/components/transactions/ManagedRentalReconcileCard';
+import type { ManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Transaction {
@@ -150,6 +152,10 @@ export function TransactionLinkDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Phase 59: the managed-rental suggest-and-confirm card (spec §3/§8) —
+  // when the link response carries a suggestion, the dialog holds open and
+  // asks the ONE calm question instead of auto-advancing.
+  const [managedRental, setManagedRental] = useState<ManagedRentalSuggestion | null>(null);
   // Neobrain auto-apply (2026-06-27) — when a confirm sweeps other
   // uncategorised same-merchant rows, hold the swept ids so the user can Undo.
   const [autoApplied, setAutoApplied] = useState<{ count: number; appliedIds: string[] }>({
@@ -385,6 +391,8 @@ export function TransactionLinkDialog({
       setResolution(data.resolution ?? { loanRepayments: [], transfers: [] });
       // Phase 51 redesign — start collapsed (one clear action) on every open.
       setShowMore(false);
+      // Phase 59: a fresh transaction starts with no reconciliation card.
+      setManagedRental(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -428,6 +436,14 @@ export function TransactionLinkDialog({
 
       // Wait for refresh to complete before navigating
       await onLinked?.();
+
+      // Phase 59: a managed-rental disbursement reconciled below declared
+      // gross — hold the dialog open and ask the one calm question.
+      if (data.managedRental) {
+        setManagedRental(data.managedRental);
+        setSaving(false);
+        return;
+      }
 
       // Hold open for Undo when Neobrain swept similar rows; otherwise advance.
       if (sweptLink === 0) {
@@ -696,6 +712,14 @@ export function TransactionLinkDialog({
 
       // Wait for refresh to complete before navigating
       await onLinked?.();
+
+      // Phase 59: the (reused) managed rental stream reconciled below its
+      // declared gross — hold open and ask the one calm question.
+      if (data.managedRental) {
+        setManagedRental(data.managedRental);
+        setSaving(false);
+        return;
+      }
 
       // Auto-navigate to next transaction after a brief delay to show success.
       // When Neobrain swept similar rows, hold the dialog open so the user can
@@ -1986,6 +2010,38 @@ export function TransactionLinkDialog({
               />
             </TabsContent>
           </Tabs>
+        )}
+
+        {/* Phase 59: managed-rental suggest-and-confirm — the gap between the
+            declared gross and this net disbursement is (usually) the agent's
+            deductible costs. One calm question; the user confirms. */}
+        {managedRental && (
+          <ManagedRentalReconcileCard
+            suggestion={managedRental}
+            token={token}
+            onResolved={async (message) => {
+              setManagedRental(null);
+              setSuccess(message);
+              await onLinked?.();
+              setTimeout(() => {
+                if (hasMoreTransactions && onNavigateNext) {
+                  onNavigateNext();
+                } else {
+                  onOpenChange(false);
+                }
+              }, 900);
+            }}
+            onDismiss={() => {
+              setManagedRental(null);
+              setTimeout(() => {
+                if (hasMoreTransactions && onNavigateNext) {
+                  onNavigateNext();
+                } else {
+                  onOpenChange(false);
+                }
+              }, 200);
+            }}
+          />
         )}
 
         {/* Status Messages */}

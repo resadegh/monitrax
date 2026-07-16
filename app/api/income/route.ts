@@ -203,6 +203,11 @@ export const POST = withPermission('income.write', async (request, auth) => {
         propertyId,
         investmentAccountId,
         sourceType,
+        // Phase 59: managed rentals — amount/frequency stay the DECLARED GROSS;
+        // MANAGED marks the stream as agent-disbursed (net credits reconcile
+        // against gross via reconcileManagedRental).
+        rentalMode,
+        managingAgentName,
         // Phase 20: Salary-specific fields
         salaryType,
         payFrequency,
@@ -283,6 +288,15 @@ export const POST = withPermission('income.write', async (request, auth) => {
           propertyId: propertyId || null,
           investmentAccountId: investmentAccountId || null,
           sourceType: sourceType || 'GENERAL',
+          // Phase 59: MANAGED only valid on rental streams; anything else stays DIRECT
+          rentalMode:
+            rentalMode === 'MANAGED' && (type === 'RENT' || type === 'RENTAL')
+              ? 'MANAGED'
+              : 'DIRECT',
+          managingAgentName:
+            rentalMode === 'MANAGED' && typeof managingAgentName === 'string' && managingAgentName.trim()
+              ? managingAgentName.trim()
+              : null,
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
           payFrequency: type === 'SALARY' ? toPayFrequency(payFrequency) : null,

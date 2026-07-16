@@ -20,6 +20,7 @@ import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookke
 import { applyCategoryToSimilarUnified } from '@/lib/bookkeeping/applyToSimilarUnified';
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
+import { buildManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
@@ -141,6 +142,9 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
 
           let targetName = '';
           let targetCategory = '';
+          // Phase 59: the linked MANAGED rental stream (drives the
+          // suggest-and-confirm card in the response, spec §3/§8).
+          let linkedRentalStream: Awaited<ReturnType<typeof prisma.income.findFirst>> = null;
 
           // Verify target exists and belongs to user
           if (body.type === 'income') {
@@ -155,6 +159,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
             targetName = income.name;
             targetCategory = income.type; // SALARY, RENT, RENTAL, INVESTMENT, OTHER
+            linkedRentalStream = income;
 
             // Optionally update the income amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
@@ -321,11 +326,23 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             });
           }
 
+          // Phase 59: a disbursement linked to a MANAGED rental stream may
+          // reconcile below the declared gross — build the suggest-and-confirm
+          // card payload (null = nothing fires; never breaks the link flow).
+          const managedRental = linkedRentalStream
+            ? await buildManagedRentalSuggestion({
+                userId,
+                income: linkedRentalStream,
+                transaction,
+              })
+            : null;
+
           return NextResponse.json({
             success: true,
             transaction: updated,
             batchCount,
             autoApplied,
+            managedRental,
             message: batchCount > 0
               ? `Linked ${batchCount + 1} transactions to ${targetName}`
               : (body.updateAmount
@@ -546,11 +563,20 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               });
             }
 
+            // Phase 59: when the (reused) stream is a MANAGED rental, the
+            // just-linked disbursement may reconcile below the declared gross.
+            const managedRental = await buildManagedRentalSuggestion({
+              userId,
+              income,
+              transaction,
+            });
+
             return NextResponse.json({
               success: true,
               created: { type: 'income', id: income.id, name: income.name },
               batchCount,
               autoApplied: incomeAutoApplied,
+              managedRental,
               message: batchCount > 0
                 ? `Categorized ${batchCount + 1} transactions as ${income.name}`
                 : 'New income created and linked',
