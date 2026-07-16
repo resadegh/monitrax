@@ -81,7 +81,7 @@
 | MON-072 | 🔵 OPEN | 🟢 | no | CFO formatting/copy defects: missing thousands separators, pluralisation, doubled word, risk count mismatch | — | n/a |
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
 | MON-074 | 🔵 OPEN | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
-| MON-075 | 🟠 FIXING | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | #(wall Part 3 PR — number recorded on open) | ✅ |
+| MON-075 | 🟠 FIXING | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
@@ -1308,7 +1308,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/i
 
 - **Root cause:** `components/transactions/TransactionLinkDialog.tsx:1`, `app/api/transactions/[id]/link/route.ts:1`
 - **Downstream consumers (§19.4):** `app/api/income GET + app/api/expenses GET → oneOffFingerprint flag per row`, `income page → 'Single payment — one-off?' nudge chip (D2 cadence chip takes precedence when both fire)`, `no number changes — the flag is advisory; totals move only when the user reclassifies a row (MON-053 semantics then apply)`
-- **Fix PR(s):** #(wall Part 3 PR — number recorded on open)
+- **Fix PR(s):** ##1431 (wall Part 3: D1 detector)
 - **Holistic test (§19.4):** `tests/intake/detectors.test.ts`
 - **Detail:** `neoaudit-run:VR-008`
 

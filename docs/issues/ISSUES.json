@@ -2134,7 +2134,7 @@
         "no number changes — the flag is advisory; totals move only when the user reclassifies a row (MON-053 semantics then apply)"
       ],
       "fixPRs": [
-        "(wall Part 3 PR — number recorded on open)"
+        "#1431 (wall Part 3: D1 detector)"
       ],
       "test": "tests/intake/detectors.test.ts",
       "tracker": "neoaudit-run:VR-008",
