@@ -7,7 +7,7 @@
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
-| MON-001 | 🟠 FIXING | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | #(wall Part 2 PR — number recorded on open) | ✅ |
+| MON-001 | 🟠 FIXING | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | ##1430 (wall Part 2: C1 evidence cadence + D2 detector) | ✅ |
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
 | MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
@@ -101,7 +101,7 @@
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:318`, `app/api/transactions/[id]/link/route.ts:156`, `app/dashboard/properties/[id]/page.tsx:141`
 - **Neomatrix:** `engine.incomeAggregator.aggregateIncome`
 - **Downstream consumers (§19.4):** `classifyIntake evidence path → all 8 intake producers (future rows store the true cadence; existing rows untouched)`, `app/api/income GET → cadenceMismatch flag per row → income page nudge chip (D2 surface)`, `GET /api/transactions/[id]/link matches — inline cadence block repointed to the ONE canonical detectFrequency (identical thresholds, behaviour-identical)`, `after Reza edits the flagged rows: income aggregator → tax position → CFO/My Guide → cashflow all inherit the corrected ×52 basis (SSOT — no code change needed downstream)`, `RESIDUAL (documented, follow-up): lib/bank/recurringExpenseDetection.ts keeps its private detectFrequency copy — its confidence formula feeds pattern-match thresholds; repointing would change suggestion behaviour and needs its own justification`
-- **Fix PR(s):** #(wall Part 2 PR — number recorded on open)
+- **Fix PR(s):** ##1430 (wall Part 2: C1 evidence cadence + D2 detector)
 - **Holistic test (§19.4):** `tests/intake/classifyIntake.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1`
 

@@ -31,7 +31,7 @@
         "RESIDUAL (documented, follow-up): lib/bank/recurringExpenseDetection.ts keeps its private detectFrequency copy — its confidence formula feeds pattern-match thresholds; repointing would change suggestion behaviour and needs its own justification"
       ],
       "fixPRs": [
-        "(wall Part 2 PR — number recorded on open)"
+        "#1430 (wall Part 2: C1 evidence cadence + D2 detector)"
       ],
       "test": "tests/intake/classifyIntake.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-1",
