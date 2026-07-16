@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
+import { detectFrequency } from '@/lib/utils/reconciliation';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
@@ -344,9 +345,20 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
 
           const name = body.name || transaction.merchantStandardised || transaction.description;
           // MON-078: no silent-MONTHLY literal here — the declared cadence
-          // passes into the ONE intake classifier per branch below; the legacy
-          // fallback lives (named) in classifyIntake until C1 replaces it.
+          // passes into the ONE intake classifier per branch below.
           const declaredFrequency = body.frequency ?? null;
+
+          // C1 (MON-001): cadence EVIDENCE — the dates of every transaction
+          // being linked in this call (primary + batch). With ≥2 the
+          // classifier derives the true cadence itself (weekly stays WEEKLY),
+          // instead of falling back to monthly when no cadence was declared.
+          const evidenceTxs = body.additionalTransactionIds?.length
+            ? await prisma.unifiedTransaction.findMany({
+                where: { id: { in: body.additionalTransactionIds }, userId },
+                select: { date: true },
+              })
+            : [];
+          const evidenceDates: Date[] = [transaction.date, ...evidenceTxs.map((t: { date: Date }) => t.date)];
 
           if (body.type === 'income') {
             // Create new Income entry with source type support
@@ -361,6 +373,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               kind: 'income',
               source: 'TRANSACTION_LINK',
               declaredFrequency,
+              transactionDates: evidenceDates, // C1 (MON-001)
               declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
             });
             const incomeData: {
@@ -577,6 +590,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 kind: 'expense',
                 source: 'TRANSACTION_LINK',
                 declaredFrequency,
+                transactionDates: evidenceDates, // C1 (MON-001)
               }).frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
             };
 
@@ -623,6 +637,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               kind: 'expense',
               source: 'TRANSACTION_LINK',
               declaredFrequency,
+              transactionDates: evidenceDates, // C1 (MON-001)
               declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
             }).isRecurring;
 
@@ -1570,13 +1585,9 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
             const amounts = sortedTxs.map(t => t.amount);
             const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
 
-            // Detect frequency from interval
-            let detectedFrequency = 'MONTHLY';
-            if (avgInterval <= 10) detectedFrequency = 'WEEKLY';
-            else if (avgInterval <= 20) detectedFrequency = 'FORTNIGHTLY';
-            else if (avgInterval <= 45) detectedFrequency = 'MONTHLY';
-            else if (avgInterval <= 120) detectedFrequency = 'QUARTERLY';
-            else detectedFrequency = 'ANNUAL';
+            // C1 (MON-001): cadence via the ONE canonical detector — this
+            // inline block was a duplicate producer with identical thresholds.
+            const detectedFrequency = detectFrequency(sortedDates).frequency;
 
             // Calculate TRUE monthly average based on payment timing
             // ADVANCE payments (rent): exclude last payment (covers future period)

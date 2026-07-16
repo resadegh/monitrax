@@ -31,6 +31,7 @@
 import { Frequency } from '@/lib/types/prisma-enums';
 import { sameMerchant } from '@/lib/bank/merchantNormalize';
 import {
+  detectFrequency,
   isNearDuplicateEntry,
   type EntryForDuplicateCheck,
 } from '@/lib/utils/reconciliation';
@@ -68,9 +69,15 @@ export interface IntakeSignal {
   declaredFrequency?: string | null;
   /** The explicit recurrence choice supplied by the caller, if any. */
   declaredIsRecurring?: boolean | null;
-  /** Cadence derived from transaction evidence (recurring-payment patterns
-   *  today; C1 promotes per-row transaction cadence here). */
+  /** Cadence derived from transaction evidence by an upstream detector
+   *  (e.g. recurring-payment patterns). */
   detectedFrequency?: string | null;
+  /** C1 (MON-001): the raw evidence — dates of the same-source transactions
+   *  backing this row. With ≥2 dates the classifier derives the cadence
+   *  itself via the ONE canonical detector (lib/utils/reconciliation.ts
+   *  `detectFrequency`), so weekly/fortnightly streams are stored as
+   *  WEEKLY/FORTNIGHTLY — never silently monthly. */
+  transactionDates?: Array<Date | string>;
   /** The row about to be created — needed for `merchant` stream matching. */
   candidate?: EntryForDuplicateCheck | null;
   /** Existing rows on the SAME linking scope (caller fetches; this is pure). */
@@ -137,6 +144,17 @@ function resolveFrequency(signal: IntakeSignal): Frequency {
   const detected = normalizeFrequency(signal.detectedFrequency);
   if (detected) return detected;
 
+  // C1 (MON-001): derive the cadence from the transaction evidence itself —
+  // ≥2 dated same-source transactions → the ONE canonical detector. This is
+  // what stops a weekly rent stream being stored MONTHLY (~4.3× understated)
+  // when the caller supplied no explicit cadence.
+  const dates = (signal.transactionDates ?? [])
+    .map((d) => (d instanceof Date ? d : new Date(d)))
+    .filter((d) => !Number.isNaN(d.getTime()));
+  if (dates.length >= 2) {
+    return detectFrequency(dates).frequency;
+  }
+
   // MANUAL/ONBOARDING intake carries the user's explicit choice — a missing
   // cadence there is a caller bug, never something to paper over with a
   // silent default (the MON-001 mechanism).
@@ -146,7 +164,9 @@ function resolveFrequency(signal: IntakeSignal): Frequency {
     );
   }
 
-  // LEGACY (C1 target): import paths historically defaulted to MONTHLY.
+  // LEGACY (C2/C1 residual): an import with NO cadence evidence at all —
+  // a lone receipt/deposit. Kept until every such path classifies one-off
+  // (where cadence is moot); named here so it can never hide in a producer.
   return LEGACY_FALLBACK_FREQUENCY;
 }
 

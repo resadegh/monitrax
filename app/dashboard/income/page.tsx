@@ -121,6 +121,9 @@ interface Income {
   transactionCount?: number;          // Total number of linked transactions
   currentMonthTransactionCount?: number; // Transactions this month only
   hasTransactions?: boolean;          // Whether any transactions are linked
+  // D2 (MON-001): stored cadence disagrees with the cadence the row's own
+  // transactions imply — a review nudge, nothing auto-changes.
+  cadenceMismatch?: { stored: string; implied: string; confidence: number; transactionCount: number } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -1060,6 +1063,16 @@ function IncomePageContent() {
                             {/* MON-053: cadence via the ONE label rule (MON-048) —
                                 a one-off reads "One-off", never its stored frequency. */}
                             <span className="capitalize">{activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}</span>
+                            {/* D2 (MON-001): gentle cadence nudge — the payments
+                                imply a different rhythm than the stored one. */}
+                            {item.cadenceMismatch && (
+                              <span
+                                className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                                title={`Your ${item.cadenceMismatch.transactionCount} linked payments arrive ${item.cadenceMismatch.implied.toLowerCase().replace('_', '-')} — this entry is set to ${item.cadenceMismatch.stored.toLowerCase()}. If ${item.cadenceMismatch.implied.toLowerCase()} is right, edit the entry so totals use the true rhythm.`}
+                              >
+                                Payments look {item.cadenceMismatch.implied.toLowerCase().replace('_', '-')}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">

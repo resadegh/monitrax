@@ -148,3 +148,23 @@ Recorded in the PR body — Document 10/10 · Requirements 10/10 · Logic 10/10.
 
 ### Gate (§20.6)
 Recorded in the PR body.
+
+---
+
+## Session (continued, 2026-07-16): MON-001 C1 + D2 — wall Part 2
+
+- **C1 (classifyIntake)**: `transactionDates` evidence — ≥2 valid dates → the ONE
+  canonical `detectFrequency`; declared/explicit choice still wins
+  (suggest-and-confirm); weekly/fortnightly stored as themselves. Link route
+  threads primary+batch txn dates into all 3 classifier calls.
+- **Consolidation**: the GET-matches inline cadence block (identical thresholds)
+  deleted → canonical. RESIDUAL documented: recurringExpenseDetection keeps its
+  private copy (different confidence formula feeds match thresholds — repointing
+  is its own follow-up decision).
+- **D2 detector**: `lib/intake/detectors.ts` (pure; ≥3 txns, confidence ≥0.7,
+  never one-offs) → income GET `cadenceMismatch` per row → amber "Payments look
+  weekly" nudge chip on the income list. Review-only, nothing auto-changes.
+- Ring-0: evidence tests + weekly census fixture + detectors.test.ts (7).
+  L0 allowlist += detectors.ts (graphify offline; self-prunes).
+- Gates: tsc clean · 1545/1545 · neomatrix full gate 0 uncovered · linters OK ·
+  issues 78 valid. MON-001 → FIXING.
