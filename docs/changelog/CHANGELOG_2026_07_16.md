@@ -46,8 +46,8 @@ An agent-managed rental never hits the bank as gross rent. `Income.rentalMode MA
 - [x] `neomatrix:check` GREEN (schema/invariants/anchors/markdown/Layer-0/binding/census 0 uncovered)
 - [x] `issues:check` GREEN (79 issues valid)
 - [x] Targeted suites green (engine 13 · source-locks · intake · neobrain 11 · golden managed-rental + wall)
-- [ ] Full `vitest run` — recorded in the PR (running at changelog write)
-- [ ] `npm run build` — exercised by the Vercel preview (CI) — local env has no DB for `migrate deploy`
+- [x] Full `vitest run` — 270 files / 4,135 tests GREEN (after registering the new model in the reset census + the new AI call in the grounding registry — both gates caught correctly)
+- [x] Vercel preview GREEN — `dpl_8kEgUG…` READY at 11:04 UTC (commit 1cb78f3): all vercel-build gates passed on CI ("[41i.6b] ✓ No new financial-math violations" · "✓ lint:ai-grounding" · "Neomatrix check: OK … Layer 0 complete … 160/160") and **`Applying migration 20260716000000_phase59_managed_rental` → "All migrations have been successfully applied"** against monitrax-db-dev. First preview (`dpl_37efey…`) failed at the surfaces linter — a pre-existing baseline entry's line shifted (income/page.tsx 2073→2169) under the Phase 59 insertions; re-pinned with an audit note (§17.2 log evidence in the PR thread).
 
 ### §20.6 gate (per part, honest)
 Recorded in the PR body — Document / Requirements / Logic 10/10 each part, with the coverage boundary stated as "verifies X, does NOT verify Y" (Ring-3 real-data verification is deliberately NOT claimed — it is the Matrix's Part 6).
