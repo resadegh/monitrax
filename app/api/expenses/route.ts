@@ -6,6 +6,7 @@ import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
+import { detectCadenceMismatch, detectOneOffFingerprint } from '@/lib/intake/detectors';
 
 export const GET = withPermission('expense.read', async (request, auth) => {
     try {
@@ -134,6 +135,24 @@ export const GET = withPermission('expense.read', async (request, auth) => {
           ...wrapped,
           // Budget = entry.amount (what user entered)
           budgetAmount: expense.amount,
+          // D1 (MON-075) + D2 (MON-001): intake-integrity review nudges —
+          // the one-off fingerprint (recurring row, ONE txn, $0 this month)
+          // and the cadence-mismatch (stored rhythm ≠ payment rhythm).
+          // Nudges only; nothing auto-changes.
+          oneOffFingerprint: actuals
+            ? detectOneOffFingerprint({
+                isRecurring: expense.isRecurring,
+                transactionCount: actuals.totalCount,
+                inWindowActual: actuals.currentMonthAmount,
+              })
+            : null,
+          cadenceMismatch: actuals
+            ? detectCadenceMismatch({
+                frequency: expense.frequency,
+                isRecurring: expense.isRecurring,
+                transactionDates: actuals.transactions.map((t) => t.date),
+              })
+            : null,
           // Actual = total from ALL linked transactions
           actualFromTransactions: actuals ? actuals.totalAmount : null,
           // Current month actual

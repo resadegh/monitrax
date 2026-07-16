@@ -168,3 +168,15 @@ Recorded in the PR body.
   L0 allowlist += detectors.ts (graphify offline; self-prunes).
 - Gates: tsc clean · 1545/1545 · neomatrix full gate 0 uncovered · linters OK ·
   issues 78 valid. MON-001 → FIXING.
+
+---
+
+## Session (continued, 2026-07-16): MON-075 D1 — wall Part 3
+
+- **D1 detector**: `detectOneOffFingerprint` (pure; recurring ∧ exactly 1 linked
+  txn ∧ $0 in-window) → income GET + expenses GET `oneOffFingerprint` flag →
+  sky "Single payment — one-off?" nudge chip on the income list (cadence chip
+  precedence). Review-only. This is the MON-053 PROMOTION step (gates CLOSED).
+- Ring-0: +5 detector tests. Baseline re-lined (income page 2060→2073).
+- Gates: tsc clean · intake/income/api suites green · neomatrix 0 uncovered ·
+  linters OK · issues 78 valid. MON-075 → FIXING.

@@ -2113,24 +2113,32 @@
     {
       "id": "MON-075",
       "title": "Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-15",
       "area": "income",
       "plain": {
-        "issue": "Some income or expense rows marked 'recurring' are only backed by a single bank transaction — the fingerprint of the bug that turned one-off deposits into phantom monthly income. A standing detector should flag these rows for review so the class can never silently return."
+        "issue": "Some entries marked 'recurring' are backed by just one bank payment and nothing this month — the fingerprint of the bug that turned one-time deposits into phantom monthly income (the MON-053 class). Nothing was flagging these leftovers for review.",
+        "fix": "A standing detector now flags every such entry — on both the income and expense lists — with a gentle 'Single payment — one-off?' chip. You review each: genuinely one-time → tick one-off; a real stream whose other payments are just out of view → leave it. Nothing changes by itself.",
+        "check": "On Income and Spending: entries backed by a single payment with $0 this month show the blue 'Single payment — one-off?' chip. Rows with several payments, active rows, and rows already marked one-off show nothing."
       },
       "rootCause": [
         "components/transactions/TransactionLinkDialog.tsx:1",
         "app/api/transactions/[id]/link/route.ts:1"
       ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/api/income GET + app/api/expenses GET → oneOffFingerprint flag per row",
+        "income page → 'Single payment — one-off?' nudge chip (D2 cadence chip takes precedence when both fire)",
+        "no number changes — the flag is advisory; totals move only when the user reclassifies a row (MON-053 semantics then apply)"
+      ],
+      "fixPRs": [
+        "(wall Part 3 PR — number recorded on open)"
+      ],
+      "test": "tests/intake/detectors.test.ts",
       "tracker": "neoaudit-run:VR-008",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/position/taxPositionCalculator.ts. Evidence/run: VR-008.\n\n[VR-008 DIAGNOSIS, 2026-07-15 — OWNED BY THE MATRIX] The promote step for the MON-023→037→053 one-off class. Reza decision 2026-07-15: SOURCE-AWARE default (manual/declared = recurring; single-transaction imports = one-off; blanket default-to-one-off REJECTED; backfill migration ABANDONED as unsafe). #1421 already conforms at intake. Remaining build: a standing NeoAudit detector flagging any recurring income/expense row evidenced by exactly ONE linked transaction and $0 in-window actuals (the bug fingerprint) for user review — Ring-1/2 promotion so the Chrome brief never re-checks this class. GATES MON-053 → CLOSED (its promotion evidence)."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/position/taxPositionCalculator.ts. Evidence/run: VR-008.\n\n[VR-008 DIAGNOSIS, 2026-07-15 — OWNED BY THE MATRIX] The promote step for the MON-023→037→053 one-off class. Reza decision 2026-07-15: SOURCE-AWARE default (manual/declared = recurring; single-transaction imports = one-off; blanket default-to-one-off REJECTED; backfill migration ABANDONED as unsafe). #1421 already conforms at intake. Remaining build: a standing NeoAudit detector flagging any recurring income/expense row evidenced by exactly ONE linked transaction and $0 in-window actuals (the bug fingerprint) for user review — Ring-1/2 promotion so the Chrome brief never re-checks this class. GATES MON-053 → CLOSED (its promotion evidence).\n\n[D1 SHIPPED — wall Part 3, 2026-07-16] lib/intake/detectors.ts detectOneOffFingerprint (pure): isRecurring !== false ∧ transactionCount === 1 ∧ inWindowActual === 0 → flag; else null. Wired into income GET + expenses GET; income-page chip (sky, review-only; cadence chip wins when both fire). Ring-0: 5 tests (fingerprint + all never-flag guards incl. declared-only rows). This IS the MON-053 promotion step — on merge + Matrix confirmation, MON-075 → VERIFIED and MON-053 → CLOSED (the class is now: prevented at intake by the classifier, locked by R1 in CI, and residuals surfaced by this standing detector)."
     },
     {
       "id": "MON-076",
