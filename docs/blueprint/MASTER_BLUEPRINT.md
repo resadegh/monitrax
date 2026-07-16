@@ -708,6 +708,7 @@ return withAuth(request, handler);
 | Priority | Feature |
 |----------|---------|
 | High | Native mobile app (Phase 15 — Blueprint v2.0 complete, ready for implementation) |
+| High | Managed rental income & agent-cost reconciliation (Phase 59 — gross-income integrity + derived agent-cost deductions; spec `PHASE_59_MANAGED_RENTAL_INCOME.md`, issue MON-079, build queued §9) |
 | Medium | Accountant/advisor portal |
 | Medium | Multi-user portfolio sharing |
 

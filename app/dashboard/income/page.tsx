@@ -96,6 +96,10 @@ interface Income {
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
+  // Phase 59: managed rentals — amount/frequency stay the DECLARED GROSS;
+  // MANAGED = an agent disburses the net (gap reconciles to deductions).
+  rentalMode?: 'DIRECT' | 'MANAGED';
+  managingAgentName?: string | null;
   property?: Property | null;
   investmentAccount?: InvestmentAccount | null;
   // Phase 20 Salary fields
@@ -127,6 +131,15 @@ interface Income {
   // D1 (MON-075): a "recurring" row whose whole evidence is one transaction
   // with $0 this month — likely a one-off; review nudge only.
   oneOffFingerprint?: { transactionCount: number } | null;
+  // D4 (Phase 59): rental deposits materially below declared gross with no
+  // agent-cost expense captured — likely missing deductions; nudge only.
+  rentGap?: {
+    grossPerPeriod: number;
+    netPerPeriod: number;
+    gapPerPeriod: number;
+    gapAnnual: number;
+    disbursementFrequency: string;
+  } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -148,6 +161,9 @@ type IncomeFormData = {
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
+  // Phase 59: managed rentals
+  rentalMode: 'DIRECT' | 'MANAGED';
+  managingAgentName: string;
   // Phase 20 fields
   salaryType: 'GROSS' | 'NET' | null;
   payFrequency: string | null;
@@ -183,6 +199,8 @@ function IncomePageContent() {
     isTaxable: true,
     propertyId: null,
     investmentAccountId: null,
+    rentalMode: 'DIRECT', // Phase 59
+    managingAgentName: '',
     salaryType: 'GROSS',
     payFrequency: null,
     salarySacrifice: null,
@@ -483,6 +501,16 @@ function IncomePageContent() {
       investmentAccountId: formData.sourceType === 'INVESTMENT' ? formData.investmentAccountId : null,
     };
 
+    // Phase 59: managed rentals — only meaningful on rental streams; the
+    // server also guards (MANAGED on a non-rental type stores DIRECT).
+    if (formData.type === 'RENT' || formData.type === 'RENTAL') {
+      submitData.rentalMode = formData.rentalMode;
+      submitData.managingAgentName =
+        formData.rentalMode === 'MANAGED' && formData.managingAgentName.trim()
+          ? formData.managingAgentName.trim()
+          : null;
+    }
+
     // Add salary-specific fields
     if (formData.type === 'SALARY') {
       submitData.salaryType = formData.salaryType;
@@ -562,6 +590,8 @@ function IncomePageContent() {
       isTaxable: true,
       propertyId: null,
       investmentAccountId: null,
+      rentalMode: 'DIRECT', // Phase 59
+      managingAgentName: '',
       salaryType: 'GROSS',
       payFrequency: null,
       salarySacrifice: null,
@@ -583,6 +613,8 @@ function IncomePageContent() {
       isTaxable: item.isTaxable,
       propertyId: item.propertyId,
       investmentAccountId: item.investmentAccountId,
+      rentalMode: item.rentalMode ?? 'DIRECT', // Phase 59
+      managingAgentName: item.managingAgentName ?? '',
       salaryType: item.salaryType || 'GROSS',
       payFrequency: item.payFrequency || null,
       salarySacrifice: item.salarySacrifice || null,
@@ -1086,6 +1118,18 @@ function IncomePageContent() {
                                 Single payment — one-off?
                               </span>
                             )}
+                            {/* D4 (Phase 59): rent deposits run below the
+                                declared rent with no agent costs captured —
+                                likely missing deductions (a win to claim,
+                                so emerald). One status per row: D2/D1 win. */}
+                            {!item.cadenceMismatch && !item.oneOffFingerprint && item.rentGap && (
+                              <span
+                                className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
+                                title={`Deposits arrive about ${formatCurrency(item.rentGap.gapPerPeriod)} below your declared rent each ${item.rentGap.disbursementFrequency.toLowerCase()} period — that gap is usually your agent's management & costs, which are tax-deductible. Upload your rental statement (or mark this stream as agent-managed) to claim them.`}
+                              >
+                                Missing management-fee deductions?
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">
@@ -1572,6 +1616,58 @@ function IncomePageContent() {
                 </Select>
               </div>
             </div>
+
+            {/* Phase 59: managed rentals — the declared amount stays the FULL
+                (gross) rent; MANAGED tells reconciliation that deposits arrive
+                net of the agent's costs (the gap becomes deductions). */}
+            {(formData.type === 'RENT' || formData.type === 'RENTAL') && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">How the rent arrives</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rentalMode">Payment path</Label>
+                      <Select
+                        value={formData.rentalMode}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, rentalMode: value as 'DIRECT' | 'MANAGED' })
+                        }
+                      >
+                        <SelectTrigger id="rentalMode">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DIRECT">Straight from the tenant</SelectItem>
+                          <SelectItem value="MANAGED">Through a property manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {formData.rentalMode === 'MANAGED'
+                          ? 'Enter the full rent above. Deposits arrive after your agent takes their costs out — Monitrax spots the difference when they reconcile, so you keep those deductions.'
+                          : 'The bank deposit is the full rent.'}
+                      </p>
+                    </div>
+                    {formData.rentalMode === 'MANAGED' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="managingAgentName">Managing agent (optional)</Label>
+                        <Input
+                          id="managingAgentName"
+                          value={formData.managingAgentName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, managingAgentName: e.target.value })
+                          }
+                          placeholder="e.g. Ray White Property Management"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Salary-specific fields */}
             {formData.type === 'SALARY' && (

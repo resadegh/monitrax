@@ -40,6 +40,9 @@ export const REGISTRY = {
   'app/api/ai/debt-analysis/route.ts': ['buildEngineProjections'],
   'app/api/budget-analysis/generate/route.ts': ['validateVariableExpenseResponse'],
   'app/api/cfo/advice/chat/route.ts': ['groundNarrative'],
+  // Phase 59: rental-statement extraction — every figure validated against the
+  // statement text (refuse-never-estimate); ungrounded parses are rejected.
+  'lib/neobrain/rentalStatement.ts': ['groundRentalStatementParse'],
 };
 
 // Non-financial-narrative or infrastructure AI calls — exempt, each with a reason.

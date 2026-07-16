@@ -23,6 +23,7 @@
 import { Frequency } from '@/lib/types/prisma-enums';
 import { detectFrequency } from '@/lib/utils/reconciliation';
 import { normalizeFrequency } from '@/lib/intake/classifyIntake';
+import { reconcileManagedRental } from '@/lib/calculations/rentalReconciliation';
 
 export interface CadenceMismatchFlag {
   /** The row's stored cadence. */
@@ -64,6 +65,82 @@ export function detectOneOffFingerprint(row: {
   if (row.transactionCount !== 1) return null; // needs exactly the lone-txn shape
   if (Math.abs(row.inWindowActual) > 0) return null; // active this window → looks live
   return { transactionCount: 1 };
+}
+
+/**
+ * D4 — RENT GAP (Phase 59 / MON-079, PHASE_59_MANAGED_RENTAL_INCOME.md §7):
+ * a rental stream whose observed deposits run MATERIALLY below the declared
+ * gross, with NO agent-cost expense captured. The fingerprint of an
+ * agent-managed rental that isn't modelled yet — the user is silently
+ * missing management-fee deductions. Surface copy: *"you may be missing
+ * management-fee deductions — upload your rental statement."*
+ *
+ * Fires regardless of `rentalMode` — catching the DIRECT-marked stream that
+ * is actually agent-managed is the point. All gap arithmetic comes from the
+ * ONE engine (`reconcileManagedRental`, §12.2.1 — never re-derived here).
+ *
+ * Deliberately conservative (a nudge, never an auto-change):
+ *   - needs ≥2 linked deposits (one deposit = timing noise, not a pattern)
+ *   - uses the MEDIAN deposit (a lone repair month must not skew the base)
+ *   - never flags one-off rows, non-rental types, or streams that already
+ *     have a derived agent-cost expense
+ */
+export interface RentGapFlag {
+  /** Declared gross normalised to the observed disbursement period. */
+  grossPerPeriod: number;
+  /** The median observed deposit for that period. */
+  netPerPeriod: number;
+  /** The likely missing deduction, per period + annualised. */
+  gapPerPeriod: number;
+  gapAnnual: number;
+  disbursementFrequency: Frequency;
+}
+
+export function detectRentGap(row: {
+  incomeType: string | null | undefined;
+  isRecurring?: boolean | null;
+  /** Declared gross — Income.amount + Income.frequency. */
+  declaredAmount: number;
+  declaredFrequency: string | null | undefined;
+  /** The stream's linked deposits (date + absolute amount). */
+  transactions: Array<{ date: Date | string; amount: number }>;
+  /** True when a derived agent-cost expense already exists for the stream. */
+  hasAgentCostExpense: boolean;
+}): RentGapFlag | null {
+  const type = row.incomeType?.toUpperCase();
+  if (type !== 'RENT' && type !== 'RENTAL') return null;
+  if (row.isRecurring === false) return null; // one-offs have no run-rate
+  if (row.hasAgentCostExpense) return null; // already captured
+  if (!(row.declaredAmount > 0)) return null;
+
+  const declaredFrequency = normalizeFrequency(row.declaredFrequency);
+  if (!declaredFrequency) return null;
+
+  const txs = row.transactions.filter((t) => Number.isFinite(t.amount) && t.amount > 0);
+  if (txs.length < 2) return null; // one deposit is noise, not a pattern
+
+  // Median deposit — robust against a lone anomalous month.
+  const amounts = txs.map((t) => t.amount).sort((a, b) => a - b);
+  const mid = Math.floor(amounts.length / 2);
+  const median =
+    amounts.length % 2 === 1 ? amounts[mid] : (amounts[mid - 1] + amounts[mid]) / 2;
+
+  const r = reconcileManagedRental({
+    declaredGrossAmount: row.declaredAmount,
+    declaredGrossFrequency: declaredFrequency,
+    netDisbursementAmount: median,
+    disbursementDates: txs.map((t) => t.date),
+  });
+
+  if (!r.material) return null;
+
+  return {
+    grossPerPeriod: r.grossPerDisbursementPeriod,
+    netPerPeriod: median,
+    gapPerPeriod: r.gap,
+    gapAnnual: r.gapAnnual,
+    disbursementFrequency: r.disbursementFrequency,
+  };
 }
 
 export function detectCadenceMismatch(row: {

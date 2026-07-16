@@ -33,6 +33,7 @@ const PRODUCER_FILES = [
   'app/api/onboarding/complete/route.ts',
   'app/api/recurring-payments/[id]/link/route.ts',
   'lib/bank/recurringExpenseDetection.ts',
+  'app/api/rental-reconciliation/route.ts', // Phase 59: derived agent-cost rows
 ];
 
 /** Files allowed to create Income/Expense WITHOUT the classifier — each with a

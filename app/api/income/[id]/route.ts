@@ -54,6 +54,9 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         // Phase 20: Investment-specific fields
         frankingPercentage,
         frankingCredits,
+        // Phase 59: managed rentals (declared gross stays in amount/frequency)
+        rentalMode,
+        managingAgentName,
       } = body;
 
       // Verify ownership
@@ -119,6 +122,20 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
           propertyId: propertyId !== undefined ? propertyId : undefined,
           investmentAccountId: investmentAccountId !== undefined ? investmentAccountId : undefined,
           sourceType: sourceType !== undefined ? sourceType : undefined,
+          // Phase 59: only touch when the client explicitly sends it (partial-
+          // update discipline); MANAGED only valid on rental streams.
+          rentalMode:
+            rentalMode !== undefined
+              ? rentalMode === 'MANAGED' && (type === 'RENT' || type === 'RENTAL')
+                ? 'MANAGED'
+                : 'DIRECT'
+              : undefined,
+          managingAgentName:
+            managingAgentName !== undefined
+              ? typeof managingAgentName === 'string' && managingAgentName.trim()
+                ? managingAgentName.trim()
+                : null
+              : undefined,
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
           payFrequency: resolvedPayFrequency,

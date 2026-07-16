@@ -5,9 +5,10 @@
   "entries": [
     {
       "file": "app/dashboard/income/page.tsx",
-      "line": 2073,
+      "line": 2169,
       "pattern": "INLINE_ARITHMETIC",
-      "match": "selectedIncome.amount + selectedIncome.frankingCredits"
+      "match": "selectedIncome.amount + selectedIncome.frankingCredits",
+      "note": "Line re-pinned 2073→2169 on 2026-07-16 (Phase 59 income-form insertions shifted the file; the violation itself is untouched/pre-existing)."
     },
     {
       "file": "app/dashboard/tax/page.tsx",

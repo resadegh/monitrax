@@ -3081,7 +3081,7 @@
       "kind": "engine",
       "label": "Document type classifier",
       "file": "lib/documents/intelligence/classifiers/documentClassifier.ts",
-      "line": 204,
+      "line": 222,
       "layer": "engine",
       "domain": "neobrain",
       "trailStage": null,
@@ -3094,7 +3094,7 @@
       "astHash": null,
       "verifiedBy": null,
       "workedExample": null,
-      "verifiedDate": "2026-06-25",
+      "verifiedDate": "2026-07-16",
       "status": "documented"
     },
     {
@@ -3123,7 +3123,7 @@
       "kind": "engine",
       "label": "Complex-doc extractor (Gemini)",
       "file": "lib/documents/intelligence/analyzers/aiDocumentAnalyzer.ts",
-      "line": 139,
+      "line": 140,
       "layer": "engine",
       "domain": "neobrain",
       "trailStage": null,
@@ -3136,7 +3136,7 @@
       "astHash": null,
       "verifiedBy": null,
       "workedExample": null,
-      "verifiedDate": "2026-06-25",
+      "verifiedDate": "2026-07-16",
       "status": "documented"
     },
     {
@@ -6046,6 +6046,136 @@
       "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:100 (groupBy kind=INTEREST_CHARGED, FY window, Math.abs)",
       "workedExample": null,
       "verifiedDate": "2026-07-15",
+      "status": "documented"
+    },
+    {
+      "id": "engine.rentalReconciliation.reconcileManagedRental",
+      "kind": "engine",
+      "label": "Managed-rental agent-cost reconciliation",
+      "file": "lib/calculations/rentalReconciliation.ts",
+      "line": 127,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": "T",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ManagedRentalReconciliation — the agent-cost gap per disbursement period (+ annualised), materiality, and learn-once anomaly semantics for MANAGED rental streams (Phase 59). The ONE producer of the agent-cost deduction (§12.2.1); Decimal twin reconcileManagedRentalDecimal (:178) must never disagree. The derived Expense payload (buildDerivedAgentCostExpense :242 — isTaxDeductible + propertyId + PROPERTY_MANAGEMENT) is what carries the gap into the canonical tax position.",
+      "formula": "grossPerDisbursementPeriod = toAnnual(declaredGross, grossFreq) ÷ periodsPerYear(disbursementFreq); gap = grossPerDisbursementPeriod − netDisbursement; gapAnnual = toAnnual(gap, disbursementFreq); material = gap ≥ $5 AND gap/grossPerPeriod ≥ 1%; anomaly = |gap − rule.baselineGapAmount| > tolerancePct × baseline. Cadence: explicit > detectFrequency(dates) (the ONE canonical detector) > declared rent cadence.",
+      "authority": "ITAA 1997 s6-5 (gross rent assessable) + s8-1 (agent management/letting costs deductible); immediate-vs-capital deliberately NOT ruled here (spec §10 — statement/tax agent).",
+      "inputs": [
+        {
+          "name": "declaredGrossAmount/Frequency",
+          "unit": "AUD/period",
+          "type": "number+Frequency",
+          "note": "Income.amount + Income.frequency — the DECLARED GROSS of the MANAGED stream"
+        },
+        {
+          "name": "netDisbursementAmount",
+          "unit": "AUD",
+          "type": "number",
+          "note": "the net bank credit (UnifiedTransaction.amount, direction IN)"
+        },
+        {
+          "name": "disbursementFrequency/dates",
+          "unit": "Frequency | dates[]",
+          "type": "Frequency|Date[]",
+          "note": "explicit wins; ≥2 dates → canonical detectFrequency (C1 discipline)"
+        },
+        {
+          "name": "rule",
+          "unit": "AUD + fraction",
+          "type": "AgentDisbursementRule",
+          "note": "learn-once baseline gap + tolerancePct for anomaly re-confirm"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "lib/calculations/rentalReconciliation.ts:127 + tests/calculations/rentalReconciliation.test.ts (worked examples + Float/Decimal parity + tax flow-through) + lib/calc-audit/engines/rental-reconciliation.ts (R0 fixtures) + tests/tax/rentalReconciliationSourceLock.test.ts (R1 single-producer lock)",
+      "workedExample": "$650/wk declared, $1,100/ft disbursed: 650×52÷26 = 1,300/ft → gap 200/ft → 5,200/yr deductible; taxable = 33,800 − 5,200 = 28,600 (= net received, annualised).",
+      "verifiedDate": "2026-07-16",
+      "status": "documented"
+    },
+    {
+      "id": "input.Income.grossRent",
+      "kind": "input-field",
+      "label": "Income gross rent (MANAGED rental declared gross)",
+      "file": "prisma/schema.prisma",
+      "line": null,
+      "layer": "db",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The DECLARED GROSS rent of a managed rental stream — Income.amount + Income.frequency where rentalMode = MANAGED (Phase 59). Never the net disbursement; assessable income stays gross.",
+      "formula": null,
+      "authority": "prisma/schema.prisma — Income model (rentalMode/managingAgentName, Phase 59 migration 20260716000000)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "prisma/schema.prisma — Income.rentalMode + docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md §4",
+      "workedExample": null,
+      "verifiedDate": "2026-07-16",
+      "status": "documented"
+    },
+    {
+      "id": "input.Transaction.agentDisbursement",
+      "kind": "input-field",
+      "label": "Agent net disbursement (bank credit)",
+      "file": "prisma/schema.prisma",
+      "line": null,
+      "layer": "db",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The NET amount the managing agent disbursed to the bank (UnifiedTransaction, direction IN, linked to a MANAGED rental stream) — gross rent minus the agent’s costs, often on a different cadence than the rent.",
+      "formula": null,
+      "authority": "prisma/schema.prisma — UnifiedTransaction model",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md §3",
+      "workedExample": null,
+      "verifiedDate": "2026-07-16",
+      "status": "documented"
+    },
+    {
+      "id": "number.rental.agentCostDeduction",
+      "kind": "number",
+      "label": "Agent-cost deduction (managed rental gap)",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "rental.agentCostDeduction",
+      "produces": "The deductible agent-cost gap of a managed rental stream — persisted as the DERIVED PROPERTY_MANAGEMENT Expense row (isTaxDeductible, property-linked, recurring at the disbursement cadence; anomaly excess as a one-off) and flowing into deductions.property through the canonical tax engine’s existing deductible-expense loop.",
+      "formula": "= reconcileManagedRental(...).gap (per disbursement period) / .gapAnnual (annualised). ONE producer (§12.2.1) — R1 source-lock.",
+      "authority": "ITAA 1997 s8-1; copy stays \"usually deductible — confirm with your statement or tax agent\" (spec §10).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/calculations/rentalReconciliation.ts:135 (Float) / :187 (Decimal) + tests/calculations/rentalReconciliation.test.ts",
+      "workedExample": "$650/wk vs $1,100/ft → $200/ft → $5,200/yr.",
+      "verifiedDate": "2026-07-16",
+      "status": "documented"
+    },
+    {
+      "id": "number.rental.grossDeclared",
+      "kind": "number",
+      "label": "Managed rental gross declared (assessable)",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "rental.grossDeclared",
+      "produces": "The declared gross rent of a managed stream as the ASSESSABLE income figure — unchanged by reconciliation (the gap becomes a deduction, never an income adjustment).",
+      "formula": "= toAnnual(Income.amount, Income.frequency) — annualised by the canonical tax engine income loop, exactly as a DIRECT stream.",
+      "authority": "ITAA 1997 s6-5 — gross rent is assessable income; never a netted figure.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/tax-engine/position/taxPositionCalculator.ts:156-163 (income annualisation, unchanged by Phase 59) + tests/calculations/rentalReconciliation.test.ts (gross-unchanged assertion)",
+      "workedExample": "$650/wk → $33,800/yr assessable, whether disbursed direct or via an agent.",
+      "verifiedDate": "2026-07-16",
       "status": "documented"
     }
   ],
@@ -9181,6 +9311,66 @@
       "source": "verified",
       "evidence": "taxPositionCalculator.ts:236-244 (Float) / :764-773 (Decimal) — deductibleInterest → deductionBreakdown.property; HOME gate :235/:763; de-dup :252/:780",
       "verifiedDate": "2026-07-15"
+    },
+    {
+      "from": "input.Income.grossRent",
+      "to": "engine.rentalReconciliation.reconcileManagedRental",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/period",
+      "evidence": "rentalReconciliation.ts:66-68 declaredGrossAmount/declaredGrossFrequency (Income.amount/frequency)",
+      "verifiedDate": "2026-07-16"
+    },
+    {
+      "from": "input.Transaction.agentDisbursement",
+      "to": "engine.rentalReconciliation.reconcileManagedRental",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "rentalReconciliation.ts:70 netDisbursementAmount (the bank credit being reconciled)",
+      "verifiedDate": "2026-07-16"
+    },
+    {
+      "from": "engine.rentalReconciliation.reconcileManagedRental",
+      "to": "number.rental.agentCostDeduction",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/period + AUD/yr",
+      "evidence": "rentalReconciliation.ts:135 gap = grossPerDisbursementPeriod − netDisbursementAmount (Decimal twin :187); persisted via buildDerivedAgentCostExpense :242",
+      "verifiedDate": "2026-07-16"
+    },
+    {
+      "from": "engine.rentalReconciliation.reconcileManagedRental",
+      "to": "number.rental.grossDeclared",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/yr",
+      "evidence": "rentalReconciliation.ts:132-133 grossAnnual/grossPerDisbursementPeriod — the declared gross is normalised for comparison, NEVER mutated",
+      "verifiedDate": "2026-07-16"
+    },
+    {
+      "from": "number.rental.agentCostDeduction",
+      "to": "engine.taxPositionCalculator.calculateTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/yr",
+      "evidence": "the derived Expense row (isTaxDeductible + propertyId + PROPERTY_MANAGEMENT) flows through the deductible-expense loop taxPositionCalculator.ts:248-272 (Decimal :777-798) into deductions.property — no second producer touches the tax engine",
+      "verifiedDate": "2026-07-16"
+    },
+    {
+      "from": "number.rental.grossDeclared",
+      "to": "engine.taxPositionCalculator.calculateTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/yr",
+      "toUnit": "AUD/yr",
+      "evidence": "taxPositionCalculator.ts:156-163 income annualisation — MANAGED streams annualise their DECLARED GROSS exactly like DIRECT (gross income unchanged by Phase 59)",
+      "verifiedDate": "2026-07-16"
     }
   ]
 }
