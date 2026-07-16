@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**78 total** · 75 open · 🔵 24 · 🟡 5 · 🟠 32 · 🟢 14 · ✅ 2
+**79 total** · 76 open · 🔵 25 · 🟡 5 · 🟠 32 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -85,6 +85,7 @@
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
+| MON-079 | 🔵 OPEN | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | — | — |
 
 ---
 
@@ -1373,4 +1374,15 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/deci
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/classifyIntake.ts.
 
 [KEYSTONE SHIPPED — PR #1429, 2026-07-15, draft] lib/intake/classifyIntake.ts (pure §6.4): frequency = declared(normalised, WEEKLY/FORTNIGHTLY preserved, ANNUALLY→ANNUAL) → detected evidence → MANUAL/ONBOARDING throw → the ONE named LEGACY_FALLBACK_FREQUENCY='MONTHLY' (C1 target). Recurrence = explicit wins → source-default table (manual/onboarding/detection true; link-expense false #1421; link-income + doc-import true, marked LEGACY/C2 targets). streamMatch = 'scope-singleton' (MON-009) | 'merchant' (sameMerchant exact, isNearDuplicateEntry near-dup). R1 ratchet: tests/intake/intakeSourceLock.test.ts — CI census of every prisma.income/expense.create under app/+lib/ (locked producer list + allowlist), import+call required, silent-MONTHLY literal/fallback banned outside the classifier (repaymentFrequency/investmentFrequency exempt — not Income/Expense cadences). Ring-0: tests/intake/classifyIntake.test.ts (15) pins the behaviour-preserving defaults. RC-B source-lock updated to the new topology (route → classifier → isNearDuplicateEntry). DELIBERATE DEVIATION surfaced: PUT/update routes NOT routed (an update is a user edit, not intake — injecting defaults into partial updates is the unsafe class itself). Next: C1 (MON-001) → D1 (MON-075) → C3 (MON-076, gated on Reza) → R3 golden fixtures, each own PR, per spec §6.
+
+### MON-079 — Managed rental income + agent-cost reconciliation (Phase 59)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: rental · opened 2026-07-16
+
+> **What was wrong:** Rent from your agent arrives after their fees are taken out, so Monitrax can't see your real gross rent or claim the agent's fees as deductions.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `phase-59`
+
+Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9.
 

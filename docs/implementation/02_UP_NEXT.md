@@ -16,6 +16,15 @@
 - **Key risks:** privacy/CDR is the gating constraint (PII scrub before shared write; k-anonymity; documented CDR stance before Basiq). Cost mitigated by lookup-first.
 - **Why this matters:** makes the AI right more often → fewer corrections → directly attacks the "categorisation is overwhelming" problem, and builds AU-transaction intelligence that's Monitrax's own asset.
 
+## 📋 Phase 59 — Managed Rental Income & Agent-Cost Reconciliation (queued → in build 2026-07-16)
+
+- **Status:** 📋 queued 2026-07-16 (spec merged via PR #1433; issue **MON-079**, `changesNumbers: true`) → **build started same day** on `claude/phase-59-managed-rental-yhm8ug`.
+- **What:** agent-managed rentals — the bank only ever sees the **net** disbursement (gross rent − management fee/repairs/water), often on a different cadence than the rent. Model it once: `Income.rentalMode DIRECT|MANAGED`, declared gross stays the assessable income, the reconciliation gap becomes a **derived deductible expense** (`PROPERTY_MANAGEMENT`), statement-first / reconciliation-fallback, suggest-and-confirm card + learn-once `AgentDisbursementRule` + anomaly re-confirm. Spec: [`PHASE_59_MANAGED_RENTAL_INCOME.md`](../blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md).
+- **Build sequence (spec §9):** (1) data model + migration — *Reza approves the schema (§12.11/§12.12)*; (2) engine `reconcileManagedRental()` (ONE producer, §12.2.1) + tax-position wiring + **Neomatrix Model step same PR**; (3) reconciliation suggest-and-confirm card (Stitch UI, §20.6 gate); (4) NeoBrain statement parser (`lib/neobrain/rentalStatement.ts`, grounded); (5) NeoAudit R0/R1/R2 + **D4 rent-gap detector** + managed-rental Golden fixture (gross $650/wk, net $1,100/ft); (6) R3 Chrome (Matrix) → VERIFIED → re-baseline → close MON-079.
+- **Dependency:** rides on the Intake-Integrity Wall — cadence normalisation reuses `classifyIntake` / the ONE canonical `detectFrequency`; never a second cadence path.
+- **Gates with Reza:** schema migration approval; money-touching merges (engine + card); Ring-3 sign-off.
+- **Why this matters:** an investor's rent almost never hits the bank as gross rent; without this model Monitrax either understates gross income or silently drops legitimate deductions — both wrong for tax (financial-adviser lens: real money back).
+
 ## 🎯 Demo-Complete Critical Path — Lighthouse Adviser Pitch
 
 > **Reza directive 2026-05-04:** the lighthouse adviser pitch waits for a *fully functional* demo of the complete capabilities — not a half-built skeleton, not a demo-mode skin, not a marketing video. "Demo-complete" means the real product, fully working, populated with realistic seeded users — only PROD-hardening (pen test, insurance, CMEK, Cloud Armor, evidence pack, Stripe live mode, training programs, DOCX templates) defers to PROD-ready. Every other Up Next item is bucketed below.
