@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**78 total** · 75 open · 🔵 25 · 🟡 7 · 🟠 29 · 🟢 14 · ✅ 2
+**78 total** · 75 open · 🔵 24 · 🟡 7 · 🟠 30 · 🟢 14 · ✅ 2
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -84,7 +84,7 @@
 | MON-075 | 🟡 DIAGNOSED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | — | n/a |
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
-| MON-078 | 🔵 OPEN | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | — | n/a |
+| MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 
 ---
 
@@ -1345,13 +1345,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/deci
 
 ### MON-078 — Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **no** · area: intake · opened 2026-07-16
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: intake · opened 2026-07-16
 
-> **What was wrong:** Every place the app creates an income or expense row decides frequency and recurrence on its own — there is no shared classifier, so unsafe defaults (silent monthly, silent recurring, mint-a-new-row) keep producing the same bug families. This keystone routes every intake path through ONE classifier and adds a build gate so bypassing it fails CI.
+> **What was wrong:** Every place the app creates an income or expense row decided frequency and recurrence on its own — eight different spots, each with silent defaults (monthly, recurring, new-row). That one gap is the root behind the weekly-rent-stored-monthly, one-off-×12, and duplicate-row bug families.
 >
+> **What changed:** One canonical intake classifier now makes those decisions for every path, and a build gate fails CI if any code tries to bypass it or sneak in a silent 'monthly'. This first PR is deliberately behaviour-preserving — it builds the door; the next PRs tighten what walks through it.
+>
+> **What you should see:** Nothing should look different yet — that's the point. Your income/expense lists, Tax page and dashboard should match the VR-009 baseline exactly (aside from rows you've edited yourself). Adding a weekly income stores WEEKLY; linking a single transaction as one-off stays one-off.
+
 - **Root cause:** `app/api/income/route.ts:240`, `app/api/transactions/[id]/link/route.ts:417`, `app/api/documents/analyze/confirm/route.ts:459`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Downstream consumers (§19.4):** `app/api/income/route.ts POST — routed (MANUAL), behaviour-preserving`, `app/api/expenses/route.ts POST + expenses/bulk — routed (MANUAL)`, `app/api/transactions/[id]/link — income + expense branches routed (TRANSACTION_LINK), incl. MON-009 rental scope-singleton + RC-B merchant stream policies`, `app/api/documents/analyze/confirm — income + expense routed (DOCUMENT_IMPORT); local frequencyMaps + '|| MONTHLY' literals deleted`, `app/api/onboarding/complete — routed (ONBOARDING)`, `app/api/recurring-payments/[id]/link + lib/bank/recurringExpenseDetection — routed (RECURRING_DETECTION, detected cadence as evidence)`, `allowlisted (reviewed): lib/db/tenant.ts (pass-through, 0 callers), lib/testing/loader.ts (fixtures)`, `no money-number consumer changes — classification outputs identical for valid inputs (pinned by tests/intake/classifyIntake.test.ts)`
+- **Fix PR(s):** ##1429 (keystone: classifier + R1 source-lock)
+- **Holistic test (§19.4):** `tests/intake/intakeSourceLock.test.ts`
 - **Detail:** `spec:docs/architecture/INTAKE_INTEGRITY_GUARDRAIL.md`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/classifyIntake.ts.
+
+[KEYSTONE SHIPPED — PR #1429, 2026-07-15, draft] lib/intake/classifyIntake.ts (pure §6.4): frequency = declared(normalised, WEEKLY/FORTNIGHTLY preserved, ANNUALLY→ANNUAL) → detected evidence → MANUAL/ONBOARDING throw → the ONE named LEGACY_FALLBACK_FREQUENCY='MONTHLY' (C1 target). Recurrence = explicit wins → source-default table (manual/onboarding/detection true; link-expense false #1421; link-income + doc-import true, marked LEGACY/C2 targets). streamMatch = 'scope-singleton' (MON-009) | 'merchant' (sameMerchant exact, isNearDuplicateEntry near-dup). R1 ratchet: tests/intake/intakeSourceLock.test.ts — CI census of every prisma.income/expense.create under app/+lib/ (locked producer list + allowlist), import+call required, silent-MONTHLY literal/fallback banned outside the classifier (repaymentFrequency/investmentFrequency exempt — not Income/Expense cadences). Ring-0: tests/intake/classifyIntake.test.ts (15) pins the behaviour-preserving defaults. RC-B source-lock updated to the new topology (route → classifier → isNearDuplicateEntry). DELIBERATE DEVIATION surfaced: PUT/update routes NOT routed (an update is a user edit, not intake — injecting defaults into partial updates is the unsafe class itself). Next: C1 (MON-001) → D1 (MON-075) → C3 (MON-076, gated on Reza) → R3 golden fixtures, each own PR, per spec §6.
 
