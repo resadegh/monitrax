@@ -2288,7 +2288,7 @@
         "app/api/rental-reconciliation/route.ts (confirm producer — idempotency guard)"
       ],
       "fixPRs": [
-        "#PENDING-this-PR"
+        "#1437"
       ],
       "test": "tests/golden/ring2.managedRental.test.ts (order-independence: manage→link == link→manage) + tests/calculations/rentalReconciliation.test.ts (N=1 Broadbeach cadence inference, Float/Decimal parity) + tests/tax/rentalReconciliationSourceLock.test.ts (R1)",
       "tracker": "VR-010",

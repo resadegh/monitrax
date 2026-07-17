@@ -40,5 +40,5 @@ The handoff suspected missing WEEKLY→MONTHLY normalisation. **Wrong for N≥2*
 - [ ] Vercel preview — proven by CI on push
 
 ### PR
-- PR URL: (recorded on creation — draft, Reza merge gate)
+- PR URL: https://github.com/resadegh/monitrax/pull/1437 (draft — Reza merge gate)
 - Status: after merge + deploy READY → hand back to the Matrix for the per-fix Ring-3 on Broadbeach (card fires ≈ $432/mo without unlink/relink; Total Deductions +$5,184/yr; gross unchanged $2,947/mo; net-only stream blocked until real gross) → MON-080 VERIFIED → unblocks MON-079 → VERIFIED → CLOSED → VR re-baseline.

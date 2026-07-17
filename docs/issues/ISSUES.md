@@ -86,7 +86,7 @@
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟠 FIXING | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
-| MON-080 | 🟠 FIXING | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##PENDING-this-PR | ✅ |
+| MON-080 | 🟠 FIXING | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##1437 | ✅ |
 
 ---
 
@@ -1408,7 +1408,7 @@ Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-i
 - **Root cause:** `lib/calculations/rentalReconciliation.ts:118`, `app/api/income/[id]/route.ts:126`, `app/dashboard/income/page.tsx:1125`, `app/dashboard/income/page.tsx:1776`
 - **Neomatrix:** `number.rental.agentCostDeduction`, `number.rental.grossDeclared`
 - **Downstream consumers (§19.4):** `lib/tax-engine/position/taxPositionCalculator.ts (deductible-expense loop → deductions.property, Float + Decimal)`, `app/api/tax/position/route.ts (Total Deductions on the Tax page)`, `lib/services/masterFinancialService.ts buildTaxSummary (dashboard tax tiles + CFO)`, `app/dashboard/income/page.tsx (D4 nudge chip → claim path; gross display)`, `components/transactions/TransactionLinkDialog.tsx (fresh-link card path)`, `app/api/rental-reconciliation/route.ts (confirm producer — idempotency guard)`
-- **Fix PR(s):** ##PENDING-this-PR
+- **Fix PR(s):** ##1437
 - **Holistic test (§19.4):** `tests/golden/ring2.managedRental.test.ts (order-independence: manage→link == link→manage) + tests/calculations/rentalReconciliation.test.ts (N=1 Broadbeach cadence inference, Float/Decimal parity) + tests/tax/rentalReconciliationSourceLock.test.ts (R1)`
 - **Detail:** `VR-010`
 
