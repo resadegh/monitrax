@@ -118,6 +118,24 @@ calcEngineRegistry.register({
       authoritySource: 'Hand-calculation per spec §3 learn-once/anomaly semantics.',
     },
     {
+      name: 'MON-080 D0 · Broadbeach: $680/wk gross, ONE $2,515 deposit → MONTHLY inferred, gap ≈ $432 material',
+      description:
+        'The very first linked disbursement (no rule, no date evidence) infers its period from the deposit size — never compares a weekly gross against a monthly payout (the pre-fix N=1 fallback returned gap −$1,835, material=false).',
+      input: {
+        declaredGrossAmount: 680,
+        declaredGrossFrequency: 'WEEKLY',
+        netDisbursementAmount: 2515,
+      },
+      assertions: [
+        { description: 'period inferred MONTHLY from the deposit size', check: (r) => r.disbursementFrequency === 'MONTHLY' },
+        { description: 'gross/mo = 680 × 52 ÷ 12 = 2,946.67', check: (r) => Math.abs(r.grossPerDisbursementPeriod - (680 * 52) / 12) < 0.01 },
+        { description: 'gap ≈ 431.67 (agent cut 14.7%)', check: (r) => Math.abs(r.gap - 431.67) < 0.01 },
+        { description: 'material (the card fires on the first fresh link)', check: (r) => r.material === true },
+      ],
+      authoritySource:
+        'VR-010 live fixture (Reza Broadbeach, 2026-07-17): 680 × 52 = 35,360/yr ÷ 12 = 2,946.67/mo; 2,946.67 − 2,515 = 431.67 ≈ $5,184/yr. MON-080 D0.',
+    },
+    {
       name: 'Within tolerance: $210 gap vs $200 baseline (tol 20%) → silent',
       description: 'In-tolerance gaps auto-derive silently — no re-confirm.',
       input: {

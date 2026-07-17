@@ -194,6 +194,74 @@ describe('R2 · D4 rent-gap detector on the golden stream', () => {
   });
 });
 
+describe('R2 · MON-080 order-independence — manage→link == link→manage', () => {
+  // The two activation orders feed the SAME single producer with the SAME
+  // inputs, so the derived deduction must be IDENTICAL:
+  //   manage→link : the link flow reconciles the incoming deposit against
+  //                 the (already MANAGED) stream — deposit + sibling dates.
+  //   link→manage : the retroactive pass (MON-080 D1) reconciles the LATEST
+  //                 already-linked deposit — same deposit, same siblings.
+  const CTX080 = {
+    userId: 'u-golden',
+    ownerEntityId: 'le-golden',
+    incomeStreamId: 'i-broadbeach',
+    propertyId: 'p-broadbeach',
+    managingAgentName: 'Broadbeach Realty',
+  };
+  /** Reza's live Broadbeach shape: $680/wk declared, $2,515/mo disbursed. */
+  const MONTHLY_DATES = [0, 1, 2].map((m) => new Date(Date.UTC(2026, 4 + m, 1)));
+
+  it('both orders yield the identical derived deduction row (gap ≈ $432/mo)', () => {
+    // Order A — manage first, then link the newest deposit (the link flow):
+    const atLink = reconcileManagedRental({
+      declaredGrossAmount: 680,
+      declaredGrossFrequency: 'WEEKLY',
+      netDisbursementAmount: 2515,
+      disbursementDates: MONTHLY_DATES,
+    });
+    // Order B — deposits linked first, MANAGED flipped later (retroactive:
+    // the latest linked deposit is the representative, siblings unchanged):
+    const retroactive = reconcileManagedRental({
+      declaredGrossAmount: 680,
+      declaredGrossFrequency: 'WEEKLY',
+      netDisbursementAmount: 2515,
+      disbursementDates: [...MONTHLY_DATES].reverse(), // fetch order differs — must not matter
+    });
+
+    expect(retroactive.disbursementFrequency).toBe(atLink.disbursementFrequency);
+    expect(retroactive.gap).toBeCloseTo(atLink.gap, 9);
+    expect(atLink.gap).toBeCloseTo((680 * 52) / 12 - 2515, 9); // ≈ 431.67
+
+    const rowA = buildDerivedAgentCostExpense(CTX080, atLink);
+    const rowB = buildDerivedAgentCostExpense(CTX080, retroactive);
+    expect(rowB).toEqual(rowA); // the order-independence invariant
+    expect(rowA.amount).toBeCloseTo(431.67, 2);
+    expect(rowA.frequency).toBe('MONTHLY'); // → ×12 ≈ $5,184/yr in the tax engine
+  });
+
+  it('D2 probe shape: a stream whose declared amount IS the net yields no material gap (the gate rejects)', () => {
+    // The income PUT's gross-integrity probe: declared 2,515/MONTHLY (the
+    // net booked as gross) vs the median deposit 2,515 → gap 0 → !material
+    // → 422 GROSS_REQUIRED. The declared gross must be distinct from the
+    // deposits before MANAGED persists (ITAA s6-5 gross integrity).
+    const probe = reconcileManagedRental({
+      declaredGrossAmount: 2515,
+      declaredGrossFrequency: 'MONTHLY',
+      netDisbursementAmount: 2515,
+      disbursementDates: MONTHLY_DATES,
+    });
+    expect(probe.material).toBe(false);
+    // ...and once the REAL gross is entered, the same probe passes:
+    const fixed = reconcileManagedRental({
+      declaredGrossAmount: 680,
+      declaredGrossFrequency: 'WEEKLY',
+      netDisbursementAmount: 2515,
+      disbursementDates: MONTHLY_DATES,
+    });
+    expect(fixed.material).toBe(true);
+  });
+});
+
 describe('R2 · the anomaly month (learn-once rule in force)', () => {
   it('a $450 gap vs the $200 baseline re-confirms with a $250 one-off excess, counted once', () => {
     const anomalous = reconcileManagedRental({

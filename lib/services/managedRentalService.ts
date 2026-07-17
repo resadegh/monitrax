@@ -164,3 +164,34 @@ export async function buildManagedRentalSuggestion(args: {
     return null;
   }
 }
+
+/**
+ * MON-080 D1 — the RETROACTIVE suggestion: reconcile a stream's ALREADY-linked
+ * disbursements. Fired (a) by the income PUT when a stream transitions to
+ * MANAGED (the natural order — link deposits first, mark managed later) and
+ * (b) by GET /api/rental-reconciliation for the income-page nudge-chip claim
+ * path. The most recent linked IN deposit stands as the representative
+ * disbursement (the confirm endpoint recomputes against it — same single
+ * producer, §12.2.1); its siblings supply the cadence evidence. All the
+ * fire/silent guards of `buildManagedRentalSuggestion` apply unchanged —
+ * including the `existingDerived` idempotency guard (never double-create).
+ */
+export async function buildRetroactiveManagedRentalSuggestion(args: {
+  userId: string;
+  income: StreamLike;
+}): Promise<ManagedRentalSuggestion | null> {
+  const { userId, income } = args;
+  try {
+    const latest = await prisma.unifiedTransaction.findFirst({
+      where: { userId, incomeId: income.id, direction: 'IN' },
+      select: { id: true, amount: true, date: true, direction: true },
+      orderBy: { date: 'desc' },
+    });
+    if (!latest) return null; // nothing linked yet — the link flow will ask
+
+    return buildManagedRentalSuggestion({ userId, income, transaction: latest });
+  } catch (err) {
+    console.error('[managedRentalService] retroactive suggestion failed:', err);
+    return null;
+  }
+}

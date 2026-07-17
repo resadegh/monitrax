@@ -63,8 +63,8 @@ describe('reconcileManagedRental — worked examples', () => {
     expect(r.gap).toBeCloseTo(200, 9);
   });
 
-  it('a lone disbursement with no cadence evidence compares on the rent cadence', () => {
-    // gross per WEEKLY period = 650; net 600 → gap 50/wk
+  it('a lone disbursement near the rent cadence still reconciles on it (inference agrees)', () => {
+    // gross per WEEKLY period = 650; net 600 → cut 7.7% → WEEKLY inferred; gap 50/wk
     const r = reconcileManagedRental({
       declaredGrossAmount: 650,
       declaredGrossFrequency: 'WEEKLY',
@@ -72,6 +72,55 @@ describe('reconcileManagedRental — worked examples', () => {
     });
     expect(r.disbursementFrequency).toBe('WEEKLY');
     expect(r.gap).toBeCloseTo(50, 9);
+  });
+
+  // MON-080 D0 — THE Broadbeach live fixture (VR-010): the very first linked
+  // disbursement (N=1, no rule, no date evidence) must infer MONTHLY from the
+  // deposit size, never compare a weekly gross against a monthly payout.
+  it('MON-080 D0: $680/wk declared, ONE $2,515 deposit → MONTHLY inferred, gap ≈ $432, MATERIAL', () => {
+    const r = reconcileManagedRental({
+      declaredGrossAmount: 680,
+      declaredGrossFrequency: 'WEEKLY',
+      netDisbursementAmount: 2515,
+      disbursementDates: [new Date(Date.UTC(2026, 6, 1))], // N=1
+    });
+    expect(r.disbursementFrequency).toBe('MONTHLY'); // inferred from deposit size
+    expect(r.grossPerDisbursementPeriod).toBeCloseTo((680 * 52) / 12, 2); // 2,946.67
+    expect(r.gap).toBeCloseTo(431.67, 2); // ≈ $432/mo → ≈ $5,184/yr (implied cut 14.7%)
+    expect(r.gapAnnual).toBeCloseTo(431.67 * 12, 1);
+    expect(r.material).toBe(true); // pre-fix: WEEKLY fallback → gap −1,835 → false
+
+    const d = reconcileManagedRentalDecimal({
+      declaredGrossAmount: 680,
+      declaredGrossFrequency: 'WEEKLY',
+      netDisbursementAmount: 2515,
+      disbursementDates: [new Date(Date.UTC(2026, 6, 1))],
+    });
+    expect(d.disbursementFrequency).toBe('MONTHLY');
+    expect(Number(d.gap.toString())).toBeCloseTo(r.gap, 9);
+    expect(d.material).toBe(true);
+  });
+
+  it('MON-080 D0: inference refuses when no period yields a plausible agent cut (falls back, not material)', () => {
+    // Deposit larger than even the ANNUAL gross — garbage in, no guessed card out.
+    const r = reconcileManagedRental({
+      declaredGrossAmount: 100,
+      declaredGrossFrequency: 'WEEKLY', // 5,200/yr
+      netDisbursementAmount: 10_000,
+    });
+    expect(r.disbursementFrequency).toBe('WEEKLY'); // residual fallback
+    expect(r.material).toBe(false);
+  });
+
+  it('MON-080 D0: a net-equals-gross deposit (D2 shape) infers its period with ZERO gap — never a false card', () => {
+    // amount mistakenly holds the net (2,515/MONTHLY declared); deposit 2,515
+    const r = reconcileManagedRental({
+      declaredGrossAmount: 2515,
+      declaredGrossFrequency: 'MONTHLY',
+      netDisbursementAmount: 2515,
+    });
+    expect(r.gap).toBeCloseTo(0, 9);
+    expect(r.material).toBe(false);
   });
 
   it('sub-materiality gaps do not fire ($4 < $5 floor; 0.3% < 1% floor)', () => {

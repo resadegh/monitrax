@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ManagedRentalReconcileCard } from '@/components/transactions/ManagedRentalReconcileCard';
+import type { ManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -219,6 +221,13 @@ function IncomePageContent() {
   const [filteredIncome, setFilteredIncome] = useState<Income[]>([]);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+
+  // MON-080: the managed-rental suggest-and-confirm card, opened (a) by the
+  // PUT response when a stream transitions to MANAGED (D1 retroactive) and
+  // (b) by the nudge-chip claim button. Plus the submit error surface for
+  // the D2 GROSS_REQUIRED gate (the form previously swallowed errors).
+  const [reconcileSuggestion, setReconcileSuggestion] = useState<ManagedRentalSuggestion | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Variance to Expense state
   const [showVarianceExpenseDialog, setShowVarianceExpenseDialog] = useState(false);
@@ -485,6 +494,7 @@ function IncomePageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null); // MON-080: fresh attempt, fresh slate
     const url = editingId ? `/api/income/${editingId}` : '/api/income';
     const method = editingId ? 'PUT' : 'POST';
 
@@ -546,7 +556,19 @@ function IncomePageContent() {
         body: JSON.stringify(submitData),
       });
 
-      if (response.ok) {
+      if (!response.ok) {
+        // MON-080 D2: the gross-integrity gate (422 GROSS_REQUIRED) and any
+        // other server rejection surface INSIDE the dialog — never a silent
+        // swallow. The amount field stays pre-filled (confirm-or-correct).
+        const data = await response.json().catch(() => ({}));
+        setSubmitError(
+          data.error ||
+            'Could not save this income — please check the details and try again.',
+        );
+        return;
+      }
+
+      {
         const result = await response.json();
         const savedIncomeId = result.data?.id || result.id || editingId;
 
@@ -573,10 +595,39 @@ function IncomePageContent() {
         setShowDialog(false);
         setEditingId(null);
         resetForm();
+
+        // MON-080 D1: the stream just turned MANAGED and its already-linked
+        // deposits reconcile below the declared gross — offer the claim
+        // right here, no unlink/relink, no hunting.
+        if (result.managedRental) {
+          setReconcileSuggestion(result.managedRental);
+        }
       }
     } catch (error) {
       console.error('Error saving income:', error);
+      setSubmitError('Could not save this income — please try again.');
     }
+  };
+
+  // MON-080 D1: the nudge-chip claim path — fetch the retroactive suggestion
+  // for this stream's already-linked deposits and open the card. When nothing
+  // fires (not managed yet / nothing material / already captured), open the
+  // Edit dialog instead — marking it MANAGED there triggers the same card.
+  const handleClaimRentGap = async (item: Income) => {
+    try {
+      const response = await fetch(
+        `/api/rental-reconciliation?incomeStreamId=${encodeURIComponent(item.id)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await response.json();
+      if (response.ok && data.managedRental) {
+        setReconcileSuggestion(data.managedRental);
+        return;
+      }
+    } catch (error) {
+      console.error('Error building rent-gap suggestion:', error);
+    }
+    handleEdit(item);
   };
 
   const resetForm = () => {
@@ -600,6 +651,7 @@ function IncomePageContent() {
     setSalaryPreview(null);
     setAttachedDocumentId(null);
     setAutoFilledFields([]);
+    setSubmitError(null); // MON-080
   };
 
   const handleEdit = (item: Income) => {
@@ -1122,13 +1174,20 @@ function IncomePageContent() {
                                 declared rent with no agent costs captured —
                                 likely missing deductions (a win to claim,
                                 so emerald). One status per row: D2/D1 win. */}
+                            {/* MON-080 D1: the chip is a CLICK-TO-CLAIM button
+                                (was a passive span with a tooltip dead end) —
+                                it opens the suggest-and-confirm card for the
+                                already-linked deposits, or the Edit dialog
+                                when the stream isn't managed yet. */}
                             {!item.cadenceMismatch && !item.oneOffFingerprint && item.rentGap && (
-                              <span
-                                className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
-                                title={`Deposits arrive about ${formatCurrency(item.rentGap.gapPerPeriod)} below your declared rent each ${item.rentGap.disbursementFrequency.toLowerCase()} period — that gap is usually your agent's management & costs, which are tax-deductible. Upload your rental statement (or mark this stream as agent-managed) to claim them.`}
+                              <button
+                                type="button"
+                                onClick={() => handleClaimRentGap(item)}
+                                className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 transition-colors hover:bg-emerald-500/20 dark:text-emerald-300"
+                                title={`Deposits arrive about ${formatCurrency(item.rentGap.gapPerPeriod)} below your declared rent each ${item.rentGap.disbursementFrequency.toLowerCase()} period — that gap is usually your agent's management & costs, which are tax-deductible. Click to review and claim.`}
                               >
-                                Missing management-fee deductions?
-                              </span>
+                                Missing management-fee deductions? Claim →
+                              </button>
                             )}
                           </div>
                         </td>
@@ -1772,8 +1831,10 @@ function IncomePageContent() {
               </>
             )}
 
-            {/* Property Income Source */}
-            {formData.type === 'RENT' && (
+            {/* Property Income Source — MON-080 D2: RENTAL included (auto-
+                created streams are type RENTAL and previously had NO amount
+                field on Edit, so the true gross was unenterable). */}
+            {(formData.type === 'RENT' || formData.type === 'RENTAL') && (
               <>
                 <Separator />
                 <div className="space-y-2">
@@ -1807,17 +1868,31 @@ function IncomePageContent() {
                   )}
 
                   <div className="space-y-2 pt-2">
-                    <Label htmlFor="rentAmount">Weekly Rent Amount</Label>
+                    <Label htmlFor="rentAmount">
+                      {formData.rentalMode === 'MANAGED'
+                        ? 'Full Rent Amount (before agent fees)'
+                        : 'Rent Amount'}
+                    </Label>
                     <Input
                       id="rentAmount"
                       type="number"
                       value={formData.amount || ''}
-                      onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value), frequency: 'WEEKLY' })}
+                      // MON-080 D2: no longer forces frequency WEEKLY — the
+                      // Payment Frequency select above owns the cadence, and
+                      // clobbering a MONTHLY stream's cadence on an amount
+                      // edit corrupted the declared gross.
+                      onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                       placeholder="500"
                       min="0"
                       step="10"
                       required
                     />
+                    {formData.rentalMode === 'MANAGED' && (
+                      <p className="text-xs text-muted-foreground">
+                        What&apos;s the full rent before your agent&apos;s fees? Pre-filled with what
+                        you had — correct it if that&apos;s the payout amount your agent deposits.
+                      </p>
+                    )}
                   </div>
                 </div>
               </>
@@ -1967,6 +2042,15 @@ function IncomePageContent() {
               </p>
             )}
 
+            {/* MON-080 D2: server rejections (incl. the GROSS_REQUIRED gate)
+                surface here — the amount stays pre-filled (confirm-or-correct,
+                never a blank re-entry). */}
+            {submitError && (
+              <p className="rounded-[12px] border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                {submitError}
+              </p>
+            )}
+
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancel
@@ -1976,6 +2060,30 @@ function IncomePageContent() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MON-080: the managed-rental suggest-and-confirm card — fired by the
+          MANAGED transition (retroactive over already-linked deposits) or the
+          nudge-chip claim button. Confirming records the derived deduction
+          via the single locked producer. */}
+      <Dialog
+        open={!!reconcileSuggestion}
+        onOpenChange={(open) => !open && setReconcileSuggestion(null)}
+      >
+        <DialogContent className="max-w-md border-none bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Agent costs found — review and claim</DialogTitle>
+          {reconcileSuggestion && (
+            <ManagedRentalReconcileCard
+              suggestion={reconcileSuggestion}
+              token={token}
+              onResolved={async () => {
+                setReconcileSuggestion(null);
+                await loadIncome();
+              }}
+              onDismiss={() => setReconcileSuggestion(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
