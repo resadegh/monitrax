@@ -23,6 +23,13 @@
  * with your statement or tax agent"; the card never rules immediate-vs-
  * capital. Numbers shown are the server's engine output (display only —
  * the confirm endpoint recomputes via the ONE engine before persisting).
+ *
+ * Stitch artefact (§18.2.1 backfill, MON-080):
+ * .stitch/designs/mon-080/reconcile-card-desktop-light.{html,png} —
+ * project 1859462351962811110, screen 67446f21885549c7a696964eb45969f1
+ * (v2 after one §18.8 iteration: v1 clipped the tertiary action, 8.5 →
+ * v2 action-row wrap, rubric 9.3/10). Dark + mobile variants pending
+ * Reza's call (generation paused mid-run 2026-07-17).
  */
 
 'use client';
