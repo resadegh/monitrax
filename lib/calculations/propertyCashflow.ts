@@ -37,6 +37,15 @@ export interface CashflowIncome {
   type: string;
   amount: number;
   frequency: string;
+  /**
+   * Calc-SSOT Wall B3 (MON-080 cashflow leg): 'MANAGED' marks an
+   * agent-disbursed rental stream — its bank actuals are the NET payout
+   * (gross − agent costs). The rent resolution grosses those actuals back
+   * up by the stream's derived agent-cost run-rate so rent reads GROSS and
+   * the fee is subtracted exactly once (in the expense loop), consistent
+   * with the tax position. Undefined/null/'DIRECT' = the credit IS gross.
+   */
+  rentalMode?: string | null;
 }
 export interface CashflowExpense {
   id?: string;
@@ -51,6 +60,13 @@ export interface CashflowExpense {
    * nullable DB column maps straight in.
    */
   isRecurring?: boolean | null;
+  /**
+   * Calc-SSOT Wall B3: the managed rental stream this DERIVED agent-cost row
+   * was reconciled from (Phase 59). Non-null identifies the fee rows the
+   * rent gross-up adds back when rent actuals (net payouts) drove the rent
+   * figure — the fee is then subtracted once, here in the expense loop.
+   */
+  derivedFromIncomeId?: string | null;
 }
 export interface CashflowLoan {
   id?: string;
@@ -136,6 +152,55 @@ export interface PropertyCashflow {
 const txFor = (txs: CashflowTransaction[], pick: (t: CashflowTransaction) => string | null | undefined, id?: string) =>
   id == null ? [] : txs.filter((t) => pick(t) === id);
 
+/** The resolved cost of carrying ONE loan for a month — the Wall's single
+ *  producer (Mechanism B / MON-032 drift). */
+export interface ResolvedLoanCost {
+  /** actuals → declared minRepayment → INTEREST FLOOR. Never silently $0. */
+  monthly: number;
+  /** principal × rate ÷ 12 (the floor; also the interest component). */
+  monthlyInterest: number;
+  usedActuals: boolean;
+  /** True when neither actuals nor a manual repayment existed → interest floor. */
+  flooredToInterest: boolean;
+}
+
+/**
+ * Calc-SSOT Wall B1 — THE canonical per-loan monthly cost
+ * (docs/architecture/CALC_SSOT_WALL.md Mechanism B; MATRIX_FIX_DISCIPLINE
+ * gate 1). Every surface that shows or sums a loan's monthly cost calls THIS
+ * — never raw `minRepayment` (which prints $0 for an interest-only loan while
+ * the borrower is charged interest every month). Resolution order:
+ * reconciled actuals → declared minRepayment (cadence-normalised) →
+ * interest floor (principal × rate ÷ 12 — the minimum true cost of carrying
+ * the loan). Callers without transaction history pass none and get the
+ * declared→floor path, which is already strictly more truthful than raw
+ * minRepayment. The property cashflow loop consumes this same function —
+ * one formula, one home (§12.2.1).
+ */
+export function resolveLoanMonthlyCost(
+  l: CashflowLoan,
+  transactions: CashflowTransaction[] = [],
+): ResolvedLoanCost {
+  const monthlyInterest = Math.max(0, (l.principal ?? 0) * (l.interestRateAnnual ?? 0)) / 12;
+  const declaredRepayMonthly = (l.minRepayment ?? 0) > 0
+    ? toMonthly(l.minRepayment as number, (l.repaymentFrequency ?? 'MONTHLY') as never)
+    : 0;
+  const r = resolveMonthly({
+    declaredMonthly: declaredRepayMonthly,
+    cadenceHintFrequency: l.repaymentFrequency ?? 'MONTHLY',
+    transactions,
+  });
+  // Never silently $0: if neither actuals nor a manual repayment exist, floor
+  // to interest (the minimum true cost of carrying the loan).
+  const flooredToInterest = !(r.monthly > 0);
+  return {
+    monthly: flooredToInterest ? monthlyInterest : r.monthly,
+    monthlyInterest,
+    usedActuals: r.usedActuals,
+    flooredToInterest,
+  };
+}
+
 export function computePropertyCashflow(input: PropertyCashflowInput): PropertyCashflow {
   const income = input.income ?? [];
   const expenses = input.expenses ?? [];
@@ -160,7 +225,35 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     transactions: rentalTx,
     isAdvance: true, // rent is paid in advance
   });
-  const monthlyRent = rent.monthly;
+
+  // Calc-SSOT Wall B3 (MON-080 cashflow leg — kill the agent-fee DOUBLE-COUNT):
+  // a MANAGED stream's bank actuals are the NET payout (gross − agent costs),
+  // but the derived agent-cost expense is ALSO subtracted in the expense loop
+  // below — pre-fix, the fee was subtracted twice on every cashflow surface.
+  // When rent ACTUALS drove the figure, gross the actuals back up by the
+  // stream's derived recurring fee run-rate: rent reads GROSS (net + fee),
+  // the fee subtracts ONCE, and cashflow agrees with tax (declared gross −
+  // derived deduction) by construction. When the DECLARED amount drove the
+  // figure it already IS gross — no add-back. One-off anomaly excesses
+  // (isRecurring === false) never enter the run-rate on either side.
+  const managedStreamIds = new Set(
+    rentalRows
+      .filter((r) => r.rentalMode === 'MANAGED' && r.id)
+      .map((r) => r.id as string),
+  );
+  const managedFeeAddBack = rent.usedActuals
+    ? expenses.reduce(
+        (s, e) =>
+          e.derivedFromIncomeId != null &&
+          managedStreamIds.has(e.derivedFromIncomeId) &&
+          e.isRecurring !== false
+            ? s + toMonthly(e.amount, e.frequency as never)
+            : s,
+        0,
+      )
+    : 0;
+
+  const monthlyRent = rent.monthly + managedFeeAddBack;
   const incomeUsedActuals = rent.usedActuals;
   if (rentalRows.length > 0) bump(rent.usedActuals);
 
@@ -185,33 +278,21 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     bump(r.usedActuals);
   }
 
-  // ── LOANS — per record; repayment never silently $0 ──
+  // ── LOANS — per record; repayment never silently $0 (the ONE producer) ──
   let monthlyLoanRepayment = 0;
   let annualLoanInterest = 0;
   let loansUsedActuals = false;
   const loanLines: CashflowLoanLine[] = [];
   for (const l of loans) {
-    const monthlyInterest = Math.max(0, (l.principal ?? 0) * (l.interestRateAnnual ?? 0)) / 12;
-    annualLoanInterest += monthlyInterest * 12;
     const loanTx = txFor(txs, (t) => t.loanId, l.id);
-    const declaredRepayMonthly = (l.minRepayment ?? 0) > 0
-      ? toMonthly(l.minRepayment as number, (l.repaymentFrequency ?? 'MONTHLY') as never)
-      : 0;
-    const r = resolveMonthly({
-      declaredMonthly: declaredRepayMonthly,
-      cadenceHintFrequency: l.repaymentFrequency ?? 'MONTHLY',
-      transactions: loanTx,
-    });
-    // Never silently $0: if neither actuals nor a manual repayment exist, floor
-    // to interest (the minimum true cost of carrying the loan).
-    const flooredToInterest = !(r.monthly > 0);
-    const resolvedMonthly = flooredToInterest ? monthlyInterest : r.monthly;
-    monthlyLoanRepayment += resolvedMonthly;
+    const rc = resolveLoanMonthlyCost(l, loanTx);
+    annualLoanInterest += rc.monthlyInterest * 12;
+    monthlyLoanRepayment += rc.monthly;
     // MON-032: expose the resolved per-loan cost so UI rows mirror the engine
     // (never render raw minRepayment — it prints "-$0" while we charge interest).
-    loanLines.push({ id: l.id, monthly: resolvedMonthly, usedActuals: r.usedActuals, flooredToInterest });
-    if (r.usedActuals) loansUsedActuals = true;
-    bump(r.usedActuals);
+    loanLines.push({ id: l.id, monthly: rc.monthly, usedActuals: rc.usedActuals, flooredToInterest: rc.flooredToInterest });
+    if (rc.usedActuals) loansUsedActuals = true;
+    bump(rc.usedActuals);
   }
 
   const monthlyCashflow = monthlyRent - monthlyExpenses - monthlyLoanRepayment;

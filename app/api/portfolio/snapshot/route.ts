@@ -19,12 +19,12 @@ import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 // MON-014: per-property cashflow reads the ONE canonical engine (same as the
 // master snapshot + property pages) so the Home tiles never show gross rent in
 // place of cashflow when a loan lacks minRepayment.
-import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { computePropertyCashflow, resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 // MON-035/036: the ONE canonical per-property actuals assembler — shared with the
 // property detail page, the Properties list, and the CFO Risk Radar so the Home
 // dashboard tile can never drift to its own inline producer (§12.2.1).
 import { enrichPropertiesWithActuals } from '@/lib/services/propertyActuals';
-import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { toAnnual, toMonthly, annualRunRate } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
 // ============================================================================
@@ -679,10 +679,17 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // PAYG withholding - uses stored paygWithholding where available
       const totalAnnualPaygWithholding = income.reduce((sum: number, i: any) => sum + getPaygWithholding(i), 0);
 
-      const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
-      // Calculate total loan repayments
+      // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
+      const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + annualRunRate({ amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring }), 0);
+      // Calc-SSOT Wall B1: the ONE resolved per-loan cost × 12 — interest-only
+      // loans carry their interest, never $0.
       const totalAnnualLoanRepayments = loans.reduce((sum: number, l: any) => {
-        return sum + toAnnual(l.minRepayment || 0, (l.repaymentFrequency || 'MONTHLY') as Frequency);
+        return sum + resolveLoanMonthlyCost({
+          principal: Number(l.principal ?? 0),
+          interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+          minRepayment: Number(l.minRepayment ?? 0),
+          repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+        }).monthly * 12;
       }, 0);
       // Use NET income for cashflow (what's actually available to spend)
       // Cashflow = Income - Expenses - Loan Repayments
@@ -710,8 +717,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
         // reads the SAME number as those three surfaces by construction (§12.2.1 —
         // no second inline producer to drift).
         const cf = computePropertyCashflow({
-          income: property.income.map((i: any) => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
-          expenses: property.expenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring })), // MON-037: exclude one-offs from run-rate
+          income: property.income.map((i: any) => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency, rentalMode: i.rentalMode })), // Wall B3
+          expenses: property.expenses.map((e: any) => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring, derivedFromIncomeId: e.derivedFromIncomeId })), // MON-037 one-offs excluded · Wall B3 fee gross-up
           loans: propertyLoans.map((l: any) => ({
             id: l.id,
             principal: l.principal,

@@ -20,7 +20,8 @@ import {
   formatPercentageForPrompt,
 } from '@/lib/ai/google';
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
-import { toMonthly } from '@/lib/utils/frequencies';
+import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
+import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { buildEngineProjections, toLoanInputs } from '@/lib/neobrain/debtProjections';
 
 // =============================================================================
@@ -182,7 +183,8 @@ export const POST = withPermission('report.read', async (request, auth) => {
       monthlyNetIncome += annualNet / 12;
     }
 
-    const trackedExpenses = expenses.reduce((sum: number, e: typeof expenses[0]) => sum + convertToMonthly(e.amount, e.frequency), 0);
+    // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
+    const trackedExpenses = expenses.reduce((sum: number, e: typeof expenses[0]) => sum + monthlyRunRate(e), 0);
 
     // Phase 28: Use realistic budget if available, otherwise use tracked expenses only
     const hasRealisticBudget = budgetAnalysis && budgetAnalysis.userFinalBudget;
@@ -190,7 +192,8 @@ export const POST = withPermission('report.read', async (request, auth) => {
       ? budgetAnalysis.userFinalBudget!
       : trackedExpenses;
     const monthlySurplus = monthlyNetIncome - monthlyExpenses;
-    const totalLoanRepayments = loans.reduce((sum: number, l: typeof loans[0]) => sum + convertToMonthly(l.minRepayment, l.repaymentFrequency), 0);
+    // Calc-SSOT Wall B1: the ONE resolved per-loan cost — interest-only never $0.
+    const totalLoanRepayments = loans.reduce((sum: number, l: typeof loans[0]) => sum + resolveLoanMonthlyCost(l).monthly, 0);
     const totalDebt = loans.reduce((sum: number, l: typeof loans[0]) => sum + l.principal, 0);
     const totalOffsetBalance = loans.reduce((sum: number, l: typeof loans[0]) => sum + (l.offsetAccount?.currentBalance || 0), 0);
     const cashBalance = accounts.reduce((sum: number, a: typeof accounts[0]) => sum + a.currentBalance, 0);

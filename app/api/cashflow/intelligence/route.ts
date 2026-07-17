@@ -8,6 +8,8 @@
  * Uses ONLY real calculated numbers - no hallucination.
  */
 
+import { monthlyRunRate } from '@/lib/utils/frequencies';
+import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
@@ -129,14 +131,27 @@ function calculateMonthlyIncome(income: any[]): number {
 }
 
 function calculateMonthlyExpenses(expenses: any[]): number {
+  // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
   return expenses.reduce(
-    (sum, e) => sum + normalizeToMonthly(Number(e.amount), e.frequency),
+    (sum, e) => sum + monthlyRunRate({ amount: Number(e.amount), frequency: e.frequency, isRecurring: e.isRecurring }),
     0
   );
 }
 
 function calculateMonthlyLoanRepayments(loans: any[]): number {
-  return loans.reduce((sum, l) => sum + Number(l.minRepayment || 0), 0);
+  // Calc-SSOT Wall B1: the ONE resolved per-loan cost — interest-only loans
+  // show interest, never $0 (raw minRepayment was $0 and cadence-blind).
+  return loans.reduce(
+    (sum, l) =>
+      sum +
+      resolveLoanMonthlyCost({
+        principal: Number(l.principal ?? 0),
+        interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+        minRepayment: Number(l.minRepayment ?? 0),
+        repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+      }).monthly,
+    0
+  );
 }
 
 function calculateTotalBalance(accounts: any[]): number {

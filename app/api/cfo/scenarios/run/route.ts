@@ -11,6 +11,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
@@ -75,12 +76,14 @@ async function fetchLoanViews(userId: string): Promise<LoanView[]> {
   });
   return loans.map((l) => {
     const remaining = Number(l.termMonthsRemaining ?? 360);
-    const minMonthlyRepayment =
-      l.repaymentFrequency === 'WEEKLY'
-        ? Number(l.minRepayment ?? 0) * (52 / 12)
-        : l.repaymentFrequency === 'FORTNIGHTLY'
-          ? Number(l.minRepayment ?? 0) * (26 / 12)
-          : Number(l.minRepayment ?? 0);
+    // Calc-SSOT Wall B1: the ONE resolved per-loan cost (declared minRepayment
+    // cadence-normalised → interest floor) — interest-only loans never $0.
+    const minMonthlyRepayment = resolveLoanMonthlyCost({
+      principal: Number(l.principal ?? 0),
+      interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+      minRepayment: Number(l.minRepayment ?? 0),
+      repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+    }).monthly;
     return {
       id: l.id,
       name: l.name,

@@ -453,6 +453,8 @@ interface RawExpense {
   propertyId: string | null;
   loanId: string | null;
   assetId: string | null;
+  /** Calc-SSOT Wall B3: the managed rental stream this derived fee came from. */
+  derivedFromIncomeId?: string | null;
   // Phase 30: Budget tracking
   budgetedAmount: number | null;
   lastReconciled: Date | null;
@@ -472,6 +474,8 @@ interface RawIncome {
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
+  /** Calc-SSOT Wall B3: 'MANAGED' = agent-disbursed net actuals (Phase 59). */
+  rentalMode?: string | null;
   // Phase 30: Budget tracking
   budgetedAmount: number | null;
   lastReconciled: Date | null;
@@ -646,6 +650,9 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         propertyId: true,
         loanId: true,
         assetId: true,
+        // Calc-SSOT Wall B3: identifies derived agent-cost rows for the
+        // managed-rental rent gross-up (fee counted once, never twice).
+        derivedFromIncomeId: true,
         budgetedAmount: true,
         lastReconciled: true,
       },
@@ -666,6 +673,9 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         isTaxable: true,
         propertyId: true,
         investmentAccountId: true,
+        // Calc-SSOT Wall B3: MANAGED rental streams' bank actuals are NET —
+        // the rent pooling grosses them back up by the derived fee.
+        rentalMode: true,
         budgetedAmount: true,
         lastReconciled: true,
       },
@@ -1053,7 +1063,8 @@ function calculateExpenseBudgetVariance(
 function adjustPropertyRentalIncome(
   properties: RawProperty[],
   income: RawIncome[],
-  linkedTransactions: RawLinkedTransaction[]
+  linkedTransactions: RawLinkedTransaction[],
+  expenses: RawExpense[] = []
 ): RawIncome[] {
   const RENT = new Set(['RENT', 'RENTAL']);
   const propertyIds = new Set(properties.map(p => p.id));
@@ -1066,8 +1077,15 @@ function adjustPropertyRentalIncome(
     if (rentalRows.length === 0) continue;
     const incomeIds = new Set(rentalRows.map(r => r.id));
     const rentalTx = linkedTransactions.filter(t => t.incomeId && incomeIds.has(t.incomeId));
+    // Calc-SSOT Wall B3: pass rentalMode + the streams' derived agent-cost
+    // rows so a MANAGED stream's NET actuals gross back up — the pooled
+    // monthly rent (feeding the income breakdown AND the master tax summary)
+    // reads GROSS, with the fee counted once as an expense/deduction.
     const cf = computePropertyCashflow({
-      income: rentalRows.map(r => ({ id: r.id, type: r.type, amount: r.amount, frequency: r.frequency })),
+      income: rentalRows.map(r => ({ id: r.id, type: r.type, amount: r.amount, frequency: r.frequency, rentalMode: r.rentalMode })),
+      expenses: expenses
+        .filter(e => e.derivedFromIncomeId && incomeIds.has(e.derivedFromIncomeId))
+        .map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring, derivedFromIncomeId: e.derivedFromIncomeId })),
       transactions: rentalTx.map(t => ({ incomeId: t.incomeId, expenseId: t.expenseId, loanId: t.loanId, date: t.date, amount: t.amount })),
     });
     synthetic.push({
@@ -1233,8 +1251,8 @@ function buildPropertyMetrics(
         (t.loanId && loanIds.has(t.loanId)),
     );
     const cf = computePropertyCashflow({
-      income: propertyIncome.map(i => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency })),
-      expenses: propertyExpenses.map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring })),
+      income: propertyIncome.map(i => ({ id: i.id, type: i.type, amount: i.amount, frequency: i.frequency, rentalMode: i.rentalMode })),
+      expenses: propertyExpenses.map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring, derivedFromIncomeId: e.derivedFromIncomeId })),
       loans: propertyLoans.map(l => ({
         id: l.id,
         principal: l.principal,
@@ -1883,7 +1901,7 @@ async function computeMasterFinancialSnapshot(
   // passive-rental total and the taxable-rental basis converge by construction
   // (§12.2.1). No new tax math — buildTaxSummary still delegates to the reform-aware
   // calculateTaxPosition (§12.14); this only changes WHICH income rows it sums.
-  const adjustedIncome = adjustPropertyRentalIncome(data.properties, data.income, data.linkedTransactions);
+  const adjustedIncome = adjustPropertyRentalIncome(data.properties, data.income, data.linkedTransactions, data.expenses);
 
   // Build expense breakdowns (with transaction-based actuals)
   const monthlyExpenses = buildExpenseBreakdown(data.expenses, 'monthly', data.linkedTransactions);

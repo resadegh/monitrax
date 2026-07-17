@@ -31,6 +31,36 @@ export function toMonthly(amount: number, frequency: Frequency | RepaymentFreque
 }
 
 /**
+ * Calc-SSOT Wall B2 — THE one-off-aware monthly run-rate
+ * (docs/architecture/CALC_SSOT_WALL.md Mechanism B; MON-037 semantics).
+ * A row marked `isRecurring === false` is a SINGLE occurrence — it
+ * contributes 0 to any monthly run-rate, never `amount × frequency`
+ * (a $11,385 one-off battery stored MONTHLY is not $136,620/yr of
+ * spending). Undefined/null/true = recurring. Every surface that sums a
+ * declared income/expense run-rate calls THIS — never a local
+ * `toMonthly(amount, frequency)` over raw rows (the exact drift that
+ * inflated /dashboard/expenses). Same gate as `propertyCashflow.ts`'s
+ * expense loop and `masterFinancialService` — one rule, one home (§12.2.1).
+ */
+export function monthlyRunRate(row: {
+  amount: number;
+  frequency: string;
+  isRecurring?: boolean | null;
+}): number {
+  if (row.isRecurring === false) return 0;
+  return toMonthly(row.amount, row.frequency as Frequency);
+}
+
+/** Annual sibling of `monthlyRunRate` — same one-off gate (× 12). */
+export function annualRunRate(row: {
+  amount: number;
+  frequency: string;
+  isRecurring?: boolean | null;
+}): number {
+  return monthlyRunRate(row) * 12;
+}
+
+/**
  * Convert frequency-based amounts to fortnightly equivalent
  */
 export function toFortnightly(amount: number, frequency: Frequency | RepaymentFrequency): number {
