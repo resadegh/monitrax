@@ -20,6 +20,10 @@
  * (lib/utils/frequencies.ts) and, for evidence-derived cadence, the ONE
  * canonical `detectFrequency` (lib/utils/reconciliation.ts — the same
  * producer `classifyIntake`'s C1 path uses). Never a second cadence path.
+ * MON-080 D0: with NO cadence evidence (the very first linked disbursement)
+ * the period is inferred from the DEPOSIT SIZE (see
+ * `inferCadenceFromDepositSize`) — a lone monthly payout no longer compares
+ * against a weekly gross.
  * The Ring-1 source-lock (tests/tax/rentalReconciliationSourceLock.test.ts)
  * fails CI on a second producer.
  *
@@ -49,6 +53,15 @@ export const MATERIALITY_MIN_FRACTION = 0.01;
 
 /** ...and a gap below this many dollars is never material on its own. */
 export const MATERIALITY_MIN_DOLLARS = 5;
+
+/** MON-080 D0: the largest share of the period gross an agent's costs can
+ *  plausibly claim (management 5–12% + letting fee + occasional repairs).
+ *  Used ONLY by the deposit-size cadence inference — a candidate period
+ *  whose implied agent cut exceeds this is the WRONG period, not a real
+ *  cost. Deliberately < 0.5 so the inference is structurally unambiguous
+ *  (consecutive Frequency periods scale ≥2×, so at most one candidate can
+ *  land inside [0, 0.35]). */
+export const MAX_PLAUSIBLE_AGENT_SHARE = 0.35;
 
 // =============================================================================
 // Types
@@ -103,6 +116,51 @@ export interface ManagedRentalReconciliation {
 // Cadence resolution (ONE path — explicit > evidence > declared cadence)
 // =============================================================================
 
+const CADENCE_CANDIDATES: readonly Frequency[] = [
+  'WEEKLY',
+  'FORTNIGHTLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'HALF_YEARLY',
+  'ANNUAL',
+];
+
+/**
+ * MON-080 D0 — infer the disbursement cadence from the DEPOSIT SIZE when
+ * there is no explicit cadence and no date evidence (the very first linked
+ * disbursement). The deposit itself identifies its period: an agent's net
+ * payout sits just below the gross for ITS period (cut ≤
+ * MAX_PLAUSIBLE_AGENT_SHARE) and far outside that band for every other
+ * period. Broadbeach: $680/wk declared, $2,515 deposit →
+ * WEEKLY $680 / FORTNIGHTLY $1,360 (deposit EXCEEDS gross — wrong period),
+ * MONTHLY $2,946.67 (cut 14.7% ✓), QUARTERLY $8,840 (cut 71% — wrong).
+ * Unique answer: MONTHLY. Returns null when no period lands in the band
+ * (the caller falls back to the declared rent cadence — pre-MON-080
+ * behaviour, which correctly yields "not material" rather than a guess).
+ */
+function inferCadenceFromDepositSize(
+  input: ManagedRentalReconciliationInput,
+): Frequency | null {
+  const net = input.netDisbursementAmount;
+  if (!(net > 0) || !(input.declaredGrossAmount > 0)) return null;
+  const grossAnnual = toAnnual(input.declaredGrossAmount, input.declaredGrossFrequency);
+  if (!(grossAnnual > 0)) return null;
+
+  let best: { freq: Frequency; share: number } | null = null;
+  for (const freq of CADENCE_CANDIDATES) {
+    const grossPerPeriod = grossAnnual / periodsPerYear(freq);
+    const gap = grossPerPeriod - net;
+    if (gap < 0) continue; // deposit exceeds this period's gross — wrong period
+    const share = gap / grossPerPeriod; // the agent's implied cut
+    if (share > MAX_PLAUSIBLE_AGENT_SHARE) continue; // implausible cut — wrong period
+    if (!best || share < best.share) best = { freq, share };
+  }
+  return best?.freq ?? null;
+}
+
+/** Cadence resolution — ONE path (§12.2.1): explicit rule cadence > date
+ *  evidence (≥2 dates via the ONE canonical detector) > deposit-size
+ *  inference (MON-080 D0, first-link case) > the declared rent cadence. */
 function resolveDisbursementFrequency(input: ManagedRentalReconciliationInput): Frequency {
   if (input.disbursementFrequency) return input.disbursementFrequency;
 
@@ -114,8 +172,15 @@ function resolveDisbursementFrequency(input: ManagedRentalReconciliationInput): 
     return detectFrequency(dates).frequency;
   }
 
-  // A lone disbursement with no known cadence: compare on the rent's own
-  // cadence (gross per period = the declared amount itself). Conservative —
+  // MON-080 D0: a LONE disbursement used to fall through to the rent's own
+  // cadence, comparing a weekly gross against (say) a monthly payout —
+  // gap −$1,835, material=false, no card on the very first link. Infer the
+  // period from the deposit size instead; fall back only when no period
+  // yields a plausible agent cut.
+  const inferred = inferCadenceFromDepositSize(input);
+  if (inferred) return inferred;
+
+  // Residual fallback: compare on the rent's own cadence. Conservative —
   // the first confirm establishes the real cadence in the rule.
   return input.declaredGrossFrequency;
 }
