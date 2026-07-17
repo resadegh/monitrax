@@ -92,6 +92,22 @@ describe('Phase 59 · R1 agent-cost deduction source-lock', () => {
     }
   });
 
+  it('MON-080 wiring lock: the retroactive + gross-gate paths stay wired to the ONE engine', () => {
+    // D1: the income PUT must run the retroactive reconcile on the MANAGED
+    // transition, and the reconciliation route must expose the chip's GET.
+    const incomePut = sources.find((s) => s.path === 'app/api/income/[id]/route.ts')!;
+    expect(incomePut.src).toMatch(/buildRetroactiveManagedRentalSuggestion/);
+    // D2: the gross-integrity gate judges via the ONE engine, never a local formula.
+    expect(incomePut.src).toMatch(/reconcileManagedRental\(/);
+    expect(incomePut.src).toMatch(/GROSS_REQUIRED/);
+    const reconRoute = sources.find((s) => s.path === 'app/api/rental-reconciliation/route.ts')!;
+    expect(reconRoute.src).toMatch(/export const GET/);
+    expect(reconRoute.src).toMatch(/buildRetroactiveManagedRentalSuggestion/);
+    // The service's retroactive builder delegates to the ONE suggestion path.
+    const service = sources.find((s) => s.path === 'lib/services/managedRentalService.ts')!;
+    expect(service.src).toMatch(/export async function buildRetroactiveManagedRentalSuggestion/);
+  });
+
   it('no production file outside the engine/allowlist re-derives the gap payload', () => {
     // The derived-expense payload markers (derivedSource RECONCILIATION +
     // derivedFromIncomeId) may be BUILT only inside the engine; producers

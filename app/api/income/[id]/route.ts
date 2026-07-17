@@ -3,6 +3,8 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { reconcileManagedRental } from '@/lib/calculations/rentalReconciliation';
+import { buildRetroactiveManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -109,6 +111,59 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         ? toPayFrequency(payFrequency)
         : null;
 
+      // MON-080: the RESULTING state of this save (client value wins when
+      // sent, else the stored value) — drives the D2 gross gate + the D1
+      // retroactive reconcile below.
+      const resultingType = type ?? ownershipResult.resource.type;
+      const resultingRentalMode =
+        rentalMode !== undefined
+          ? rentalMode === 'MANAGED' && (resultingType === 'RENT' || resultingType === 'RENTAL')
+            ? 'MANAGED'
+            : 'DIRECT'
+          : ownershipResult.resource.rentalMode;
+      const resultingAmount = toNumber(amount) ?? ownershipResult.resource.amount;
+      const resultingFrequency = frequency ?? ownershipResult.resource.frequency;
+
+      // MON-080 D2 — GROSS-INTEGRITY GATE (spec §3 pillar; ITAA s6-5): never
+      // persist a MANAGED stream whose declared "rent" is not distinct from
+      // its net deposits — that books the NET where the ATO assesses GROSS
+      // (understated assessable income) and makes the gap permanently zero.
+      // Judged by the ONE engine (§12.2.1): if reconciling the declared
+      // amount against the MEDIAN linked deposit yields no material gap,
+      // the declared figure IS (or is below) the net — require the real
+      // gross. Streams with no linked deposits can't be judged → allowed.
+      if (resultingRentalMode === 'MANAGED') {
+        const deposits = await prisma.unifiedTransaction.findMany({
+          where: { userId: auth.userId, incomeId: id, direction: 'IN' },
+          select: { amount: true, date: true },
+          orderBy: { date: 'desc' },
+          take: 12,
+        });
+        if (deposits.length > 0) {
+          const amounts = deposits.map((t: { amount: number }) => Math.abs(t.amount)).sort((a: number, b: number) => a - b);
+          const mid = Math.floor(amounts.length / 2);
+          const medianNet = amounts.length % 2 === 1 ? amounts[mid] : (amounts[mid - 1] + amounts[mid]) / 2;
+          const probe = reconcileManagedRental({
+            declaredGrossAmount: resultingAmount,
+            declaredGrossFrequency: resultingFrequency,
+            netDisbursementAmount: medianNet,
+            disbursementDates: deposits.map((t: { date: Date }) => t.date),
+          });
+          if (!probe.material) {
+            return NextResponse.json(
+              {
+                error:
+                  'It looks like the amount on this stream is what the agent pays out, not the full rent. Enter the full rent before your agent’s fees to mark it as managed — or keep it as "straight from the tenant" if there are no agent costs.',
+                code: 'GROSS_REQUIRED',
+                medianNetDeposit: medianNet,
+                declared: { amount: resultingAmount, frequency: resultingFrequency },
+              },
+              { status: 422 },
+            );
+          }
+        }
+      }
+
       const income = await prisma.income.update({
         where: { id },
         data: {
@@ -165,7 +220,20 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         metadata: { type: income.type, hasProperty: !!income.propertyId },
       });
 
-      return NextResponse.json(income);
+      // MON-080 D1 — retroactive reconcile: when this save turned the stream
+      // MANAGED (the natural order — deposits linked first, marked managed
+      // later), reconcile the ALREADY-linked disbursements and hand the
+      // suggest-and-confirm card back with the response. Same single
+      // producer + existingDerived idempotency guard as the link flow
+      // (§12.2.1); null = nothing fires. Additive key — the raw income
+      // fields stay top-level for existing consumers.
+      const becameManaged =
+        income.rentalMode === 'MANAGED' && ownershipResult.resource.rentalMode !== 'MANAGED';
+      const managedRental = becameManaged
+        ? await buildRetroactiveManagedRentalSuggestion({ userId: auth.userId, income })
+        : null;
+
+      return NextResponse.json({ ...income, managedRental });
     } catch (error) {
       console.error('Update income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

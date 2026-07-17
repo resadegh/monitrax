@@ -37,6 +37,36 @@ import {
   buildDerivedAgentCostExpense,
   buildAnomalyExcessExpense,
 } from '@/lib/calculations/rentalReconciliation';
+import { buildRetroactiveManagedRentalSuggestion } from '@/lib/services/managedRentalService';
+
+/**
+ * MON-080 D1 — GET /api/rental-reconciliation?incomeStreamId=…
+ * The income-page nudge-chip claim path: return the current retroactive
+ * suggestion for a MANAGED stream's already-linked disbursements (null when
+ * nothing fires — not managed, no deposits, not material, or already
+ * captured). Read-only; all arithmetic from the ONE engine via the service.
+ */
+export const GET = withPermission('income.read', async (request, auth) => {
+  try {
+    const incomeStreamId = new URL(request.url).searchParams.get('incomeStreamId');
+    if (!incomeStreamId) {
+      return NextResponse.json({ error: 'incomeStreamId is required' }, { status: 400 });
+    }
+    const income = await prisma.income.findFirst({
+      where: { id: incomeStreamId, userId: auth.userId },
+    });
+    if (!income) return NextResponse.json({ error: 'Income stream not found' }, { status: 404 });
+
+    const managedRental = await buildRetroactiveManagedRentalSuggestion({
+      userId: auth.userId,
+      income,
+    });
+    return NextResponse.json({ success: true, managedRental });
+  } catch (error) {
+    console.error('Rental reconciliation suggestion error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
 
 interface ConfirmRequest {
   action: 'confirm' | 'confirm-anomaly';
