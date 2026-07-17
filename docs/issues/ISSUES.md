@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**79 total** · 76 open · 🔵 24 · 🟡 5 · 🟠 33 · 🟢 14 · ✅ 2
+**80 total** · 76 open · 🔵 24 · 🟡 5 · 🟠 23 · 🟢 24 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -11,24 +11,24 @@
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
 | MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
-| MON-005 | 🟠 FIXING | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | #1358 | ✅ |
+| MON-005 | 🟢 VERIFIED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | #1358 | ✅ |
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
 | MON-007 | ✅ CLOSED | 🟡 | no | -$100,912 vs -$46,897 don't add up | #1333 | n/a |
-| MON-008 | 🟠 FIXING | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | #1358 | ✅ |
+| MON-008 | 🟢 VERIFIED | 🟡 | no | Expense initial-entry inconsistent (only due-dates on the property edit form) | #1358 | ✅ |
 | MON-009 | 🟠 FIXING | 🟠 | yes | Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates | #1337 | ✅ |
 | MON-010 | 🟠 FIXING | 🟡 | yes | Tax summary still sums raw (fragmented) rental income records — taxable rental over-counted | #1353 | ✅ |
 | MON-011 | 🟠 FIXING | 🟠 | yes | Portfolio equity sums FLOORED per-property equities — overstated by exactly $37,076 | #1347 | ✅ |
 | MON-012 | 🟠 FIXING | 🟠 | yes | Balances liquidity buckets fail L3 tie-out by exactly $64,572 (floored equity + credit card + HECS) | #1347 | ✅ |
 | MON-013 | 🟠 FIXING | 🔴 | yes | Investment-account CASH ($67,871) excluded from net worth & total assets; Assets TILE includes it — two producers of 'total assets' | #1342 | ✅ |
 | MON-014 | 🟠 FIXING | 🟠 | yes | Home per-property tiles show rent-magnitude not cashflow when a loan lacks minRepayment — 3rd non-canonical cashflow producer (portfolio/snapshot) drops loan cost to $0, bypassing #1336/#1337 | #1351 | ✅ |
-| MON-015 | 🟠 FIXING | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | #1356 | ✅ |
+| MON-015 | 🟢 VERIFIED | 🟡 | no | Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual' | #1356 | ✅ |
 | MON-016 | ❌ RETRACTED | 🟡 | no | Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total) | — | n/a |
 | MON-017 | 🟢 VERIFIED | 🔴 | yes | Safety Net score is fiction on real data: 'Positive Cashflow 15/15' while cashflow is negative; recovery times uncomputable but shown; 0/0 bills scores 30/30; 3mo vs 6mo target contradiction | #1346, #1359 | ✅ |
 | MON-018 | 🟢 VERIFIED | 🔴 | yes | CFO 'Monthly progress: net worth +2%' is a ×0.98 PLACEHOLDER rendering as a real trend | #1343 | ✅ |
 | MON-019 | 🟠 FIXING | 🟠 | yes | 'Save 69 years' = the 999-month payoff SENTINEL leaking into UI arithmetic; refinance recommended on a 104% LVR loan | #1348 | ✅ |
 | MON-020 | 🟠 FIXING | 🟠 | yes | Two tax engines disagree ($153,278 vs $104,323 — §12.2.1 duplicate); /cashflow estimate omits Medicare (~$8,319). [CFO deductions-card 'mixes benefit' sub-claim RETRACTED as misread — see notes] | #1349 | ✅ |
 | MON-021 | 🟠 FIXING | 🟠 | yes | /cashflow renders actual and declared side-by-side unlabelled (In $0 vs In +$43,736) and two month-end forecasts disagree by $39K | #1354 | ✅ |
-| MON-022 | 🟠 FIXING | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | #1357 | ✅ |
+| MON-022 | 🟢 VERIFIED | 🟡 | no | Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift | #1357 | ✅ |
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
@@ -38,28 +38,28 @@
 | MON-029 | 🟢 VERIFIED | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
 | MON-030 | 🟢 VERIFIED | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | #1380, #1381 | ✅ |
 | MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | #1368 | ✅ |
-| MON-032 | 🟠 FIXING | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
-| MON-033 | 🟠 FIXING | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
+| MON-032 | 🟢 VERIFIED | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
+| MON-033 | 🟢 VERIFIED | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
 | MON-035 | 🟢 VERIFIED | 🟠 | yes | HOME property cashflow: Home dashboard tile disagrees with detail/list (delta 6040/yr) | ##1396 | ✅ |
 | MON-036 | 🟢 VERIFIED | 🟠 | yes | HOME rental yield reads three different values across surfaces (0.12 / 0.9 / 1.05) | ##1397 | ✅ |
 | MON-037 | 🟠 FIXING | 🔴 | yes | One-off expenses shown as recurring MONTHLY (+ apparent Battery duplicate) inflating expenses/cashflow | ##1395, ##1427 (RC-B: near-duplicate dedup) | ✅ |
-| MON-038 | 🟠 FIXING | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
+| MON-038 | 🟢 VERIFIED | 🟠 | no | CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct) | ##1399 | ✅ |
 | MON-039 | 🟢 VERIFIED | 🟢 | no | Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr | ##1412 | ✅ |
 | MON-040 | 🟢 VERIFIED | 🟡 | yes | Tax optimisation recommendations show implausible values (save 3685pct, 6.27M potential savings) | ##1398 | ✅ |
 | MON-041 | 🟢 VERIFIED | 🟢 | no | Vehicle depreciation percentage shown outside 0-100 (appreciation rendered as negative depreciation) | ##1403 | ✅ |
 | MON-042 | 🟢 VERIFIED | 🟢 | no | Household vehicle count (4) disagrees with the Assets list (5 vehicles) | ##1411 | n/a |
-| MON-043 | 🟠 FIXING | 🟡 | no | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | ##1413 | ✅ |
-| MON-044 | 🟠 FIXING | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##1402 | ✅ |
+| MON-043 | 🟢 VERIFIED | 🟡 | no | Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile) | ##1413 | ✅ |
+| MON-044 | 🟢 VERIFIED | 🟢 | no | Loan Opportunities card links to /dashboard/debt which 404s | ##1402 | ✅ |
 | MON-045 | 🟢 VERIFIED | 🟠 | yes | CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent | ##1415 (stage 1: canonical helper), ##1425 (stage 2: wiring + producer deletions) | ✅ |
-| MON-046 | 🟠 FIXING | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##1402 | ✅ |
+| MON-046 | 🟢 VERIFIED | 🟢 | no | Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav) | ##1402 | ✅ |
 | MON-047 | 🟡 DIAGNOSED | 🟢 | no | Dead unwired calculateMonthlyProgressNetWorth uses COST basis (averagePrice) not market — latent net-worth bug + stale graph node | — | n/a |
 | MON-048 | 🟢 VERIFIED | 🟡 | no | Property Cashflow-rhythm shows one-off expenses as MONTHLY (badge read declared frequency, not isRecurring) | ##1406 | ✅ |
 | MON-049 | 🟡 DIAGNOSED | 🟢 | no | Document count & storage disagree: Settings '24 documents · 12MB' vs Vault '6 all-time · 14.0 MB' | — | n/a |
 | MON-050 | 🔵 OPEN | 🟢 | no | Month-end balance differs: CFO $301,712 vs Cashflow 30-day forecast $301,639 ($73) | — | n/a |
 | MON-051 | 🔵 OPEN | 🟡 | yes | CFO intelligence metrics hardcoded: savingsOpportunities=3, pendingActions=5 rendered as real figures | — | — |
 | MON-052 | 🔵 OPEN | 🟡 | yes | PAYG withholding omits HECS-HELP component (TODO stub) — withholding estimate understated for HELP-debt users | — | — |
-| MON-053 | 🟢 VERIFIED | 🔴 | yes | One-off income annualised x12 into the tax base — two single ATO deposits become ~$120.6K phantom recurring income | ##1421 | ✅ |
+| MON-053 | ✅ CLOSED | 🔴 | yes | One-off income annualised x12 into the tax base — two single ATO deposits become ~$120.6K phantom recurring income | ##1421 | ✅ |
 | MON-054 | 🔵 OPEN | 🟠 | no | CFO 'Refinance Savings' tile renders an LVR-blocked alert as an offer (drops alert.action) | — | n/a |
 | MON-055 | 🔵 OPEN | 🟠 | yes | Portfolio net cashflow reads two different values (-$552/mo vs -$1,055/mo) with no basis label | — | — |
 | MON-056 | 🔵 OPEN | 🟠 | yes | What-If concessional cap usage (74%) contradicts the Superannuation page (0%) | — | — |
@@ -81,11 +81,12 @@
 | MON-072 | 🔵 OPEN | 🟢 | no | CFO formatting/copy defects: missing thousands separators, pluralisation, doubled word, risk count mismatch | — | n/a |
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
 | MON-074 | 🔵 OPEN | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
-| MON-075 | 🟠 FIXING | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
+| MON-075 | 🟢 VERIFIED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟠 FIXING | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
+| MON-080 | 🟠 FIXING | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##PENDING-this-PR | ✅ |
 
 ---
 
@@ -168,7 +169,7 @@ Display-only (no computed number changed). Fixed in #1333 (merged + prod-verifie
 
 ### MON-005 — Expense tile -> global page; no per-property summary card / drill-down
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
 
 > **What was wrong:** On a property, 'N expenses tracked' jumped to the global expenses page instead of showing that property's own expenses.
 >
@@ -183,7 +184,7 @@ Display-only (no computed number changed). Fixed in #1333 (merged + prod-verifie
 - **Holistic test (§19.4):** `tests/calculations/propertyExpenseLines.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-4`
 
-New in-app section-level composition -> Stitch-first (§18.2.1).
+New in-app section-level composition -> Stitch-first (§18.2.1). [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-006 — Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only)
 
@@ -222,7 +223,7 @@ Same hero tile before/after reassigning rentals; reconciles once the hidden loan
 
 ### MON-008 — Expense initial-entry inconsistent (only due-dates on the property edit form)
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-07-03
 
 > **What was wrong:** There was no clear place to enter a property's expense amounts — the edit form only took renewal due-dates and 'Add Expense' was hidden on the old list page.
 >
@@ -237,7 +238,7 @@ Same hero tile before/after reassigning rentals; reconciles once the hidden loan
 - **Holistic test (§19.4):** `tests/dashboard/propertyExpensesCard.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-9`
 
-Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field exists at LoanFormDialog:531.)
+Follows the same manual-initial -> actuals-when-reconciled rule (MON-002). (Earlier 'P-8 manual repayment not capturable' was RETRACTED — the Minimum Repayment field exists at LoanFormDialog:531.) [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-009 — Rental (and any linked line) shown per declared frequency, fragmented across records → over-counted; not read from transaction dates
 
@@ -355,7 +356,7 @@ Anchor verification 2026-07-07 (§19.2): the Home tile renders property.cashflow
 
 ### MON-015 — Entity-cashflow widget components don't sum to its own total (-$655 gap) + claims '12 entities' when 9 exist + monthly figure mislabelled 'annual'
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-07-07
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-07-07
 
 > **What was wrong:** The Entity Cashflow tile on the dashboard didn't add up: its total (-$17,121/mo) included six things but only four were shown as lines, so the visible rows came up ~$655 short. It also said '12 entities' (it was counting your properties + investment accounts, i.e. assets) when your structure has 9 entities, and it labelled a monthly figure as 'annual'.
 >
@@ -369,7 +370,7 @@ Anchor verification 2026-07-07 (§19.2): the Home tile renders property.cashflow
 - **Holistic test (§19.4):** `tests/dashboard/entityCashflowWidget.test.ts`
 - **Detail:** `chat audit 2026-07-07 #5`
 
-VALIDATED 2026-07-07 — CONFIRMED-REAL but DISPLAY/LABEL only (changesNumbers=false). Anchor CORRECTED: the widget is GlassEntityCashflow (components/dashboard/tiles/GlassInsightTiles.tsx:268-300), fed by calculateEntityCashflow (components/dashboard/EntityCashflowSummary.tsx:588-815) — NOT buildEntityBreakdown (entityBreakdown.ts:86 feeds the reports byEntity view, a different engine). Three real display defects: (1) additivity — headline total = summary.totalEntityCashflow (EntityCashflowSummary.tsx:795) sums 6 components (income/properties/investments/standaloneLoans/assets/expenses) but the widget shows only 4 rows (GlassInsightTiles.tsx:270-275), so standaloneLoansCost + assetsNet are in the total but never displayed -> the -$655 gap; the total itself is arithmetically correct. (2) count — GlassInsightTiles.tsx:299 labels 'N entities' from data.properties.length + data.investments.length (3 properties + 9 investment accounts = '12'), mislabelling asset counts as legal entities (universe = 9). (3) a MONTHLY figure is labelled 'annual net' (:299) though every component is monthly (sibling EntityCashflowSummary.tsx:244 correctly labels '/mo'). Fix is display+label: show all 6 rows (or fold the 2 hidden into a row), count from the entity source, correct the annual/monthly label. Unmodelled dashboard-widget surface (§21.5). [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-10): 9 entities vs across 12 entities reproduced (widget counts assets as entities).
+VALIDATED 2026-07-07 — CONFIRMED-REAL but DISPLAY/LABEL only (changesNumbers=false). Anchor CORRECTED: the widget is GlassEntityCashflow (components/dashboard/tiles/GlassInsightTiles.tsx:268-300), fed by calculateEntityCashflow (components/dashboard/EntityCashflowSummary.tsx:588-815) — NOT buildEntityBreakdown (entityBreakdown.ts:86 feeds the reports byEntity view, a different engine). Three real display defects: (1) additivity — headline total = summary.totalEntityCashflow (EntityCashflowSummary.tsx:795) sums 6 components (income/properties/investments/standaloneLoans/assets/expenses) but the widget shows only 4 rows (GlassInsightTiles.tsx:270-275), so standaloneLoansCost + assetsNet are in the total but never displayed -> the -$655 gap; the total itself is arithmetically correct. (2) count — GlassInsightTiles.tsx:299 labels 'N entities' from data.properties.length + data.investments.length (3 properties + 9 investment accounts = '12'), mislabelling asset counts as legal entities (universe = 9). (3) a MONTHLY figure is labelled 'annual net' (:299) though every component is monthly (sibling EntityCashflowSummary.tsx:244 correctly labels '/mo'). Fix is display+label: show all 6 rows (or fold the 2 hidden into a row), count from the entity source, correct the annual/monthly label. Unmodelled dashboard-widget surface (§21.5). [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-10): 9 entities vs across 12 entities reproduced (widget counts assets as entities). [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-016 — Debt-quality Good+Bad buckets omit the Guildford home loan ($377,822 unbucketed; sum != total)
 
@@ -485,7 +486,7 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 
 ### MON-022 — Data-quality validation gaps inflating everything: $11,385/mo 'Battery System' recurring, company ATO tax as household spend, purchase price $0 -> '+0.0%', owner-occupied homes showing rental yield, count drift
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: data-quality · opened 2026-07-07
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: data-quality · opened 2026-07-07
 
 > **What was wrong:** Two property surfaces showed meaningless numbers: your PRIMARY RESIDENCE displayed a rental 'Yield 0.00%' (a home has no rental yield), and a property with an unknown/$0 purchase price showed a fabricated green '+0.0%' gain on its tile. (Separately, some totals are inflated by data-entry issues — a battery booked $11,385 EVERY month, and a company's ATO tax showing up in overall spending — see the diagnosis note; those are product/validation gaps, not a single code bug.)
 >
@@ -499,7 +500,7 @@ Sequence after MON-009/MON-010 (rental over-count feeds tax). §12.14 applies. A
 - **Holistic test (§19.4):** `tests/dashboard/propertyDisplayGuards.test.ts`
 - **Detail:** `chat audit 2026-07-07 #12`
 
-Product/validation gap (no single code defect): rootCause deliberately left EMPTY — these are missing input-validation + review affordances, not a wrong line (§19.2 never guess an anchor). Freedom hero's -$20,590/mo net-passive matches no visible combination of property cashflows — anchor its inputs during the sweep. '3 producing income' label vs on-screen signs also here. Fix is Stitch-first for any new review surface (§18.2.1). VALIDATED 2026-07-07 — split into TWO REAL display bugs (now anchored) + DATA/PRODUCT-GAP items: (i) owner-occupied HOME shows a rental yield — the tile correctly gates yield behind isInvestment (PropertyTile.tsx:396) but the DETAIL page renders MiniKpi 'Yield' gated only by !isRental (app/dashboard/properties/[id]/page.tsx:443/447), so a PRIMARY RESIDENCE shows 'Yield 0.00%'; fix = gate on isInvestment to match the tile. (ii) $0 purchase -> '+0.0% gain' — the claimed divide-by-zero is a MISREAD (all gain% producers guard purchasePrice>0: masterFinancialService.ts:1211, properties/page.tsx:447, [id]/page.tsx:163), BUT PropertyTile.tsx:343-350 renders the gain% + green TrendingUp UNCONDITIONALLY, so a $0-purchase property shows a fabricated '+0.0%'; the detail page correctly suppresses (page.tsx:432, gainPct!==0); fix = suppress on tile when purchase unknown. changesNumbers=false (both are render suppressions). The battery $11,385/mo, company ATO-as-household-spend, and count drift (26 vs 24 / 9 vs 12) are DATA-ENTRY + missing-validation product gaps (not code defects) — the company-ATO one MAY be a real entity-scoping aggregation bug and needs its own investigation. gain%/yield are UNMODELLED (§21.5) — model when fixing. [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-09: yield on primary residence + +0.0% on $0 purchase — both display bugs anchored here; AUDIT-11: battery $11,385/mo one-off-as-recurring data-quality). AUDIT-10 sub-claims (YOU $4.6M vs Home $2.6M; 26 vs 20 holdings) NOT yet traced to source. | 2026-07-11 FIXED the two confirmed display bugs (yield-on-HOME → gated on isInvestment to match the tile; +0.0%-on-$0-purchase tile → gated on purchasePrice>0 to match the detail page). Test tests/dashboard/propertyDisplayGuards.test.ts. DIAGNOSIS of the data-entry items (NOT fixed — product decisions, surfaced to Reza): (a) company-ATO-as-household-spend is a real SCOPING consideration but not a clear code defect — masterFinancialService aggregates ALL expenses across ALL entities by design (masterFinancialService.ts:132 "all expenses, no filter"; the entity breakdown partitions by ownerEntityId at :301, and expenseAggregator SUPPORTS an ownerEntityId filter at :89-91). Whether "personal/household" surfaces should exclude company-entity expenses is a PRODUCT decision (does "my spending" include my company's ATO?) + would need threading an ownerEntityId scope through the personal-scoped surfaces. (b) battery $11,385/mo one-off-as-recurring + count-drift need a VALIDATION + REVIEW surface (Stitch-first §18.2.1) — deferred with MON-005/008. gainPct/yieldPct semantic Neomatrix nodes: N4 backfill (numbers unchanged — display suppression only).
+Product/validation gap (no single code defect): rootCause deliberately left EMPTY — these are missing input-validation + review affordances, not a wrong line (§19.2 never guess an anchor). Freedom hero's -$20,590/mo net-passive matches no visible combination of property cashflows — anchor its inputs during the sweep. '3 producing income' label vs on-screen signs also here. Fix is Stitch-first for any new review surface (§18.2.1). VALIDATED 2026-07-07 — split into TWO REAL display bugs (now anchored) + DATA/PRODUCT-GAP items: (i) owner-occupied HOME shows a rental yield — the tile correctly gates yield behind isInvestment (PropertyTile.tsx:396) but the DETAIL page renders MiniKpi 'Yield' gated only by !isRental (app/dashboard/properties/[id]/page.tsx:443/447), so a PRIMARY RESIDENCE shows 'Yield 0.00%'; fix = gate on isInvestment to match the tile. (ii) $0 purchase -> '+0.0% gain' — the claimed divide-by-zero is a MISREAD (all gain% producers guard purchasePrice>0: masterFinancialService.ts:1211, properties/page.tsx:447, [id]/page.tsx:163), BUT PropertyTile.tsx:343-350 renders the gain% + green TrendingUp UNCONDITIONALLY, so a $0-purchase property shows a fabricated '+0.0%'; the detail page correctly suppresses (page.tsx:432, gainPct!==0); fix = suppress on tile when purchase unknown. changesNumbers=false (both are render suppressions). The battery $11,385/mo, company ATO-as-household-spend, and count drift (26 vs 24 / 9 vs 12) are DATA-ENTRY + missing-validation product gaps (not code defects) — the company-ATO one MAY be a real entity-scoping aggregation bug and needs its own investigation. gain%/yield are UNMODELLED (§21.5) — model when fixing. [2026-07-10 Chrome audit] RE-CONFIRMED (AUDIT-09: yield on primary residence + +0.0% on $0 purchase — both display bugs anchored here; AUDIT-11: battery $11,385/mo one-off-as-recurring data-quality). AUDIT-10 sub-claims (YOU $4.6M vs Home $2.6M; 26 vs 20 holdings) NOT yet traced to source. | 2026-07-11 FIXED the two confirmed display bugs (yield-on-HOME → gated on isInvestment to match the tile; +0.0%-on-$0-purchase tile → gated on purchasePrice>0 to match the detail page). Test tests/dashboard/propertyDisplayGuards.test.ts. DIAGNOSIS of the data-entry items (NOT fixed — product decisions, surfaced to Reza): (a) company-ATO-as-household-spend is a real SCOPING consideration but not a clear code defect — masterFinancialService aggregates ALL expenses across ALL entities by design (masterFinancialService.ts:132 "all expenses, no filter"; the entity breakdown partitions by ownerEntityId at :301, and expenseAggregator SUPPORTS an ownerEntityId filter at :89-91). Whether "personal/household" surfaces should exclude company-entity expenses is a PRODUCT decision (does "my spending" include my company's ATO?) + would need threading an ownerEntityId scope through the personal-scoped surfaces. (b) battery $11,385/mo one-off-as-recurring + count-drift need a VALIDATION + REVIEW surface (Stitch-first §18.2.1) — deferred with MON-005/008. gainPct/yieldPct semantic Neomatrix nodes: N4 backfill (numbers unchanged — display suppression only). [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-023 — One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records
 
@@ -668,11 +669,11 @@ Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealth
 - **Holistic test (§19.4):** `tests/balances/hiddenWealthLensCopy.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED.
+VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED. [VR-010 2026-07-17] Root-cause note appended per Matrix: liquid-asset gap persists — stays FIXING; see VR-010 run notes.
 
 ### MON-032 — Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost)
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
 
 > **What was wrong:** On a property with a $228,000 loan, the activity list showed the repayment as $0 — the row read the unset manual field while the cashflow was correctly charging interest.
 >
@@ -687,11 +688,11 @@ VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balan
 - **Holistic test (§19.4):** `tests/verification/vr001Ratchet.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top. [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-033 — Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it)
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: cross-surface · opened 2026-07-11
 
 > **What was wrong:** Your own home was shown with a "rental yield" on the dashboard and flagged "Low Yield" by My Guide — a primary residence has no rental yield.
 >
@@ -706,7 +707,7 @@ Found by real-data verification run VR-001 (2026-07-11). Root-cause investigatio
 - **Holistic test (§19.4):** `tests/verification/vr001Ratchet.test.ts`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top.
+Found by real-data verification run VR-001 (2026-07-11). Root-cause investigation in progress — fix must REMOVE the culprit producer (CLAUDE.md §23.2.1), never patch on top. [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-034 — Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals)
 
@@ -787,7 +788,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 
 ### MON-038 — CFO offers a refinance on a 104pct LVR loan (should be gated over 100pct)
 
-**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: cfo · opened 2026-07-14
+**🟢 VERIFIED** · 🟠 high · changes numbers: **no** · area: cfo · opened 2026-07-14
 
 > **What was wrong:** My Guide suggests refinancing a loan whose balance is more than the property is worth (104pct), which no lender would do.
 >
@@ -801,7 +802,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-ca
 - **Holistic test (§19.4):** `tests/cfo/loanDecisionSupportGuards.test.ts`
 - **Detail:** `neoaudit-run:VR-002`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#. | [VR-004 2026-07-14] Ring-3 MOSTLY-PASS: the 104% Bankwest line shows 'High LVR: 104%' with NO 'Consider refinancing' text (the action gate works). BUT it sits under a 'Refinance Savings — $5,141/yr — 3 opportunities' card header, and the drill-down /dashboard/debt returns 404 so the per-loan action couldn't be fully confirmed. TODO: confirm the '3 opportunities' count EXCLUDES the 104% loan (worthRefinancing=false) + fix the /dashboard/debt 404 dead link. Stays FIXING. | [2026-07-14] VR-004 count concern RESOLVED in code: the tile’s "N opportunity found" count = refinanceOpportunities.filter(worthRefinancing).length, and the 104% loan is gated to worthRefinancing:false — so it is EXCLUDED from the count (locked by tests/cfo/loanDecisionSupportGuards.test.ts). The 404 that blocked the drill-down confirmation is fixed by MON-044. Remaining: a live Chrome click-through of the real loan action text (VR-005).
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes edge-case. Surface: CFO Loan Opportunities. Expected: no refinance offer on a loan over 100pct LVR. Actual: High LVR 104pct Bankwest 9471/yr refinance offered on Thornland Lot 1. Evidence/run: VR-002. | [FIX 2026-07-14] Root cause = a §12.2.1 duplicate-producer miss: MON-019 gated calculateRefinanceOpportunities but NOT generateRateAlerts' rate_above_market branch (loanDecisionSupport.ts), which still set action='Consider refinancing' with no LVR gate. Fix: extracted ONE isRefinanceableLvr(loan, properties) helper for the >MAX_REFINANCE_LVR rule, called by BOTH producers; over the ceiling the alert reframes to 'reduce your LVR first'. changesNumbers=false — the alert's impact $ is unchanged; only the advice text is gated (the opportunity was already suppressed by MON-019). Ratchet: cross-producer invariant in tests/cfo/loanDecisionSupportGuards.test.ts (no refinance advice >LVR ceiling from ANY producer + a healthy-LVR control). Neomatrix 3 loanDecisionSupport anchors re-pinned. Advances to FIXING with PR#. | [VR-004 2026-07-14] Ring-3 MOSTLY-PASS: the 104% Bankwest line shows 'High LVR: 104%' with NO 'Consider refinancing' text (the action gate works). BUT it sits under a 'Refinance Savings — $5,141/yr — 3 opportunities' card header, and the drill-down /dashboard/debt returns 404 so the per-loan action couldn't be fully confirmed. TODO: confirm the '3 opportunities' count EXCLUDES the 104% loan (worthRefinancing=false) + fix the /dashboard/debt 404 dead link. Stays FIXING. | [2026-07-14] VR-004 count concern RESOLVED in code: the tile’s "N opportunity found" count = refinanceOpportunities.filter(worthRefinancing).length, and the 104% loan is gated to worthRefinancing:false — so it is EXCLUDED from the count (locked by tests/cfo/loanDecisionSupportGuards.test.ts). The 404 that blocked the drill-down confirmation is fixed by MON-044. Remaining: a live Chrome click-through of the real loan action text (VR-005). [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-039 — Minor display: Medicare levy not shown; /cashflow Money In 0 vs 1-source note; Guildford list tile omits cashflow/yr
 
@@ -878,7 +879,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 
 ### MON-043 — Annual income differs across Home / Activity / Tax surfaces (basis inconsistency to reconcile)
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-14
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-14
 
 > **What was wrong:** Your annual income showed three different figures with nothing to explain why: Home ~$239K, and Tax $524,831. The gap is 'Other' income you declared but that has no matching bank transactions.
 >
@@ -892,11 +893,11 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 - **Holistic test (§19.4):** `tests/income/unmatchedDeclaredIncome.test.ts`
 - **Detail:** `neoaudit-run:VR-003`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home tile vs Activity YTD vs Tax total income. Expected: either one consistent figure or clearly-labelled distinct bases. Actual: Home 239K/yr, Activity YTD 484K/yr, Tax total income 524,831 — three different income figures with no visible basis label. Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] The brief's income-basis capture resolved this from ground truth: Home $239,000 labelled 'Last 12 months' (trailing-12-mo ACTUALS); Tax $524,831 'declared gross, 21 sources'. The gap is 'Other' income $192,698 (9 sources) + part of Rental — and the income list shows these rows as Actual $0 / -100% variance, i.e. DECLARED-ONLY with NO matching transactions (ATO $9,098, ATO $952, Ingeus salary lines, Service NSW). So the numbers are each CORRECT for their basis: Home (actuals, §19.1) rightly EXCLUDES declared income with no transactions; Tax (assessable/declared) rightly INCLUDES it. This is therefore NOT a calc bug — it is (a) a LABELLING refinement (surface the basis so a user understands why Home < Tax), and (b) a deeper DATA-COMPLETENESS signal worth surfacing to the user honestly ('$192,698 of declared income has no matching transactions — link statements or it will not count toward actuals'). changesNumbers should be re-set to false (no number is wrong). PREFERENCE FORK for Reza: how prominent to make the basis label + whether to add the data-completeness nudge. Surfaced, not guessed (§20.5). NB: 'Activity YTD 484K' from VR-003 was not re-confirmed in VR-006 (Activity showed this-month only); treat the Home-vs-Tax basis as the canonical reconciliation. | [FIX 2026-07-14] Reza chose 'Label + data nudge'. (labels) Home 'Annual income' tile already carries the 'Last 12 months' actuals basis (VR-006) — left as-is; the Tax Income-Summary CardDescription now reads 'Declared gross income — all sources (drives your tax estimate; may exceed the last-12-months actuals on Home/Cashflow)'. (nudge) app/dashboard/income/page.tsx renders a sky/info banner when declared income has no matching transactions, showing the unmatched $ + source count + a 'link statements' prompt. The unmatched figure is ONE aggregation (§12.2.1) lib/income/unmatchedDeclaredIncome.ts (sum GROSS annual via canonical toAnnual of rows with transactionCount 0) — a presentation aggregation feeding no downstream engine (allowlisted). §19.2 worked example: a $16,058/mo declared row with 0 tx → $192,696/yr ≈ VR-006's $192,698. RATCHET Ring-0: tests/income/unmatchedDeclaredIncome.test.ts (4 cases incl. the worked example + exclusion of matched rows). changesNumbers reset false — no EXISTING number altered; Home actuals + Tax declared are each CORRECT for their basis (§19.1), the fix is labelling + a new nudge figure. lint baseline re-lined (income/page frankingCredits 1985→2014, tax/page 793/796→798/801 shifted by the added lines). Gate: tsc + vitest + neomatrix:check + lint:financial-surfaces + issues:check green. Advances to FIXING with PR#; awaits Reza Ring-3.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-surface. Surface: Home tile vs Activity YTD vs Tax total income. Expected: either one consistent figure or clearly-labelled distinct bases. Actual: Home 239K/yr, Activity YTD 484K/yr, Tax total income 524,831 — three different income figures with no visible basis label. Evidence/run: VR-003. | [VR-006 DISPOSITION 2026-07-14] The brief's income-basis capture resolved this from ground truth: Home $239,000 labelled 'Last 12 months' (trailing-12-mo ACTUALS); Tax $524,831 'declared gross, 21 sources'. The gap is 'Other' income $192,698 (9 sources) + part of Rental — and the income list shows these rows as Actual $0 / -100% variance, i.e. DECLARED-ONLY with NO matching transactions (ATO $9,098, ATO $952, Ingeus salary lines, Service NSW). So the numbers are each CORRECT for their basis: Home (actuals, §19.1) rightly EXCLUDES declared income with no transactions; Tax (assessable/declared) rightly INCLUDES it. This is therefore NOT a calc bug — it is (a) a LABELLING refinement (surface the basis so a user understands why Home < Tax), and (b) a deeper DATA-COMPLETENESS signal worth surfacing to the user honestly ('$192,698 of declared income has no matching transactions — link statements or it will not count toward actuals'). changesNumbers should be re-set to false (no number is wrong). PREFERENCE FORK for Reza: how prominent to make the basis label + whether to add the data-completeness nudge. Surfaced, not guessed (§20.5). NB: 'Activity YTD 484K' from VR-003 was not re-confirmed in VR-006 (Activity showed this-month only); treat the Home-vs-Tax basis as the canonical reconciliation. | [FIX 2026-07-14] Reza chose 'Label + data nudge'. (labels) Home 'Annual income' tile already carries the 'Last 12 months' actuals basis (VR-006) — left as-is; the Tax Income-Summary CardDescription now reads 'Declared gross income — all sources (drives your tax estimate; may exceed the last-12-months actuals on Home/Cashflow)'. (nudge) app/dashboard/income/page.tsx renders a sky/info banner when declared income has no matching transactions, showing the unmatched $ + source count + a 'link statements' prompt. The unmatched figure is ONE aggregation (§12.2.1) lib/income/unmatchedDeclaredIncome.ts (sum GROSS annual via canonical toAnnual of rows with transactionCount 0) — a presentation aggregation feeding no downstream engine (allowlisted). §19.2 worked example: a $16,058/mo declared row with 0 tx → $192,696/yr ≈ VR-006's $192,698. RATCHET Ring-0: tests/income/unmatchedDeclaredIncome.test.ts (4 cases incl. the worked example + exclusion of matched rows). changesNumbers reset false — no EXISTING number altered; Home actuals + Tax declared are each CORRECT for their basis (§19.1), the fix is labelling + a new nudge figure. lint baseline re-lined (income/page frankingCredits 1985→2014, tax/page 793/796→798/801 shifted by the added lines). Gate: tsc + vitest + neomatrix:check + lint:financial-surfaces + issues:check green. Advances to FIXING with PR#; awaits Reza Ring-3. [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-044 — Loan Opportunities card links to /dashboard/debt which 404s
 
-**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
+**🟢 VERIFIED** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
 
 > **What was wrong:** The 'Loan Opportunities' card on My Guide links to a page that shows a 404 error.
 >
@@ -910,7 +911,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: R3-eyes cross-s
 - **Holistic test (§19.4):** `tests/dashboard/cfoTileLinks.test.ts`
 - **Detail:** `neoaudit-run:VR-004`
 
-Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card drill-down navigates to /dashboard/debt which returns 404 (dead link — route missing or renamed). Read-only, no data change. Blocks full confirmation of MON-038's per-loan action text. | [FIX 2026-07-14] Root cause: a single typo’d href — cfo/page.tsx:921 pointed at /dashboard/debt (non-existent); the canonical route is /dashboard/debt-planner (used by every other link). One-line repoint. Ratchet: tests/dashboard/cfoTileLinks.test.ts asserts every /dashboard/<seg> href in cfo/page.tsx resolves to a real route + the dead /dashboard/debt path is absent. The Ratchet ALSO surfaced a second dead-end — see MON-046.
+Found VR-004 (Reza Claude-Chrome 2026-07-14). The CFO 'Loan Opportunities' card drill-down navigates to /dashboard/debt which returns 404 (dead link — route missing or renamed). Read-only, no data change. Blocks full confirmation of MON-038's per-loan action text. | [FIX 2026-07-14] Root cause: a single typo’d href — cfo/page.tsx:921 pointed at /dashboard/debt (non-existent); the canonical route is /dashboard/debt-planner (used by every other link). One-line repoint. Ratchet: tests/dashboard/cfoTileLinks.test.ts asserts every /dashboard/<seg> href in cfo/page.tsx resolves to a real route + the dead /dashboard/debt path is absent. The Ratchet ALSO surfaced a second dead-end — see MON-046. [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-045 — CFO neg-gearing benefit ($157,746) ~4x total deductions ($39,554) — internally inconsistent
 
@@ -937,7 +938,7 @@ Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Propert
 
 ### MON-046 — Bare /dashboard/investments 404s (CFO tile + DocumentList + sidebar nav)
 
-**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
+**🟢 VERIFIED** · 🟢 low · changes numbers: **no** · area: cfo · opened 2026-07-14
 
 > **What was wrong:** Several links to the Investments section (the My Guide investment tile, a document link, and the sidebar) opened a 404 page.
 >
@@ -951,7 +952,7 @@ Found VR-004 (Reza Claude-Chrome 2026-07-14). CFO Total Deductions shows Propert
 - **Holistic test (§19.4):** `tests/dashboard/cfoTileLinks.test.ts`
 - **Detail:** `ratchet:MON-044`
 
-Surfaced by the MON-044 dead-link Ratchet (tests/dashboard/cfoTileLinks.test.ts) on 2026-07-14 — the route-existence assertion flagged /dashboard/investments has no page.tsx (only accounts/holdings/super/transactions sub-tabs), so 4 bare-route links 404d. Fix: app/dashboard/investments/page.tsx redirects to /dashboard/investments/accounts (mirrors the /dashboard/accounts -> /dashboard/balances redirect pattern), fixing all callers at source (§12.1). Example of the NeoAudit living-system loop — a Ratchet added for one bug caught a latent sibling.
+Surfaced by the MON-044 dead-link Ratchet (tests/dashboard/cfoTileLinks.test.ts) on 2026-07-14 — the route-existence assertion flagged /dashboard/investments has no page.tsx (only accounts/holdings/super/transactions sub-tabs), so 4 bare-route links 404d. Fix: app/dashboard/investments/page.tsx redirects to /dashboard/investments/accounts (mirrors the /dashboard/accounts -> /dashboard/balances redirect pattern), fixing all callers at source (§12.1). Example of the NeoAudit living-system loop — a Ratchet added for one bug caught a latent sibling. [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-047 — Dead unwired calculateMonthlyProgressNetWorth uses COST basis (averagePrice) not market — latent net-worth bug + stale graph node
 
@@ -1041,7 +1042,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engi
 
 ### MON-053 — One-off income annualised x12 into the tax base — two single ATO deposits become ~$120.6K phantom recurring income
 
-**🟢 VERIFIED** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-15
+**✅ CLOSED** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-15 · closed 2026-07-17
 
 > **What was wrong:** Two one-off ATO deposits (each a SINGLE transaction dated 27 May) are stored as Income{frequency: MONTHLY} and multiplied by 12, adding roughly $120,600 of income you never received to your tax base — and you are taxed on it. This is the income-side twin of MON-037 (the same bug for expenses), which was fixed for expenses only.
 >
@@ -1058,7 +1059,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engi
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income + /dashboard/activity (Recurring). Expected: An ATO refund/credit is a one-off: it must be counted ONCE in the year received, never extrapolated x12 to an annual recurring basis. Actual: 'Ato Ato001100022493651' = $9,098 Monthly ($109,176/yr) and 'Ato Ato002000023189359' = $952 Monthly ($11,424/yr); each has exactly ONE deposit in the whole feed, both dated 27 May. Both flow into the declared-gross Tax base of $524,831/yr and are taxed.. Evidence/run: VR-007. [VR-007 2026-07-15] DIAGNOSED — root cause §19.2-VERIFIED in code at HEAD 6b8a076 (every anchor re-read this run; the original triage cited `lib/calculations/taxPositionCalculator.ts`, which DOES NOT EXIST — the real path is `lib/tax-engine/position/taxPositionCalculator.ts`). MON-037 IS THE ANCESTOR: the guard at :194-197 and the Decimal twin at :694-697 were added for EXPENSES only; income was never given the same treatment, so the identical bug survived on the income side. PRODUCER CENSUS CORRECTED: the triage listed 4 producers and flagged itself incomplete — it was. The full runtime census (verified by `grep -rn "income.create"`) is P1 app/api/income/route.ts:240 (the MAIN income CRUD — MISSING from the original list), P2 app/api/transactions/[id]/link/route.ts:417, P3 app/api/documents/analyze/confirm/route.ts:459, P4 app/api/onboarding/complete/route.ts:230, P5 lib/db/tenant.ts:168; plus lib/testing/loader.ts:460 (test fixtures, not runtime). *** SEQUENCING — MON-053 LANDS BEFORE MON-045 STAGE 2. *** MON-045's Ring-3 verifies the CFO neg-gearing benefit against the tax base. If MON-045 stage 2 lands first, it verifies against a base inflated by ~$120.6K of phantom income; when MON-053 then lands, the number moves again and MON-045's Ring-3 is invalidated — burning a full Ring-3 cycle (Reza's real-data run). Land MON-053, re-baseline, THEN MON-045 stage 2. *** RELATIONSHIP TO RECTIFY CLUSTER ①. *** STATE.md's rectify cursor puts cluster ① = MON-037 (one-off hub) first. MON-053 IS MON-037's income-side twin — the SAME defect class, the same engine file, the same fix shape. Work them as ONE cluster, not as unrelated issues: the Ring-1 source-lock below covers BOTH sides and is the thing that actually kills the pattern. RATCHETS (§5 — a bug at Ring 3 proves a hole in Rings 0–2): Ring-0 — a one-off income counts ONCE (both the Float and Decimal engines; mirror tests/calculations/mon037OneOffEngines.test.ts). Ring-1 SOURCE-LOCK — assert that ANY IncomeItem/ExpenseItem annualisation site is one-off-guarded, so a NEW unguarded annualisation cannot be added; this is the ratchet that kills the ancestor pattern rather than this one instance. Ring-2 — Float/Decimal parity on the Golden Household. BLAST RADIUS IS A LOWER BOUND: VR-007 read 1 of 16 Activity pages, so there may be further one-off income rows not yet seen. GATE NOTE: this issue is changesNumbers=true, so §7 will require a linked holistic test + a resolving semanticKey before it can reach VERIFIED — `test` is null today and MUST be set to the §19.4 propagation test the fix PR adds. | [FIX 2026-07-15 — the income-side MON-037, built per the Matrix cluster-① handoff] (1) SCHEMA: Income.isRecurring Boolean @default(true) + additive migration 20260715000000_add_income_is_recurring (default-backfilled — no reclassification of existing rows). (2) ENGINE: IncomeItem.isRecurring added; the MON-037 guard applied at BOTH annualisation sites — Float (calculateTaxPosition) AND the Decimal twin (calculateTaxPositionDecimal). VERIFIED-NOT-NEEDED: lib/calc-audit/engines/decimal-tax-engine-income-position.ts does NOT re-implement annualisation — it imports calculateQuickTaxPositionDecimal from the same engine file (the handoff's 'guard it too' claim did not verify; recorded honestly). (3) READ PATHS: userTaxPosition map + /api/tax/position route assembly both carry isRecurring (both engine callers covered). (4) PRODUCERS: P1 income POST create + income/[id] PUT (undefined-passthrough — reclassification path for the two ATO rows) + P2 link route (single linked deposit defaults ONE-OFF unless client says recurring) + P3 documents confirm (data.isRecurring ?? true); P4 onboarding + P5 tenant wrapper verified no-change-needed (default(true) semantically correct / passthrough). (5) GATE UI: TransactionLinkDialog — count<=1 now CLASSIFIES one-off (RC-C, never silently defaulted); income path gains the recurring/one-off control the expense path had (payload already shared). (6) RUN-RATE: canonical netIncomeCalculator returns 0/mo for one-offs (mirrors MON-037 rhythm semantics; consumers = income page + portfolio snapshot, both correct under run-rate semantics); income row shows 'One-off ($X once)' via the ONE cadence-label rule (activityFrequencyLabel, MON-048). RATCHETS: tests/tax/mon053OneOffIncome.test.ts — Ring-0 Float+Decimal one-off-once + back-compat default, Ring-2 Float===Decimal parity, RUN-RATE zero, and the Ring-1 SOURCE-LOCK (exactly 4 annualisation call sites, EVERY one guarded within 6 lines — a 5th unguarded site fails the build; this is the F1 ancestor-killer the handoff demanded). §19.2 worked example: 9,098 one-off → income.total 9,098 (was 109,176); mixed household 9,098+952+24,000 = 34,050 both engines. Neomatrix: calculateTaxPosition anchor re-pinned 101→104. Gates: tsc + 950/950 tax tests + neomatrix:check + lint:financial-surfaces (baseline re-lined 2014→2047) + issues:check green. PAUSE-POINT HANDLING: pause-1 (migration) — the AskUserQuestion tool errored mid-flow; Reza then instructed 'continue from where you left off'; built on the handoff's pre-specified shape; PR stays DRAFT so merge = his explicit approval (also pause-2, before Ring-3). Ring-3 targets per handoff §6; cannot reach VERIFIED without the Chrome PASS. | [RING-3 PASS → VERIFIED 2026-07-15, per-fix Chrome/screenshot verification on prod (deploy dpl_2pJRVLARspBgiAMbbt1cPT6DZNC6 READY 07:22 UTC)] Reza reclassified FOUR rows one-off (the two ATO + two Service NSW). Every target hit with EXACT arithmetic: (a) /dashboard/income renders 'One-Off · ($952 once)' / '($30 once)' / '($108 once)' — no more $X/mo, variance noise gone (+$0/+0%); (b) Tax TOTAL INCOME fell $524,831 → $412,768 = −$112,063, matching Σ(annualised−once) for the 4 converted rows = $112,068 (±$5 rounding) — one-offs correctly count ONCE (the money WAS received), not zero; (c) tax estimate fell $194,218 → $141,548 = −$52,670 = 112,063 × 0.47 (45% marginal + 2% Medicare) TO THE DOLLAR; (d) taxable identity exact (412,768 − 39,554 = 373,214 shown); (e) regression guard: recurring rows unchanged (Gold Coast $2,515 actual-matched); the three fragmented Cienna rent rows (−100% variance) are the PRE-EXISTING MON-009/MON-001 class, untouched. NOTE the honest delta vs the handoff's '~$120.6K' headline: the phantom removed is (×12 − once) = ~$110.5K for the ATO pair, not the full ×12 — the observed fall confirms the CORRECT semantics. Promotion (→CLOSED) queued: Ratchet already in CI (#1421); temp vercel-build resolve step removed in the follow-up PR; VR-008 full re-baseline next.
 
-[VR-008 COVERAGE SWEEP, 2026-07-15 — the class was broader than the two ATO rows] The Matrix swept ALL 21 income rows on prod: 8 rows total reclassified to one-off (the two ATO from VR-007 + Service NSW ×2, Hipcamp ×2, Isaac Asadi, Betterhelp — same class, fixed by Reza via the MON-053 UI control); 13 rows correctly left recurring (legitimate declared income; $0 actual = out-of-window txn, not a one-off). Root cause of the class: intake stamped frequency=MONTHLY/isRecurring=true and never classified a single-deposit one-off. Guardrails: #1421 source-aware intake + Ring-1 source-lock; Reza decision = SOURCE-AWARE default (blanket default-to-one-off rejected; backfill abandoned). MON-053 → CLOSED gates on MON-075 (the standing detector, owned by the Matrix). FIX_PROTOCOL §7 retro recorded 2026-07-15.
+[VR-008 COVERAGE SWEEP, 2026-07-15 — the class was broader than the two ATO rows] The Matrix swept ALL 21 income rows on prod: 8 rows total reclassified to one-off (the two ATO from VR-007 + Service NSW ×2, Hipcamp ×2, Isaac Asadi, Betterhelp — same class, fixed by Reza via the MON-053 UI control); 13 rows correctly left recurring (legitimate declared income; $0 actual = out-of-window txn, not a one-off). Root cause of the class: intake stamped frequency=MONTHLY/isRecurring=true and never classified a single-deposit one-off. Guardrails: #1421 source-aware intake + Ring-1 source-lock; Reza decision = SOURCE-AWARE default (blanket default-to-one-off rejected; backfill abandoned). MON-053 → CLOSED gates on MON-075 (the standing detector, owned by the Matrix). FIX_PROTOCOL §7 retro recorded 2026-07-15. [VR-010 2026-07-17] Promotion complete (Ratchet tests in CI + Neomatrix moved with the fix + re-baseline) → CLOSED.
 
 ### MON-054 — CFO 'Refinance Savings' tile renders an LVR-blocked alert as an offer (drops alert.action)
 
@@ -1299,7 +1300,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/i
 
 ### MON-075 — Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-15
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: income · opened 2026-07-15
 
 > **What was wrong:** Some entries marked 'recurring' are backed by just one bank payment and nothing this month — the fingerprint of the bug that turned one-time deposits into phantom monthly income (the MON-053 class). Nothing was flagging these leftovers for review.
 >
@@ -1317,7 +1318,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engi
 
 [VR-008 DIAGNOSIS, 2026-07-15 — OWNED BY THE MATRIX] The promote step for the MON-023→037→053 one-off class. Reza decision 2026-07-15: SOURCE-AWARE default (manual/declared = recurring; single-transaction imports = one-off; blanket default-to-one-off REJECTED; backfill migration ABANDONED as unsafe). #1421 already conforms at intake. Remaining build: a standing NeoAudit detector flagging any recurring income/expense row evidenced by exactly ONE linked transaction and $0 in-window actuals (the bug fingerprint) for user review — Ring-1/2 promotion so the Chrome brief never re-checks this class. GATES MON-053 → CLOSED (its promotion evidence).
 
-[D1 SHIPPED — wall Part 3, 2026-07-16] lib/intake/detectors.ts detectOneOffFingerprint (pure): isRecurring !== false ∧ transactionCount === 1 ∧ inWindowActual === 0 → flag; else null. Wired into income GET + expenses GET; income-page chip (sky, review-only; cadence chip wins when both fire). Ring-0: 5 tests (fingerprint + all never-flag guards incl. declared-only rows). This IS the MON-053 promotion step — on merge + Matrix confirmation, MON-075 → VERIFIED and MON-053 → CLOSED (the class is now: prevented at intake by the classifier, locked by R1 in CI, and residuals surfaced by this standing detector).
+[D1 SHIPPED — wall Part 3, 2026-07-16] lib/intake/detectors.ts detectOneOffFingerprint (pure): isRecurring !== false ∧ transactionCount === 1 ∧ inWindowActual === 0 → flag; else null. Wired into income GET + expenses GET; income-page chip (sky, review-only; cadence chip wins when both fire). Ring-0: 5 tests (fingerprint + all never-flag guards incl. declared-only rows). This IS the MON-053 promotion step — on merge + Matrix confirmation, MON-075 → VERIFIED and MON-053 → CLOSED (the class is now: prevented at intake by the classifier, locked by R1 in CI, and residuals surfaced by this standing detector). [VR-010 2026-07-17] Ring-3 live verification PASS (tracker VR-010) → VERIFIED.
 
 ### MON-076 — Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2)
 
@@ -1393,4 +1394,23 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/c
 - **Detail:** `phase-59`
 
 Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside. Parts 0–5 built in PR #1434 (draft — Reza merge gate); Ring-3 (Part 6) = the Matrix after deploy READY. Root cause: the Income model had no rentalMode — a managed rental was inexpressible (net recorded as income = understated gross + dropped deductions, OR gross declared with no way to capture agent costs).
+
+### MON-080 — Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity)
+
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: income · opened 2026-07-17
+
+> **What was wrong:** Marking your rental as agent-managed didn't actually capture the agent's fees: no card appeared when deposits were already linked, the first fresh deposit compared a weekly rent against a monthly payout (so the gap looked negative), and nothing ever asked for the real rent when the stream held the net amount — so the ~$432/month Broadbeach deduction was never claimed.
+>
+> **What changed:** The reconciler now infers the payout period from the deposit size on the very first link, marking a stream managed immediately re-checks the deposits you already linked (the card appears right there, and the green nudge chip is now a click-to-claim button), and you can't save a managed rental whose 'rent' equals the deposit — Monitrax asks for the full rent first, pre-filled with what you had.
+>
+> **What you should see:** On Broadbeach (already managed, already linked): open Income and the card offers the ~$432/month gap without unlinking anything; confirm it and Total Deductions rises by ~$5,184/yr while gross rent stays $2,947/mo. Marking a net-only stream managed now asks for the full rent before saving.
+
+- **Root cause:** `lib/calculations/rentalReconciliation.ts:118`, `app/api/income/[id]/route.ts:126`, `app/dashboard/income/page.tsx:1125`, `app/dashboard/income/page.tsx:1776`
+- **Neomatrix:** `number.rental.agentCostDeduction`, `number.rental.grossDeclared`
+- **Downstream consumers (§19.4):** `lib/tax-engine/position/taxPositionCalculator.ts (deductible-expense loop → deductions.property, Float + Decimal)`, `app/api/tax/position/route.ts (Total Deductions on the Tax page)`, `lib/services/masterFinancialService.ts buildTaxSummary (dashboard tax tiles + CFO)`, `app/dashboard/income/page.tsx (D4 nudge chip → claim path; gross display)`, `components/transactions/TransactionLinkDialog.tsx (fresh-link card path)`, `app/api/rental-reconciliation/route.ts (confirm producer — idempotency guard)`
+- **Fix PR(s):** ##PENDING-this-PR
+- **Holistic test (§19.4):** `tests/golden/ring2.managedRental.test.ts (order-independence: manage→link == link→manage) + tests/calculations/rentalReconciliation.test.ts (N=1 Broadbeach cadence inference, Float/Decimal parity) + tests/tax/rentalReconciliationSourceLock.test.ts (R1)`
+- **Detail:** `VR-010`
+
+Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rental-retroactive-reconcile.md (PR #1436) + VR-010 live evidence (Broadbeach: $680/wk declared, $2,515/mo net, gap $432/mo ≈ $5,184/yr uncaptured; Total Deductions stuck at $148,519). §19.2 root cause EXECUTED-verified 2026-07-17: N≥2 normalisation works (3 monthly dates → MONTHLY, gap $431.67, material) — the brief's "no normalisation" prime suspect is corrected; the real D0 is the N=1 fallback to the RENT cadence (weekly $680 vs monthly $2,515 → gap −$1,835 → material=false). D1: no retroactive reconcile on the MANAGED transition (PUT), chip is a passive span. D2: no gross gate — MANAGED persists with gross = net (understates assessable income, ITAA s6-5); type-RENTAL streams have no amount field on Edit. Blocks MON-079 → VERIFIED.
 
