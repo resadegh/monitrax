@@ -78,7 +78,7 @@
     },
     {
       "file": "app/api/cashflow/intelligence/route.ts",
-      "line": 463,
+      "line": 464,
       "pattern": "HARDCODED_FINANCIAL_CONSTANT",
       "match": "27500"
     },
@@ -90,7 +90,7 @@
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 900,
+      "line": 904,
       "pattern": "INLINE_ARITHMETIC",
       "match": "asset.purchasePrice - asset.currentValue"
     },

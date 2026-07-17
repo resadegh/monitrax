@@ -2224,7 +2224,7 @@
     {
       "id": "MON-079",
       "title": "Managed rental income + agent-cost reconciliation (Phase 59)",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-16",
@@ -2252,14 +2252,14 @@
       "fixPRs": [
         "#1434"
       ],
-      "test": "tests/golden/ring2.managedRental.test.ts (holistic: gross-unchanged + gap-as-deduction + taxable==net-received + no-double-count on BOTH engines) + tests/tax/rentalReconciliationSourceLock.test.ts (R1) + tests/calculations/rentalReconciliation.test.ts (R0)",
+      "test": "tests/golden/ring2.managedRental.test.ts#holistic: gross-unchanged + gap-as-deduction + taxable==net-received + no-double-count on BOTH engines; also tests/tax/rentalReconciliationSourceLock.test.ts (R1) + tests/calculations/rentalReconciliation.test.ts (R0)",
       "tracker": "phase-59",
-      "notes": "Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside. Parts 0–5 built in PR #1434 (draft — Reza merge gate); Ring-3 (Part 6) = the Matrix after deploy READY. Root cause: the Income model had no rentalMode — a managed rental was inexpressible (net recorded as income = understated gross + dropped deductions, OR gross declared with no way to capture agent costs). RE-SCOPED 2026-07-17 (MATRIX_FIX_DISCIPLINE.md): VR-011 verified the TAX surface only - the cashflow side double-counted the agent fee (raised + fixed as MON-086/Wall B3); cross-surface Ring-3 (income <-> tax <-> cashflow <-> property) NOT yet met - stays FIXING until the Matrix verifies all surfaces on live data."
+      "notes": "Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside. Parts 0–5 built in PR #1434 (draft — Reza merge gate); Ring-3 (Part 6) = the Matrix after deploy READY. Root cause: the Income model had no rentalMode — a managed rental was inexpressible (net recorded as income = understated gross + dropped deductions, OR gross declared with no way to capture agent costs). RE-SCOPED 2026-07-17 (MATRIX_FIX_DISCIPLINE.md): VR-011 verified the TAX surface only - the cashflow side double-counted the agent fee (raised + fixed as MON-086/Wall B3); cross-surface Ring-3 (income <-> tax <-> cashflow <-> property) NOT yet met - stays FIXING until the Matrix verifies all surfaces on live data. RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED."
     },
     {
       "id": "MON-080",
       "title": "Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity)",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2290,9 +2290,9 @@
       "fixPRs": [
         "#1437"
       ],
-      "test": "tests/golden/ring2.managedRental.test.ts (order-independence: manage→link == link→manage) + tests/calculations/rentalReconciliation.test.ts (N=1 Broadbeach cadence inference, Float/Decimal parity) + tests/tax/rentalReconciliationSourceLock.test.ts (R1)",
+      "test": "tests/golden/ring2.managedRental.test.ts#order-independence: manage-then-link == link-then-manage; also tests/calculations/rentalReconciliation.test.ts (N=1 Broadbeach cadence inference, Float/Decimal parity) + tests/tax/rentalReconciliationSourceLock.test.ts (R1)",
       "tracker": "VR-010",
-      "notes": "Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rental-retroactive-reconcile.md (PR #1436) + VR-010 live evidence (Broadbeach: $680/wk declared, $2,515/mo net, gap $432/mo ≈ $5,184/yr uncaptured; Total Deductions stuck at $148,519). §19.2 root cause EXECUTED-verified 2026-07-17: N≥2 normalisation works (3 monthly dates → MONTHLY, gap $431.67, material) — the brief's \"no normalisation\" prime suspect is corrected; the real D0 is the N=1 fallback to the RENT cadence (weekly $680 vs monthly $2,515 → gap −$1,835 → material=false). D1: no retroactive reconcile on the MANAGED transition (PUT), chip is a passive span. D2: no gross gate — MANAGED persists with gross = net (understates assessable income, ITAA s6-5); type-RENTAL streams have no amount field on Edit. Blocks MON-079 → VERIFIED. RE-SCOPED 2026-07-17 (MATRIX_FIX_DISCIPLINE.md): VR-011 verified the TAX surface only - the cashflow side double-counted the agent fee (raised + fixed as MON-086/Wall B3); cross-surface Ring-3 (income <-> tax <-> cashflow <-> property) NOT yet met - stays FIXING until the Matrix verifies all surfaces on live data."
+      "notes": "Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rental-retroactive-reconcile.md (PR #1436) + VR-010 live evidence (Broadbeach: $680/wk declared, $2,515/mo net, gap $432/mo ≈ $5,184/yr uncaptured; Total Deductions stuck at $148,519). §19.2 root cause EXECUTED-verified 2026-07-17: N≥2 normalisation works (3 monthly dates → MONTHLY, gap $431.67, material) — the brief's \"no normalisation\" prime suspect is corrected; the real D0 is the N=1 fallback to the RENT cadence (weekly $680 vs monthly $2,515 → gap −$1,835 → material=false). D1: no retroactive reconcile on the MANAGED transition (PUT), chip is a passive span. D2: no gross gate — MANAGED persists with gross = net (understates assessable income, ITAA s6-5); type-RENTAL streams have no amount field on Edit. Blocks MON-079 → VERIFIED. RE-SCOPED 2026-07-17 (MATRIX_FIX_DISCIPLINE.md): VR-011 verified the TAX surface only - the cashflow side double-counted the agent fee (raised + fixed as MON-086/Wall B3); cross-surface Ring-3 (income <-> tax <-> cashflow <-> property) NOT yet met - stays FIXING until the Matrix verifies all surfaces on live data. RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED."
     },
     {
       "id": "MON-081",
@@ -2328,16 +2328,17 @@
         "REMAINING raw sites tracked ratchet-down in .audit/source-lock-exceptions.json (budget-analysis, calculate/*, transactions/link, loans route, balances, properties pages, plan page)"
       ],
       "fixPRs": [
-        "#1440"
+        "#1440",
+        "#1441"
       ],
-      "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B1: interest floor never $0; cadence-normalised weekly repayment; engine-loop === standalone identity)",
+      "test": "tests/golden/ring2.calcSsotWall.test.ts#VR-013 describe: Broadbeach 228,000 @ 6.69% + repayments 1,131/1,295 → 1,190.97 actuals not 1,271.10 floor; engine≡standalone identity; trailing-12mo window keeps prior-FY repayments — an FY filter would keep 0",
       "tracker": "calc-ssot-wall",
-      "notes": "Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DISCIPLINE.md case MON-032 partial-producer drift: the MON-032 fix landed the interest floor on property surfaces only, CREATING divergence with every surface still reading raw minRepayment ($0 for interest-only). rootCause anchors are PRE-FIX lines (2026-07-17). Wall B1 extracts resolveLoanMonthlyCost() from the computePropertyCashflow loan loop and migrates: /dashboard/expenses, cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. REMAINING bypass sites (tracked ratchet-down in .audit/source-lock-exceptions.json RAW_MIN_REPAYMENT_COST): budget-analysis/generate, calculate/cashflow, calculate/debt-plan, transactions/[id]/link, loans route, balances page, properties pages, plan page - migrate + ratchet in follow-ups."
+      "notes": "Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DISCIPLINE.md case MON-032 partial-producer drift: the MON-032 fix landed the interest floor on property surfaces only, CREATING divergence with every surface still reading raw minRepayment ($0 for interest-only). rootCause anchors are PRE-FIX lines (2026-07-17). Wall B1 extracts resolveLoanMonthlyCost() from the computePropertyCashflow loan loop and migrates: /dashboard/expenses, cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. REMAINING bypass sites (tracked ratchet-down in .audit/source-lock-exceptions.json RAW_MIN_REPAYMENT_COST): budget-analysis/generate, calculate/cashflow, calculate/debt-plan, transactions/[id]/link, loans route, balances page, properties pages, plan page - migrate + ratchet in follow-ups. CROSS-SURFACE RING-3 VR-013 FAIL (2026-07-17): expenses page + loan Overview card showed the $1,271 contractual floor while property/cashflow showed $1,191 actuals — the migrated surfaces called resolveLoanMonthlyCost with NO transactions (same-engine-different-inputs, F2 class). SECONDARY A FOLDED IN: the 'no repayment set' caption + floor fired despite linked repayments because no feed existed (NOT an FY filter in the resolver path — verified; the FY-scoped 'Interest this FY' card is a separate labelled metric and feeds nothing). FIX (same fixPR chain): lib/services/loanCosts.ts — THE transaction feed (linked repayments over the ONE trailing-12-month propertyActualsWindowStart window) → resolveLoanMonthlyCost; /api/loans attaches resolvedCost for client surfaces (expenses page + LoanDetailDialog); cashflow summary/intelligence + CFO run/context + debt-analysis + portfolio snapshot fed server-side. Overview card now headlines the actuals-first monthly with basis label; balance×rate relabelled 'contractual estimate'. Stays FIXING until the Matrix re-runs the cross-surface Ring-3 (Broadbeach identical on all 5 surfaces)."
     },
     {
       "id": "MON-082",
       "title": "/dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2364,9 +2365,9 @@
       "fixPRs": [
         "#1440"
       ],
-      "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B2: one-off contributes 0 to monthlyRunRate/annualRunRate; matches the propertyCashflow expense gate)",
+      "test": "tests/golden/ring2.calcSsotWall.test.ts#Wall B2: one-off contributes 0 to monthlyRunRate/annualRunRate; matches the propertyCashflow expense gate",
       "tracker": "calc-ssot-wall",
-      "notes": "Calc-SSOT Wall Mechanism B / MATRIX_FIX_DISCIPLINE.md case MON-037 partial-producer drift: the MON-037 fix gated one-offs in the engines but /dashboard/expenses kept its local convertToMonthly (pure toMonthly, no isRecurring gate - PRE-FIX anchor :547) so the page headline disagreed with property/tax. Wall B2 ships monthlyRunRate()/annualRunRate() in lib/utils/frequencies.ts as THE one-off-aware run-rate and migrates the page + cashflow summary/intelligence + CFO scenarios + AI debt-analysis + portfolio snapshot (totalAnnualExpenses)."
+      "notes": "Calc-SSOT Wall Mechanism B / MATRIX_FIX_DISCIPLINE.md case MON-037 partial-producer drift: the MON-037 fix gated one-offs in the engines but /dashboard/expenses kept its local convertToMonthly (pure toMonthly, no isRecurring gate - PRE-FIX anchor :547) so the page headline disagreed with property/tax. Wall B2 ships monthlyRunRate()/annualRunRate() in lib/utils/frequencies.ts as THE one-off-aware run-rate and migrates the page + cashflow summary/intelligence + CFO scenarios + AI debt-analysis + portfolio snapshot (totalAnnualExpenses). RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED."
     },
     {
       "id": "MON-083",
@@ -2394,9 +2395,9 @@
       "fixPRs": [
         "#1440"
       ],
-      "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B2: stored frequency on a one-off is inert - run-rate is 0 regardless)",
+      "test": "tests/golden/ring2.calcSsotWall.test.ts#Wall B2: stored frequency on a one-off is inert - run-rate is 0 regardless",
       "tracker": "calc-ssot-wall",
-      "notes": "Calc-SSOT Wall Mechanism C (docs/architecture/CALC_SSOT_WALL.md): Reza's battery screenshot - recurring unchecked, Frequency = Monthly. Belt-and-braces with MON-082: the stored frequency is made inert by the monthlyRunRate gate (calculation side) AND the form no longer presents a cadence for one-offs (form side). Existing rows keep their stored frequency (no blind backfill - MON-053 lesson); it is display/calc-inert."
+      "notes": "Calc-SSOT Wall Mechanism C (docs/architecture/CALC_SSOT_WALL.md): Reza's battery screenshot - recurring unchecked, Frequency = Monthly. Belt-and-braces with MON-082: the stored frequency is made inert by the monthlyRunRate gate (calculation side) AND the form no longer presents a cadence for one-offs (form side). Existing rows keep their stored frequency (no blind backfill - MON-053 lesson); it is display/calc-inert. VR-013: consumption verified (one-offs counted once) but the FORM check — that unticking recurring stops persisting/presenting frequency=MONTHLY — was NOT yet verified by the Matrix; stays FIXING pending that form check."
     },
     {
       "id": "MON-084",
@@ -2449,7 +2450,7 @@
     {
       "id": "MON-086",
       "title": "Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again)",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2476,9 +2477,9 @@
       "fixPRs": [
         "#1440"
       ],
-      "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded)",
+      "test": "tests/golden/ring2.calcSsotWall.test.ts#Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded",
       "tracker": "calc-ssot-wall",
-      "notes": "Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too."
+      "notes": "Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too. RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED."
     }
   ]
 }

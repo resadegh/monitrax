@@ -2553,7 +2553,7 @@
       "kind": "orchestrator",
       "label": "Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)",
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 521,
+      "line": 522,
       "layer": "route",
       "domain": "intelligence",
       "trailStage": null,
@@ -6269,6 +6269,40 @@
       "workedExample": "one-off 11,385 MONTHLY → 0/mo (not 136,620/yr); recurring 2,400 ANNUAL → 200/mo",
       "verifiedDate": "2026-07-17",
       "status": "documented"
+    },
+    {
+      "id": "orchestrator.loanCosts.resolveLoanCostsForUser",
+      "kind": "orchestrator",
+      "label": "Per-loan cost feed (actuals window)",
+      "file": "lib/services/loanCosts.ts",
+      "line": 45,
+      "layer": "service",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "THE transaction feed for loan costs outside the property engine (VR-013/MON-081): batch-fetches each loan's linked repayments over the ONE canonical trailing-12-month window (propertyActualsWindowStart) and resolves each loan through the canonical resolveLoanMonthlyCost — so /api/loans (expenses page + loan detail dialog), cashflow summary/intelligence, CFO scenarios, debt-analysis and the portfolio snapshot read the SAME actuals-first number as the property engine. Same producer + same inputs = one number (the F2 same-engine-different-inputs failure class).",
+      "formula": "per loan: tx = linked repayments where date >= now − 12 months; resolveLoanMonthlyCost(loan, tx). totalLoanMonthlyCost = Σ monthly.",
+      "authority": "CLAUDE.md §12.2.1 / §19.1 actuals-first; MON-035 DECISION 2 (the one trailing-12-month window); MATRIX_FIX_DISCIPLINE.md gate 1; VR-013 (Ring-3 FAIL this fixes).",
+      "inputs": [
+        {
+          "name": "UnifiedTransaction.loanId/date/amount",
+          "unit": "AUD",
+          "type": "row",
+          "note": "linked repayments, in-window"
+        },
+        {
+          "name": "Loan.principal/interestRateAnnual/minRepayment/repaymentFrequency",
+          "unit": "mixed",
+          "type": "row",
+          "note": "declared→floor fallback"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/golden/ring2.calcSsotWall.test.ts (VR-013: Broadbeach 228,000 @ 6.69% + repayments 1,131/1,295 → 1,190.97 actuals not the 1,271.10 floor; trailing-12mo window keeps prior-FY repayments)",
+      "workedExample": "228,000 × 0.0669 / 12 = 1,271.10 floor; linked 1,131 + 1,295 over 31d → (2,426/62)×30.4375 = 1,190.97/mo actuals — actuals win",
+      "verifiedDate": "2026-07-17",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -9522,6 +9556,26 @@
       "fromUnit": "AUD/period",
       "toUnit": "AUD/month",
       "evidence": "frequencies.ts:45 one-off gate then toMonthly",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "input.UnifiedTransaction",
+      "to": "orchestrator.loanCosts.resolveLoanCostsForUser",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD/month",
+      "evidence": "loanCosts.ts:47 in-window linked repayments per loan",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "orchestrator.loanCosts.resolveLoanCostsForUser",
+      "to": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD/month",
+      "evidence": "loanCosts.ts resolveLoanMonthlyCost(l, byLoan.get(l.id)) — the feed delegates all math to the canonical engine",
       "verifiedDate": "2026-07-17"
     }
   ]

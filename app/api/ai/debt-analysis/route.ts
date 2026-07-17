@@ -21,7 +21,7 @@ import {
 } from '@/lib/ai/google';
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
-import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
+import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 import { buildEngineProjections, toLoanInputs } from '@/lib/neobrain/debtProjections';
 
 // =============================================================================
@@ -192,8 +192,10 @@ export const POST = withPermission('report.read', async (request, auth) => {
       ? budgetAnalysis.userFinalBudget!
       : trackedExpenses;
     const monthlySurplus = monthlyNetIncome - monthlyExpenses;
-    // Calc-SSOT Wall B1: the ONE resolved per-loan cost — interest-only never $0.
-    const totalLoanRepayments = loans.reduce((sum: number, l: typeof loans[0]) => sum + resolveLoanMonthlyCost(l).monthly, 0);
+    // Calc-SSOT Wall B1 + VR-013 F1/F2: the ONE resolved per-loan cost,
+    // ACTUALS-FIRST (linked repayments over the canonical trailing-12-month
+    // window) — same number as the property engine; floor only when unlinked.
+    const totalLoanRepayments = await totalLoanMonthlyCost(userId, loans);
     const totalDebt = loans.reduce((sum: number, l: typeof loans[0]) => sum + l.principal, 0);
     const totalOffsetBalance = loans.reduce((sum: number, l: typeof loans[0]) => sum + (l.offsetAccount?.currentBalance || 0), 0);
     const cashBalance = accounts.reduce((sum: number, a: typeof accounts[0]) => sum + a.currentBalance, 0);

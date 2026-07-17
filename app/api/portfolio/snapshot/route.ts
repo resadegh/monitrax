@@ -19,7 +19,8 @@ import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 // MON-014: per-property cashflow reads the ONE canonical engine (same as the
 // master snapshot + property pages) so the Home tiles never show gross rent in
 // place of cashflow when a loan lacks minRepayment.
-import { computePropertyCashflow, resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
+import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 // MON-035/036: the ONE canonical per-property actuals assembler — shared with the
 // property detail page, the Properties list, and the CFO Risk Radar so the Home
 // dashboard tile can never drift to its own inline producer (§12.2.1).
@@ -681,16 +682,19 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
       const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + annualRunRate({ amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring }), 0);
-      // Calc-SSOT Wall B1: the ONE resolved per-loan cost × 12 — interest-only
-      // loans carry their interest, never $0.
-      const totalAnnualLoanRepayments = loans.reduce((sum: number, l: any) => {
-        return sum + resolveLoanMonthlyCost({
+      // Calc-SSOT Wall B1 + VR-013 F1/F2: the ONE resolved per-loan cost × 12,
+      // ACTUALS-FIRST — fed linked repayments over the canonical trailing-12-
+      // month window (lib/services/loanCosts.ts); floor only when unlinked.
+      const totalAnnualLoanRepayments = (await totalLoanMonthlyCost(
+        userId,
+        loans.map((l: any) => ({
+          id: l.id,
           principal: Number(l.principal ?? 0),
           interestRateAnnual: Number(l.interestRateAnnual ?? 0),
           minRepayment: Number(l.minRepayment ?? 0),
           repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
-        }).monthly * 12;
-      }, 0);
+        })),
+      )) * 12;
       // Use NET income for cashflow (what's actually available to spend)
       // Cashflow = Income - Expenses - Loan Repayments
       const monthlyNetCashflow = (totalAnnualNetIncome - totalAnnualExpenses - totalAnnualLoanRepayments) / 12;

@@ -83,3 +83,35 @@ The ratchet verifies: the interest floor + cadence normalisation + engine≡stan
 
 ### Build Status
 - [x] tsc clean · [x] `lint:financial-surfaces` green (34 grandfathered) · [x] `lint:source-lock` green (84 tracked) · [x] `neomatrix:check` green (270 nodes) · [x] `issues:check` green (86) · [x] targeted vitest green (Wall 9/9, golden+calculations 379/379, source-lock 14/14) · [ ] full suite (running) · [ ] `npm run build` (pre-push)
+
+---
+
+## Session: vr013-loan-cost-actuals-first (Code · Fable 5)
+
+### Changes Made
+- **Type**: Fix (financial correctness — cross-surface Ring-3 FAIL handback)
+- **Scope**: MON-081 (VR-013 F1+F2) — loan cost actuals-first on every surface; VR-013 registry verdicts applied.
+- **Root Cause** (verified §19.2): the #1440-migrated surfaces called `resolveLoanMonthlyCost` with NO transactions (same-engine-different-inputs, FIX_PROTOCOL §1 F2). Property path fed linked repayments → $1,191 actuals; expenses/overview/cashflow/CFO/snapshot fell to the floor → $1,271. NOT an FY filter in the resolver (verified — the FY-scoped "Interest this FY" card is a separate labelled metric feeding nothing).
+- **Solution** (ACTUALS-FIRST per Reza 2026-07-17): new `lib/services/loanCosts.ts` — THE transaction feed (linked repayments over the ONE `propertyActualsWindowStart()` trailing-12-month window → the canonical resolver). Fed into: `/api/loans` (attaches `resolvedCost`; expenses page + LoanDetailDialog read it — client fallback only while loading), cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. Overview card headlines the actuals-first monthly with basis label ("from linked repayments" / "declared repayment" / "interest floor (no repayment linked or set)"); balance×rate relabelled "contractual estimate". Expenses caption never claims "no repayment set" when repayments are linked.
+
+### §19.2 evidence (executed — tests/golden/ring2.calcSsotWall.test.ts VR-013 describe, 13/13 green)
+Broadbeach: 228,000 × 0.0669 / 12 = **1,271.10 floor**; linked repayments 1,131 (18 May) + 1,295 (18 Jun) → (2,426/62)×30.4375 = **1,190.97/mo actuals** — actuals win, `usedActuals=true`, floor stays as `monthlyInterest` reference. Window check: `propertyActualsWindowStart(2026-07-17)` = 2025-07-17 keeps both prior-FY repayments (an FY filter would keep 0 → the VR-013 divergence). Engine≡standalone identity with the same transactions.
+
+### Files Modified
+- `lib/services/loanCosts.ts` (NEW) — the feed service (`resolveLoanCostsForUser`, `totalLoanMonthlyCost`)
+- `app/api/loans/route.ts` — attaches `resolvedCost` per loan (+ annotated feed line)
+- `app/dashboard/expenses/page.tsx` — reads `resolvedCost`; basis-aware caption
+- `components/loans/LoanDetailDialog.tsx` — "Monthly Loan Cost" card: actuals-first headline + basis + "contractual estimate" secondary
+- `app/api/{cashflow/summary,cashflow/intelligence,cfo/scenarios/run,cfo/scenarios/context,ai/debt-analysis,portfolio/snapshot}/route.ts` — fed via the service
+- `tests/golden/ring2.calcSsotWall.test.ts` — VR-013 ratchet (4 tests)
+- `.audit/source-lock-exceptions.json` — ratcheted DOWN 84→80 (4 paid-down reduces); 1 annotated feed line
+- `.audit/financial-math-baseline.json` — 2 line-shift re-pins (464, 904)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — `orchestrator.loanCosts.resolveLoanCostsForUser` modelled (+2 edges); portfolioSnapshot.GET anchor re-pinned; `structural/coverage-allowlist.json` += loanCosts.ts (graphify CLI offline — self-prune note)
+- `docs/issues/ISSUES.json`/`.md` — MON-079/080/082/086 → VERIFIED (VR-013 PASS); MON-081 FIXING + VR-013 FAIL note + secondary-A folded; MON-083 FIXING + form-check note; test fields normalised to `path#fragment`
+- `docs/verification/runs/VR-013.md` (NEW)
+
+### Coverage (precise — §22.2.4)
+Verifies: the actuals-vs-floor resolution on the exact Broadbeach vectors, the trailing-12-month (not FY) window semantics, engine≡standalone identity, source-lock ratchet-down. Does NOT verify: the rendered surfaces on live data (the Matrix re-runs the cross-surface Ring-3 after Reza merges — MON-081 stays FIXING until then), the prisma fetch inside `loanCosts.ts` (allowlisted from Layer-0; exercised only via the routes), master's declared-plan aggregates (`calculateCashflow`/`aggregateLoanRepayments` — a documented declared-basis producer, ratchet-queue candidate), or F3/secondary-C (separate PR).
+
+### Build Status
+- [x] tsc clean · [x] lint:financial-surfaces green (34 grandfathered) · [x] lint:source-lock green (80 tracked — DOWN from 84) · [x] neomatrix:check green (271 nodes) · [x] issues:check green (86) · [x] golden+calculations+lint suites 472/472 · [ ] full suite + build (pre-push)
