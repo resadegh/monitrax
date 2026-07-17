@@ -1652,24 +1652,36 @@ function ExpensesPageContent() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="frequency">Frequency</Label>
-              <Select
-                value={formData.frequency}
-                onValueChange={(value) => setFormData({ ...formData, frequency: value as Expense['frequency'] })}
-              >
-                <SelectTrigger id="frequency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="WEEKLY">Weekly</SelectItem>
-                  <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                  <SelectItem value="ANNUAL">Annually</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Calc-SSOT Wall Mechanism C: a one-off has no cadence — the
+                frequency picker only applies to recurring expenses. One-offs
+                are a single occurrence everywhere (monthlyRunRate → 0). */}
+            {formData.isRecurring ? (
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frequency</Label>
+                <Select
+                  value={formData.frequency}
+                  onValueChange={(value) => setFormData({ ...formData, frequency: value as Expense['frequency'] })}
+                >
+                  <SelectTrigger id="frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                    <SelectItem value="ANNUAL">Annually</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Frequency</Label>
+                <p className="rounded-[14px] border border-foreground/10 bg-background/50 px-3 py-2 text-sm text-muted-foreground">
+                  One-off — counted once, on the date it happens
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="flex items-center space-x-2">

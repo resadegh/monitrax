@@ -43,6 +43,8 @@ When the user asks for a feature, plan, redesign, or review, you are **expected*
 ### 0.4 Reference triggers
 
 > **Note:** A project-level Agent Skill at `.claude/skills/architect-mode/SKILL.md` codifies an extended six-lens version of this advisory mindset (adds **Visual Designer** + **Growth & Marketing Strategist**, plus the **One Clear Action principle** and stage-gated feature exposure language) and auto-triggers on substantive Monitrax product decisions. The skill is explicitly subordinated to this CLAUDE.md — when they disagree, CLAUDE.md wins.
+>
+> **Fix-work binding law (Reza directive 2026-07-17):** every FIX additionally runs through `docs/architecture/MATRIX_FIX_DISCIPLINE.md` — four clauses (non-regressing · SSOT-preserving · cumulative · **holistic before fixing**: the full producer/consumer map + a four-lens read exists BEFORE any fix code). The architect lens is where clause 4's holistic audit lives; a fix scoped to one reported symptom while a sibling surface computes the same value differently fails this lens by definition.
 
 Specific surfaces in this codebase where each lens dominates the right answer — used as a check when you're not sure which lens to lead with:
 
@@ -720,6 +722,7 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 **How to detect a duplicate source (use in audits + reviews):**
 - **Neomatrix A3 convergence:** two surfaces with the same `semanticKey` that trace to **different** engines = a duplicate source = build failure. Model every money surface with its `semanticKey` so this fires automatically (§21.2).
 - **`scripts/lint-financial-surfaces.ts`:** Pattern 4 (`DECLARED_CASHFLOW_SOURCE`) + the frequency/arithmetic/constant patterns flag surfaces that re-derive instead of reading the canonical source.
+- **`scripts/lint-source-lock.ts` (`npm run lint:source-lock` — Calc-SSOT Wall A1, in `vercel-build`):** fails CI when any `app/**/page.tsx` or API route reads RAW rows instead of a canonical producer — inline `toMonthly/toAnnual(row.amount, row.frequency)` (bypasses the one-off gate → use `monthlyRunRate()`/`annualRunRate()`), raw `loan.minRepayment` cost reads (interest-only reads as $0 → use `resolveLoanMonthlyCost()`), or `.reduce`-sums over raw income/expense/loan arrays. Exceptions live in `.audit/source-lock-exceptions.json` as `{file, pattern, count}` and are **RATCHET-DOWN-ONLY**: fixing a bypass REQUIRES decrementing the count in the same PR (the lint fails on a stale count); adding debt requires reseed + explicit Reza sign-off. This is the machine enforcement of `docs/architecture/MATRIX_FIX_DISCIPLINE.md` gates 2–3.
 - **`grep` for the formula shape** (`assets - liabilities`, `* 12`, `/ 12`, `net / income * 100`) across `app/` + `components/` — each hit is a candidate duplicate of a canonical engine.
 
 **Reviewer enforcement (human or future-Claude):** reject any PR that (a) introduces a second producer of an existing number/formula, (b) re-implements a calculation that already exists in `lib/`, or (c) adds a surface that re-derives a money figure instead of reading the canonical source. "It's correct" is not a defense — duplication is the defect. When in doubt, the reviewer searches for the existing source themselves before approving.
@@ -2176,6 +2179,8 @@ This makes the §20 self-review/scoring gate a **per-task ritual** and ties it t
 `Gate (§20.6): Document X/10 (doc: <name+section>) · Requirements X/10 · Logic X/10` + one line on what the review changed and the honest coverage boundary. A bare "looks good" is not a review.
 
 **< 10/10 on ANY axis → STOP.** Fix it to an honest 10/10, or surface the specific gap to Reza (§20.5 counterweight). Never present a sub-10 change as ready. This binds even under the §20.5 autonomy grant: autonomy lets you proceed *without asking permission*, it never lets you skip THIS gate.
+
+**FIX PRs additionally score against the MATRIX_FIX_DISCIPLINE checklist (Reza directive 2026-07-17).** For any PR that fixes a money/cashflow/tax/loan/income/expense value, the Logic 10/10 REQUIRES the five-item pre-PR checklist from `docs/architecture/MATRIX_FIX_DISCIPLINE.md` (mirrored in `.github/pull_request_template.md`): (1) holistic end-to-end producer/consumer map done FIRST + four-lens read; (2) the change is at the canonical producer, bypassing surfaces migrated in the same PR; (3) `lint:financial-surfaces` + `lint:source-lock` pass with no exception-count rise; (4) cross-surface Ring-3 — the value reads identically on EVERY surface it appears (tax-only or single-surface verification is a FAIL); (5) no new producer, no new duplicate record, no closed issue re-opened. A fix PR missing any item is sub-10 by definition.
 
 **Where "always" is enforced (so Reza never repeats this again):** the rule text lives HERE (CLAUDE.md — the single canonical source, loaded every session). The mechanical enforcement is the project skill `.claude/skills/pr-prep-checklist/SKILL.md`, which auto-triggers on every PR-preparation cue and MUST refuse to call the create-PR tool until this §20.6 tri-axis 10/10 is recorded. CLAUDE.md is the law; the skill is the gate that fires every time.
 
