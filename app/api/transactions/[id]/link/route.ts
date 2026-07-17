@@ -12,14 +12,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
-import { sameMerchant } from '@/lib/bank/merchantNormalize';
-import { isNearDuplicateEntry } from '@/lib/utils/reconciliation';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
+import { detectFrequency } from '@/lib/utils/reconciliation';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
 import { applyCategoryToSimilarUnified } from '@/lib/bookkeeping/applyToSimilarUnified';
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
+import { buildManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
@@ -141,6 +142,9 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
 
           let targetName = '';
           let targetCategory = '';
+          // Phase 59: the linked MANAGED rental stream (drives the
+          // suggest-and-confirm card in the response, spec §3/§8).
+          let linkedRentalStream: Awaited<ReturnType<typeof prisma.income.findFirst>> = null;
 
           // Verify target exists and belongs to user
           if (body.type === 'income') {
@@ -155,6 +159,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
             targetName = income.name;
             targetCategory = income.type; // SALARY, RENT, RENTAL, INVESTMENT, OTHER
+            linkedRentalStream = income;
 
             // Optionally update the income amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
@@ -321,11 +326,23 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             });
           }
 
+          // Phase 59: a disbursement linked to a MANAGED rental stream may
+          // reconcile below the declared gross — build the suggest-and-confirm
+          // card payload (null = nothing fires; never breaks the link flow).
+          const managedRental = linkedRentalStream
+            ? await buildManagedRentalSuggestion({
+                userId,
+                income: linkedRentalStream,
+                transaction,
+              })
+            : null;
+
           return NextResponse.json({
             success: true,
             transaction: updated,
             batchCount,
             autoApplied,
+            managedRental,
             message: batchCount > 0
               ? `Linked ${batchCount + 1} transactions to ${targetName}`
               : (body.updateAmount
@@ -344,13 +361,38 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
           }
 
           const name = body.name || transaction.merchantStandardised || transaction.description;
-          const frequency = body.frequency || 'MONTHLY';
+          // MON-078: no silent-MONTHLY literal here — the declared cadence
+          // passes into the ONE intake classifier per branch below.
+          const declaredFrequency = body.frequency ?? null;
+
+          // C1 (MON-001): cadence EVIDENCE — the dates of every transaction
+          // being linked in this call (primary + batch). With ≥2 the
+          // classifier derives the true cadence itself (weekly stays WEEKLY),
+          // instead of falling back to monthly when no cadence was declared.
+          const evidenceTxs = body.additionalTransactionIds?.length
+            ? await prisma.unifiedTransaction.findMany({
+                where: { id: { in: body.additionalTransactionIds }, userId },
+                select: { date: true },
+              })
+            : [];
+          const evidenceDates: Date[] = [transaction.date, ...evidenceTxs.map((t: { date: Date }) => t.date)];
 
           if (body.type === 'income') {
             // Create new Income entry with source type support
             type IncomeTypeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 
             const ownerEntityId = await getDefaultLegalEntityId(userId);
+
+            // MON-078: frequency + recurrence via the ONE intake classifier
+            // (MON-053: the dialog sends an explicit one-off/recurring choice;
+            // the server never silently ×12s a lone deposit).
+            const incomeIntake = classifyIntake({
+              kind: 'income',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency,
+              transactionDates: evidenceDates, // C1 (MON-001)
+              declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
+            });
             const incomeData: {
               userId: string;
               ownerEntityId: string;
@@ -370,10 +412,8 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               name,
               type: (body.category as IncomeTypeType) || 'OTHER',
               amount: transaction.amount,
-              frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
-              // MON-053: a single linked deposit is a one-off unless the client
-              // says otherwise — never let the MONTHLY default silently ×12 it.
-              isRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : true,
+              frequency: incomeIntake.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+              isRecurring: incomeIntake.isRecurring,
             };
 
             // If custom category is provided, add it and validate ownership
@@ -411,13 +451,25 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // cashflow engine resolves the true cadence from the pooled
             // transaction dates, so one stream stays one record.
             const isRentalIncome = incomeData.type === 'RENT' || incomeData.type === 'RENTAL';
-            const existingRentalStream =
+            const rentalScopeRows =
               isRentalIncome && incomeData.propertyId
-                ? await prisma.income.findFirst({
+                ? await prisma.income.findMany({
                     where: { userId, propertyId: incomeData.propertyId, type: { in: ['RENT', 'RENTAL'] } },
                     orderBy: { createdAt: 'asc' },
                   })
-                : null;
+                : [];
+            // MON-078: stream reuse decided by the ONE classifier — the
+            // property's rental scope admits ONE stream (scope-singleton).
+            const rentalMatch = classifyIntake({
+              kind: 'income',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency: incomeIntake.frequency,
+              streamPolicy: 'scope-singleton',
+              existingRows: rentalScopeRows.map((r: any) => ({ id: r.id, name: r.name, amount: r.amount })),
+            }).streamMatch;
+            const existingRentalStream = rentalMatch
+              ? rentalScopeRows.find((r: any) => r.id === rentalMatch.id) ?? null
+              : null;
 
             const income = existingRentalStream ?? (await prisma.income.create({ data: incomeData }));
 
@@ -511,11 +563,20 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               });
             }
 
+            // Phase 59: when the (reused) stream is a MANAGED rental, the
+            // just-linked disbursement may reconcile below the declared gross.
+            const managedRental = await buildManagedRentalSuggestion({
+              userId,
+              income,
+              transaction,
+            });
+
             return NextResponse.json({
               success: true,
               created: { type: 'income', id: income.id, name: income.name },
               batchCount,
               autoApplied: incomeAutoApplied,
+              managedRental,
               message: batchCount > 0
                 ? `Categorized ${batchCount + 1} transactions as ${income.name}`
                 : 'New income created and linked',
@@ -549,7 +610,14 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               vendorName: transaction.merchantStandardised,
               category: (body.category as ExpenseCategoryType) || 'OTHER',
               amount: transaction.amount,
-              frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+              // MON-078: cadence via the ONE intake classifier (declared wins;
+              // legacy fallback lives in the classifier until C1).
+              frequency: classifyIntake({
+                kind: 'expense',
+                source: 'TRANSACTION_LINK',
+                declaredFrequency,
+                transactionDates: evidenceDates, // C1 (MON-001)
+              }).frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
             };
 
             // If custom category is provided, add it and validate ownership
@@ -589,8 +657,15 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             if (body.isTaxDeductible !== undefined) {
               expenseData.isTaxDeductible = body.isTaxDeductible;
             }
-            // Set isRecurring based on the checkbox - defaults to false for one-off/discretionary
-            expenseData.isRecurring = body.isRecurring ?? false;
+            // MON-078: recurrence via the ONE intake classifier (the dialog's
+            // checkbox is the explicit choice; expense-side default = one-off).
+            expenseData.isRecurring = classifyIntake({
+              kind: 'expense',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency,
+              transactionDates: evidenceDates, // C1 (MON-001)
+              declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
+            }).isRecurring;
 
             // MON-011: don't duplicate an expense on re-reconcile. If an expense
             // with the same name + linking scope already exists (e.g. an orphan
@@ -612,20 +687,25 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               },
               orderBy: { createdAt: 'asc' },
             });
-            // MON-037 RC-B: exact (normalised) name match first — then the
+            // MON-037 RC-B → MON-078: stream reuse via the ONE classifier's
+            // merchant policy — exact (normalised) name match first, then the
             // canonical near-duplicate check (token-containment + ≤10% amount:
             // "Battery" vs "Battery System"/"Battery Replacement"), so an
             // ACTUAL being linked reconciles INTO the existing estimate row
             // instead of minting a same-cost sibling under a name variant.
-            const existingExpense =
-              scopeExpenses.find((e) => sameMerchant(e.name, expenseData.name)) ??
-              scopeExpenses.find((e) =>
-                isNearDuplicateEntry(
-                  { name: expenseData.name, vendorName: expenseData.vendorName, amount: expenseData.amount },
-                  { name: e.name, vendorName: e.vendorName, amount: e.amount },
-                ),
-              ) ??
-              null;
+            const expenseMatch = classifyIntake({
+              kind: 'expense',
+              source: 'TRANSACTION_LINK',
+              declaredFrequency,
+              streamPolicy: 'merchant',
+              candidate: { name: expenseData.name, vendorName: expenseData.vendorName, amount: expenseData.amount },
+              existingRows: scopeExpenses.map((e: any) => ({
+                id: e.id, name: e.name, vendorName: e.vendorName, amount: e.amount,
+              })),
+            }).streamMatch;
+            const existingExpense = expenseMatch
+              ? scopeExpenses.find((e: any) => e.id === expenseMatch.id) ?? null
+              : null;
 
             const expense = existingExpense ?? (await prisma.expense.create({ data: expenseData }));
 
@@ -1531,13 +1611,9 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
             const amounts = sortedTxs.map(t => t.amount);
             const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
 
-            // Detect frequency from interval
-            let detectedFrequency = 'MONTHLY';
-            if (avgInterval <= 10) detectedFrequency = 'WEEKLY';
-            else if (avgInterval <= 20) detectedFrequency = 'FORTNIGHTLY';
-            else if (avgInterval <= 45) detectedFrequency = 'MONTHLY';
-            else if (avgInterval <= 120) detectedFrequency = 'QUARTERLY';
-            else detectedFrequency = 'ANNUAL';
+            // C1 (MON-001): cadence via the ONE canonical detector — this
+            // inline block was a duplicate producer with identical thresholds.
+            const detectedFrequency = detectFrequency(sortedDates).frequency;
 
             // Calculate TRUE monthly average based on payment timing
             // ADVANCE payments (rent): exclude last payment (covers future period)

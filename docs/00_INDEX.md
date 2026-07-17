@@ -96,6 +96,7 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md](blueprint/PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md) | Loan ledger + repayment matching + interest/principal tax split (51.1 ✅ shipped); Repayments tab | ACTIVE |
 | [PHASE_52_SHARED_CATEGORISATION_KB.md](blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md) | De-identified cross-user categorisation KB (RAG) — engine live + seeded; 52.5b embeddings + 52.5c UI remain. Ops: runbook 14; compliance: `policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md` | ACTIVE |
 | [PHASE_53_MONITRAX_NEOMATRIX.md](blueprint/PHASE_53_MONITRAX_NEOMATRIX.md) | **Neomatrix** — financial-logic knowledge graph (`docs/financial-logic/graph/`). Modelled + 100% audited (27 engines, 0 suspected-issues, all 6 domains); **N2 3D explorer SHIPPED** at `/admin/neomatrix` (admin-only dev tool); graph connected (§16). §0 as-built · §15 explorer · §16 connectivity | ACTIVE |
+| [PHASE_59_MANAGED_RENTAL_INCOME.md](blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md) | **Managed Rental Income & Agent-Cost Reconciliation** — gross-income integrity for agent-managed rentals (net disbursement ≠ gross rent); statement-first / reconciliation-fallback + suggest-and-confirm; applies to Neomatrix (Model step), NeoBrain (statement parser), NeoAudit (D4 rent-gap detector). Issue MON-079; build sequence §9 | ACTIVE |
 | PHASE_01 through PHASE_31 | Pre-B2B2C phase specifications (~47 files) | Various |
 | PHASE_E_GCP_SERVICE_ENABLEMENT.md | GCP service enablement plan | ACTIVE |
 

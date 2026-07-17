@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ManagedRentalReconcileCard } from '@/components/transactions/ManagedRentalReconcileCard';
+import type { ManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -96,6 +98,10 @@ interface Income {
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
+  // Phase 59: managed rentals — amount/frequency stay the DECLARED GROSS;
+  // MANAGED = an agent disburses the net (gap reconciles to deductions).
+  rentalMode?: 'DIRECT' | 'MANAGED';
+  managingAgentName?: string | null;
   property?: Property | null;
   investmentAccount?: InvestmentAccount | null;
   // Phase 20 Salary fields
@@ -121,6 +127,21 @@ interface Income {
   transactionCount?: number;          // Total number of linked transactions
   currentMonthTransactionCount?: number; // Transactions this month only
   hasTransactions?: boolean;          // Whether any transactions are linked
+  // D2 (MON-001): stored cadence disagrees with the cadence the row's own
+  // transactions imply — a review nudge, nothing auto-changes.
+  cadenceMismatch?: { stored: string; implied: string; confidence: number; transactionCount: number } | null;
+  // D1 (MON-075): a "recurring" row whose whole evidence is one transaction
+  // with $0 this month — likely a one-off; review nudge only.
+  oneOffFingerprint?: { transactionCount: number } | null;
+  // D4 (Phase 59): rental deposits materially below declared gross with no
+  // agent-cost expense captured — likely missing deductions; nudge only.
+  rentGap?: {
+    grossPerPeriod: number;
+    netPerPeriod: number;
+    gapPerPeriod: number;
+    gapAnnual: number;
+    disbursementFrequency: string;
+  } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -142,6 +163,9 @@ type IncomeFormData = {
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
+  // Phase 59: managed rentals
+  rentalMode: 'DIRECT' | 'MANAGED';
+  managingAgentName: string;
   // Phase 20 fields
   salaryType: 'GROSS' | 'NET' | null;
   payFrequency: string | null;
@@ -177,6 +201,8 @@ function IncomePageContent() {
     isTaxable: true,
     propertyId: null,
     investmentAccountId: null,
+    rentalMode: 'DIRECT', // Phase 59
+    managingAgentName: '',
     salaryType: 'GROSS',
     payFrequency: null,
     salarySacrifice: null,
@@ -195,6 +221,13 @@ function IncomePageContent() {
   const [filteredIncome, setFilteredIncome] = useState<Income[]>([]);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+
+  // MON-080: the managed-rental suggest-and-confirm card, opened (a) by the
+  // PUT response when a stream transitions to MANAGED (D1 retroactive) and
+  // (b) by the nudge-chip claim button. Plus the submit error surface for
+  // the D2 GROSS_REQUIRED gate (the form previously swallowed errors).
+  const [reconcileSuggestion, setReconcileSuggestion] = useState<ManagedRentalSuggestion | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Variance to Expense state
   const [showVarianceExpenseDialog, setShowVarianceExpenseDialog] = useState(false);
@@ -461,6 +494,7 @@ function IncomePageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null); // MON-080: fresh attempt, fresh slate
     const url = editingId ? `/api/income/${editingId}` : '/api/income';
     const method = editingId ? 'PUT' : 'POST';
 
@@ -476,6 +510,16 @@ function IncomePageContent() {
       propertyId: formData.sourceType === 'PROPERTY' ? formData.propertyId : null,
       investmentAccountId: formData.sourceType === 'INVESTMENT' ? formData.investmentAccountId : null,
     };
+
+    // Phase 59: managed rentals — only meaningful on rental streams; the
+    // server also guards (MANAGED on a non-rental type stores DIRECT).
+    if (formData.type === 'RENT' || formData.type === 'RENTAL') {
+      submitData.rentalMode = formData.rentalMode;
+      submitData.managingAgentName =
+        formData.rentalMode === 'MANAGED' && formData.managingAgentName.trim()
+          ? formData.managingAgentName.trim()
+          : null;
+    }
 
     // Add salary-specific fields
     if (formData.type === 'SALARY') {
@@ -512,7 +556,19 @@ function IncomePageContent() {
         body: JSON.stringify(submitData),
       });
 
-      if (response.ok) {
+      if (!response.ok) {
+        // MON-080 D2: the gross-integrity gate (422 GROSS_REQUIRED) and any
+        // other server rejection surface INSIDE the dialog — never a silent
+        // swallow. The amount field stays pre-filled (confirm-or-correct).
+        const data = await response.json().catch(() => ({}));
+        setSubmitError(
+          data.error ||
+            'Could not save this income — please check the details and try again.',
+        );
+        return;
+      }
+
+      {
         const result = await response.json();
         const savedIncomeId = result.data?.id || result.id || editingId;
 
@@ -539,10 +595,39 @@ function IncomePageContent() {
         setShowDialog(false);
         setEditingId(null);
         resetForm();
+
+        // MON-080 D1: the stream just turned MANAGED and its already-linked
+        // deposits reconcile below the declared gross — offer the claim
+        // right here, no unlink/relink, no hunting.
+        if (result.managedRental) {
+          setReconcileSuggestion(result.managedRental);
+        }
       }
     } catch (error) {
       console.error('Error saving income:', error);
+      setSubmitError('Could not save this income — please try again.');
     }
+  };
+
+  // MON-080 D1: the nudge-chip claim path — fetch the retroactive suggestion
+  // for this stream's already-linked deposits and open the card. When nothing
+  // fires (not managed yet / nothing material / already captured), open the
+  // Edit dialog instead — marking it MANAGED there triggers the same card.
+  const handleClaimRentGap = async (item: Income) => {
+    try {
+      const response = await fetch(
+        `/api/rental-reconciliation?incomeStreamId=${encodeURIComponent(item.id)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await response.json();
+      if (response.ok && data.managedRental) {
+        setReconcileSuggestion(data.managedRental);
+        return;
+      }
+    } catch (error) {
+      console.error('Error building rent-gap suggestion:', error);
+    }
+    handleEdit(item);
   };
 
   const resetForm = () => {
@@ -556,6 +641,8 @@ function IncomePageContent() {
       isTaxable: true,
       propertyId: null,
       investmentAccountId: null,
+      rentalMode: 'DIRECT', // Phase 59
+      managingAgentName: '',
       salaryType: 'GROSS',
       payFrequency: null,
       salarySacrifice: null,
@@ -564,6 +651,7 @@ function IncomePageContent() {
     setSalaryPreview(null);
     setAttachedDocumentId(null);
     setAutoFilledFields([]);
+    setSubmitError(null); // MON-080
   };
 
   const handleEdit = (item: Income) => {
@@ -577,6 +665,8 @@ function IncomePageContent() {
       isTaxable: item.isTaxable,
       propertyId: item.propertyId,
       investmentAccountId: item.investmentAccountId,
+      rentalMode: item.rentalMode ?? 'DIRECT', // Phase 59
+      managingAgentName: item.managingAgentName ?? '',
       salaryType: item.salaryType || 'GROSS',
       payFrequency: item.payFrequency || null,
       salarySacrifice: item.salarySacrifice || null,
@@ -1060,6 +1150,45 @@ function IncomePageContent() {
                             {/* MON-053: cadence via the ONE label rule (MON-048) —
                                 a one-off reads "One-off", never its stored frequency. */}
                             <span className="capitalize">{activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}</span>
+                            {/* D2 (MON-001): gentle cadence nudge — the payments
+                                imply a different rhythm than the stored one. */}
+                            {item.cadenceMismatch && (
+                              <span
+                                className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                                title={`Your ${item.cadenceMismatch.transactionCount} linked payments arrive ${item.cadenceMismatch.implied.toLowerCase().replace('_', '-')} — this entry is set to ${item.cadenceMismatch.stored.toLowerCase()}. If ${item.cadenceMismatch.implied.toLowerCase()} is right, edit the entry so totals use the true rhythm.`}
+                              >
+                                Payments look {item.cadenceMismatch.implied.toLowerCase().replace('_', '-')}
+                              </span>
+                            )}
+                            {/* D1 (MON-075): the one-off fingerprint — a
+                                recurring entry backed by a single payment. */}
+                            {!item.cadenceMismatch && item.oneOffFingerprint && item.isRecurring !== false && (
+                              <span
+                                className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300"
+                                title="This recurring entry is backed by a single payment and nothing this month. If it was a one-time receipt, edit it and tick 'One-off income' so it isn't repeated in your totals."
+                              >
+                                Single payment — one-off?
+                              </span>
+                            )}
+                            {/* D4 (Phase 59): rent deposits run below the
+                                declared rent with no agent costs captured —
+                                likely missing deductions (a win to claim,
+                                so emerald). One status per row: D2/D1 win. */}
+                            {/* MON-080 D1: the chip is a CLICK-TO-CLAIM button
+                                (was a passive span with a tooltip dead end) —
+                                it opens the suggest-and-confirm card for the
+                                already-linked deposits, or the Edit dialog
+                                when the stream isn't managed yet. */}
+                            {!item.cadenceMismatch && !item.oneOffFingerprint && item.rentGap && (
+                              <button
+                                type="button"
+                                onClick={() => handleClaimRentGap(item)}
+                                className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 transition-colors hover:bg-emerald-500/20 dark:text-emerald-300"
+                                title={`Deposits arrive about ${formatCurrency(item.rentGap.gapPerPeriod)} below your declared rent each ${item.rentGap.disbursementFrequency.toLowerCase()} period — that gap is usually your agent's management & costs, which are tax-deductible. Click to review and claim.`}
+                              >
+                                Missing management-fee deductions? Claim →
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">
@@ -1547,6 +1676,58 @@ function IncomePageContent() {
               </div>
             </div>
 
+            {/* Phase 59: managed rentals — the declared amount stays the FULL
+                (gross) rent; MANAGED tells reconciliation that deposits arrive
+                net of the agent's costs (the gap becomes deductions). */}
+            {(formData.type === 'RENT' || formData.type === 'RENTAL') && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">How the rent arrives</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rentalMode">Payment path</Label>
+                      <Select
+                        value={formData.rentalMode}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, rentalMode: value as 'DIRECT' | 'MANAGED' })
+                        }
+                      >
+                        <SelectTrigger id="rentalMode">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DIRECT">Straight from the tenant</SelectItem>
+                          <SelectItem value="MANAGED">Through a property manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {formData.rentalMode === 'MANAGED'
+                          ? 'Enter the full rent above. Deposits arrive after your agent takes their costs out — Monitrax spots the difference when they reconcile, so you keep those deductions.'
+                          : 'The bank deposit is the full rent.'}
+                      </p>
+                    </div>
+                    {formData.rentalMode === 'MANAGED' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="managingAgentName">Managing agent (optional)</Label>
+                        <Input
+                          id="managingAgentName"
+                          value={formData.managingAgentName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, managingAgentName: e.target.value })
+                          }
+                          placeholder="e.g. Ray White Property Management"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Salary-specific fields */}
             {formData.type === 'SALARY' && (
               <>
@@ -1650,8 +1831,10 @@ function IncomePageContent() {
               </>
             )}
 
-            {/* Property Income Source */}
-            {formData.type === 'RENT' && (
+            {/* Property Income Source — MON-080 D2: RENTAL included (auto-
+                created streams are type RENTAL and previously had NO amount
+                field on Edit, so the true gross was unenterable). */}
+            {(formData.type === 'RENT' || formData.type === 'RENTAL') && (
               <>
                 <Separator />
                 <div className="space-y-2">
@@ -1685,17 +1868,31 @@ function IncomePageContent() {
                   )}
 
                   <div className="space-y-2 pt-2">
-                    <Label htmlFor="rentAmount">Weekly Rent Amount</Label>
+                    <Label htmlFor="rentAmount">
+                      {formData.rentalMode === 'MANAGED'
+                        ? 'Full Rent Amount (before agent fees)'
+                        : 'Rent Amount'}
+                    </Label>
                     <Input
                       id="rentAmount"
                       type="number"
                       value={formData.amount || ''}
-                      onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value), frequency: 'WEEKLY' })}
+                      // MON-080 D2: no longer forces frequency WEEKLY — the
+                      // Payment Frequency select above owns the cadence, and
+                      // clobbering a MONTHLY stream's cadence on an amount
+                      // edit corrupted the declared gross.
+                      onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                       placeholder="500"
                       min="0"
                       step="10"
                       required
                     />
+                    {formData.rentalMode === 'MANAGED' && (
+                      <p className="text-xs text-muted-foreground">
+                        What&apos;s the full rent before your agent&apos;s fees? Pre-filled with what
+                        you had — correct it if that&apos;s the payout amount your agent deposits.
+                      </p>
+                    )}
                   </div>
                 </div>
               </>
@@ -1845,6 +2042,15 @@ function IncomePageContent() {
               </p>
             )}
 
+            {/* MON-080 D2: server rejections (incl. the GROSS_REQUIRED gate)
+                surface here — the amount stays pre-filled (confirm-or-correct,
+                never a blank re-entry). */}
+            {submitError && (
+              <p className="rounded-[12px] border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                {submitError}
+              </p>
+            )}
+
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancel
@@ -1854,6 +2060,30 @@ function IncomePageContent() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MON-080: the managed-rental suggest-and-confirm card — fired by the
+          MANAGED transition (retroactive over already-linked deposits) or the
+          nudge-chip claim button. Confirming records the derived deduction
+          via the single locked producer. */}
+      <Dialog
+        open={!!reconcileSuggestion}
+        onOpenChange={(open) => !open && setReconcileSuggestion(null)}
+      >
+        <DialogContent className="max-w-md border-none bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Agent costs found — review and claim</DialogTitle>
+          {reconcileSuggestion && (
+            <ManagedRentalReconcileCard
+              suggestion={reconcileSuggestion}
+              token={token}
+              onResolved={async () => {
+                setReconcileSuggestion(null);
+                await loadIncome();
+              }}
+              onDismiss={() => setReconcileSuggestion(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

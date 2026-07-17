@@ -5,13 +5,15 @@ import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
+import { detectCadenceMismatch, detectOneOffFingerprint, detectRentGap } from '@/lib/intake/detectors';
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
       const userId = auth.userId;
 
       // Fetch income entries and linked transactions in parallel
-      const [income, linkedTransactions] = await Promise.all([
+      const [income, linkedTransactions, derivedExpenseLinks] = await Promise.all([
         prisma.income.findMany({
           where: { userId },
           include: { property: true, investmentAccount: true },
@@ -32,7 +34,17 @@ export const GET = withPermission('income.read', async (request, auth) => {
           },
           orderBy: { date: 'desc' },
         }),
+        // Phase 59 (D4): streams that already have a derived agent-cost
+        // expense — the rent-gap detector never nags a captured stream.
+        prisma.expense.findMany({
+          where: { userId, derived: true, derivedFromIncomeId: { not: null } },
+          select: { derivedFromIncomeId: true },
+        }),
       ]);
+
+      const streamsWithAgentCosts = new Set(
+        derivedExpenseLinks.map((e: { derivedFromIncomeId: string | null }) => e.derivedFromIncomeId),
+      );
 
       // Group transactions by incomeId and calculate totals
       // Also track current month vs all-time for display
@@ -141,6 +153,41 @@ export const GET = withPermission('income.read', async (request, auth) => {
           ...wrapped,
           // Budget = entry.amount (what user entered)
           budgetAmount: inc.amount,
+          // D2 (MON-001): flag when the STORED cadence disagrees with the
+          // cadence this row's own transactions imply (e.g. weekly rent
+          // stored MONTHLY → ~4.3× understated). Nudge only — the user
+          // reviews and edits; nothing is auto-changed.
+          cadenceMismatch: actuals
+            ? detectCadenceMismatch({
+                frequency: inc.frequency,
+                isRecurring: inc.isRecurring,
+                transactionDates: actuals.transactions.map((t) => t.date),
+              })
+            : null,
+          // D1 (MON-075): a "recurring" row whose whole evidence is ONE
+          // transaction with $0 this month — the one-off fingerprint
+          // (MON-053 class). Review nudge; the user decides.
+          oneOffFingerprint: actuals
+            ? detectOneOffFingerprint({
+                isRecurring: inc.isRecurring,
+                transactionCount: actuals.totalCount,
+                inWindowActual: actuals.currentMonthAmount,
+              })
+            : null,
+          // D4 (Phase 59 / MON-079): rental deposits materially below the
+          // declared gross with no agent-cost expense captured — "you may be
+          // missing management-fee deductions — upload your rental statement."
+          // Nudge only; the confirm flow records the deduction.
+          rentGap: actuals
+            ? detectRentGap({
+                incomeType: inc.type,
+                isRecurring: inc.isRecurring,
+                declaredAmount: inc.amount,
+                declaredFrequency: inc.frequency,
+                transactions: actuals.transactions,
+                hasAgentCostExpense: streamsWithAgentCosts.has(inc.id),
+              })
+            : null,
           // Actual = total from ALL linked transactions
           actualFromTransactions: actuals ? actuals.totalAmount : null,
           // Current month actual
@@ -180,6 +227,11 @@ export const POST = withPermission('income.write', async (request, auth) => {
         propertyId,
         investmentAccountId,
         sourceType,
+        // Phase 59: managed rentals — amount/frequency stay the DECLARED GROSS;
+        // MANAGED marks the stream as agent-disbursed (net credits reconcile
+        // against gross via reconcileManagedRental).
+        rentalMode,
+        managingAgentName,
         // Phase 20: Salary-specific fields
         salaryType,
         payFrequency,
@@ -238,6 +290,15 @@ export const POST = withPermission('income.write', async (request, auth) => {
 
       const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
 
+      // MON-078: frequency + recurrence are decided by the ONE intake
+      // classifier — never defaulted locally (intake source-lock enforced).
+      const intake = classifyIntake({
+        kind: 'income',
+        source: 'MANUAL',
+        declaredFrequency: frequency,
+        declaredIsRecurring: isRecurring !== undefined ? Boolean(isRecurring) : null, // MON-053
+      });
+
       const incomeRecord = await prisma.income.create({
         data: {
           userId: auth.userId,
@@ -245,12 +306,21 @@ export const POST = withPermission('income.write', async (request, auth) => {
           name,
           type,
           amount: toNumber(amount) ?? 0,
-          frequency,
-          isRecurring: isRecurring !== undefined ? Boolean(isRecurring) : true, // MON-053
+          frequency: intake.frequency,
+          isRecurring: intake.isRecurring,
           isTaxable: isTaxable !== undefined ? Boolean(isTaxable) : true,
           propertyId: propertyId || null,
           investmentAccountId: investmentAccountId || null,
           sourceType: sourceType || 'GENERAL',
+          // Phase 59: MANAGED only valid on rental streams; anything else stays DIRECT
+          rentalMode:
+            rentalMode === 'MANAGED' && (type === 'RENT' || type === 'RENTAL')
+              ? 'MANAGED'
+              : 'DIRECT',
+          managingAgentName:
+            rentalMode === 'MANAGED' && typeof managingAgentName === 'string' && managingAgentName.trim()
+              ? managingAgentName.trim()
+              : null,
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
           payFrequency: type === 'SALARY' ? toPayFrequency(payFrequency) : null,

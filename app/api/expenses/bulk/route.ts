@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { Frequency } from '@/lib/validation/common';
 import { ExpenseCategory, ExpenseSourceType } from '@/lib/validation/expenses';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 
 interface BulkExpenseItem {
   name: string;
@@ -60,23 +61,30 @@ export const POST = withPermission('expense.write', async (request, auth) => {
       const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
 
       // Create all expenses in a transaction
+      // MON-078: each row's frequency/recurrence decided by the ONE classifier.
       const createdExpenses = await prisma.$transaction(
-        expenses.map(expense =>
-          prisma.expense.create({
+        expenses.map(expense => {
+          const intake = classifyIntake({
+            kind: 'expense',
+            source: 'MANUAL',
+            declaredFrequency: expense.frequency,
+          });
+          return prisma.expense.create({
             data: {
               userId: auth.userId,
               ownerEntityId,
               name: expense.name,
               category: expense.category as ExpenseCategory,
               amount: parseFloat(String(expense.amount)),
-              frequency: expense.frequency as Frequency,
+              frequency: intake.frequency,
+              isRecurring: intake.isRecurring,
               sourceType: (expense.sourceType || (expense.propertyId ? 'PROPERTY' : 'GENERAL')) as ExpenseSourceType,
               propertyId: expense.propertyId || null,
               isTaxDeductible: expense.isTaxDeductible ?? false,
               isEssential: expense.isEssential ?? true,
             },
-          })
-        )
+          });
+        })
       );
 
       return NextResponse.json({

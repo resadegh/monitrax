@@ -17,6 +17,7 @@ import {
   GEMINI_MODELS,
   truncateToTokenLimit,
 } from '@/lib/ai';
+import { RENTAL_STATEMENT_PROMPT } from '@/lib/neobrain/rentalStatement';
 import {
   AnalysisResult,
   SuggestedAction,
@@ -168,6 +169,11 @@ export async function analyzeDocumentWithAI(
       break;
     case 'LEASE_AGREEMENT':
       userPrompt = LEASE_AGREEMENT_PROMPT;
+      break;
+    case 'RENTAL_STATEMENT':
+      // Phase 59: the Neobrain rental-statement extraction contract — the
+      // canonical prompt lives with its grounding validator (never fork it).
+      userPrompt = RENTAL_STATEMENT_PROMPT;
       break;
     default:
       // Generic extraction for unknown types
