@@ -2297,7 +2297,7 @@
     {
       "id": "MON-081",
       "title": "Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2318,8 +2318,18 @@
       "semanticKeys": [
         "engine.propertyCashflow.resolveLoanMonthlyCost"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
+      "downstreamConsumers": [
+        "app/dashboard/expenses/page.tsx (loan rows + committed totals — now resolveLoanMonthlyCost)",
+        "app/api/cashflow/summary/route.ts + app/api/cashflow/intelligence/route.ts (loan outgoings)",
+        "app/api/cfo/scenarios/run/route.ts + context/route.ts (scenario baselines)",
+        "app/api/ai/debt-analysis/route.ts (per-loan cost fed to the advisor)",
+        "app/api/portfolio/snapshot/route.ts (portfolio loan totals -> Home tiles)",
+        "lib/calculations/propertyCashflow.ts loan loop (property list/detail/master — delegates to the same producer)",
+        "REMAINING raw sites tracked ratchet-down in .audit/source-lock-exceptions.json (budget-analysis, calculate/*, transactions/link, loans route, balances, properties pages, plan page)"
+      ],
+      "fixPRs": [
+        "#1440"
+      ],
       "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B1: interest floor never $0; cadence-normalised weekly repayment; engine-loop === standalone identity)",
       "tracker": "calc-ssot-wall",
       "notes": "Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DISCIPLINE.md case MON-032 partial-producer drift: the MON-032 fix landed the interest floor on property surfaces only, CREATING divergence with every surface still reading raw minRepayment ($0 for interest-only). rootCause anchors are PRE-FIX lines (2026-07-17). Wall B1 extracts resolveLoanMonthlyCost() from the computePropertyCashflow loan loop and migrates: /dashboard/expenses, cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. REMAINING bypass sites (tracked ratchet-down in .audit/source-lock-exceptions.json RAW_MIN_REPAYMENT_COST): budget-analysis/generate, calculate/cashflow, calculate/debt-plan, transactions/[id]/link, loans route, balances page, properties pages, plan page - migrate + ratchet in follow-ups."
@@ -2327,7 +2337,7 @@
     {
       "id": "MON-082",
       "title": "/dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2343,8 +2353,17 @@
       "semanticKeys": [
         "engine.frequencies.monthlyRunRate"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
+      "downstreamConsumers": [
+        "app/dashboard/expenses/page.tsx (monthly/annual totals, group sums, tiles, detail dialog — now monthlyRunRate)",
+        "app/api/cashflow/summary/route.ts + intelligence/route.ts (expense run-rates)",
+        "app/api/cfo/scenarios/run/route.ts + context/route.ts",
+        "app/api/ai/debt-analysis/route.ts",
+        "app/api/portfolio/snapshot/route.ts (totalAnnualExpenses -> annualRunRate)",
+        "lib/calculations/propertyCashflow.ts + lib/services/masterFinancialService.ts (already gated — identity locked by the ratchet test)"
+      ],
+      "fixPRs": [
+        "#1440"
+      ],
       "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B2: one-off contributes 0 to monthlyRunRate/annualRunRate; matches the propertyCashflow expense gate)",
       "tracker": "calc-ssot-wall",
       "notes": "Calc-SSOT Wall Mechanism B / MATRIX_FIX_DISCIPLINE.md case MON-037 partial-producer drift: the MON-037 fix gated one-offs in the engines but /dashboard/expenses kept its local convertToMonthly (pure toMonthly, no isRecurring gate - PRE-FIX anchor :547) so the page headline disagreed with property/tax. Wall B2 ships monthlyRunRate()/annualRunRate() in lib/utils/frequencies.ts as THE one-off-aware run-rate and migrates the page + cashflow summary/intelligence + CFO scenarios + AI debt-analysis + portfolio snapshot (totalAnnualExpenses)."
@@ -2352,7 +2371,7 @@
     {
       "id": "MON-083",
       "title": "A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2368,8 +2387,13 @@
       "semanticKeys": [
         "engine.frequencies.monthlyRunRate"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
+      "downstreamConsumers": [
+        "app/dashboard/expenses/page.tsx Add/Edit form (frequency hidden for one-offs)",
+        "every monthlyRunRate/annualRunRate caller (stored frequency on a one-off is calc-inert)"
+      ],
+      "fixPRs": [
+        "#1440"
+      ],
       "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B2: stored frequency on a one-off is inert - run-rate is 0 regardless)",
       "tracker": "calc-ssot-wall",
       "notes": "Calc-SSOT Wall Mechanism C (docs/architecture/CALC_SSOT_WALL.md): Reza's battery screenshot - recurring unchecked, Frequency = Monthly. Belt-and-braces with MON-082: the stored frequency is made inert by the monthlyRunRate gate (calculation side) AND the form no longer presents a cadence for one-offs (form side). Existing rows keep their stored frequency (no blind backfill - MON-053 lesson); it is display/calc-inert."
@@ -2425,7 +2449,7 @@
     {
       "id": "MON-086",
       "title": "Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2442,8 +2466,16 @@
         "engine.propertyCashflow.computePropertyCashflow",
         "number.rental.agentCostDeduction"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
+      "downstreamConsumers": [
+        "lib/calculations/propertyCashflow.ts computePropertyCashflow (rent gross-up — property list/detail cashflow)",
+        "lib/services/masterFinancialService.ts adjustPropertyRentalIncome + both cf calls (income breakdown + master tax summary read GROSS)",
+        "app/api/portfolio/snapshot/route.ts per-property cf maps (Home tiles) — rentalMode/derivedFromIncomeId threaded",
+        "lib/tax-engine/position/taxPositionCalculator.ts (unchanged — was already correct; identity cf.rent*12 === tax.income.rental locked by the ratchet)",
+        "app/dashboard/properties/* + riskRadar (full-row callers — flow structurally)"
+      ],
+      "fixPRs": [
+        "#1440"
+      ],
       "test": "tests/golden/ring2.calcSsotWall.test.ts (Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded)",
       "tracker": "calc-ssot-wall",
       "notes": "Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too."

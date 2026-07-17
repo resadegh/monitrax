@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**86 total** · 82 open · 🔵 24 · 🟡 11 · 🟠 23 · 🟢 24 · ✅ 3
+**86 total** · 82 open · 🔵 24 · 🟡 7 · 🟠 27 · 🟢 24 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -87,12 +87,12 @@
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟠 FIXING | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
 | MON-080 | 🟠 FIXING | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##1437 | ✅ |
-| MON-081 | 🟡 DIAGNOSED | 🟠 | yes | Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer) | — | ✅ |
-| MON-082 | 🟡 DIAGNOSED | 🟠 | yes | /dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate | — | ✅ |
-| MON-083 | 🟡 DIAGNOSED | 🟡 | yes | A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C | — | ✅ |
+| MON-081 | 🟠 FIXING | 🟠 | yes | Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer) | ##1440 | ✅ |
+| MON-082 | 🟠 FIXING | 🟠 | yes | /dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate | ##1440 | ✅ |
+| MON-083 | 🟠 FIXING | 🟡 | yes | A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C | ##1440 | ✅ |
 | MON-084 | 🟡 DIAGNOSED | 🟠 | yes | SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows | — | — |
 | MON-085 | 🟡 DIAGNOSED | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | — | — |
-| MON-086 | 🟡 DIAGNOSED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | — | ✅ |
+| MON-086 | 🟠 FIXING | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 
 ---
 
@@ -1422,7 +1422,7 @@ Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rent
 
 ### MON-081 — Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-17
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-17
 
 > **What was wrong:** An interest-only loan (no repayment amount entered) showed a $0 monthly cost on the Expenses page, cashflow summaries, CFO scenarios and the Home dashboard - even though the property pages correctly showed its interest cost.
 >
@@ -1432,6 +1432,8 @@ Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rent
 
 - **Root cause:** `app/dashboard/expenses/page.tsx:564`, `app/api/cashflow/summary/route.ts:77`, `app/api/cashflow/intelligence/route.ts:138`, `app/api/cfo/scenarios/run/route.ts:76`, `app/api/portfolio/snapshot/route.ts:684`, `app/api/ai/debt-analysis/route.ts:193`
 - **Neomatrix:** `engine.propertyCashflow.resolveLoanMonthlyCost`
+- **Downstream consumers (§19.4):** `app/dashboard/expenses/page.tsx (loan rows + committed totals — now resolveLoanMonthlyCost)`, `app/api/cashflow/summary/route.ts + app/api/cashflow/intelligence/route.ts (loan outgoings)`, `app/api/cfo/scenarios/run/route.ts + context/route.ts (scenario baselines)`, `app/api/ai/debt-analysis/route.ts (per-loan cost fed to the advisor)`, `app/api/portfolio/snapshot/route.ts (portfolio loan totals -> Home tiles)`, `lib/calculations/propertyCashflow.ts loan loop (property list/detail/master — delegates to the same producer)`, `REMAINING raw sites tracked ratchet-down in .audit/source-lock-exceptions.json (budget-analysis, calculate/*, transactions/link, loans route, balances, properties pages, plan page)`
+- **Fix PR(s):** ##1440
 - **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B1: interest floor never $0; cadence-normalised weekly repayment; engine-loop === standalone identity)`
 - **Detail:** `calc-ssot-wall`
 
@@ -1439,7 +1441,7 @@ Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DI
 
 ### MON-082 — /dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-17
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-17
 
 > **What was wrong:** A one-off purchase (like an $11,385 battery) saved with a Monthly frequency was counted as $11,385 EVERY month on the Expenses page - inflating the monthly total to ~$84k and the annual total by $136k.
 >
@@ -1449,6 +1451,8 @@ Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DI
 
 - **Root cause:** `app/dashboard/expenses/page.tsx:547`
 - **Neomatrix:** `engine.frequencies.monthlyRunRate`
+- **Downstream consumers (§19.4):** `app/dashboard/expenses/page.tsx (monthly/annual totals, group sums, tiles, detail dialog — now monthlyRunRate)`, `app/api/cashflow/summary/route.ts + intelligence/route.ts (expense run-rates)`, `app/api/cfo/scenarios/run/route.ts + context/route.ts`, `app/api/ai/debt-analysis/route.ts`, `app/api/portfolio/snapshot/route.ts (totalAnnualExpenses -> annualRunRate)`, `lib/calculations/propertyCashflow.ts + lib/services/masterFinancialService.ts (already gated — identity locked by the ratchet test)`
+- **Fix PR(s):** ##1440
 - **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B2: one-off contributes 0 to monthlyRunRate/annualRunRate; matches the propertyCashflow expense gate)`
 - **Detail:** `calc-ssot-wall`
 
@@ -1456,7 +1460,7 @@ Calc-SSOT Wall Mechanism B / MATRIX_FIX_DISCIPLINE.md case MON-037 partial-produ
 
 ### MON-083 — A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: expenses · opened 2026-07-17
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: expenses · opened 2026-07-17
 
 > **What was wrong:** When you unticked 'recurring' on an expense, the form still showed and saved a Frequency (e.g. Monthly) - a nonsense cadence for a one-off that other screens then multiplied by 12.
 >
@@ -1466,6 +1470,8 @@ Calc-SSOT Wall Mechanism B / MATRIX_FIX_DISCIPLINE.md case MON-037 partial-produ
 
 - **Root cause:** `app/dashboard/expenses/page.tsx:1654`
 - **Neomatrix:** `engine.frequencies.monthlyRunRate`
+- **Downstream consumers (§19.4):** `app/dashboard/expenses/page.tsx Add/Edit form (frequency hidden for one-offs)`, `every monthlyRunRate/annualRunRate caller (stored frequency on a one-off is calc-inert)`
+- **Fix PR(s):** ##1440
 - **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B2: stored frequency on a one-off is inert - run-rate is 0 regardless)`
 - **Detail:** `calc-ssot-wall`
 
@@ -1505,7 +1511,7 @@ Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): near-dup candi
 
 ### MON-086 — Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again)
 
-**🟡 DIAGNOSED** · 🔴 critical · changes numbers: **yes** · area: cashflow · opened 2026-07-17
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: cashflow · opened 2026-07-17
 
 > **What was wrong:** For an agent-managed rental, cashflow read the agent's NET deposits as the rent AND subtracted the confirmed agent-fee expense on top - so the fee was taken out twice and every cashflow surface understated Broadbeach by ~$432/month, while the Tax page (correctly) counted it once.
 >
@@ -1515,6 +1521,8 @@ Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): near-dup candi
 
 - **Root cause:** `lib/calculations/propertyCashflow.ts:153`
 - **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.rental.agentCostDeduction`
+- **Downstream consumers (§19.4):** `lib/calculations/propertyCashflow.ts computePropertyCashflow (rent gross-up — property list/detail cashflow)`, `lib/services/masterFinancialService.ts adjustPropertyRentalIncome + both cf calls (income breakdown + master tax summary read GROSS)`, `app/api/portfolio/snapshot/route.ts per-property cf maps (Home tiles) — rentalMode/derivedFromIncomeId threaded`, `lib/tax-engine/position/taxPositionCalculator.ts (unchanged — was already correct; identity cf.rent*12 === tax.income.rental locked by the ratchet)`, `app/dashboard/properties/* + riskRadar (full-row callers — flow structurally)`
+- **Fix PR(s):** ##1440
 - **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded)`
 - **Detail:** `calc-ssot-wall`
 
