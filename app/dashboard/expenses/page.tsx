@@ -15,7 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List, Radio } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
-import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { toAnnual, toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
+import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -543,27 +544,30 @@ function ExpensesPageContent() {
   };
 
   // formatCurrency imported from lib/utils/formatters
-  // Frequency conversions use centralized utilities from lib/utils/frequencies
-  const convertToMonthly = (amount: number, frequency: string) =>
-    toMonthly(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
+  // Calc-SSOT Wall B2 (MON-037 drift): every monthly figure on this page comes
+  // from the CANONICAL one-off-aware run-rate (lib/utils/frequencies.ts
+  // monthlyRunRate — a one-off contributes 0, never amount × frequency) — the
+  // inline `toMonthly` sums that inflated these totals ×12 per one-off are gone.
+  const monthlyOf = (e: { amount: number; frequency: string; isRecurring?: boolean | null }) =>
+    monthlyRunRate(e);
 
-  // Convert loan repayment to monthly
-  const convertLoanRepaymentToMonthly = (amount: number, frequency: Loan['repaymentFrequency']): number =>
-    toMonthly(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY');
+  // Calc-SSOT Wall B1 (MON-032 drift): loan cost from the ONE resolved
+  // producer (declared minRepayment → interest floor) — an interest-only
+  // loan shows its interest, never $0. Raw `minRepayment` is display-only.
+  const loanMonthlyOf = (loan: Loan) => resolveLoanMonthlyCost(loan).monthly;
 
-  const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
-  const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const totalMonthly = filteredExpenses.reduce((sum, e) => sum + monthlyOf(e), 0);
+  const allTotalMonthly = expenses.reduce((sum, e) => sum + monthlyOf(e), 0);
 
   // Calculate recurring vs discretionary expenses
   const recurringExpenses = expenses.filter(e => e.isRecurring !== false); // Default to recurring if not set
   const discretionaryExpenses = expenses.filter(e => e.isRecurring === false);
-  const recurringMonthly = recurringExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
-  const discretionaryMonthly = discretionaryExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const recurringMonthly = recurringExpenses.reduce((sum, e) => sum + monthlyOf(e), 0);
+  // One-offs are counted ONCE (their actual amount) — never annualised.
+  const discretionaryMonthly = discretionaryExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Calculate total loan repayments (monthly)
-  const totalLoanRepaymentsMonthly = loans.reduce((sum, loan) =>
-    sum + convertLoanRepaymentToMonthly(loan.minRepayment, loan.repaymentFrequency), 0
-  );
+  const totalLoanRepaymentsMonthly = loans.reduce((sum, loan) => sum + loanMonthlyOf(loan), 0);
 
   // Total outgoings = expenses + loan repayments
   const totalOutgoingsMonthly = totalMonthly + totalLoanRepaymentsMonthly;
@@ -636,7 +640,7 @@ function ExpensesPageContent() {
 
     return Object.entries(groups).map(([category, exps]) => {
       const info = categoryInfo[category as Expense['category']] || categoryInfo.OTHER;
-      const totalMonthly = exps.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+      const totalMonthly = exps.reduce((sum, e) => sum + monthlyOf(e), 0);
       return {
         id: `category-${category}`,
         name: info.label,
@@ -676,7 +680,7 @@ function ExpensesPageContent() {
     return Object.entries(groups)
       .filter(([_, group]) => group.expenses.length > 0)
       .map(([key, group]) => {
-        const totalMonthly = group.expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+        const totalMonthly = group.expenses.reduce((sum, e) => sum + monthlyOf(e), 0);
         const isProperty = key.startsWith('property-');
         return {
           id: key,
@@ -925,9 +929,9 @@ function ExpensesPageContent() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Discretionary Spending</p>
+                  <p className="text-sm font-medium text-muted-foreground">One-off Spending</p>
                   <p className="text-2xl font-bold text-purple-600">{formatCurrency(discretionaryMonthly)}</p>
-                  <p className="text-xs text-muted-foreground">{discretionaryExpenses.length} expense{discretionaryExpenses.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-muted-foreground">{discretionaryExpenses.length} one-off{discretionaryExpenses.length !== 1 ? 's' : ''} — counted once, not monthly</p>
                 </div>
                 <CreditCard className="h-8 w-8 text-purple-500/20" />
               </div>
@@ -995,7 +999,8 @@ function ExpensesPageContent() {
           <CardContent className="pt-0">
             <div className="space-y-2">
               {loans.map((loan) => {
-                const monthlyRepayment = convertLoanRepaymentToMonthly(loan.minRepayment, loan.repaymentFrequency);
+                const resolvedLoan = resolveLoanMonthlyCost(loan);
+                const monthlyRepayment = resolvedLoan.monthly;
                 return (
                   <div
                     key={loan.id}
@@ -1015,7 +1020,7 @@ function ExpensesPageContent() {
                     <div className="text-right">
                       <p className="font-semibold text-orange-600">{formatCurrency(monthlyRepayment)}/mo</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatCurrency(loan.minRepayment)}/{loan.repaymentFrequency.toLowerCase()}
+                        {resolvedLoan.flooredToInterest ? 'interest cost (no repayment set)' : `${formatCurrency(loan.minRepayment)}/${loan.repaymentFrequency.toLowerCase()}`}
                       </p>
                     </div>
                   </div>
@@ -1067,7 +1072,7 @@ function ExpensesPageContent() {
                 </thead>
                 <tbody className="divide-y">
                   {displayedExpenses.map((item) => {
-                    const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                    const monthlyAmount = monthlyOf(item);
                     return (
                       <tr
                         key={item.id}
@@ -1143,7 +1148,7 @@ function ExpensesPageContent() {
         /* All expenses view - individual tiles */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {displayedExpenses.map((item) => {
-            const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+            const monthlyAmount = monthlyOf(item);
 
             return (
               <Card key={item.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleViewDetails(item)}>
@@ -1309,7 +1314,7 @@ function ExpensesPageContent() {
 
                       {/* Expense rows */}
                       {group.expenses.map((item) => {
-                        const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                        const monthlyAmount = monthlyOf(item);
                         return (
                           <div
                             key={item.id}
@@ -1647,24 +1652,36 @@ function ExpensesPageContent() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="frequency">Frequency</Label>
-              <Select
-                value={formData.frequency}
-                onValueChange={(value) => setFormData({ ...formData, frequency: value as Expense['frequency'] })}
-              >
-                <SelectTrigger id="frequency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="WEEKLY">Weekly</SelectItem>
-                  <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                  <SelectItem value="ANNUAL">Annually</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Calc-SSOT Wall Mechanism C: a one-off has no cadence — the
+                frequency picker only applies to recurring expenses. One-offs
+                are a single occurrence everywhere (monthlyRunRate → 0). */}
+            {formData.isRecurring ? (
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frequency</Label>
+                <Select
+                  value={formData.frequency}
+                  onValueChange={(value) => setFormData({ ...formData, frequency: value as Expense['frequency'] })}
+                >
+                  <SelectTrigger id="frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                    <SelectItem value="ANNUAL">Annually</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Frequency</Label>
+                <p className="rounded-[14px] border border-foreground/10 bg-background/50 px-3 py-2 text-sm text-muted-foreground">
+                  One-off — counted once, on the date it happens
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
@@ -1837,7 +1854,7 @@ function ExpensesPageContent() {
                       <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Equivalent</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{formatCurrency(convertToMonthly(selectedExpense.amount, selectedExpense.frequency))}</p>
+                      <p className="text-2xl font-bold">{selectedExpense.isRecurring === false ? formatCurrency(0) : formatCurrency(monthlyOf(selectedExpense))}</p>
                       <p className="text-sm text-muted-foreground">per month</p>
                     </CardContent>
                   </Card>
@@ -1847,7 +1864,7 @@ function ExpensesPageContent() {
                       <CardTitle className="text-sm font-medium text-muted-foreground">Annual Total</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{formatCurrency(convertToMonthly(selectedExpense.amount, selectedExpense.frequency) * 12)}</p>
+                      <p className="text-2xl font-bold">{selectedExpense.isRecurring === false ? formatCurrency(selectedExpense.amount) : formatCurrency(monthlyOf(selectedExpense) * 12)}</p>
                       <p className="text-sm text-muted-foreground">per year</p>
                     </CardContent>
                   </Card>

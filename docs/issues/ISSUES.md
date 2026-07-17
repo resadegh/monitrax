@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**80 total** · 76 open · 🔵 24 · 🟡 5 · 🟠 23 · 🟢 24 · ✅ 3
+**86 total** · 82 open · 🔵 24 · 🟡 7 · 🟠 27 · 🟢 24 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -87,6 +87,12 @@
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟠 FIXING | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
 | MON-080 | 🟠 FIXING | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##1437 | ✅ |
+| MON-081 | 🟠 FIXING | 🟠 | yes | Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer) | ##1440 | ✅ |
+| MON-082 | 🟠 FIXING | 🟠 | yes | /dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate | ##1440 | ✅ |
+| MON-083 | 🟠 FIXING | 🟡 | yes | A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C | ##1440 | ✅ |
+| MON-084 | 🟡 DIAGNOSED | 🟠 | yes | SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows | — | — |
+| MON-085 | 🟡 DIAGNOSED | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | — | — |
+| MON-086 | 🟠 FIXING | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 
 ---
 
@@ -1393,7 +1399,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/intake/c
 - **Holistic test (§19.4):** `tests/golden/ring2.managedRental.test.ts (holistic: gross-unchanged + gap-as-deduction + taxable==net-received + no-double-count on BOTH engines) + tests/tax/rentalReconciliationSourceLock.test.ts (R1) + tests/calculations/rentalReconciliation.test.ts (R0)`
 - **Detail:** `phase-59`
 
-Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside. Parts 0–5 built in PR #1434 (draft — Reza merge gate); Ring-3 (Part 6) = the Matrix after deploy READY. Root cause: the Income model had no rentalMode — a managed rental was inexpressible (net recorded as income = understated gross + dropped deductions, OR gross declared with no way to capture agent costs).
+Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-income integrity + statement-first/reconciliation-fallback + suggest-and-confirm card; applies to Neomatrix/NeoBrain/NeoAudit (D4 detector). Build sequence in the phase doc §9. Modelled 2026-07-16 (engine PR): engine.rentalReconciliation.reconcileManagedRental + number.rental.agentCostDeduction/grossDeclared, verified file:line; R0 calc-audit fixtures (property.managedRentalGap) + R1 source-lock shipped alongside. Parts 0–5 built in PR #1434 (draft — Reza merge gate); Ring-3 (Part 6) = the Matrix after deploy READY. Root cause: the Income model had no rentalMode — a managed rental was inexpressible (net recorded as income = understated gross + dropped deductions, OR gross declared with no way to capture agent costs). RE-SCOPED 2026-07-17 (MATRIX_FIX_DISCIPLINE.md): VR-011 verified the TAX surface only - the cashflow side double-counted the agent fee (raised + fixed as MON-086/Wall B3); cross-surface Ring-3 (income <-> tax <-> cashflow <-> property) NOT yet met - stays FIXING until the Matrix verifies all surfaces on live data.
 
 ### MON-080 — Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity)
 
@@ -1412,5 +1418,113 @@ Feature workstream per docs/blueprint/PHASE_59_MANAGED_RENTAL_INCOME.md. Gross-i
 - **Holistic test (§19.4):** `tests/golden/ring2.managedRental.test.ts (order-independence: manage→link == link→manage) + tests/calculations/rentalReconciliation.test.ts (N=1 Broadbeach cadence inference, Float/Decimal parity) + tests/tax/rentalReconciliationSourceLock.test.ts (R1)`
 - **Detail:** `VR-010`
 
-Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rental-retroactive-reconcile.md (PR #1436) + VR-010 live evidence (Broadbeach: $680/wk declared, $2,515/mo net, gap $432/mo ≈ $5,184/yr uncaptured; Total Deductions stuck at $148,519). §19.2 root cause EXECUTED-verified 2026-07-17: N≥2 normalisation works (3 monthly dates → MONTHLY, gap $431.67, material) — the brief's "no normalisation" prime suspect is corrected; the real D0 is the N=1 fallback to the RENT cadence (weekly $680 vs monthly $2,515 → gap −$1,835 → material=false). D1: no retroactive reconcile on the MANAGED transition (PUT), chip is a passive span. D2: no gross gate — MANAGED persists with gross = net (understates assessable income, ITAA s6-5); type-RENTAL streams have no amount field on Edit. Blocks MON-079 → VERIFIED.
+Raised from the Matrix handoff docs/issues/handoffs/HANDOFF_MON-080_managed-rental-retroactive-reconcile.md (PR #1436) + VR-010 live evidence (Broadbeach: $680/wk declared, $2,515/mo net, gap $432/mo ≈ $5,184/yr uncaptured; Total Deductions stuck at $148,519). §19.2 root cause EXECUTED-verified 2026-07-17: N≥2 normalisation works (3 monthly dates → MONTHLY, gap $431.67, material) — the brief's "no normalisation" prime suspect is corrected; the real D0 is the N=1 fallback to the RENT cadence (weekly $680 vs monthly $2,515 → gap −$1,835 → material=false). D1: no retroactive reconcile on the MANAGED transition (PUT), chip is a passive span. D2: no gross gate — MANAGED persists with gross = net (understates assessable income, ITAA s6-5); type-RENTAL streams have no amount field on Edit. Blocks MON-079 → VERIFIED. RE-SCOPED 2026-07-17 (MATRIX_FIX_DISCIPLINE.md): VR-011 verified the TAX surface only - the cashflow side double-counted the agent fee (raised + fixed as MON-086/Wall B3); cross-surface Ring-3 (income <-> tax <-> cashflow <-> property) NOT yet met - stays FIXING until the Matrix verifies all surfaces on live data.
+
+### MON-081 — Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer)
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-17
+
+> **What was wrong:** An interest-only loan (no repayment amount entered) showed a $0 monthly cost on the Expenses page, cashflow summaries, CFO scenarios and the Home dashboard - even though the property pages correctly showed its interest cost.
+>
+> **What changed:** The property engine's per-loan cost rule (declared repayment, cadence-normalised, floored to the loan's monthly interest so it is never $0) is now ONE shared producer that all of those surfaces call.
+>
+> **What you should see:** An interest-only loan shows the same non-zero monthly cost (its interest) on the Expenses page loan row, the cashflow page, CFO scenarios and the property pages - no more $0 anywhere.
+
+- **Root cause:** `app/dashboard/expenses/page.tsx:564`, `app/api/cashflow/summary/route.ts:77`, `app/api/cashflow/intelligence/route.ts:138`, `app/api/cfo/scenarios/run/route.ts:76`, `app/api/portfolio/snapshot/route.ts:684`, `app/api/ai/debt-analysis/route.ts:193`
+- **Neomatrix:** `engine.propertyCashflow.resolveLoanMonthlyCost`
+- **Downstream consumers (§19.4):** `app/dashboard/expenses/page.tsx (loan rows + committed totals — now resolveLoanMonthlyCost)`, `app/api/cashflow/summary/route.ts + app/api/cashflow/intelligence/route.ts (loan outgoings)`, `app/api/cfo/scenarios/run/route.ts + context/route.ts (scenario baselines)`, `app/api/ai/debt-analysis/route.ts (per-loan cost fed to the advisor)`, `app/api/portfolio/snapshot/route.ts (portfolio loan totals -> Home tiles)`, `lib/calculations/propertyCashflow.ts loan loop (property list/detail/master — delegates to the same producer)`, `REMAINING raw sites tracked ratchet-down in .audit/source-lock-exceptions.json (budget-analysis, calculate/*, transactions/link, loans route, balances, properties pages, plan page)`
+- **Fix PR(s):** ##1440
+- **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B1: interest floor never $0; cadence-normalised weekly repayment; engine-loop === standalone identity)`
+- **Detail:** `calc-ssot-wall`
+
+Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DISCIPLINE.md case MON-032 partial-producer drift: the MON-032 fix landed the interest floor on property surfaces only, CREATING divergence with every surface still reading raw minRepayment ($0 for interest-only). rootCause anchors are PRE-FIX lines (2026-07-17). Wall B1 extracts resolveLoanMonthlyCost() from the computePropertyCashflow loan loop and migrates: /dashboard/expenses, cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. REMAINING bypass sites (tracked ratchet-down in .audit/source-lock-exceptions.json RAW_MIN_REPAYMENT_COST): budget-analysis/generate, calculate/cashflow, calculate/debt-plan, transactions/[id]/link, loans route, balances page, properties pages, plan page - migrate + ratchet in follow-ups.
+
+### MON-082 — /dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-17
+
+> **What was wrong:** A one-off purchase (like an $11,385 battery) saved with a Monthly frequency was counted as $11,385 EVERY month on the Expenses page - inflating the monthly total to ~$84k and the annual total by $136k.
+>
+> **What changed:** Every run-rate on the Expenses page (and the cashflow/CFO/portfolio routes) now uses the one canonical run-rate rule: a one-off contributes $0 to monthly/annual run-rates and is shown once, on the date it happened.
+>
+> **What you should see:** The Expenses page monthly total drops to your real recurring spend; the One-off Spending tile says 'counted once, not monthly'; opening a one-off shows $0/month and the amount once for the year.
+
+- **Root cause:** `app/dashboard/expenses/page.tsx:547`
+- **Neomatrix:** `engine.frequencies.monthlyRunRate`
+- **Downstream consumers (§19.4):** `app/dashboard/expenses/page.tsx (monthly/annual totals, group sums, tiles, detail dialog — now monthlyRunRate)`, `app/api/cashflow/summary/route.ts + intelligence/route.ts (expense run-rates)`, `app/api/cfo/scenarios/run/route.ts + context/route.ts`, `app/api/ai/debt-analysis/route.ts`, `app/api/portfolio/snapshot/route.ts (totalAnnualExpenses -> annualRunRate)`, `lib/calculations/propertyCashflow.ts + lib/services/masterFinancialService.ts (already gated — identity locked by the ratchet test)`
+- **Fix PR(s):** ##1440
+- **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B2: one-off contributes 0 to monthlyRunRate/annualRunRate; matches the propertyCashflow expense gate)`
+- **Detail:** `calc-ssot-wall`
+
+Calc-SSOT Wall Mechanism B / MATRIX_FIX_DISCIPLINE.md case MON-037 partial-producer drift: the MON-037 fix gated one-offs in the engines but /dashboard/expenses kept its local convertToMonthly (pure toMonthly, no isRecurring gate - PRE-FIX anchor :547) so the page headline disagreed with property/tax. Wall B2 ships monthlyRunRate()/annualRunRate() in lib/utils/frequencies.ts as THE one-off-aware run-rate and migrates the page + cashflow summary/intelligence + CFO scenarios + AI debt-analysis + portfolio snapshot (totalAnnualExpenses).
+
+### MON-083 — A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: expenses · opened 2026-07-17
+
+> **What was wrong:** When you unticked 'recurring' on an expense, the form still showed and saved a Frequency (e.g. Monthly) - a nonsense cadence for a one-off that other screens then multiplied by 12.
+>
+> **What changed:** The Frequency picker now only appears for recurring expenses; a one-off shows 'counted once, on the date it happens' instead, and every calculation treats it as a single occurrence regardless of any stored frequency.
+>
+> **What you should see:** Untick 'This is a recurring expense' in the Add/Edit Expense form - the Frequency dropdown disappears and is replaced by the one-off note.
+
+- **Root cause:** `app/dashboard/expenses/page.tsx:1654`
+- **Neomatrix:** `engine.frequencies.monthlyRunRate`
+- **Downstream consumers (§19.4):** `app/dashboard/expenses/page.tsx Add/Edit form (frequency hidden for one-offs)`, `every monthlyRunRate/annualRunRate caller (stored frequency on a one-off is calc-inert)`
+- **Fix PR(s):** ##1440
+- **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B2: stored frequency on a one-off is inert - run-rate is 0 regardless)`
+- **Detail:** `calc-ssot-wall`
+
+Calc-SSOT Wall Mechanism C (docs/architecture/CALC_SSOT_WALL.md): Reza's battery screenshot - recurring unchecked, Frequency = Monthly. Belt-and-braces with MON-082: the stored frequency is made inert by the monthlyRunRate gate (calculation side) AND the form no longer presents a cadence for one-offs (form side). Existing rows keep their stored frequency (no blind backfill - MON-053 lesson); it is display/calc-inert.
+
+### MON-084 — SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-17
+
+> **What was wrong:** Linking salary deposits to your income created NEW income rows instead of updating the one you already had - e.g. 'Salary Ingeus Australia' existed three times (declared, $0 one-transaction, $5,547 four-transaction), all the same job.
+>
+> **What changed:** Not fixed yet: reconciliation needs a source-signature reuse rule (type + normalised employer/merchant + owner) so linking always updates the ONE canonical row - the reuse guard currently exists only for rent with a property.
+>
+> **What you should see:** After the fix: linking a second salary deposit updates the existing income row (no new row appears), and editing that one row changes the income page, tax and cashflow together.
+
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:453`, `app/api/transactions/[id]/link/route.ts:413`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `calc-ssot-wall`
+
+Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): the link route's reuse guard fires only for RENT/RENTAL && propertyId (:453-474); everything else mints at :474 with type defaulting to OTHER at :413. Fix route (per the Wall): extend the MON-078 intake classifier with a signature-based upsert (type, normalised name/employer, ownerEntityId) and route the link-route create branch + doc-import income branch through it. Related: MON-074, MON-076, MON-009.
+
+### MON-085 — Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared
+
+**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: expenses · opened 2026-07-17
+
+> **What was wrong:** The same expense recorded once against your home and once as a general expense (e.g. 'Battery' on HOME and 'Battery' unscoped) was never flagged as a duplicate, because duplicate-checking only compares within the same property/loan/asset scope - so it was counted twice.
+>
+> **What changed:** Not fixed yet: duplicate candidate sets need to span scopes (compare by normalised name + amount + date window app-wide, then let the user confirm the scope), via the same intake signature-upsert as MON-084.
+>
+> **What you should see:** After the fix: creating/importing an expense that matches an existing one in ANY scope surfaces a 'possible duplicate' suggestion instead of silently double-counting.
+
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:681`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:74`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `calc-ssot-wall`
+
+Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): near-dup candidate sets are scoped by propertyId/loanId/assetId (link route :681-689; reconcileSuggestedAction.ts:74-83), and doc-import income dedup is exact amount+name+type (:89-101) so declared vs reconciled twins never match. Related: MON-037 RC-B (battery x3). Fix via the same signature-upsert keystone as MON-084.
+
+### MON-086 — Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again)
+
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: cashflow · opened 2026-07-17
+
+> **What was wrong:** For an agent-managed rental, cashflow read the agent's NET deposits as the rent AND subtracted the confirmed agent-fee expense on top - so the fee was taken out twice and every cashflow surface understated Broadbeach by ~$432/month, while the Tax page (correctly) counted it once.
+>
+> **What changed:** When a managed stream's rent comes from actual deposits, the cashflow engine adds the recurring confirmed agent fee back to rent - so rent reads GROSS (matching tax), the fee is subtracted exactly once as an expense, and cashflow lands on the net you actually received.
+>
+> **What you should see:** On Broadbeach: property cashflow shows rent ~$2,947/month gross, expenses include the ~$432 agent fee once, and monthly cashflow ~$2,515 - the same net the agent deposits. Tax and cashflow now tell the same story (gross - fee).
+
+- **Root cause:** `lib/calculations/propertyCashflow.ts:153`
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`, `number.rental.agentCostDeduction`
+- **Downstream consumers (§19.4):** `lib/calculations/propertyCashflow.ts computePropertyCashflow (rent gross-up — property list/detail cashflow)`, `lib/services/masterFinancialService.ts adjustPropertyRentalIncome + both cf calls (income breakdown + master tax summary read GROSS)`, `app/api/portfolio/snapshot/route.ts per-property cf maps (Home tiles) — rentalMode/derivedFromIncomeId threaded`, `lib/tax-engine/position/taxPositionCalculator.ts (unchanged — was already correct; identity cf.rent*12 === tax.income.rental locked by the ratchet)`, `app/dashboard/properties/* + riskRadar (full-row callers — flow structurally)`
+- **Fix PR(s):** ##1440
+- **Holistic test (§19.4):** `tests/golden/ring2.calcSsotWall.test.ts (Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded)`
+- **Detail:** `calc-ssot-wall`
+
+Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too.
 

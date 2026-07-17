@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1825,
+      "line": 1843,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -5520,7 +5520,7 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 139,
+      "line": 204,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -6176,6 +6176,98 @@
       "verifiedBy": "lib/tax-engine/position/taxPositionCalculator.ts:156-163 (income annualisation, unchanged by Phase 59) + tests/calculations/rentalReconciliation.test.ts (gross-unchanged assertion)",
       "workedExample": "$650/wk → $33,800/yr assessable, whether disbursed direct or via an agent.",
       "verifiedDate": "2026-07-16",
+      "status": "documented"
+    },
+    {
+      "id": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "kind": "engine",
+      "label": "Per-loan monthly cost (interest floor)",
+      "file": "lib/calculations/propertyCashflow.ts",
+      "line": 180,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "THE resolved monthly cost of one loan: cadence-normalised declared repayment (actuals-first via resolveMonthly), floored to monthly interest (principal × rate / 12) when no repayment resolves — so an interest-only loan is NEVER $0/month. Extracted from the computePropertyCashflow loan loop (Calc-SSOT Wall B1) so non-property surfaces (cashflow summary/intelligence, CFO scenarios, debt analysis, portfolio snapshot, expenses page) read the SAME producer instead of raw minRepayment.",
+      "formula": "monthlyInterest = max(0, principal × interestRateAnnual) / 12; declared = toMonthly(minRepayment, repaymentFrequency); r = resolveMonthly(declared, tx); monthly = r.monthly > 0 ? r.monthly : monthlyInterest (flooredToInterest)",
+      "authority": "CLAUDE.md §12.2.1 one producer per calc; Calc-SSOT Wall B1 (docs/architecture/CALC_SSOT_WALL.md Mechanism B — recompute-drift); interest floor per MON-014 lineage.",
+      "inputs": [
+        {
+          "name": "Loan.principal",
+          "unit": "AUD",
+          "type": "number",
+          "note": "interest floor base"
+        },
+        {
+          "name": "Loan.interestRateAnnual",
+          "unit": "decimal/yr",
+          "type": "number",
+          "note": "0.06 = 6% — decimal, never percent"
+        },
+        {
+          "name": "Loan.minRepayment",
+          "unit": "AUD/period",
+          "type": "number",
+          "note": "declared repayment per repaymentFrequency"
+        },
+        {
+          "name": "Loan.repaymentFrequency",
+          "unit": "enum",
+          "type": "string",
+          "note": "cadence of minRepayment"
+        },
+        {
+          "name": "transaction.date/amount",
+          "unit": "AUD",
+          "type": "ResolverTx[]",
+          "note": "reconciled repayments (actuals-first)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/golden/ring2.calcSsotWall.test.ts (Wall B1: IO floor 2,500 never $0; weekly 700 → 3,033.33; engine-loop === standalone identity)",
+      "workedExample": "principal 500,000 × 0.06 / 12 = 2,500/mo floor when minRepayment = 0; minRepayment 700 WEEKLY → 700×52/12 = 3,033.33/mo",
+      "verifiedDate": "2026-07-17",
+      "status": "documented"
+    },
+    {
+      "id": "engine.frequencies.monthlyRunRate",
+      "kind": "engine",
+      "label": "One-off-aware monthly run-rate",
+      "file": "lib/utils/frequencies.ts",
+      "line": 45,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "THE declared monthly run-rate of an income/expense row with the one-off gate: isRecurring === false contributes 0 (a single occurrence is not amount × frequency of recurring spend); otherwise toMonthly(amount, frequency). annualRunRate = ×12 sibling. Every surface summing declared run-rates calls this — never a local toMonthly over raw rows (Calc-SSOT Wall B2).",
+      "formula": "isRecurring === false → 0; else toMonthly(amount, frequency). annualRunRate(row) = monthlyRunRate(row) × 12",
+      "authority": "CLAUDE.md §12.2.1; MON-037 one-off semantics; Calc-SSOT Wall B2 (docs/architecture/CALC_SSOT_WALL.md Mechanism C — one-off cadence).",
+      "inputs": [
+        {
+          "name": "row.amount",
+          "unit": "AUD/period",
+          "type": "number",
+          "note": ""
+        },
+        {
+          "name": "row.frequency",
+          "unit": "enum",
+          "type": "string",
+          "note": "WEEKLY…ANNUAL"
+        },
+        {
+          "name": "row.isRecurring",
+          "unit": "bool",
+          "type": "boolean|null",
+          "note": "false = one-off → 0; null/undefined/true = recurring"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/golden/ring2.calcSsotWall.test.ts (Wall B2: one-off 11,385 MONTHLY → 0 run-rate; matches the propertyCashflow expense gate)",
+      "workedExample": "one-off 11,385 MONTHLY → 0/mo (not 136,620/yr); recurring 2,400 ANNUAL → 200/mo",
+      "verifiedDate": "2026-07-17",
       "status": "documented"
     }
   ],
@@ -9371,6 +9463,66 @@
       "toUnit": "AUD/yr",
       "evidence": "taxPositionCalculator.ts:156-163 income annualisation — MANAGED streams annualise their DECLARED GROSS exactly like DIRECT (gross income unchanged by Phase 59)",
       "verifiedDate": "2026-07-16"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD/month",
+      "evidence": "propertyCashflow.ts:180 monthlyInterest = principal × rate / 12",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "input.Loan.interestRateAnnual",
+      "to": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "decimal/yr",
+      "toUnit": "AUD/month",
+      "evidence": "propertyCashflow.ts:180 interest floor",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "input.Loan.minRepayment",
+      "to": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/month",
+      "evidence": "propertyCashflow.ts:180 toMonthly(minRepayment, repaymentFrequency)",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "engine.monthlyResolver.resolveMonthly",
+      "to": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD/month",
+      "evidence": "propertyCashflow.ts resolveLoanMonthlyCost calls resolveMonthly (actuals-first)",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "to": "engine.propertyCashflow.computePropertyCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD",
+      "evidence": "propertyCashflow.ts loan loop delegates to resolveLoanMonthlyCost (Wall B1 extraction)",
+      "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.frequencies.monthlyRunRate",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/month",
+      "evidence": "frequencies.ts:45 one-off gate then toMonthly",
+      "verifiedDate": "2026-07-17"
     }
   ]
 }

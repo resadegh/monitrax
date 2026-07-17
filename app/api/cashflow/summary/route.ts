@@ -21,7 +21,8 @@ import {
   GeminiSummary,
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
-import { toMonthly } from '@/lib/utils/frequencies';
+import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
+import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 
@@ -67,15 +68,24 @@ async function buildSummaryInput(userId: string) {
     return sum + normalized.netMonthlyAmount;
   }, 0);
 
-  // Calculate monthly expenses
+  // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
   const monthlyExpenses = expenses.reduce(
-    (sum: number, e: any) => sum + toMonthly(Number(e.amount), e.frequency as Frequency),
+    (sum: number, e: any) => sum + monthlyRunRate({ amount: Number(e.amount), frequency: e.frequency, isRecurring: e.isRecurring }),
     0
   );
 
-  // Calculate monthly loan repayments
+  // Calc-SSOT Wall B1: the ONE resolved per-loan cost (declared → interest
+  // floor) — an interest-only loan shows interest, never $0. Raw minRepayment
+  // was also cadence-blind (a weekly figure summed as monthly).
   const monthlyLoanRepayments = loans.reduce(
-    (sum: number, l: any) => sum + Number(l.minRepayment || 0),
+    (sum: number, l: any) =>
+      sum +
+      resolveLoanMonthlyCost({
+        principal: Number(l.principal ?? 0),
+        interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+        minRepayment: Number(l.minRepayment ?? 0),
+        repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+      }).monthly,
     0
   );
 

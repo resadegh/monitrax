@@ -8,6 +8,25 @@
 
 ## 🟡 Active Workstreams
 
+### 0·WALL. Calc-SSOT Wall Part 1 — freeze drift + remediate recent-fix drift (MON-081…086)
+
+- **Status:** 🟡 **BUILT (Parts A + B1/B2/B3, one draft PR) — awaiting Reza's merge (changesNumbers), then the Matrix's CROSS-SURFACE Ring-3 on live data.**
+- **Started:** 2026-07-17 · **Owner:** Claude (Code, Fable 5) build · Reza (merge) · the Matrix (cross-surface Ring-3).
+- **Last touched:** 2026-07-17 — full Part-1 build on `claude/phase-59-managed-rental-yhm8ug` (restarted from main; single-branch constraint → one draft PR with per-part commits, deviation surfaced as before).
+- **Spec of record:** [`docs/architecture/CALC_SSOT_WALL.md`](../architecture/CALC_SSOT_WALL.md) (merged #1439) + [`docs/architecture/MATRIX_FIX_DISCIPLINE.md`](../architecture/MATRIX_FIX_DISCIPLINE.md) (binding law).
+- **Checklist:**
+  - [x] **A1 source-lock lint** — `scripts/lint-source-lock.ts` in `vercel-build`: fails CI on inline `toMonthly/toAnnual(row.amount, row.frequency)` / raw `minRepayment` cost reads / `.reduce`-sums over raw income/expense/loan arrays in `app/**/page.tsx` + routes. Debt seeded 84 matches / 35 pairs, line-free `{file,pattern,count}`, **ratchet-down-only** (over OR under fails). Vitest wrapper 14 tests.
+  - [x] **A2 law wiring** — CLAUDE.md §0.4 (four clauses) + §12.2.1 (source-lock in the kit) + §20.6 (5-item fix checklist required for Logic 10/10); FIX_PROTOCOL.md Stage 1 step 0 (holistic SSOT audit); `.github/pull_request_template.md` created.
+  - [x] **A3 registry** — MON-081 (loan $0 non-property), MON-082 (expenses ignores isRecurring), MON-083 (one-off keeps cadence — Mechanism C), MON-084 (SALARY/OTHER no reuse guard — open), MON-085 (expense cross-scope dedup — open), MON-086 (managed cashflow double-count, critical) raised DIAGNOSED; MON-079/080 re-scoped "VR-011 verified TAX only; cross-surface Ring-3 not met".
+  - [x] **B1 loan cost never $0** — `resolveLoanMonthlyCost()` extracted from the property engine loop; 7 bypass surfaces migrated (expenses page, cashflow summary+intelligence, CFO run+context, debt-analysis, portfolio snapshot). Remaining raw sites tracked in the A1 debt list.
+  - [x] **B2 one-off run-rates** — `monthlyRunRate()`/`annualRunRate()` (one-off → 0) + same-surface migration; Mechanism C form (frequency hidden for one-offs); tile/dialog copy "counted once".
+  - [x] **B3 managed-rental double-count (CRITICAL)** — gross-up at `computePropertyCashflow` when actuals + MANAGED (recurring derived fees only, per stream); DIRECT/declared untouched; threading through masterFinancialService + portfolio snapshot so master tax reads gross. Ratchet `tests/golden/ring2.calcSsotWall.test.ts` (cf gross ≡ tax gross; taxable ≡ cashflow×12).
+  - [ ] **Cross-surface Ring-3 (the Matrix, after Reza merges + deploy READY)** — Broadbeach loan / HOME one-offs / Broadbeach managed cashflow: the SAME value on every surface (income ↔ tax ↔ cashflow ↔ property ↔ expenses ↔ balances) → advance MON-081/082/083/086 → VERIFIED.
+  - [ ] **Next Wall parts (queued):** Mechanism A signature-upsert (MON-084/085); migrate + ratchet the remaining 84 tracked bypass sites (budget-analysis, calculate/*, transactions/link, balances, properties pages, plan page…).
+- **Risk:** moderate — changesNumbers on cashflow surfaces; ratchets + regression guards lock semantics (DIRECT streams, declared paths, one-off excess all pinned).
+- **Blocking:** Reza (merge) → the Matrix (cross-surface Ring-3).
+- **Why this matters:** the ~20-issue drift cluster is one root cause — surfaces bypassing canonical producers. Part 1 freezes new bypasses mechanically (ratchet lint) and fixes the three live money-wrong cases (loan $0, one-offs ×12, managed fee ×2).
+
 ### 0·P59. Phase 59 — Managed Rental Income & Agent-Cost Reconciliation (MON-079)
 
 - **Status:** 🟡 **BUILT (Parts 0–5, one draft PR) — awaiting Reza's schema-migration approval + money-touching merge, then the Matrix's Ring-3 (Part 6).**
