@@ -90,6 +90,9 @@ docs/architecture/07_API_STANDARDS.md
 docs/blueprint/MASTER_BLUEPRINT.md
 docs/blueprint/TRAIL_FRAMEWORK.md
 docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md
+docs/architecture/MATRIX_FIX_DISCIPLINE.md   <- BINDING LAW (guardrails-first: load BEFORE any fix work)
+docs/architecture/CALC_SSOT_WALL.md          <- the SSOT wall: canonical producers + source-lock ratchet
+docs/issues/FIX_PROTOCOL.md                  <- the six-stage fix pipeline (STEP 0 = holistic SSOT audit)
 ```
 
 ### Step 1.5: Read the Live Implementation Plan — MANDATORY
@@ -2195,6 +2198,8 @@ The base §20 rule already names *"suggestion, plan, **recommendation**, design,
 - an **option analysis** or "which should we do?" answer (e.g. an A/B/C fork with a pick — like the MON-030 B1/B2/B3 recommendation);
 - an **architecture / product / design / financial suggestion** (a proposed approach, engine choice, schema shape, UX call, number-methodology);
 - a **plan** (staging, sequencing, "here's how I'd build it");
+
+> **SECOND LAW restatement (Reza directive 2026-07-17, binding):** before ANY financial recommendation, verdict, or number is presented, it is self-reviewed against (1) the stated requirements, (2) the design principles (`docs/architecture/02_DESIGN_PRINCIPLES.md` + Part 14/18 where UI-relevant), (3) the binding laws — §12.2.1 SSOT, `docs/architecture/MATRIX_FIX_DISCIPLINE.md` four clauses, the Calc-SSOT Wall — and (4) the four lenses (Part 0.1). It is presented **only at an honest 10/10**; anything less is STOP-and-surface with the specific axis that failed. This applies on every surface (chat, Cowork, Code, briefs) — not only PRs.
 - **written instructions** to a sub-agent or a future session;
 - a **verdict** you're asking Reza to sign off (a "this is safe / this is the root cause" claim).
 
@@ -2235,6 +2240,17 @@ Any PR that **adds or changes a financial engine, formula, number, or its lineag
 5. **Always end on a green graph.** `npm run neomatrix:generate` + `npm run neomatrix:check` before every push that touched any financial number/engine/surface. The graph in the PR is the graph that ships — they are never out of sync.
 
 **Reviewer enforcement:** reject any PR that adds/moves/retires a financial engine/number/surface — including a refactor or dedup — without the matching same-PR Neomatrix update, or that ships with a drifted anchor / stale `GENERATED_CORE.md` / failing `neomatrix:check`. "The graph can catch up next PR" is not acceptable — drift is the defect.
+
+#### 21.2.2 THIRD RULE — full neo-sync + nothing lives outside the repo (Reza directive 2026-07-17, NON-NEGOTIABLE)
+
+> *"Keep Neomatrix, Neobrain and The Matrix in sync with every change."*
+
+1. **Model (Step 4 of the fix loop):** any producer/lineage change updates the Neomatrix **in the same PR** (§21.2.1 — already law, restated here as one rule).
+2. **Promote (Step 10):** every verified finding grows NeoAudit's permanent structure (Part 23.2.6) — a fix not promoted is incomplete.
+3. **Neobrain sync:** any change to intake, categorisation, reconciliation, document/receipt intelligence, or AI grounding updates the Phase 54 Neobrain documentation (`docs/blueprint/PHASE_54_NEOBRAIN.md` / its graph domain) **in the same PR** — perception drift is drift.
+4. **NEVER sandbox-only:** every artefact a session produces (briefs, scorecards, run records, plans, audit records) lands in the repo via PR. A session-local or project-memory-only document is a §12.2.1 violation at the process level: the next session cannot inherit it. Project memory may hold pointers, never truth.
+
+**Enforcement:** the `.github/pull_request_template.md` Neo-sync block (a reviewer cannot skip it) + §21.2.1's build gates for the modelled graph.
 
 ### 21.3 Reviewer enforcement
 
