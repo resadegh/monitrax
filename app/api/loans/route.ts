@@ -9,6 +9,7 @@ import {
   resolveOwnershipForCreate,
 } from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
 
 export const GET = withPermission('loan.read', async (request, auth) => {
     try {
@@ -107,6 +108,24 @@ export const GET = withPermission('loan.read', async (request, auth) => {
         }
       }
 
+      // VR-013 F1/F2: THE canonical actuals-first per-loan monthly cost
+      // (lib/services/loanCosts.ts → resolveLoanMonthlyCost fed with linked
+      // repayments over the ONE trailing-12-month window). This is the number
+      // the property engine shows — client surfaces (expenses page, loan
+      // detail dialog) read `resolvedCost` instead of re-deriving from raw
+      // minRepayment/balance×rate. The all-time fields below (budgetAmount,
+      // actualFromTransactions, monthlyAverageActual) stay for display history.
+      const resolvedCosts = await resolveLoanCostsForUser(
+        userId,
+        loans.map((l: typeof loans[number]) => ({
+          id: l.id,
+          principal: Number(l.principal ?? 0),
+          interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+          minRepayment: Number(l.minRepayment ?? 0), // @source-lock-allowed: input feed TO the canonical resolver, not a cost read
+          repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+        })),
+      );
+
       // Apply GRDCS wrapper to each loan and add actuals
       const loansWithLinks = loans.map((loan: typeof loans[number]) => {
         const links = extractLoanLinks(loan);
@@ -148,6 +167,8 @@ export const GET = withPermission('loan.read', async (request, auth) => {
           transactionCount: actuals ? actuals.totalCount : 0,
           currentMonthTransactionCount: actuals ? actuals.currentMonthCount : 0,
           hasTransactions: actuals !== undefined && actuals.totalCount > 0,
+          // THE canonical monthly cost (actuals-first) + its basis flags.
+          resolvedCost: resolvedCosts.get(loan.id) ?? null,
         };
       });
 

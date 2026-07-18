@@ -22,7 +22,7 @@ import {
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
 import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
-import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
+import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 
@@ -74,19 +74,20 @@ async function buildSummaryInput(userId: string) {
     0
   );
 
-  // Calc-SSOT Wall B1: the ONE resolved per-loan cost (declared → interest
-  // floor) — an interest-only loan shows interest, never $0. Raw minRepayment
-  // was also cadence-blind (a weekly figure summed as monthly).
-  const monthlyLoanRepayments = loans.reduce(
-    (sum: number, l: any) =>
-      sum +
-      resolveLoanMonthlyCost({
-        principal: Number(l.principal ?? 0),
-        interestRateAnnual: Number(l.interestRateAnnual ?? 0),
-        minRepayment: Number(l.minRepayment ?? 0),
-        repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
-      }).monthly,
-    0
+  // Calc-SSOT Wall B1 + VR-013 F1/F2: the ONE resolved per-loan cost,
+  // ACTUALS-FIRST — fed each loan's linked repayments over the canonical
+  // trailing-12-month window (lib/services/loanCosts.ts), so this reads the
+  // SAME number as the property engine. Declared → interest floor only when
+  // no repayments are linked.
+  const monthlyLoanRepayments = await totalLoanMonthlyCost(
+    userId,
+    loans.map((l: any) => ({
+      id: l.id,
+      principal: Number(l.principal ?? 0),
+      interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+      minRepayment: Number(l.minRepayment ?? 0),
+      repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+    }))
   );
 
   // Calculate total balance

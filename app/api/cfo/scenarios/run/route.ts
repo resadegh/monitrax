@@ -11,7 +11,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
+import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
@@ -74,16 +74,23 @@ async function fetchLoanViews(userId: string): Promise<LoanView[]> {
       offsetAccount: { select: { currentBalance: true } },
     },
   });
-  return loans.map((l) => {
-    const remaining = Number(l.termMonthsRemaining ?? 360);
-    // Calc-SSOT Wall B1: the ONE resolved per-loan cost (declared minRepayment
-    // cadence-normalised → interest floor) — interest-only loans never $0.
-    const minMonthlyRepayment = resolveLoanMonthlyCost({
+  // Calc-SSOT Wall B1 + VR-013 F1/F2: the ONE resolved per-loan cost,
+  // ACTUALS-FIRST — fed linked repayments over the canonical trailing-12-month
+  // window (lib/services/loanCosts.ts); declared → interest floor only when no
+  // repayments are linked. Same number as the property engine, every surface.
+  const resolvedCosts = await resolveLoanCostsForUser(
+    userId,
+    loans.map((l) => ({
+      id: l.id,
       principal: Number(l.principal ?? 0),
       interestRateAnnual: Number(l.interestRateAnnual ?? 0),
       minRepayment: Number(l.minRepayment ?? 0),
       repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
-    }).monthly;
+    })),
+  );
+  return loans.map((l) => {
+    const remaining = Number(l.termMonthsRemaining ?? 360);
+    const minMonthlyRepayment = resolvedCosts.get(l.id)?.monthly ?? 0;
     return {
       id: l.id,
       name: l.name,

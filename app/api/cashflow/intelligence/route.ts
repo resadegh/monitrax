@@ -9,7 +9,7 @@
  */
 
 import { monthlyRunRate } from '@/lib/utils/frequencies';
-import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
+import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
@@ -138,19 +138,20 @@ function calculateMonthlyExpenses(expenses: any[]): number {
   );
 }
 
-function calculateMonthlyLoanRepayments(loans: any[]): number {
-  // Calc-SSOT Wall B1: the ONE resolved per-loan cost — interest-only loans
-  // show interest, never $0 (raw minRepayment was $0 and cadence-blind).
-  return loans.reduce(
-    (sum, l) =>
-      sum +
-      resolveLoanMonthlyCost({
-        principal: Number(l.principal ?? 0),
-        interestRateAnnual: Number(l.interestRateAnnual ?? 0),
-        minRepayment: Number(l.minRepayment ?? 0),
-        repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
-      }).monthly,
-    0
+function calculateMonthlyLoanRepayments(userId: string, loans: any[]): Promise<number> {
+  // Calc-SSOT Wall B1 + VR-013 F1/F2: the ONE resolved per-loan cost,
+  // ACTUALS-FIRST — fed linked repayments over the canonical trailing-12-month
+  // window (lib/services/loanCosts.ts). Declared → interest floor only when no
+  // repayments are linked; never $0, never a second number vs the property engine.
+  return totalLoanMonthlyCost(
+    userId,
+    loans.map((l) => ({
+      id: l.id,
+      principal: Number(l.principal ?? 0),
+      interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+      minRepayment: Number(l.minRepayment ?? 0),
+      repaymentFrequency: l.repaymentFrequency ?? 'MONTHLY',
+    }))
   );
 }
 
@@ -583,7 +584,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Calculate core metrics
       const monthlyIncome = calculateMonthlyIncome(data.income);
       const monthlyExpenses = calculateMonthlyExpenses(data.expenses);
-      const monthlyLoanRepayments = calculateMonthlyLoanRepayments(data.loans);
+      const monthlyLoanRepayments = await calculateMonthlyLoanRepayments(userId, data.loans);
       const totalBalance = calculateTotalBalance(data.accounts);
 
       // Phase 2 (cashflow-SSOT-convergence, 2026-06-23) — the ONE canonical

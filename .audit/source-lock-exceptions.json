@@ -1,12 +1,12 @@
 {
   "comment": "Calc-SSOT Wall A1 — tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
   "generatedAt": "2026-07-17T11:25:20.073Z",
-  "count": 84,
+  "count": 80,
   "entries": [
     {
       "file": "app/api/ai/debt-analysis/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 4
+      "count": 3
     },
     {
       "file": "app/api/ai/debt-analysis/route.ts",
@@ -61,7 +61,7 @@
     {
       "file": "app/api/cashflow/intelligence/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 3
+      "count": 2
     },
     {
       "file": "app/api/cashflow/intelligence/route.ts",
@@ -81,7 +81,7 @@
     {
       "file": "app/api/cashflow/summary/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 3
+      "count": 2
     },
     {
       "file": "app/api/cashflow/summary/route.ts",
@@ -116,7 +116,7 @@
     {
       "file": "app/api/portfolio/snapshot/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 5
+      "count": 4
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",

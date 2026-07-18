@@ -44,6 +44,55 @@ describe('Wall B1 · resolveLoanMonthlyCost — the ONE per-loan cost, never sil
   });
 });
 
+describe('VR-013 · loan cost is ACTUALS-FIRST everywhere — the Broadbeach five-numbers failure', () => {
+  // Live shape from Ring-3 VR-013: $228,000 interest-only @ 6.69%, two linked
+  // repayments ($1,131 on 18 May, $1,295 on 18 Jun 2026). Property surfaces
+  // showed the actuals figure (~$1,191) while expenses/overview showed the
+  // contractual floor (~$1,271) because their resolver calls fed NO
+  // transactions. The fix feeds every surface the same linked repayments
+  // over the ONE trailing-12-month window (lib/services/loanCosts.ts).
+  const bbLoan = { id: 'l-bb', principal: 228_000, interestRateAnnual: 0.0669, minRepayment: 0, repaymentFrequency: 'MONTHLY' };
+  const bbTx = [
+    { id: 't-may', loanId: 'l-bb', date: new Date(Date.UTC(2026, 4, 18)), amount: 1131 },
+    { id: 't-jun', loanId: 'l-bb', date: new Date(Date.UTC(2026, 5, 18)), amount: 1295 },
+  ];
+  const FLOOR = (228_000 * 0.0669) / 12; // 1,271.10 — the contractual estimate
+  const ACTUALS = ((1131 + 1295) / 62) * 30.4375; // day-span run-rate ≈ 1,190.97
+
+  it('with linked repayments: actuals win (≈$1,191), never the floor (≈$1,271)', () => {
+    const r = resolveLoanMonthlyCost(bbLoan, bbTx);
+    expect(r.monthly).toBeCloseTo(ACTUALS, 6);
+    expect(r.monthly).toBeCloseTo(1190.97, 0);
+    expect(r.usedActuals).toBe(true);
+    expect(r.flooredToInterest).toBe(false);
+    expect(r.monthlyInterest).toBeCloseTo(FLOOR, 2); // the estimate stays available as reference
+  });
+
+  it('without repayments the floor still guards (never $0) — the declared→floor fallback', () => {
+    const r = resolveLoanMonthlyCost(bbLoan);
+    expect(r.monthly).toBeCloseTo(FLOOR, 2); // 1,271.10
+    expect(r.flooredToInterest).toBe(true);
+  });
+
+  it('Ring-2 identity: the property engine fed the SAME transactions lands the SAME actuals number', () => {
+    const cf = computePropertyCashflow({ loans: [bbLoan], transactions: bbTx });
+    expect(cf.loanLines[0].monthly).toBeCloseTo(ACTUALS, 9);
+  });
+
+  it('the window is trailing-12-months, NOT FY-scoped: prior-FY repayments still drive the run-rate', async () => {
+    // 18 May / 18 Jun 2026 are FY25-26; "today" 17 Jul 2026 is FY26-27. An
+    // FY-scoped filter finds none → floor → the VR-013 divergence. The ONE
+    // canonical window keeps them, so the resolver reads actuals.
+    const { propertyActualsWindowStart } = await import('../../lib/calculations/propertyActualsWindow');
+    const windowStart = propertyActualsWindowStart(new Date(Date.UTC(2026, 6, 17)));
+    const inWindow = bbTx.filter((t) => t.date >= windowStart); // the loanCosts.ts filter shape
+    expect(inWindow).toHaveLength(2); // an FY filter would keep 0
+    const r = resolveLoanMonthlyCost(bbLoan, inWindow);
+    expect(r.usedActuals).toBe(true);
+    expect(r.monthly).toBeCloseTo(ACTUALS, 6);
+  });
+});
+
 describe('Wall B2 · monthlyRunRate — a one-off contributes 0 to every run-rate', () => {
   it('one-off → 0; recurring → toMonthly; annual sibling ×12', () => {
     const oneOff = { amount: 11_385, frequency: 'MONTHLY', isRecurring: false };

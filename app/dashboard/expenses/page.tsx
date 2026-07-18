@@ -77,6 +77,15 @@ interface Loan {
   interestRateAnnual: number;
   isInterestOnly: boolean;
   property?: { id: string; name: string } | null;
+  /** VR-013 F1: THE canonical actuals-first monthly cost, computed server-side
+   *  by /api/loans (linked repayments over the trailing-12-month window →
+   *  declared → interest floor). The page reads this — it never re-derives. */
+  resolvedCost?: {
+    monthly: number;
+    monthlyInterest: number;
+    usedActuals: boolean;
+    flooredToInterest: boolean;
+  } | null;
 }
 
 interface InvestmentAccount {
@@ -551,10 +560,13 @@ function ExpensesPageContent() {
   const monthlyOf = (e: { amount: number; frequency: string; isRecurring?: boolean | null }) =>
     monthlyRunRate(e);
 
-  // Calc-SSOT Wall B1 (MON-032 drift): loan cost from the ONE resolved
-  // producer (declared minRepayment → interest floor) — an interest-only
-  // loan shows its interest, never $0. Raw `minRepayment` is display-only.
-  const loanMonthlyOf = (loan: Loan) => resolveLoanMonthlyCost(loan).monthly;
+  // Calc-SSOT Wall B1 + VR-013 F1 (MON-032/081 drift): loan cost from the ONE
+  // resolved producer, ACTUALS-FIRST — /api/loans computes `resolvedCost`
+  // server-side from linked repayments (trailing-12-month window), so this
+  // page shows the SAME number as the property engine. The client-side
+  // declared→floor resolution is only the fallback while the field loads.
+  const resolvedCostOf = (loan: Loan) => loan.resolvedCost ?? resolveLoanMonthlyCost(loan);
+  const loanMonthlyOf = (loan: Loan) => resolvedCostOf(loan).monthly;
 
   const totalMonthly = filteredExpenses.reduce((sum, e) => sum + monthlyOf(e), 0);
   const allTotalMonthly = expenses.reduce((sum, e) => sum + monthlyOf(e), 0);
@@ -999,7 +1011,7 @@ function ExpensesPageContent() {
           <CardContent className="pt-0">
             <div className="space-y-2">
               {loans.map((loan) => {
-                const resolvedLoan = resolveLoanMonthlyCost(loan);
+                const resolvedLoan = resolvedCostOf(loan);
                 const monthlyRepayment = resolvedLoan.monthly;
                 return (
                   <div
@@ -1020,7 +1032,11 @@ function ExpensesPageContent() {
                     <div className="text-right">
                       <p className="font-semibold text-orange-600">{formatCurrency(monthlyRepayment)}/mo</p>
                       <p className="text-xs text-muted-foreground">
-                        {resolvedLoan.flooredToInterest ? 'interest cost (no repayment set)' : `${formatCurrency(loan.minRepayment)}/${loan.repaymentFrequency.toLowerCase()}`}
+                        {resolvedLoan.usedActuals
+                          ? 'from linked repayments'
+                          : resolvedLoan.flooredToInterest
+                            ? 'interest cost (no repayment linked or set)'
+                            : `${formatCurrency(loan.minRepayment)}/${loan.repaymentFrequency.toLowerCase()}`}
                       </p>
                     </div>
                   </div>

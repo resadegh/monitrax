@@ -46,6 +46,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -139,6 +140,16 @@ export interface LoanDetail {
     institution?: string | null;
   } | null;
   expenses?: LoanDetailExpense[];
+  /** VR-013 F1: THE canonical actuals-first monthly cost, computed server-side
+   *  by /api/loans (linked repayments over the trailing-12-month window →
+   *  declared → interest floor). The Overview card headlines this — the
+   *  balance×rate figure below it is only the contractual estimate. */
+  resolvedCost?: {
+    monthly: number;
+    monthlyInterest: number;
+    usedActuals: boolean;
+    flooredToInterest: boolean;
+  } | null;
   _links?: {
     self: string;
     related: GRDCSLinkedEntity[];
@@ -208,6 +219,16 @@ function effectivePrincipalFor(loan: LoanDetail): number {
 
 function annualInterestFor(loan: LoanDetail): number {
   return effectivePrincipalFor(loan) * loan.interestRateAnnual;
+}
+
+/**
+ * VR-013 F1: the canonical actuals-first monthly cost. Prefers the
+ * server-resolved `resolvedCost` from /api/loans (fed with linked repayments
+ * over the ONE trailing-12-month window); falls back to the pure client-side
+ * declared→floor resolution only while that field is absent.
+ */
+function monthlyCostFor(loan: LoanDetail) {
+  return loan.resolvedCost ?? resolveLoanMonthlyCost(loan);
 }
 
 /**
@@ -344,15 +365,27 @@ export function LoanDetailDialog({
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Annual Interest Cost
+                        Monthly Loan Cost
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
+                      {/* VR-013 F1: headline = the canonical actuals-first cost
+                          (same number as property/expenses/cashflow). The
+                          balance×rate figure is a contractual ESTIMATE only —
+                          pre-fix it was headlined as the cost and diverged
+                          from the actual linked repayments. */}
                       <p className="text-2xl font-bold text-red-600">
-                        {formatCurrency(annualInterestFor(loan))}
+                        {formatCurrency(monthlyCostFor(loan).monthly)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        ~{formatCurrency(annualInterestFor(loan) / 12)}/month
+                        {monthlyCostFor(loan).usedActuals
+                          ? 'from linked repayments'
+                          : monthlyCostFor(loan).flooredToInterest
+                            ? 'interest floor (no repayment linked or set)'
+                            : 'declared repayment'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Interest ~{formatCurrency(annualInterestFor(loan))}/yr — contractual estimate (balance × rate)
                       </p>
                     </CardContent>
                   </Card>
