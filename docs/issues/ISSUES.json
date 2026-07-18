@@ -2484,23 +2484,31 @@
     {
       "id": "MON-087",
       "title": "Property-context Add Expense dialog crashes — Radix Select.Item empty value",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": false,
       "opened": "2026-07-18",
       "area": "expenses",
       "plain": {
-        "issue": "Clicking Add Expense from a property page crashed the whole screen to an error page (a form-menu bug), so you could not add a property expense at all."
+        "issue": "Clicking Add Expense from a property page crashed the whole screen to an error page (a form-menu bug), so you could not add a property expense at all.",
+        "fix": "Every menu's 'no options' row and 'None/All' choices now use a form the menu library allows, and the property-page expense form gained the same recurring/one-off tick-box as the main Expenses page.",
+        "check": "Click 'Add expense' on a property page: the form opens (no error screen). Untick 'This is a recurring expense': the Frequency dropdown is replaced by 'One-off — counted once, on the date it happens', and a saved one-off is counted once, never monthly."
       },
       "rootCause": [
         "components/ExpenseDialog.tsx:515"
       ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "components/ExpenseDialog.tsx (the ONE shared dialog — property list page + PropertyExpensesCard on property detail)",
+        "app/dashboard/expenses/page.tsx + app/dashboard/income/page.tsx + components/transactions/TransactionLinkDialog.tsx (latent same-class placeholders)",
+        "app/dashboard/admin/audit-logs/page.tsx + app/dashboard/investments/transactions/page.tsx (functional empty-value options -> sentinels)"
+      ],
+      "fixPRs": [
+        "#1446"
+      ],
+      "test": "tests/ui/selectItemEmptyValue.test.ts#static scan: zero empty-string SelectItem values in app/ + components/ (the render-crash class)",
       "tracker": "neoaudit-run:VR-014",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014. Class-wide fix in PR #1446: 11 placeholder items -> plain div rows; 4 functional options -> ALL/NONE sentinels; MON-083 recurring control added to the canonical dialog (was absent - a one-off was inexpressible from the property context). Stays FIXING until the Matrix's VR-014 re-run verifies the property-context path renders + one-off persists."
     }
   ]
 }

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**87 total** · 83 open · 🔵 25 · 🟡 7 · 🟠 23 · 🟢 28 · ✅ 3
+**87 total** · 83 open · 🔵 24 · 🟡 7 · 🟠 24 · 🟢 28 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -93,7 +93,7 @@
 | MON-084 | 🟡 DIAGNOSED | 🟠 | yes | SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows | — | — |
 | MON-085 | 🟡 DIAGNOSED | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | — | — |
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
-| MON-087 | 🔵 OPEN | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | — | n/a |
+| MON-087 | 🟠 FIXING | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | ##1446 | ✅ |
 
 ---
 
@@ -1531,13 +1531,19 @@ Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR
 
 ### MON-087 — Property-context Add Expense dialog crashes — Radix Select.Item empty value
 
-**🔵 OPEN** · 🟠 high · changes numbers: **no** · area: expenses · opened 2026-07-18
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: expenses · opened 2026-07-18
 
 > **What was wrong:** Clicking Add Expense from a property page crashed the whole screen to an error page (a form-menu bug), so you could not add a property expense at all.
 >
+> **What changed:** Every menu's 'no options' row and 'None/All' choices now use a form the menu library allows, and the property-page expense form gained the same recurring/one-off tick-box as the main Expenses page.
+>
+> **What you should see:** Click 'Add expense' on a property page: the form opens (no error screen). Untick 'This is a recurring expense': the Frequency dropdown is replaced by 'One-off — counted once, on the date it happens', and a saved one-off is counted once, never monthly.
+
 - **Root cause:** `components/ExpenseDialog.tsx:515`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Downstream consumers (§19.4):** `components/ExpenseDialog.tsx (the ONE shared dialog — property list page + PropertyExpensesCard on property detail)`, `app/dashboard/expenses/page.tsx + app/dashboard/income/page.tsx + components/transactions/TransactionLinkDialog.tsx (latent same-class placeholders)`, `app/dashboard/admin/audit-logs/page.tsx + app/dashboard/investments/transactions/page.tsx (functional empty-value options -> sentinels)`
+- **Fix PR(s):** ##1446
+- **Holistic test (§19.4):** `tests/ui/selectItemEmptyValue.test.ts#static scan: zero empty-string SelectItem values in app/ + components/ (the render-crash class)`
 - **Detail:** `neoaudit-run:VR-014`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014. Class-wide fix in PR #1446: 11 placeholder items -> plain div rows; 4 functional options -> ALL/NONE sentinels; MON-083 recurring control added to the canonical dialog (was absent - a one-off was inexpressible from the property context). Stays FIXING until the Matrix's VR-014 re-run verifies the property-context path renders + one-off persists.
 
