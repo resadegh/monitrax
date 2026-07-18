@@ -17,16 +17,19 @@ A fix that corrects **one surface** while leaving another surface that computes 
 | **MON-032** (#1359) | monthly loan cost (interest floor) | property detail/list/snapshot per-property (`properties/[id]/page.tsx:827-863`) | raw `minRepayment` still in `expenses/page.tsx:564-565`, `cashflow/summary:77-80`, `cashflow/intelligence:138-140`, `cfo/scenarios:76-83`, `portfolio/snapshot:684-686`, `ai/debt-analysis:193` | property shows floored interest, everything else shows **$0** — a divergence that didn't exist before (all were $0 together) |
 | **MON-037** (#1395/#1427) | monthly expense run-rate | `propertyCashflow:174`, `masterFinancialService`, insights, tax | `/dashboard/expenses` totals (`:554,561,569`) + portfolio-level `portfolio/snapshot:682` still count one-offs ×12 | expenses/outgoings headline inflated vs property/tax; sum-of-tiles ≠ portfolio total |
 | **Phase 59 / MON-080** (#1434/#1437) — **NEW, critical, live** | managed-rental agent fee | **tax path correct** (declared gross − derived expense, counted once) | **cashflow double-counts it**: `computePropertyCashflow` reads the NET disbursement as rent actuals (no gross-up, `propertyCashflow.ts:153-165`) **and** subtracts the derived `PROPERTY_MANAGEMENT` expense → fee subtracted twice on every cashflow surface | cashflow **understates** by the agent fee per managed property; tax and cashflow now disagree |
+| **MON-081** (VR-013, `7163caba`, #1441 F1+F2) — **newest live case** | monthly loan cost (interest-only) | property detail actuals-first (`resolveLoanMonthlyCost`) | expenses page + Loan Overview card still on balance×rate estimate; "Interest this FY" $0 (FY-window bug) | the SAME loan read **five different monthly costs** across five surfaces ($1,191 / $1,271 / $1,295 / $1,131 / $0) — `docs/verification/runs/VR-013.md` |
 
 **Process lesson (owned):** the MON-080 Ring-3 (VR-011) verified the **tax** page only and reported "no double-count" — it did **not** check cashflow, where the double-count lives. A per-surface Ring-3 is how drift slips through. This is exactly why clauses 2 & 4 and gate 4 below are mandatory.
 
-## Mandatory gates (a fix cannot merge without these)
+## Mandatory gates (a fix cannot merge without these — gates 7–8 added 2026-07-18, guardrail-hardening PR)
 1. **Single-producer edit.** A change to any money/cashflow/tax/loan/income/expense value MUST be made in the one canonical producer (`lib/calculations/*`, `lib/services/masterFinancialService.ts`, `lib/utils/frequencies.ts`, the tax engine). If a surface bypasses the producer, **migrate it in the same PR** — never branch a second copy.
 2. **Source-lock lint (automated backstop).** CI fails if any `app/**/page.tsx` or route computes `frequency×amount`, reads raw `minRepayment`, or `.reduce`s over raw income/expense/loan arrays instead of a canonical producer. (Calc-SSOT-Wall Ring-1 — the teeth of this law.)
 3. **Ratchet-down only.** Financial-surface lint exception count may not increase in any PR. New exceptions require explicit Reza sign-off + a follow-up issue.
 4. **Cross-surface Ring-3.** For any number-changing fix, the Matrix verifies the SAME value reads identically on **every** surface it appears (income ↔ tax ↔ cashflow ↔ property ↔ expenses ↔ balances) — not just the surface edited. Tax-only or single-surface verification is a fail.
 5. **Holistic pre-fix audit (clause 4).** Before coding, produce the end-to-end producer/consumer map for the value + a four-lens read; attach it to the issue. The fix scope = the whole map.
 6. **No new duplicate record.** Reconcile/import fixes route through the canonical intake upsert-by-signature (Calc-SSOT-Wall Mechanism A).
+7. **10/10 self-review — both sides (SECOND LAW, Reza 2026-07-17).** PR-side: the §20.6 tri-axis gate line, with the MATRIX_FIX_DISCIPLINE checklist folded into the Logic axis (CLAUDE.md §20.6). Present-side: every recommendation/verdict/number is reviewed against requirements + design principles + these laws + the four lenses and presented only at an honest 10/10 (CLAUDE.md §20.7). Sub-10 = STOP-and-surface, never round up.
+8. **Neo-sync (THIRD RULE, Reza 2026-07-17 — CLAUDE.md §21.2.2).** The same PR updates: the **Neomatrix** for any producer/lineage change (Model, §21.2.1) · **NeoAudit** with the Ratchet test that makes the bug class permanent (Promote, Part 23.2.6) · **Neobrain** docs when intake/reconciliation/categorisation moved (Phase 54) · and NOTHING stays sandbox-only — every artefact lands in the repo.
 
 ## Pre-PR checklist (add to §20.6 self-score, must be 10/10)
 - [ ] Holistic end-to-end map done first: every producer + every consumer of this value enumerated; four lenses read.
@@ -34,6 +37,8 @@ A fix that corrects **one surface** while leaving another surface that computes 
 - [ ] `lint:financial-surfaces` + source-lock lint pass; exception count did not rise.
 - [ ] Cross-surface Ring-3 done: the value reads identically on **every** surface (not just the one edited).
 - [ ] No new producer, no new duplicate record, no closed issue re-opened.
+- [ ] Neo-sync done in THIS PR: Neomatrix (Model) · NeoAudit ratchet (Promote) · Neobrain if intake/reconciliation touched · nothing sandbox-only (gate 8).
+- [ ] 10/10 self-review recorded — §20.6 gate line in the PR body; recommendations herein passed §20.7 (gate 7).
 
 ## Immediate consequence
 - **Raise now (critical, live):** Phase 59/MON-080 cashflow double-count of the agent fee. **Re-open MON-079/MON-080 verification** — they are VERIFIED for tax only; the cross-surface Ring-3 was not met.
