@@ -95,11 +95,8 @@ import {
 // canonical Phase 20 tax engine instead of reimplementing brackets
 // inline. Resolves audit C-1 in
 // `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §3 / §10.1.
-import {
-  calculateTaxPosition,
-  type IncomeItem as TaxEngineIncomeItem,
-  type ExpenseItem as TaxEngineExpenseItem,
-} from '@/lib/tax-engine/position/taxPositionCalculator';
+import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
+import type { TaxPositionResult } from '@/lib/tax-engine/types';
 
 // =============================================================================
 // MASTER TYPES
@@ -1342,76 +1339,27 @@ function buildInvestmentMetrics(holdings: RawInvestmentHolding[]): InvestmentMet
 }
 
 /**
- * Build the master snapshot's tax summary.
+ * Build the master snapshot's tax summary — MON-020/060: an ADAPTER over the
+ * ONE canonical user-level tax position (`getUserTaxPosition`), never a second
+ * assembler.
  *
- * **Phase 41e.−1 cleanup PR C — REPLACED inline brackets with engine delegation.**
- * Previously this function reimplemented FY24-25 tax brackets inline (the
- * "regression trap" identified as audit C-1 in
- * `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md`). It now calls
- * `calculateTaxPosition()` from the canonical Phase 20 tax engine and
- * adapts the result back into the legacy `TaxSummary` shape.
+ * Before this, master assembled its OWN engine inputs (rental-deduped income +
+ * isTaxable filter, but NO depreciation, NO MON-045 property-loan interest,
+ * NO super, NO franking fields) — provably incomplete vs the app's own tax
+ * page, so master's `estimatedTaxPayable` (the activity Sankey's "Tax" node)
+ * diverged from /dashboard/tax and /cashflow (the MON-060 symptom; F2
+ * same-engine-different-inputs). Now every surface reads the SAME position.
+ * The legacy `TaxSummary` shape is preserved for consumers.
  *
- * **Behaviour change vs the old inline math:** the tax engine includes
- * Medicare Levy + LITO/SAPTO offsets, which the old code did not. So
- * `estimatedTaxPayable` and `estimatedRefundOrOwing` will move slightly
- * for users who previously consumed this surface; the new numbers
- * agree with `/api/tax/position` for the same user. This is the
- * "intentional diff" outcome of the snapshot-test parity protocol
- * (audit doc §9.2). `marginalTaxRate` is still rendered as a
- * percentage (e.g. 30) for backward-compat with the consumer shape.
- *
- * Future work (Phase 41e.0+): swap consumers off `TaxSummary` onto
- * the richer `TaxPositionResult` shape; delete this adapter.
+ * Recorded finding (not silently changed): the canonical assembler reads raw
+ * Income rows; master's old path additionally applied the MON-009 rental dedup
+ * + the isTaxable filter to ITS tax base. Folding dedup + isTaxable INTO the
+ * canonical assembler is the recorded follow-up (MON-020 registry notes) —
+ * a semantic unification for Reza's call, not this routing collapse.
  */
-function buildTaxSummary(
-  income: RawIncome[],
-  expenses: RawExpense[]
-): TaxSummary {
-  const taxIncomes: TaxEngineIncomeItem[] = income.map((inc) => ({
-    id: inc.id,
-    name: inc.name,
-    type: inc.type,
-    amount: inc.amount,
-    frequency: inc.frequency,
-    propertyId: inc.propertyId ?? undefined,
-    investmentAccountId: inc.investmentAccountId ?? undefined,
-    grossAmount:
-      inc.type === 'SALARY' && inc.salaryType === 'NET' && inc.grossAmount
-        ? inc.grossAmount
-        : undefined,
-    paygWithholding: inc.paygWithholding ?? undefined,
-  }));
-
-  const taxExpenses: TaxEngineExpenseItem[] = expenses.map((e) => ({
-    id: e.id,
-    name: e.name,
-    category: e.category ?? 'OTHER',
-    amount: e.amount,
-    frequency: e.frequency,
-    isTaxDeductible: e.isTaxDeductible,
-    isRecurring: e.isRecurring, // MON-037: count one-offs once, not ×frequency
-    propertyId: e.propertyId ?? undefined,
-    loanId: e.loanId ?? undefined,
-  }));
-
-  // Filter out non-taxable income to match the legacy filter behaviour.
-  const taxableIncomes = taxIncomes.filter((_, i) => income[i].isTaxable);
-
-  const result = calculateTaxPosition({
-    incomes: taxableIncomes,
-    expenses: taxExpenses,
-    depreciations: [],
-  });
-
-  // `effectiveRate` returned by the engine is already in percentage
-  // scale (0–100, rounded to 2dp). `marginalRate` is also percentage
-  // scale (0–100) — see `incomeTaxCalculator.ts:112` which multiplies
-  // by 100 before returning. The legacy `TaxSummary.marginalTaxRate`
-  // consumer also expects percentage (e.g. 30, not 0.30), so pass
-  // through unchanged.
+function buildTaxSummaryFromPosition(result: TaxPositionResult): TaxSummary {
   const effectiveRate = result.tax.effectiveRate ?? 0;
   const marginalRatePercent = result.tax.marginalRate ?? 0;
-
   return {
     estimatedTaxableIncome: Math.round(result.tax.taxableIncome),
     estimatedTaxPayable: Math.round(result.tax.netTax),
@@ -2005,10 +1953,12 @@ async function computeMasterFinancialSnapshot(
   // Build investment metrics
   const investmentMetrics = buildInvestmentMetrics(data.investmentHoldings);
 
-  // Build tax summary — MON-010: read the rental-deduped income (adjustedIncome),
-  // NOT raw data.income, so a rental fragmented across several records is counted
-  // ONCE in taxable rental (same source the income breakdown uses → they converge).
-  const taxSummary = buildTaxSummary(adjustedIncome, data.expenses);
+  // Build tax summary — MON-020/060: read the ONE canonical user-level tax
+  // position (same source as /dashboard/tax, /cashflow and the CFO), adapted
+  // to the legacy TaxSummary shape. Master no longer assembles its own tax
+  // inputs (its old set omitted depreciation/loan-interest/super/franking).
+  const taxBundle = await getUserTaxPosition(userId);
+  const taxSummary = buildTaxSummaryFromPosition(taxBundle.taxPosition);
 
   // Calculate liquid cash using centralized LIQUID_ACCOUNT_TYPES (single source of truth)
   const liquidCash = data.accounts

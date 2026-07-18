@@ -104,6 +104,11 @@ export const GOLDEN_DB = {
   investmentTransaction: [] as never[], // include-shaped routes read this; none for the golden book
   spendingProfile: [] as never[], // cashflow full-mode reads via findUnique(userId) → null → declared-basis branch
   depreciationSchedule: [] as never[], // report contextBuilder counts these; none for the golden book
+  // MON-020/060: getUserTaxPosition (now also called inside the master snapshot)
+  // reads INTEREST_CHARGED ledger rows per property loan. None in the golden
+  // book — the MON-045 interest leg contributes 0 here by design (it has its
+  // own Ring-0 suite); serving the model keeps the fail-loud Proxy honest.
+  loanTransaction: [] as never[],
 };
 
 /**
@@ -200,6 +205,31 @@ export function createGoldenDbFrom(rowsByModel: Record<string, { id?: string }[]
           // rows.length is the faithful count. (Not a general WHERE evaluator;
           // adequate + honest for a single-household fixture.)
           count: async () => rows.length,
+          // Minimal faithful groupBy (used by getUserTaxPosition's per-loan
+          // INTEREST_CHARGED sums): groups rows by the single `by` key and
+          // sums the requested _sum fields, honouring a `where.<key>.in`
+          // filter + `where.kind`. Extend if a caller needs more.
+          groupBy: async (args: { by: string[]; where?: Record<string, unknown>; _sum?: Record<string, boolean> }) => {
+            const key = args.by[0];
+            let filtered = rows as Record<string, unknown>[];
+            const where = (args.where ?? {}) as Record<string, any>;
+            for (const [f, cond] of Object.entries(where)) {
+              if (cond && typeof cond === 'object' && Array.isArray(cond.in)) {
+                filtered = filtered.filter((r) => cond.in.includes(r[f]));
+              } else if (typeof cond !== 'object') {
+                filtered = filtered.filter((r) => r[f] === cond);
+              }
+            }
+            const groups = new Map<unknown, Record<string, unknown>>();
+            for (const r of filtered) {
+              const g = groups.get(r[key]) ?? { [key]: r[key], _sum: Object.fromEntries(Object.keys(args._sum ?? {}).map((f) => [f, 0])) };
+              for (const f of Object.keys(args._sum ?? {})) {
+                (g._sum as Record<string, number>)[f] += Number(r[f] ?? 0);
+              }
+              groups.set(r[key], g);
+            }
+            return [...groups.values()];
+          },
         };
       },
     },

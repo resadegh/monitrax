@@ -30,12 +30,21 @@ import type {
   IncomeItem,
   ExpenseItem,
   DepreciationItem,
+  TaxPositionCalculationInput,
 } from './taxPositionCalculator';
 import type { TaxPositionResult } from '../types';
 
 export interface UserTaxPositionBundle {
   /** The canonical tax position — the single source every tax surface reads. */
   taxPosition: TaxPositionResult;
+  /**
+   * MON-020/060: the EXACT assembled engine input that produced `taxPosition`.
+   * Any consumer needing a sibling computation over the same position (e.g.
+   * the Decimal twin on /api/tax/position) calls its engine with THIS object —
+   * never a re-fetched/re-assembled input set. Same engine + same inputs =
+   * one number (the F2 same-engine-different-inputs class, FIX_PROTOCOL §1).
+   */
+  engineInputs: TaxPositionCalculationInput;
   financialYear: string;
   /** Raw fetched rows, reused by the CFO extras (CGT, negative gearing, risks)
    *  so they don't re-fetch. `/cashflow` uses only `taxPosition`. */
@@ -53,8 +62,19 @@ export interface UserTaxPositionBundle {
  */
 export async function getUserTaxPosition(
   userId: string,
+  /** Optional FY override (e.g. "2025-26"); defaults to the current FY.
+   *  Preserves /api/tax/position's ?financialYear= contract (MON-020/060). */
+  financialYear?: string | null,
 ): Promise<UserTaxPositionBundle> {
   const fyInfo = getCurrentFinancialYear();
+  const fyYear = financialYear || fyInfo.year;
+  // FY bounds for the requested year (same July-1→June-30 convention as
+  // getCurrentFinancialYear) — the MON-045 interest window must match the FY
+  // the position is computed for, not unconditionally the current one.
+  const fyStartYear = Number(fyYear.slice(0, 4));
+  const fyBounds = Number.isFinite(fyStartYear)
+    ? { start: new Date(fyStartYear, 6, 1), end: new Date(fyStartYear + 1, 5, 30) }
+    : { start: fyInfo.startDate, end: fyInfo.endDate };
 
   const [incomes, expenses, depreciations, superAccounts, holdings] =
     await Promise.all([
@@ -103,7 +123,7 @@ export async function getUserTaxPosition(
         where: {
           loanId: { in: allPropertyLoanIds },
           kind: 'INTEREST_CHARGED',
-          date: { gte: fyInfo.startDate, lte: fyInfo.endDate },
+          date: { gte: fyBounds.start, lte: fyBounds.end },
         },
         _sum: { amount: true },
       })
@@ -168,18 +188,20 @@ export async function getUserTaxPosition(
     { concessional: 0, nonConcessional: 0 },
   );
 
-  const taxPosition = calculateTaxPosition({
+  const engineInputs: TaxPositionCalculationInput = {
     incomes: incomeItems,
     expenses: expenseItems,
     depreciations: depreciationItems,
     propertyLoans: propertyLoanItems, // MON-045: auto-derived deductible interest
     superContributions: superTotals,
-    financialYear: fyInfo.year,
-  });
+    financialYear: fyYear,
+  };
+  const taxPosition = calculateTaxPosition(engineInputs);
 
   return {
     taxPosition,
-    financialYear: fyInfo.year,
+    engineInputs,
+    financialYear: fyYear,
     incomes,
     expenses,
     depreciations,

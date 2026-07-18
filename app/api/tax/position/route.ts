@@ -6,69 +6,16 @@
 
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
-import { prisma } from '@/lib/db';
 import {
-  calculateTaxPosition,
   calculateQuickTaxPosition,
   getCurrentFinancialYear,
 } from '@/lib/tax-engine';
 import { calculateTaxPositionDecimal } from '@/lib/tax-engine/position/taxPositionCalculator';
-import type { IncomeItem, ExpenseItem, DepreciationItem } from '@/lib/tax-engine/position/taxPositionCalculator';
-import { calculateDepreciationAnnual } from '@/lib/depreciation';
-
-// Types for Prisma query results
-interface IncomeRecord {
-  id: string;
-  name: string;
-  type: string;
-  amount: number;
-  frequency: string;
-  isRecurring: boolean; // MON-053: one-off income counts once, not ×frequency
-  propertyId: string | null;
-  investmentAccountId: string | null;
-  grossAmount: number | null;
-  paygWithholding: number | null;
-  frankingPercentage: number | null;
-  frankingCredits: number | null;
-  property: { id: string; name: string } | null;
-  investmentAccount: { id: string; name: string } | null;
-}
-
-interface ExpenseRecord {
-  id: string;
-  name: string;
-  category: string;
-  amount: number;
-  frequency: string;
-  isTaxDeductible: boolean;
-  isRecurring: boolean;
-  propertyId: string | null;
-  loanId: string | null;
-  property: { id: string; name: string } | null;
-  loan: { id: string; name: string } | null;
-}
-
-interface DepreciationRecord {
-  id: string;
-  propertyId: string;
-  category: string;
-  assetName: string;
-  cost: number;
-  startDate: Date;
-  rate: number;
-  method: string;
-  property: { id: string; name: string };
-}
-
-interface SuperAccountRecord {
-  concessionalYTD: number | null;
-  nonConcessionalYTD: number | null;
-}
-
-interface SuperTotalsAccumulator {
-  concessional: number;
-  nonConcessional: number;
-}
+// MON-020/060: the ONE user-level tax assembler — this route no longer fetches
+// or assembles its own inputs (that duplicated getUserTaxPosition verbatim and
+// was the F2 same-engine-different-inputs drift risk). Float position + the
+// Decimal twin both derive from the SAME bundle.engineInputs.
+import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
 
 /**
  * GET /api/tax/position - Get user's comprehensive tax position
@@ -82,155 +29,16 @@ export const GET = withPermission('report.read', async (request, auth) => {
     const currentFY = getCurrentFinancialYear();
     const financialYear = requestedFY || currentFY.year;
 
-    // Fetch all user data for tax position calculation
-    const [incomes, expenses, depreciations, superAccounts] = await Promise.all([
-      // Get all incomes
-      prisma.income.findMany({
-        where: { userId },
-        include: {
-          property: { select: { id: true, name: true } },
-          investmentAccount: { select: { id: true, name: true } },
-        },
-      }),
-      // Get all expenses
-      prisma.expense.findMany({
-        where: { userId },
-        include: {
-          property: { select: { id: true, name: true } },
-          loan: { select: { id: true, name: true } },
-        },
-      }),
-      // Get depreciation schedules
-      prisma.depreciationSchedule.findMany({
-        where: {
-          property: { userId },
-        },
-        include: {
-          property: { select: { id: true, name: true } },
-        },
-      }),
-      // Get super accounts for contribution totals
-      prisma.superannuationAccount.findMany({
-        where: { userId },
-        select: {
-          concessionalYTD: true,
-          nonConcessionalYTD: true,
-        },
-      }),
-    ]);
+    // MON-020/060: ONE fetch + ONE assembly via the canonical user-level
+    // source. The Decimal twin is computed from the SAME engineInputs object
+    // that produced the Float position — identical inputs by construction.
+    const bundle = await getUserTaxPosition(userId, requestedFY);
+    const taxPositionFloat = bundle.taxPosition;
+    const taxPosition = calculateTaxPositionDecimal(bundle.engineInputs);
+    const incomeItems = bundle.engineInputs.incomes;
+    const expenseItems = bundle.engineInputs.expenses;
+    const depreciationItems = bundle.engineInputs.depreciations ?? [];
 
-    // MON-045: property loans (with offset balances) + FY INTEREST_CHARGED
-    // actuals for auto-derived deductible interest — the SAME inputs
-    // getUserTaxPosition passes, so the Tax page and CFO/cashflow read one
-    // consistent position (the MON-028 same-engine-different-inputs lesson).
-    const loanProps = await prisma.property.findMany({
-      where: { userId },
-      select: { id: true, type: true, loans: { include: { offsetAccount: true } } },
-    });
-    const propLoanIds = loanProps.flatMap((p) => p.loans.map((l) => l.id));
-    const interestSums = propLoanIds.length
-      ? await prisma.loanTransaction.groupBy({
-          by: ['loanId'],
-          where: {
-            loanId: { in: propLoanIds },
-            kind: 'INTEREST_CHARGED',
-            date: { gte: currentFY.startDate, lte: currentFY.endDate },
-          },
-          _sum: { amount: true },
-        })
-      : [];
-    const actualInterestByLoan = new Map<string, number>(
-      interestSums.map((r) => [r.loanId, Math.abs(r._sum.amount ?? 0)]),
-    );
-    const propertyLoanItems = loanProps.flatMap((p) =>
-      p.loans.map((l) => ({
-        id: l.id,
-        propertyType: p.type,
-        principal: l.principal,
-        interestRateAnnual: l.interestRateAnnual,
-        offsetBalance: l.offsetAccount?.currentBalance ?? null,
-        deductibleFraction: l.deductibleFraction ?? null,
-        actualInterestCharged: actualInterestByLoan.get(l.id) ?? null,
-      })),
-    );
-
-    // Transform incomes to IncomeItem format
-    const incomeItems: IncomeItem[] = (incomes as IncomeRecord[]).map((income: IncomeRecord) => ({
-      id: income.id,
-      name: income.name,
-      type: income.type,
-      amount: income.amount,
-      frequency: income.frequency,
-      isRecurring: income.isRecurring, // MON-053
-      propertyId: income.propertyId || undefined,
-      investmentAccountId: income.investmentAccountId || undefined,
-      grossAmount: income.grossAmount || undefined,
-      paygWithholding: income.paygWithholding || undefined,
-      frankingPercentage: income.frankingPercentage || undefined,
-      frankingCredits: income.frankingCredits || undefined,
-    }));
-
-    // Transform expenses to ExpenseItem format
-    const expenseItems: ExpenseItem[] = (expenses as ExpenseRecord[]).map((expense: ExpenseRecord) => ({
-      id: expense.id,
-      name: expense.name,
-      category: expense.category,
-      amount: expense.amount,
-      frequency: expense.frequency,
-      isTaxDeductible: expense.isTaxDeductible,
-      isRecurring: expense.isRecurring, // MON-037: count one-offs once, not ×frequency
-      propertyId: expense.propertyId || undefined,
-      loanId: expense.loanId || undefined,
-    }));
-
-    // Transform depreciations to DepreciationItem format
-    // Calculate current year deduction from cost and rate
-    const depreciationItems: DepreciationItem[] = (depreciations as unknown as DepreciationRecord[]).map((dep: DepreciationRecord) => {
-      // MON-026: DepreciationSchedule.rate is a PERCENTAGE (2.5 = 2.5%), not a
-      // decimal — the prior `cost * rate` was 100× too high. The canonical engine
-      // does the /100 + prime-cost/diminishing-value math.
-      const annualDeduction = calculateDepreciationAnnual(dep as any).annualDepreciation;
-      return {
-        id: dep.id,
-        propertyId: dep.propertyId,
-        currentYearDeduction: annualDeduction,
-        type: dep.category, // DIV43 or DIV40
-      };
-    });
-
-    // Calculate super contribution totals
-    const superTotals = (superAccounts as SuperAccountRecord[]).reduce(
-      (acc: SuperTotalsAccumulator, account: SuperAccountRecord) => ({
-        concessional: acc.concessional + (account.concessionalYTD || 0),
-        nonConcessional: acc.nonConcessional + (account.nonConcessionalYTD || 0),
-      }),
-      { concessional: 0, nonConcessional: 0 }
-    );
-
-    // Q-DEC PR 3.B — Decimal engine for numeric output; convert Decimal
-    // → number at the JSON boundary. Same per-field rounding pattern as
-    // the pre-cutover Float path (most money fields integer-rounded via
-    // Math.round; rates + paygWithheld + estimatedRefund pass through
-    // as-is). The Float path is also called to source `warnings` +
-    // `recommendations` (presentational, not numeric — no Decimal sibling
-    // exists; presentation-side warnings/recommendations move to Decimal
-    // in PR 4 when Float is dropped).
-    const taxPositionFloat = calculateTaxPosition({
-      incomes: incomeItems,
-      expenses: expenseItems,
-      depreciations: depreciationItems,
-      propertyLoans: propertyLoanItems, // MON-045
-      superContributions: superTotals,
-      financialYear,
-    });
-    const taxPosition = calculateTaxPositionDecimal({
-      incomes: incomeItems,
-      expenses: expenseItems,
-      depreciations: depreciationItems,
-      propertyLoans: propertyLoanItems, // MON-045
-      superContributions: superTotals,
-      financialYear,
-    });
     const n = (d: { toNumber(): number }): number => d.toNumber();
     const r = (d: { toNumber(): number }): number => Math.round(d.toNumber());
 
