@@ -1489,7 +1489,7 @@ export function TransactionLinkDialog({
                       </SelectTrigger>
                       <SelectContent>
                         {investmentAccounts.length === 0 ? (
-                          <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No investment accounts available</div>
                         ) : (
                           investmentAccounts.map((account) => (
                             <SelectItem key={account.id} value={account.id}>
@@ -1692,7 +1692,7 @@ export function TransactionLinkDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {properties.length === 0 ? (
-                        <SelectItem value="" disabled>No properties available</SelectItem>
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No properties available</div>
                       ) : (
                         properties.map((property) => (
                           <SelectItem key={property.id} value={property.id}>
@@ -1721,7 +1721,7 @@ export function TransactionLinkDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {sourceLoansList.length === 0 ? (
-                        <SelectItem value="" disabled>No loans available</SelectItem>
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No loans available</div>
                       ) : (
                         sourceLoansList.map((loan) => (
                           <SelectItem key={loan.id} value={loan.id}>
@@ -1750,7 +1750,7 @@ export function TransactionLinkDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {investmentAccounts.length === 0 ? (
-                        <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No investment accounts available</div>
                       ) : (
                         investmentAccounts.map((account) => (
                           <SelectItem key={account.id} value={account.id}>
@@ -1779,7 +1779,7 @@ export function TransactionLinkDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {assets.length === 0 ? (
-                        <SelectItem value="" disabled>No assets available</SelectItem>
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No assets available</div>
                       ) : (
                         assets.map((asset) => (
                           <SelectItem key={asset.id} value={asset.id}>

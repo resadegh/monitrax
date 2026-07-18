@@ -149,6 +149,8 @@ export default function PropertyExpensesCard({
       amount: e.amount,
       frequency: e.frequency as DialogExpense['frequency'],
       isEssential: e.isEssential ?? true,
+      isRecurring: e.isRecurring ?? true, // MON-083: editing a one-off shows it as one-off
+
       isTaxDeductible: e.isTaxDeductible ?? true,
       propertyId: e.propertyId ?? propertyId,
       loanId: e.loanId ?? null,

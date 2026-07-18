@@ -1848,7 +1848,7 @@ function IncomePageContent() {
                     </SelectTrigger>
                     <SelectContent>
                       {properties.length === 0 ? (
-                        <SelectItem value="" disabled>No properties available</SelectItem>
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No properties available</div>
                       ) : (
                         properties.map((property) => (
                           <SelectItem key={property.id} value={property.id}>
@@ -1905,19 +1905,20 @@ function IncomePageContent() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="investmentAccountId">Linked Investment Account</Label>
+                    {/* MON-087 class: 'NONE' sentinel — state keeps null. */}
                     <Select
-                      value={formData.investmentAccountId || ''}
-                      onValueChange={(value) => setFormData({ ...formData, investmentAccountId: value || null })}
+                      value={formData.investmentAccountId ?? 'NONE'}
+                      onValueChange={(value) => setFormData({ ...formData, investmentAccountId: value === 'NONE' ? null : value })}
                     >
                       <SelectTrigger id="investmentAccountId">
                         <SelectValue placeholder="Select an investment account (optional)" />
                       </SelectTrigger>
                       <SelectContent>
                         {investmentAccounts.length === 0 ? (
-                          <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No investment accounts available</div>
                         ) : (
                           <>
-                            <SelectItem value="">None</SelectItem>
+                            <SelectItem value="NONE">None</SelectItem>
                             {investmentAccounts.map((account) => (
                               <SelectItem key={account.id} value={account.id}>
                                 <div className="flex items-center gap-2">

@@ -2297,7 +2297,7 @@
     {
       "id": "MON-081",
       "title": "Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer)",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-17",
@@ -2329,11 +2329,12 @@
       ],
       "fixPRs": [
         "#1440",
-        "#1441"
+        "#1441",
+        "#1442"
       ],
       "test": "tests/golden/ring2.calcSsotWall.test.ts#VR-013 describe: Broadbeach 228,000 @ 6.69% + repayments 1,131/1,295 → 1,190.97 actuals not 1,271.10 floor; engine≡standalone identity; trailing-12mo window keeps prior-FY repayments — an FY filter would keep 0",
       "tracker": "calc-ssot-wall",
-      "notes": "Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DISCIPLINE.md case MON-032 partial-producer drift: the MON-032 fix landed the interest floor on property surfaces only, CREATING divergence with every surface still reading raw minRepayment ($0 for interest-only). rootCause anchors are PRE-FIX lines (2026-07-17). Wall B1 extracts resolveLoanMonthlyCost() from the computePropertyCashflow loan loop and migrates: /dashboard/expenses, cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. REMAINING bypass sites (tracked ratchet-down in .audit/source-lock-exceptions.json RAW_MIN_REPAYMENT_COST): budget-analysis/generate, calculate/cashflow, calculate/debt-plan, transactions/[id]/link, loans route, balances page, properties pages, plan page - migrate + ratchet in follow-ups. CROSS-SURFACE RING-3 VR-013 FAIL (2026-07-17): expenses page + loan Overview card showed the $1,271 contractual floor while property/cashflow showed $1,191 actuals — the migrated surfaces called resolveLoanMonthlyCost with NO transactions (same-engine-different-inputs, F2 class). SECONDARY A FOLDED IN: the 'no repayment set' caption + floor fired despite linked repayments because no feed existed (NOT an FY filter in the resolver path — verified; the FY-scoped 'Interest this FY' card is a separate labelled metric and feeds nothing). FIX (same fixPR chain): lib/services/loanCosts.ts — THE transaction feed (linked repayments over the ONE trailing-12-month propertyActualsWindowStart window) → resolveLoanMonthlyCost; /api/loans attaches resolvedCost for client surfaces (expenses page + LoanDetailDialog); cashflow summary/intelligence + CFO run/context + debt-analysis + portfolio snapshot fed server-side. Overview card now headlines the actuals-first monthly with basis label; balance×rate relabelled 'contractual estimate'. Stays FIXING until the Matrix re-runs the cross-surface Ring-3 (Broadbeach identical on all 5 surfaces)."
+      "notes": "Calc-SSOT Wall Mechanism B (docs/architecture/CALC_SSOT_WALL.md) / MATRIX_FIX_DISCIPLINE.md case MON-032 partial-producer drift: the MON-032 fix landed the interest floor on property surfaces only, CREATING divergence with every surface still reading raw minRepayment ($0 for interest-only). rootCause anchors are PRE-FIX lines (2026-07-17). Wall B1 extracts resolveLoanMonthlyCost() from the computePropertyCashflow loan loop and migrates: /dashboard/expenses, cashflow summary + intelligence, CFO scenarios run + context, AI debt-analysis, portfolio snapshot. REMAINING bypass sites (tracked ratchet-down in .audit/source-lock-exceptions.json RAW_MIN_REPAYMENT_COST): budget-analysis/generate, calculate/cashflow, calculate/debt-plan, transactions/[id]/link, loans route, balances page, properties pages, plan page - migrate + ratchet in follow-ups. CROSS-SURFACE RING-3 VR-013 FAIL (2026-07-17): expenses page + loan Overview card showed the $1,271 contractual floor while property/cashflow showed $1,191 actuals — the migrated surfaces called resolveLoanMonthlyCost with NO transactions (same-engine-different-inputs, F2 class). SECONDARY A FOLDED IN: the 'no repayment set' caption + floor fired despite linked repayments because no feed existed (NOT an FY filter in the resolver path — verified; the FY-scoped 'Interest this FY' card is a separate labelled metric and feeds nothing). FIX (same fixPR chain): lib/services/loanCosts.ts — THE transaction feed (linked repayments over the ONE trailing-12-month propertyActualsWindowStart window) → resolveLoanMonthlyCost; /api/loans attaches resolvedCost for client surfaces (expenses page + LoanDetailDialog); cashflow summary/intelligence + CFO run/context + debt-analysis + portfolio snapshot fed server-side. Overview card now headlines the actuals-first monthly with basis label; balance×rate relabelled 'contractual estimate'. Stays FIXING until the Matrix re-runs the cross-surface Ring-3 (Broadbeach identical on all 5 surfaces). RING-3 VR-014 PASS (2026-07-18, the Matrix): Broadbeach loan reads $1,191/mo identically on property detail / expenses row ('from linked repayments') / loan Overview card ('Monthly Loan Cost', balance-x-rate demoted to 'contractual estimate') / portfolio aggregate ($12,779/mo all-loans actuals-first); regression guards intact -> VERIFIED."
     },
     {
       "id": "MON-082",
@@ -2480,6 +2481,35 @@
       "test": "tests/golden/ring2.calcSsotWall.test.ts#Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded",
       "tracker": "calc-ssot-wall",
       "notes": "Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too. RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED."
+    },
+    {
+      "id": "MON-087",
+      "title": "Property-context Add Expense dialog crashes — Radix Select.Item empty value",
+      "status": "FIXING",
+      "severity": "high",
+      "changesNumbers": false,
+      "opened": "2026-07-18",
+      "area": "expenses",
+      "plain": {
+        "issue": "Clicking Add Expense from a property page crashed the whole screen to an error page (a form-menu bug), so you could not add a property expense at all.",
+        "fix": "Every menu's 'no options' row and 'None/All' choices now use a form the menu library allows, and the property-page expense form gained the same recurring/one-off tick-box as the main Expenses page.",
+        "check": "Click 'Add expense' on a property page: the form opens (no error screen). Untick 'This is a recurring expense': the Frequency dropdown is replaced by 'One-off — counted once, on the date it happens', and a saved one-off is counted once, never monthly."
+      },
+      "rootCause": [
+        "components/ExpenseDialog.tsx:515"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [
+        "components/ExpenseDialog.tsx (the ONE shared dialog — property list page + PropertyExpensesCard on property detail)",
+        "app/dashboard/expenses/page.tsx + app/dashboard/income/page.tsx + components/transactions/TransactionLinkDialog.tsx (latent same-class placeholders)",
+        "app/dashboard/admin/audit-logs/page.tsx + app/dashboard/investments/transactions/page.tsx (functional empty-value options -> sentinels)"
+      ],
+      "fixPRs": [
+        "#1446"
+      ],
+      "test": "tests/ui/selectItemEmptyValue.test.ts#static scan: zero empty-string SelectItem values in app/ + components/ (the render-crash class)",
+      "tracker": "neoaudit-run:VR-014",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014. Class-wide fix in PR #1446: 11 placeholder items -> plain div rows; 4 functional options -> ALL/NONE sentinels; MON-083 recurring control added to the canonical dialog (was absent - a one-off was inexpressible from the property context). Stays FIXING until the Matrix's VR-014 re-run verifies the property-context path renders + one-off persists."
     }
   ]
 }
