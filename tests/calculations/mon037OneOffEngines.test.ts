@@ -92,7 +92,8 @@ describe('MON-037 · §19.4 source-lock — every caller threads isRecurring (F1
   it('tax-engine callers thread isRecurring into the deduction path', () => {
     for (const p of [
       'lib/services/masterFinancialService.ts',
-      'app/api/tax/position/route.ts',
+      // MON-020/060: app/api/tax/position no longer maps items — it consumes
+      // getUserTaxPosition's bundle, whose assembler (below) threads isRecurring.
       'lib/tax-engine/position/userTaxPosition.ts',
       'lib/services/entityTaxFactsAssembler.ts',
       'app/api/tax/entity/[entityId]/route.ts',

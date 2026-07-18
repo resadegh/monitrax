@@ -62,9 +62,11 @@ describe('MON-003/MON-026: every surface reads the ONE depreciation engine (§19
     expect(src).toContain('calculateDepreciationAnnual(');
     expect(src).not.toContain('dep.cost * dep.rate');
   });
-  it('/api/tax/position uses the engine (no bare cost×rate)', () => {
+  it('/api/tax/position consumes the canonical bundle (no own mapping, no bare cost×rate)', () => {
+    // MON-020/060: the route no longer assembles inputs — depreciation flows
+    // through getUserTaxPosition's assembler (locked above).
     const src = read('app/api/tax/position/route.ts');
-    expect(src).toContain('calculateDepreciationAnnual(');
+    expect(src).toContain('getUserTaxPosition(');
     expect(src).not.toContain('dep.cost * dep.rate');
   });
   it('the property detail page uses the engine, not the phantom annualClaim field', () => {

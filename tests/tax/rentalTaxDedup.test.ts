@@ -74,7 +74,14 @@ describe('MON-010: the tax summary reads the deduped source (§19.4 convergence 
   const src = read('lib/services/masterFinancialService.ts');
 
   it('buildTaxSummary is fed adjustedIncome, not raw data.income', () => {
-    expect(src).toContain('buildTaxSummary(adjustedIncome');
+    // MON-020/060: master's tax summary now reads the ONE canonical bundle
+    // (getUserTaxPosition) via the buildTaxSummaryFromPosition adapter — the
+    // second assembler was deleted. The rental dedup still feeds the INCOME
+    // breakdown (asserted separately); folding dedup into the canonical tax
+    // assembler is the recorded MON-020 follow-up.
+    expect(src).toContain('getUserTaxPosition(userId)');
+    expect(src).toContain('buildTaxSummaryFromPosition(taxBundle.taxPosition)');
+    expect(src).not.toContain('buildTaxSummary(adjustedIncome');
     expect(src).not.toContain('buildTaxSummary(data.income');
   });
 

@@ -52,6 +52,7 @@ const USER_ID = vi.hoisted(() => 'home-parity-user');
  * `vi.hoisted` so the (hoisted) `vi.mock('@/lib/db')` factory can read it.
  */
 const ROWS: Record<string, { id?: string }[]> = vi.hoisted(() => ({
+  loanTransaction: [], // MON-020/060: master now calls getUserTaxPosition (INTEREST_CHARGED sums)
   legalEntity: [],
   property: [
     { id: 'p-home', ownerEntityId: null, name: 'Home — 5 Cremorne', type: 'HOME', address: '5 Cremorne', currentValue: 900000, purchasePrice: 700000, purchaseDate: new Date('2019-01-01T00:00:00Z') },
