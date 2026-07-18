@@ -808,15 +808,16 @@ function TransactionsPageContent() {
 
             <div className="space-y-2">
               <Label htmlFor="holdingId">Holding (Optional)</Label>
+              {/* MON-087 class: 'NONE' sentinel — state keeps null. */}
               <Select
-                value={formData.holdingId || ''}
-                onValueChange={(value) => setFormData({ ...formData, holdingId: value || null })}
+                value={formData.holdingId ?? 'NONE'}
+                onValueChange={(value) => setFormData({ ...formData, holdingId: value === 'NONE' ? null : value })}
               >
                 <SelectTrigger id="holdingId">
                   <SelectValue placeholder="Select holding" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="NONE">None</SelectItem>
                   {filteredHoldings.map((holding) => (
                     <SelectItem key={holding.id} value={holding.id}>{holding.ticker}</SelectItem>
                   ))}

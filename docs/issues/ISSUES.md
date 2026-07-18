@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**86 total** · 82 open · 🔵 24 · 🟡 7 · 🟠 23 · 🟢 28 · ✅ 3
+**87 total** · 83 open · 🔵 25 · 🟡 7 · 🟠 23 · 🟢 28 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -93,6 +93,7 @@
 | MON-084 | 🟡 DIAGNOSED | 🟠 | yes | SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows | — | — |
 | MON-085 | 🟡 DIAGNOSED | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | — | — |
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
+| MON-087 | 🔵 OPEN | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | — | n/a |
 
 ---
 
@@ -1527,4 +1528,16 @@ Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): near-dup candi
 - **Detail:** `calc-ssot-wall`
 
 Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too. RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED.
+
+### MON-087 — Property-context Add Expense dialog crashes — Radix Select.Item empty value
+
+**🔵 OPEN** · 🟠 high · changes numbers: **no** · area: expenses · opened 2026-07-18
+
+> **What was wrong:** Clicking Add Expense from a property page crashed the whole screen to an error page (a form-menu bug), so you could not add a property expense at all.
+>
+- **Root cause:** `components/ExpenseDialog.tsx:515`
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neoaudit-run:VR-014`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014.
 

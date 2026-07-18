@@ -69,6 +69,9 @@ export interface Expense {
   frequency: ExpenseFrequency;
   isEssential: boolean;
   isTaxDeductible: boolean;
+  /** MON-083: false = one-off (counted once, no cadence). Optional for callers
+   *  predating the field; treated as recurring when absent (schema default). */
+  isRecurring?: boolean;
   propertyId: string | null;
   loanId: string | null;
   investmentAccountId: string | null;
@@ -88,6 +91,7 @@ type ExpenseFormData = {
   frequency: ExpenseFrequency;
   isEssential: boolean;
   isTaxDeductible: boolean;
+  isRecurring: boolean;
   propertyId: string | null;
   loanId: string | null;
   investmentAccountId: string | null;
@@ -112,6 +116,7 @@ const initialFormData: ExpenseFormData = {
   frequency: 'MONTHLY',
   isEssential: true,
   isTaxDeductible: false,
+  isRecurring: true,
   propertyId: null,
   loanId: null,
   investmentAccountId: null,
@@ -203,6 +208,7 @@ export function ExpenseDialog({
           frequency: expense.frequency,
           isEssential: expense.isEssential,
           isTaxDeductible: expense.isTaxDeductible || false,
+          isRecurring: expense.isRecurring ?? true,
           propertyId: expense.propertyId,
           loanId: expense.loanId,
           investmentAccountId: expense.investmentAccountId,
@@ -504,7 +510,7 @@ export function ExpenseDialog({
             <div className="space-y-2">
               <Label htmlFor="propertyId">Linked Property</Label>
               <Select
-                value={formData.propertyId || ''}
+                value={formData.propertyId ?? undefined}
                 onValueChange={(value) => setFormData({ ...formData, propertyId: value || null })}
               >
                 <SelectTrigger id="propertyId">
@@ -512,7 +518,7 @@ export function ExpenseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {properties.length === 0 ? (
-                    <SelectItem value="" disabled>No properties available</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No properties available</div>
                   ) : (
                     properties.map((property) => (
                       <SelectItem key={property.id} value={property.id}>
@@ -533,7 +539,7 @@ export function ExpenseDialog({
             <div className="space-y-2">
               <Label htmlFor="loanId">Linked Loan</Label>
               <Select
-                value={formData.loanId || ''}
+                value={formData.loanId ?? undefined}
                 onValueChange={(value) => setFormData({ ...formData, loanId: value || null })}
               >
                 <SelectTrigger id="loanId">
@@ -541,7 +547,7 @@ export function ExpenseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {loans.length === 0 ? (
-                    <SelectItem value="" disabled>No loans available</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No loans available</div>
                   ) : (
                     loans.map((loan) => (
                       <SelectItem key={loan.id} value={loan.id}>
@@ -565,7 +571,7 @@ export function ExpenseDialog({
             <div className="space-y-2">
               <Label htmlFor="investmentAccountId">Linked Investment Account</Label>
               <Select
-                value={formData.investmentAccountId || ''}
+                value={formData.investmentAccountId ?? undefined}
                 onValueChange={(value) => setFormData({ ...formData, investmentAccountId: value || null })}
               >
                 <SelectTrigger id="investmentAccountId">
@@ -573,7 +579,7 @@ export function ExpenseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {investmentAccounts.length === 0 ? (
-                    <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No investment accounts available</div>
                   ) : (
                     investmentAccounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
@@ -597,7 +603,7 @@ export function ExpenseDialog({
             <div className="space-y-2">
               <Label htmlFor="assetId">Linked Asset</Label>
               <Select
-                value={formData.assetId || ''}
+                value={formData.assetId ?? undefined}
                 onValueChange={(value) => handleAssetChange(value || null)}
               >
                 <SelectTrigger id="assetId">
@@ -605,7 +611,7 @@ export function ExpenseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {assets.length === 0 ? (
-                    <SelectItem value="" disabled>No assets available</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No assets available</div>
                   ) : (
                     assets.map((asset) => (
                       <SelectItem key={asset.id} value={asset.id}>
@@ -657,27 +663,56 @@ export function ExpenseDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="frequency">Frequency</Label>
-            <Select
-              value={formData.frequency}
-              onValueChange={(value) => setFormData({ ...formData, frequency: value as ExpenseFrequency })}
-            >
-              <SelectTrigger id="frequency">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="WEEKLY">Weekly</SelectItem>
-                <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
-                <SelectItem value="MONTHLY">Monthly</SelectItem>
-                <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                <SelectItem value="HALF_YEARLY">Half-yearly</SelectItem>
-                <SelectItem value="ANNUAL">Annually</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Calc-SSOT Wall Mechanism C (MON-083): a one-off has no cadence —
+              the frequency picker only applies to recurring expenses. Same
+              semantics as the expenses-page form; run-rates count one-offs
+              once via monthlyRunRate(). */}
+          {formData.isRecurring ? (
+            <div className="space-y-2">
+              <Label htmlFor="frequency">Frequency</Label>
+              <Select
+                value={formData.frequency}
+                onValueChange={(value) => setFormData({ ...formData, frequency: value as ExpenseFrequency })}
+              >
+                <SelectTrigger id="frequency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WEEKLY">Weekly</SelectItem>
+                  <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                  <SelectItem value="HALF_YEARLY">Half-yearly</SelectItem>
+                  <SelectItem value="ANNUAL">Annually</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Frequency</Label>
+              <p className="rounded-[14px] border border-foreground/10 bg-background/50 px-3 py-2 text-sm text-muted-foreground">
+                One-off — counted once, on the date it happens
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isRecurring"
+                checked={formData.isRecurring}
+                onCheckedChange={(checked) => setFormData({ ...formData, isRecurring: checked as boolean })}
+              />
+              <Label htmlFor="isRecurring" className="text-sm font-normal cursor-pointer">
+                This is a recurring expense
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground ml-6">
+              {formData.isRecurring
+                ? 'Recurring expenses (bills, subscriptions) appear in your committed outgoings'
+                : 'One-off expenses (discretionary purchases) appear in your flexible spending'}
+            </p>
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isEssential"

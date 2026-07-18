@@ -221,12 +221,14 @@ export default function AuditLogsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="action">Action</Label>
-              <Select value={action} onValueChange={setAction}>
+              {/* MON-087 class: Radix forbids empty-string SelectItem values.
+                  'ALL' is the sentinel; the filter state keeps '' = no filter. */}
+              <Select value={action || 'ALL'} onValueChange={(v) => setAction(v === 'ALL' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select action" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Actions</SelectItem>
+                  <SelectItem value="ALL">All Actions</SelectItem>
                   <SelectItem value="LOGIN">Login</SelectItem>
                   <SelectItem value="LOGOUT">Logout</SelectItem>
                   <SelectItem value="CREATE">Create</SelectItem>
@@ -242,12 +244,12 @@ export default function AuditLogsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status || 'ALL'} onValueChange={(v) => setStatus(v === 'ALL' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
                   <SelectItem value="SUCCESS">Success</SelectItem>
                   <SelectItem value="FAILURE">Failure</SelectItem>
                   <SelectItem value="BLOCKED">Blocked</SelectItem>

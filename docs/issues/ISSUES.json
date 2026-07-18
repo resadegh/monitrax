@@ -2480,6 +2480,27 @@
       "test": "tests/golden/ring2.calcSsotWall.test.ts#Wall B3: fee counted exactly once; cf gross === tax gross; taxable === cashflow x 12; DIRECT + declared-driven regression guards; one-off excess excluded",
       "tracker": "calc-ssot-wall",
       "notes": "Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR-012): Phase 59/MON-080 shipped the tax side correctly but computePropertyCashflow read the NET disbursement as rent actuals (PRE-FIX anchor :153-165, no gross-up) while ALSO subtracting the derived PROPERTY_MANAGEMENT expense. VR-011 verified TAX only - the per-surface Ring-3 gap this law now forbids. Wall B3 fix: gross-up ONLY when rent.usedActuals && rentalMode===MANAGED, recurring derived fees only, per stream; DIRECT and declared-driven streams get no add-back. rentalMode/derivedFromIncomeId threaded through masterFinancialService + portfolio snapshot so the pooled synthetic rent (master tax summary) reads gross too. RING-3 VR-013 PASS (2026-07-17): verified on live data by the Matrix — advanced to VERIFIED."
+    },
+    {
+      "id": "MON-087",
+      "title": "Property-context Add Expense dialog crashes — Radix Select.Item empty value",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": false,
+      "opened": "2026-07-18",
+      "area": "expenses",
+      "plain": {
+        "issue": "Clicking Add Expense from a property page crashed the whole screen to an error page (a form-menu bug), so you could not add a property expense at all."
+      },
+      "rootCause": [
+        "components/ExpenseDialog.tsx:515"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-014",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014."
     }
   ]
 }
