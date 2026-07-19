@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**87 total** · 83 open · 🔵 21 · 🟡 4 · 🟠 29 · 🟢 29 · ✅ 3
+**88 total** · 84 open · 🔵 21 · 🟡 5 · 🟠 29 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -94,6 +94,7 @@
 | MON-085 | 🟠 FIXING | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | ##1458 | ✅ |
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 | MON-087 | 🟠 FIXING | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | ##1446 | ✅ |
+| MON-088 | 🟡 DIAGNOSED | 🟡 | yes | Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults | — | ✅ |
 
 ---
 
@@ -1583,4 +1584,18 @@ Raised per MATRIX_FIX_DISCIPLINE.md 'Immediate consequence' (regression sweep VR
 - **Detail:** `neoaudit-run:VR-014`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/ExpenseDialog.tsx. Evidence/run: VR-014. Class-wide fix in PR #1446: 11 placeholder items -> plain div rows; 4 functional options -> ALL/NONE sentinels; MON-083 recurring control added to the canonical dialog (was absent - a one-off was inexpressible from the property context). Stays FIXING until the Matrix's VR-014 re-run verifies the property-context path renders + one-off persists.
+
+### MON-088 — Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults
+
+**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-20
+
+> **What was wrong:** Australia has no joint family tax return — each person is taxed at individual rates — but FAMILY income does change the Medicare levy surcharge threshold ($202,000 combined for 2025-26 vs $101,000 single, +$1,500 per child after the first), the low-income Medicare levy reduction, and private-health-rebate tiers. Monitrax's Medicare calculator supports all of this but is always called as SINGLE with no spouse income or dependants, so a couple can be shown a Medicare levy surcharge they wouldn't actually pay (or vice versa).
+>
+- **Root cause:** `lib/tax-engine/position/taxPositionCalculator.ts:295`, `lib/tax-engine/core/medicareLevyCalculator.ts:30`
+- **Neomatrix:** `service.tax.getUserTaxPosition`
+- **Downstream consumers (§19.4):** `tax page + /cashflow FY estimate + CFO (all read getUserTaxPosition -> taxPosition.tax.medicareSurcharge)`, `perMember positions (Part A #1461) — each member's MLS leg needs the OTHER member's income (combined MLS income) + dependants from HouseholdProfile`
+- **Holistic test (§19.4):** `tests/golden/ring2.perMemberTax.test.ts#MON-076 Part A — per-person tax positions`
+- **Detail:** `Reza question 2026-07-20 (family tax position) + ATO MLS thresholds (ato.gov.au)`
+
+VERIFIED at source (2026-07-20): medicareLevyCalculator.ts accepts familyStatus ('SINGLE'|'FAMILY'), spouseIncome, dependentChildren, hasPrivateHealthInsurance (:28-32) and applies config.medicareThresholds.family (:70-71); the ONE caller (taxPositionCalculator.ts:295) passes only { taxableIncome } so every position is computed as SINGLE / no PHI / no dependants. LAW (ATO, cited in chat): no joint lodgment exists — marginal rates are always individual and spouse income never changes them; family/spouse income drives the MLS combined-income threshold ($202,000 family vs $101,000 single, 2025-26, +$1,500 per dependent child after the first; low-earner spouse exception <= $27,222), the Medicare levy family reduction, PHI rebate tiers, and spouse offsets. FIX SHAPE (awaits Reza queueing — changes tax numbers): wire familyStatus/spouseIncome/dependentChildren from HouseholdProfile (+ a hasPrivateHealthInsurance input Monitrax doesn't yet capture) into calculateMedicareLevy at both the household and perMember level — Part A (#1461) already exposes each member's income to the other, so combined MLS income is computable without new fetches.
 
