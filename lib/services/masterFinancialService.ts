@@ -36,7 +36,8 @@ import prisma from '@/lib/db';
 import { buildEntityBreakdown, type EntityPosition } from '@/lib/calculations/entityBreakdown';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
-import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
+import { Frequency } from '@/lib/types/prisma-enums';
+import { computeLiquidCash } from '@/lib/calculations/liquidCash';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
@@ -1962,16 +1963,17 @@ async function computeMasterFinancialSnapshot(
 
   // MON-031/064: THE canonical "liquid cash" — DEPLOYABLE basis (Reza decision
   // 2026-07-18): spendable-account balances (LIQUID_ACCOUNT_TYPES) NET of
-  // revolving credit (credit-card balances). Before this, quickMetrics.liquidCash
-  // was GROSS while the MON-012 accessibility buckets netted credit cards — two
-  // variants of one concept under one label, so Safety Net showed $304,304
-  // while Balances/Home//cashflow showed $301,808 (gap = the card balance).
-  // Every consumer (Safety Net, emergency fund, insights freeToday, CFO chat,
-  // buckets' Liquid Today) now reads this ONE net figure.
-  const grossLiquidCash = data.accounts
-    .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
-    .reduce((sum, a) => sum + a.currentBalance, 0);
-  const liquidCash = grossLiquidCash - netWorth.liabilities.creditCards;
+  // revolving credit. VR-017 re-fix: the first netting subtracted only
+  // `netWorth.liabilities.creditCards` — which is LOANS-only, so it was
+  // silently inert for a CREDIT_CARD-typed ACCOUNT with a negative balance
+  // (the live topology; Safety Net stayed gross $304,304). The ONE producer
+  // `computeLiquidCash` nets BOTH card representations. Every consumer
+  // (Safety Net, emergency fund, insights freeToday, CFO chat, buckets'
+  // Liquid Today) reads this ONE net figure.
+  const liquidCash = computeLiquidCash(
+    data.accounts,
+    netWorth.liabilities.creditCards,
+  ).net;
 
   // Phase 1 (cashflow-actuals) — ACTUAL transaction-based cashflow. Canonical
   // engine; route handlers must read these off quickMetrics, never re-reduce.

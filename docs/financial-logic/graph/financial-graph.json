@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1791,
+      "line": 1792,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -5760,13 +5760,13 @@
       "kind": "engine",
       "label": "Hidden Wealth — accessibility buckets",
       "file": "lib/calculations/accessibilityBuckets.ts",
-      "line": 78,
+      "line": 83,
       "layer": "engine",
       "domain": "core",
       "trailStage": "T",
       "regime": null,
       "semanticKey": null,
-      "produces": "Partitions net worth into liquidToday / accessible / lockedLongTerm — buckets ALWAYS sum to net worth (MON-012). Was a §21.5 blind spot; before the fix buckets overstated net worth (credit card + HECS netted nowhere, non-liquid cash dropped, floored equity via MON-011). MON-031/064 (2026-07-18): the liquidCash parameter is now THE canonical DEPLOYABLE figure (spendable cash NET of credit cards, from quickMetrics.liquidCash); the engine reconstructs the gross basis internally, so liquidToday === the canonical figure by construction — one liquid number on every surface.",
+      "produces": "Partitions net worth into liquidToday / accessible / lockedLongTerm — buckets ALWAYS sum to net worth (MON-012). MON-031/064 (VR-017 re-fix, 2026-07-19): the liquidCash parameter is THE canonical DEPLOYABLE figure from computeLiquidCash (spendable cash NET of revolving credit in BOTH representations — CREDIT_CARD loans and negative-balance CREDIT_CARD accounts). The engine adds back only liabilities.creditCards (the LOAN component) because the account-typed component is already embedded negative inside assets.accounts — liquidToday === the canonical figure by construction for loan-card, account-card and mixed topologies.",
       "formula": "liquidToday = min(liquidCash,accounts) − creditCards; accessible = investments + (accounts − min(liquidCash,accounts)); lockedLongTerm = (properties − mortgages) + super + personalAssets − personalLoans. Σ = assets.total − liabilities.total = netWorth.",
       "authority": "lib/calculations/accessibilityBuckets.ts computeAccessibilityBuckets; every input a canonical NetWorthResult field (§12.2.1)",
       "inputs": [
@@ -5780,13 +5780,13 @@
           "name": "liquidCash",
           "unit": "AUD",
           "type": "number",
-          "note": "snapshot.quickMetrics.liquidCash (LIQUID_ACCOUNT_TYPES subset)"
+          "note": "snapshot.quickMetrics.liquidCash — canonical deployable net figure from engine.liquidCash.computeLiquidCash"
         }
       ],
       "astHash": null,
-      "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts",
+      "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts + tests/golden/ring2.liquidCashParity.accountCard.test.ts",
       "workedExample": "reported shape: liquid 47,504 + accessible 100,000 + locked 1,715,000 = 1,862,504 = netWorth; old gross-ish sum overstated by exactly 27,496 (cc 2,496 + HECS 25,000)",
-      "verifiedDate": "2026-07-18",
+      "verifiedDate": "2026-07-19",
       "status": "documented"
     },
     {
@@ -6302,6 +6302,74 @@
       "verifiedBy": "tests/golden/ring2.calcSsotWall.test.ts (VR-013: Broadbeach 228,000 @ 6.69% + repayments 1,131/1,295 → 1,190.97 actuals not the 1,271.10 floor; trailing-12mo window keeps prior-FY repayments)",
       "workedExample": "228,000 × 0.0669 / 12 = 1,271.10 floor; linked 1,131 + 1,295 over 31d → (2,426/62)×30.4375 = 1,190.97/mo actuals — actuals win",
       "verifiedDate": "2026-07-17",
+      "status": "documented"
+    },
+    {
+      "id": "engine.liquidCash.computeLiquidCash",
+      "kind": "engine",
+      "label": "Deployable liquid cash (canonical)",
+      "file": "lib/calculations/liquidCash.ts",
+      "line": 63,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": "A",
+      "regime": null,
+      "semanticKey": "liquidCash",
+      "produces": "THE canonical deployable liquid cash (MON-031/064, VR-017 re-fix): spendable-account balances (LIQUID_ACCOUNT_TYPES) NET of revolving credit in BOTH representations — CREDIT_CARD loans (caller passes netWorth.liabilities.creditCards) AND CREDIT_CARD-typed accounts carrying a negative balance (the live topology that made the #1452 loans-only netting silently inert). Feeds quickMetrics.liquidCash, the emergency fund, the accessibility buckets, and the CFO emergency-buffer signal.",
+      "formula": "gross = Σ balances(LIQUID_ACCOUNT_TYPES); accountCardDebt = Σ max(0, −balance) over type=CREDIT_CARD accounts; revolvingCredit = accountCardDebt + max(0, creditCardLoanTotal); net = gross − revolvingCredit",
+      "authority": "Reza decision 2026-07-18 (deployable basis) + VR-017 §7 retro; lib/calculations/liquidCash.ts",
+      "inputs": [
+        {
+          "name": "accounts",
+          "unit": "AUD",
+          "type": "LiquidCashAccountInput[]",
+          "note": "all user accounts; filtered internally"
+        },
+        {
+          "name": "creditCardLoanTotal",
+          "unit": "AUD",
+          "type": "number",
+          "note": "netWorth.liabilities.creditCards (loans-classified card debt)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/calculations/liquidCash.test.ts + tests/golden/ring2.liquidCashParity.test.ts + tests/golden/ring2.liquidCashParity.accountCard.test.ts",
+      "workedExample": "VR-017 live shape: gross 304,304; account-typed card −2,496 → net 301,808; months = 301,808 ÷ 25,973 = 11.6 (was 11.7 gross)",
+      "verifiedDate": "2026-07-19",
+      "status": "documented"
+    },
+    {
+      "id": "engine.emergencyFund.buildEmergencyFundMetrics",
+      "kind": "engine",
+      "label": "Emergency fund metrics (consumer of canonical liquid)",
+      "file": "lib/services/masterFinancialService.ts",
+      "line": 1375,
+      "layer": "service",
+      "domain": "core",
+      "trailStage": "A",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Emergency-fund block on the master snapshot: monthsCovered, status, gap, targetMonths. MON-031/064: a CONSUMER of the canonical deployable liquidCash — it has NO liquid producer of its own (VR-017's gross months came from the canonical figure itself being gross, not from a sibling producer; the fix is upstream in computeLiquidCash).",
+      "formula": "monthsCovered = liquidCash / monthlyExpenses (burn = actual trailing avg outflow when transactions exist, else declared recurring); gap = max(0, 6×burn − liquidCash)",
+      "authority": "lib/services/masterFinancialService.ts buildEmergencyFundMetrics; consumed by /api/safety-net, insights, safetyScore, CFO chat",
+      "inputs": [
+        {
+          "name": "liquidCash",
+          "unit": "AUD",
+          "type": "number",
+          "note": "THE canonical deployable figure (engine.liquidCash.computeLiquidCash)"
+        },
+        {
+          "name": "monthlyExpenses",
+          "unit": "AUD/month",
+          "type": "number",
+          "note": "actuals-first burn (avgMonthlyOutflow) with declared-recurring fallback"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/golden/ring2.liquidCashParity.accountCard.test.ts (I9 months identity)",
+      "workedExample": "golden account-card: 47,504 ÷ 1,700 = 27.94 months; live VR-017 target: 301,808 ÷ 25,973 = 11.6",
+      "verifiedDate": "2026-07-19",
       "status": "documented"
     }
   ],
@@ -9577,6 +9645,46 @@
       "toUnit": "AUD/month",
       "evidence": "loanCosts.ts resolveLoanMonthlyCost(l, byLoan.get(l.id)) — the feed delegates all math to the canonical engine",
       "verifiedDate": "2026-07-17"
+    },
+    {
+      "from": "engine.netWorthCalculator.calculateNetWorth",
+      "to": "engine.liquidCash.computeLiquidCash",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "masterFinancialService.ts:1973 computeLiquidCash(data.accounts, netWorth.liabilities.creditCards) — the loans-classified card debt input",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.liquidCash.computeLiquidCash",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "masterFinancialService.ts:1973 const liquidCash = computeLiquidCash(...).net → quickMetrics.liquidCash",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.liquidCash.computeLiquidCash",
+      "to": "engine.emergencyFund.buildEmergencyFundMetrics",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "masterFinancialService.ts buildEmergencyFundMetrics(liquidCash, emergencyFundMonthlyOutflow) — the emergency fund CONSUMES the canonical net figure",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.emergencyFund.buildEmergencyFundMetrics",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "masterFinancialService.ts — snapshot.emergencyFund block assembled from buildEmergencyFundMetrics result",
+      "verifiedDate": "2026-07-19"
     }
   ]
 }

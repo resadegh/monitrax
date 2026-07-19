@@ -68,12 +68,17 @@ export interface AccessibilityBuckets {
  *
  * @param netWorth   Canonical net-worth result (`snapshot.netWorth`).
  * @param liquidCash THE canonical liquid cash (`snapshot.quickMetrics.liquidCash`)
- *                   — MON-031/064: now the DEPLOYABLE figure, i.e. spendable
- *                   cash-account balances NET of credit cards. The engine
- *                   reconstructs the gross cash basis internally (net + cards)
- *                   so the bucket partition + tie-out are unchanged, and
- *                   `liquidToday` equals the canonical figure BY CONSTRUCTION
- *                   — one liquid number on every surface.
+ *                   — MON-031/064: the DEPLOYABLE figure from
+ *                   `computeLiquidCash`, i.e. spendable cash-account balances
+ *                   NET of revolving credit in BOTH representations
+ *                   (CREDIT_CARD loans AND negative-balance CREDIT_CARD
+ *                   accounts). The reconstruction below adds back only
+ *                   `liabilities.creditCards` (the LOAN component) because the
+ *                   account-typed component is already embedded (negative) in
+ *                   `assets.accounts` — with that, `liquidToday` equals the
+ *                   canonical figure BY CONSTRUCTION for every topology:
+ *                   loan-card, account-card, or mixed (see
+ *                   tests/golden/ring2.liquidCashParity*.test.ts).
  */
 export function computeAccessibilityBuckets(
   netWorth: NetWorthResult,

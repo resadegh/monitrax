@@ -10,8 +10,13 @@ import {
   CFOScoreHistory,
 } from './types';
 import { toAnnual, toMonthly, toMonthlyDecimal } from '@/lib/utils/frequencies';
-import { Frequency, RepaymentFrequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
+import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
 import { Decimal, toDecimal } from '@/lib/decimal';
+import { computeLiquidCash, computeLiquidCashDecimal } from '@/lib/calculations/liquidCash';
+import {
+  calculateTotalLiabilities,
+  calculateTotalLiabilitiesDecimal,
+} from '@/lib/calculations/netWorthCalculator';
 
 // ============================================================================
 // Score Weights
@@ -65,6 +70,8 @@ interface LoanData {
   interestRateAnnual: number;
   minRepayment: number;
   repaymentFrequency: RepaymentFrequency;
+  /** MON-031/064: needed to classify CREDIT_CARD loans into revolving credit. */
+  type?: string;
 }
 
 interface IncomeData {
@@ -102,7 +109,7 @@ function calculateComponents(
   return {
     cashflowStrength: Math.round(calculateCashflowStrength(incomes, expenses, loans)),
     debtCoverage: Math.round(calculateDebtCoverage(incomes, loans)),
-    emergencyBuffer: Math.round(calculateEmergencyBuffer(accounts, expenses)),
+    emergencyBuffer: Math.round(calculateEmergencyBuffer(accounts, expenses, loans)),
     investmentDiversification: Math.round(calculateInvestmentDiversification(investments, properties)),
     spendingControl: Math.round(calculateSpendingControl(incomes, expenses)),
     savingsRate: Math.round(calculateSavingsRate(incomes, expenses, loans)),
@@ -182,12 +189,17 @@ function calculateDebtCoverage(
  */
 function calculateEmergencyBuffer(
   accounts: AccountData[],
-  expenses: ExpenseData[]
+  expenses: ExpenseData[],
+  loans: LoanData[] = []
 ): number {
-  // Use centralized LIQUID_ACCOUNT_TYPES (single source of truth)
-  const liquidBalances = accounts
-    .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
-    .reduce((sum, a) => sum + a.currentBalance, 0);
+  // MON-031/064 (VR-017 re-fix): the ONE canonical deployable liquid cash —
+  // spendable-account balances NET of revolving credit in BOTH representations
+  // (CREDIT_CARD loans + negative-balance CREDIT_CARD accounts). Same producer
+  // as quickMetrics.liquidCash; no local gross re-sum (§12.2.1).
+  const liquidBalances = computeLiquidCash(
+    accounts,
+    calculateTotalLiabilities(loans).creditCards,
+  ).net;
 
   const monthlyEssentialExpenses = expenses
     .filter(e => e.isEssential)
@@ -480,10 +492,14 @@ export function calculateDebtCoverageDecimal(
 export function calculateEmergencyBufferDecimal(
   accounts: AccountData[],
   expenses: ExpenseData[],
+  loans: LoanData[] = [],
 ): Decimal {
-  const liquidBalances = accounts
-    .filter((a) => LIQUID_ACCOUNT_TYPES.includes(a.type as (typeof LIQUID_ACCOUNT_TYPES)[number]))
-    .reduce((acc, a) => acc.plus(toDecimal(a.currentBalance) ?? ZERO), ZERO);
+  // MON-031/064 (VR-017 re-fix): same canonical deployable-liquid producer as
+  // the Float path — net of revolving credit in both card representations.
+  const liquidBalances = computeLiquidCashDecimal(
+    accounts,
+    calculateTotalLiabilitiesDecimal(loans).creditCards,
+  ).net;
 
   const monthlyEssentialExpenses = expenses
     .filter((e) => e.isEssential)
@@ -659,7 +675,7 @@ export function calculateComponentsDecimal(
   return {
     cashflowStrength: calculateCashflowStrengthDecimal(incomes, expenses, loans),
     debtCoverage: calculateDebtCoverageDecimal(incomes, loans),
-    emergencyBuffer: calculateEmergencyBufferDecimal(accounts, expenses),
+    emergencyBuffer: calculateEmergencyBufferDecimal(accounts, expenses, loans),
     investmentDiversification: calculateInvestmentDiversificationDecimal(investments, properties),
     spendingControl: calculateSpendingControlDecimal(incomes, expenses),
     savingsRate: calculateSavingsRateDecimal(incomes, expenses, loans),

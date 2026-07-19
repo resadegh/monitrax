@@ -94,6 +94,22 @@ describe('MON-031/064 — one canonical liquid cash (deployable, net of revolvin
     expect(safetyNetJson.data.emergencyFund.liquidCash).toBe(Math.round(CANONICAL_LIQUID));
   });
 
+  it('emergency monthsCovered == net liquid ÷ burn (the I9 identity — VR-017 blind spot)', () => {
+    // The first version of this suite asserted the route's liquidCash but not
+    // the months identity, so a gross months figure could (and did — VR-017)
+    // ship. Locked here for the LOAN-card topology; the ACCOUNT-card topology
+    // is locked in ring2.liquidCashParity.accountCard.test.ts.
+    const ef = snapshot.emergencyFund;
+    expect(ef.monthsCovered).toBeCloseTo(
+      snapshot.quickMetrics.liquidCash / ef.monthlyExpenses,
+      6,
+    );
+    expect(safetyNetJson.data.emergencyFund.monthsCovered).toBeCloseTo(
+      Math.round(ef.monthsCovered * 10) / 10,
+      6,
+    );
+  });
+
   it('regression guard: without a credit card the golden numbers are untouched (gross == net)', () => {
     // The base golden household has no credit cards — its liquidCash stays
     // 50,000 and every EXPECTED anchor holds (asserted by ring2.masterSnapshot).
