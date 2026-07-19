@@ -22,6 +22,10 @@
 
 import { prisma } from '@/lib/db';
 import { calculateTaxPosition, getCurrentFinancialYear } from '@/lib/tax-engine';
+import {
+  listIncomeEarnerEntities,
+  type IncomeEarnerEntity,
+} from '@/lib/services/legalEntityService';
 // MON-026: depreciation via the ONE canonical engine — DepreciationSchedule.rate
 // is stored as a PERCENTAGE (validator max(100), writer ×100), so `cost × rate`
 // was 100× too high. calculateDepreciationAnnual does the /100 + method-aware math.
@@ -46,6 +50,25 @@ export interface UserTaxPositionBundle {
    */
   engineInputs: TaxPositionCalculationInput;
   financialYear: string;
+  /**
+   * MON-076 Part A (2026-07-20): PER-PERSON tax positions — AU income tax is
+   * assessed per individual, so a household member's salary must produce
+   * THEIR taxable income + tax owing, not inflate the primary's. Computed by
+   * PARTITIONING the same fetched rows by owner entity (income/expense rows
+   * by `ownerEntityId`; property loans + depreciation follow their property's
+   * owner; super by account owner; unattributed → the primary) and running
+   * the SAME `calculateTaxPosition` engine per partition — attribution +
+   * splitting, no new tax math (§12.14 lineage inherited). The household
+   * `taxPosition` above is unchanged (all rows, back-compat) — surfaces that
+   * show it must LABEL it as the household roll-up.
+   */
+  perMember: Array<{
+    entityId: string;
+    memberName: string;
+    isPrimary: boolean;
+    taxPosition: TaxPositionResult;
+    engineInputs: TaxPositionCalculationInput;
+  }>;
   /** Raw fetched rows, reused by the CFO extras (CGT, negative gearing, risks)
    *  so they don't re-fetch. `/cashflow` uses only `taxPosition`. */
   incomes: any[];
@@ -198,9 +221,61 @@ export async function getUserTaxPosition(
   };
   const taxPosition = calculateTaxPosition(engineInputs);
 
+  // MON-076 Part A: per-person positions — same rows, same engine, one
+  // partition per income-earning household member. Attribution rules in the
+  // bundle JSDoc. With a single earner this degenerates to one partition
+  // identical in shape to the household position.
+  const earners = await listIncomeEarnerEntities(userId);
+  const primary = earners.find((e) => e.isPrimary) ?? earners[0];
+  const entityToEarner = new Map<string, IncomeEarnerEntity>(
+    earners.map((e) => [e.entityId, e]),
+  );
+  const ownerOf = (ownerEntityId: string | null | undefined): string =>
+    (ownerEntityId && entityToEarner.get(ownerEntityId)?.entityId) || primary.entityId;
+  const propertyOwner = new Map<string, string>(
+    properties.map((p: any) => [p.id, ownerOf(p.ownerEntityId)]),
+  );
+  const propertyIdOfLoan = new Map<string, string>(
+    properties.flatMap((p: any) => p.loans.map((l: any) => [l.id, p.id] as [string, string])),
+  );
+
+  const perMember = earners.map((earner) => {
+    const mine = (ownerEntityId: string | null | undefined) =>
+      ownerOf(ownerEntityId) === earner.entityId;
+    // A property-attached item follows its property's owner; a property we
+    // can't resolve (or no property) defaults to the primary — same rule as
+    // unattributed rows.
+    const mineViaProperty = (propertyId: string | null | undefined) =>
+      ((propertyId && propertyOwner.get(propertyId)) || primary.entityId) === earner.entityId;
+
+    const memberInputs: TaxPositionCalculationInput = {
+      // incomeItems/expenseItems map 1:1 (same order) from incomes/expenses —
+      // the index lookup reads the raw row's ownerEntityId.
+      incomes: incomeItems.filter((_it, idx) => mine((incomes[idx] as any).ownerEntityId)),
+      expenses: expenseItems.filter((_it, idx) => mine((expenses[idx] as any).ownerEntityId)),
+      depreciations: depreciationItems.filter((d) => mineViaProperty(d.propertyId)),
+      propertyLoans: propertyLoanItems.filter((l: any) =>
+        mineViaProperty(propertyIdOfLoan.get(l.id)),
+      ),
+      superContributions:
+        earner.entityId === primary.entityId
+          ? superTotals // account-level owner split is a follow-up; today all super YTD sits with the primary
+          : { concessional: 0, nonConcessional: 0 },
+      financialYear: fyYear,
+    };
+    return {
+      entityId: earner.entityId,
+      memberName: earner.memberName,
+      isPrimary: earner.isPrimary,
+      taxPosition: calculateTaxPosition(memberInputs),
+      engineInputs: memberInputs,
+    };
+  });
+
   return {
     taxPosition,
     engineInputs,
+    perMember,
     financialYear: fyYear,
     incomes,
     expenses,

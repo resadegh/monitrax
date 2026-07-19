@@ -53,7 +53,10 @@ const USER_ID = vi.hoisted(() => 'home-parity-user');
  */
 const ROWS: Record<string, { id?: string }[]> = vi.hoisted(() => ({
   loanTransaction: [], // MON-020/060: master now calls getUserTaxPosition (INTEREST_CHARGED sums)
-  legalEntity: [],
+  // MON-076 Part A: getUserTaxPosition resolves income earners — no household
+  // profile here → single-earner degenerate case via the PERSONAL_NAME entity.
+  householdProfile: [],
+  legalEntity: [{ id: 'le-home', type: 'PERSONAL_NAME', role: 'PERSONAL' }],
   property: [
     { id: 'p-home', ownerEntityId: null, name: 'Home — 5 Cremorne', type: 'HOME', address: '5 Cremorne', currentValue: 900000, purchasePrice: 700000, purchaseDate: new Date('2019-01-01T00:00:00Z') },
     // Second HOME, transaction-backed (actuals basis) — mirrors VR-004.

@@ -194,6 +194,106 @@ export async function getDefaultLegalEntityId(
 }
 
 // ---------------------------------------------------------------------------
+// Household member attribution (MON-076 Part A, 2026-07-20) — "who earns this?"
+//
+// Each income-earning HouseholdMember is represented by an INDIVIDUAL
+// LegalEntity linked via `LegalEntity.householdMemberId` (the Phase 44 link),
+// so income attribution REUSES the one ownership concept (`ownerEntityId`) —
+// no parallel member column on Income (§12.2.1). The SELF member resolves to
+// the user's existing PERSONAL_NAME entity (back-compat: every historical
+// income already points there).
+// ---------------------------------------------------------------------------
+
+export interface IncomeEarnerEntity {
+  /** The LegalEntity id income rows attribute to (`Income.ownerEntityId`). */
+  entityId: string;
+  memberId: string;
+  memberName: string;
+  relationship: string;
+  /** True for the SELF member (the user's PERSONAL_NAME entity — the default). */
+  isPrimary: boolean;
+}
+
+/**
+ * Resolve (creating on demand, idempotently) the LegalEntity for every
+ * income-earning household member. SELF → the PERSONAL_NAME entity; every
+ * other earner → an INDIVIDUAL entity linked via `householdMemberId`.
+ */
+export async function listIncomeEarnerEntities(
+  userId: string,
+  client: PrismaTxOrClient = prisma,
+): Promise<IncomeEarnerEntity[]> {
+  const profile = await client.householdProfile.findUnique({
+    where: { userId },
+    select: {
+      members: {
+        where: { isIncomeEarner: true },
+        select: { id: true, name: true, relationship: true },
+        orderBy: { sortOrder: 'asc' },
+      },
+    },
+  });
+  const members: Array<{ id: string; name: string; relationship: string }> =
+    profile?.members ?? [];
+
+  const primaryEntityId = await getDefaultLegalEntityId(userId, client);
+  const out: IncomeEarnerEntity[] = [];
+  let hasSelf = false;
+
+  for (const m of members) {
+    if (m.relationship === 'SELF') {
+      hasSelf = true;
+      out.push({
+        entityId: primaryEntityId,
+        memberId: m.id,
+        memberName: m.name,
+        relationship: m.relationship,
+        isPrimary: true,
+      });
+      continue;
+    }
+    const existing = await client.legalEntity.findFirst({
+      where: { userId, householdMemberId: m.id },
+      select: { id: true },
+    });
+    const entityId =
+      existing?.id ??
+      (
+        await client.legalEntity.create({
+          data: {
+            userId,
+            name: m.name,
+            type: 'INDIVIDUAL',
+            role: 'PERSONAL',
+            householdMemberId: m.id,
+          },
+          select: { id: true },
+        })
+      ).id;
+    out.push({
+      entityId,
+      memberId: m.id,
+      memberName: m.name,
+      relationship: m.relationship,
+      isPrimary: false,
+    });
+  }
+
+  // A household with no members recorded (or none marked earner) still has
+  // the primary — surfaces always get at least one option.
+  if (!hasSelf) {
+    out.unshift({
+      entityId: primaryEntityId,
+      memberId: '',
+      memberName: 'Primary',
+      relationship: 'SELF',
+      isPrimary: true,
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Phase 41b — list / create / update / delete
 // ---------------------------------------------------------------------------
 

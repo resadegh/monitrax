@@ -381,7 +381,22 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // Create new Income entry with source type support
             type IncomeTypeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 
-            const ownerEntityId = await getDefaultLegalEntityId(userId);
+            // MON-076 Part A: "who earns this?" — the reconcile dialog may
+            // attribute the income to a household member's entity (validated);
+            // absent → the primary (back-compat).
+            let ownerEntityId: string;
+            if (typeof (body as any).ownerEntityId === 'string' && (body as any).ownerEntityId) {
+              const ownedEntity = await prisma.legalEntity.findFirst({
+                where: { id: (body as any).ownerEntityId, userId },
+                select: { id: true },
+              });
+              if (!ownedEntity) {
+                return NextResponse.json({ error: 'Owner entity not found' }, { status: 404 });
+              }
+              ownerEntityId = ownedEntity.id;
+            } else {
+              ownerEntityId = await getDefaultLegalEntityId(userId);
+            }
 
             // MON-078: frequency + recurrence via the ONE intake classifier
             // (MON-053: the dialog sends an explicit one-off/recurring choice;
