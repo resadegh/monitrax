@@ -49,3 +49,29 @@ Verifies: the three surfaces produce ONE number on golden data (plumbing parity)
 
 ### Build Status
 - [x] tsc clean · [x] lints green (source-lock 80 unchanged; financial-surfaces 34) · [x] neomatrix green (anchors re-pinned; /api/tax edge repointed) · [x] issues green (87; MON-060 → FIXING #1448, MON-020 notes+test) · [x] full suite 4,104 passed / 69 skipped · [x] build passes
+
+---
+
+## Session: mon031-064-liquid-cash-canonical (Code · Fable 5)
+
+### Changes Made
+- **Type**: Fix (financial correctness — Mechanism-B single-producer)
+- **Scope**: MON-031/MON-064 — ONE canonical "liquid cash" (deployable basis).
+- **Root Cause** (§19.2, verified): master `quickMetrics.liquidCash` = GROSS spendable-account cash (`masterFinancialService` Σ LIQUID_ACCOUNT_TYPES balances) while the MON-012 buckets netted credit cards inside (`accessibilityBuckets` liquidToday = cash − creditCards). Two variants of one concept under one label: Safety Net (+ emergency fund, insights freeToday, CFO chat) read gross $304,304; Balances/Home//cashflow read the netted $301,808. Gap = the Qantas card $2,496 exactly.
+- **Solution** (canonical = NET/deployable per the brief's recommendation, Reza confirms at merge): the ONE producer now nets at source — `liquidCash = gross spendable − netWorth.liabilities.creditCards` (masterFinancialService). `computeAccessibilityBuckets` takes the canonical net figure and reconstructs the gross basis internally (net + creditCards), so `liquidToday === quickMetrics.liquidCash` BY CONSTRUCTION and the MON-012 net-worth tie-out is preserved (algebraically unchanged). Every consumer converges automatically: Safety Net, emergency-fund months (now on the deployable basis), insights, CFO chat, what-if, buckets.
+
+### §19.2 evidence (executed — tests/golden/ring2.liquidCashParity.test.ts, 5/5)
+Golden cash 50,000 + a $2,496 CREDIT_CARD loan → canonical liquid **47,504**; buckets.liquidToday === quickMetrics.liquidCash; tie-out to net worth (469,504 = 472,000 − 2,496) holds; the REAL safety-net route returns the same figure. Live expectation: Safety Net $304,304 → **$301,808**, identical to Balances/Home//cashflow.
+
+### Files Modified
+- `lib/services/masterFinancialService.ts` — liquidCash netted at the ONE producer
+- `lib/calculations/accessibilityBuckets.ts` — parameter = canonical net; gross reconstructed internally
+- `tests/calculations/accessibilityBuckets.test.ts` — one fixture updated to the new parameter contract
+- `tests/golden/ring2.liquidCashParity.test.ts` (NEW ratchet)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — buckets anchor re-pinned + producer note
+
+### Coverage (precise — §22.2.4)
+Verifies: the net-at-source rule, buckets≡quickMetrics convergence, tie-out, and the real safety-net route on golden data. Does NOT verify: the rendered surfaces on live data (Matrix cross-surface Ring-3 after merge — Safety Net ≡ Balances ≡ Home ≡ /cashflow at $301,808), or consumers that merely display the figure (converge by construction).
+
+### Build Status
+- [x] tsc clean · [x] both lints green (source-lock 80 unchanged) · [x] neomatrix green · [x] golden+calculations+balances 394/394 + ratchet 5/5 · [ ] full suite + build (pre-push)

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**87 total** · 83 open · 🔵 23 · 🟡 7 · 🟠 24 · 🟢 29 · ✅ 3
+**87 total** · 83 open · 🔵 22 · 🟡 7 · 🟠 25 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -37,7 +37,7 @@
 | MON-028 | 🟢 VERIFIED | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
 | MON-029 | 🟢 VERIFIED | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
 | MON-030 | 🟢 VERIFIED | 🟠 | yes | Health/Safety score differs across three pages (Home 50/C, CFO 46/D, Safety Net 70/100) | #1380, #1381 | ✅ |
-| MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | #1368 | ✅ |
+| MON-031 | 🟠 FIXING | 🟡 | no | Liquid savings differs: Balances $301,808 vs Safety Net "Liquid savings" $304,304 ($2,496 gap) | ##1368, ##1452 | ✅ |
 | MON-032 | 🟢 VERIFIED | 🟡 | no | Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost) | #1359 | ✅ |
 | MON-033 | 🟢 VERIFIED | 🟡 | no | Yield shown for an owner-occupied HOME on the Home tile + CFO Low-Yield insight (detail page correctly hides it) | #1359 | ✅ |
 | MON-034 | 🟠 FIXING | 🟠 | yes | Reports over-state ANNUAL-frequency income/expenses 12× — duplicate frequency converter missing the ANNUAL enum case (inflates tax deductions + report totals) | #1376 | ✅ |
@@ -70,7 +70,7 @@
 | MON-061 | 🔵 OPEN | 🟡 | no | Property rental income card cadence label contradicts the ledger (Guildford/Broadbeach/Thornland Lot 1) | — | n/a |
 | MON-062 | 🔵 OPEN | 🟡 | no | Property rental income card mixes a DECLARED source count with an ACTUALS amount, unlabelled | — | n/a |
 | MON-063 | 🔵 OPEN | 🟡 | yes | HOME property ANNUAL RENT $902 matches neither the actuals nor the declared basis (third basis) | — | — |
-| MON-064 | 🔵 OPEN | 🟢 | no | 'Liquid' has two values across surfaces ($304,304 Safety Net vs $301,808 Balances/Home) | — | n/a |
+| MON-064 | 🟠 FIXING | 🟢 | no | 'Liquid' has two values across surfaces ($304,304 Safety Net vs $301,808 Balances/Home) | ##1452 | ✅ |
 | MON-065 | 🔵 OPEN | 🟢 | no | Doubled currency symbol on the salary-sacrifice What-If ('$$135,600/yr') | — | n/a |
 | MON-066 | 🔵 OPEN | 🟢 | no | Safety Net renders two contradictory recommendations together | — | n/a |
 | MON-067 | 🔵 OPEN | 🟢 | no | Debt Freedom gate lists an already-completed prerequisite (Household Profile 100%) | — | n/a |
@@ -672,11 +672,11 @@ Staged (Reza option B1). Stage 1 (PR #1377): extracted ONE canonical buildHealth
 
 - **Root cause:** `lib/calculations/accessibilityBuckets.ts:87`, `lib/services/masterFinancialService.ts:1993`
 - **Downstream consumers (§19.4):** `components/balances/HiddenWealthLens.tsx (the only surface that renders liquidToday with this label)`
-- **Fix PR(s):** #1368
-- **Holistic test (§19.4):** `tests/balances/hiddenWealthLensCopy.test.ts`
+- **Fix PR(s):** ##1368, ##1452
+- **Holistic test (§19.4):** `tests/golden/ring2.liquidCashParity.test.ts#one canonical liquid cash: quickMetrics === buckets.liquidToday === safety-net route; tie-out holds; 47,504 pin`
 - **Detail:** `docs/verification/runs/VR-001.md`
 
-VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED. [VR-010 2026-07-17] Root-cause note appended per Matrix: liquid-asset gap persists — stays FIXING; see VR-010 run notes.
+VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → "Spendable today (after credit cards)"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED. [VR-010 2026-07-17] Root-cause note appended per Matrix: liquid-asset gap persists — stays FIXING; see VR-010 run notes. CANONICAL FIX PR #1452 (2026-07-18): liquidCash netted at the ONE master producer (gross spendable − creditCards, the DEPLOYABLE basis — Reza confirms definition at merge); buckets engine re-contracted to take the canonical net (gross reconstructed internally) so liquidToday === quickMetrics.liquidCash by construction. Ratchet ring2.liquidCashParity (47,504 pin). Stays FIXING until the Matrix Ring-3 records Safety Net === Balances === Home === /cashflow at $301,808.
 
 ### MON-032 — Property detail Recent-activity shows loan repayment "-$0" for a real loan (row reads raw minRepayment, not the engine-resolved cost)
 
@@ -1193,14 +1193,21 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/p
 
 ### MON-064 — 'Liquid' has two values across surfaces ($304,304 Safety Net vs $301,808 Balances/Home)
 
-**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: balances · opened 2026-07-15
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: balances · opened 2026-07-15
 
-> **What was wrong:** 'Liquid' means raw cash ($304,304) on Safety Net but cash-minus-credit-card ($301,808) on Balances and Home. Both are defensible, but neither says which it is — and the Safety Net number drives your emergency-fund months.
+> **What was wrong:** 'Liquid' meant two different things: the Safety Net page counted your cash before the credit-card balance ($304,304) while Balances, Home and the cashflow page counted it after ($301,808) — a $2,496 disagreement that was exactly the Qantas card.
 >
-- **Holistic test (§19.4):** n/a (display/UX)
+> **What changed:** One definition everywhere: liquid cash is what you could actually deploy after clearing the card, calculated once at the source. The card still shows as its own Credit line.
+>
+> **What you should see:** Safety Net's 'Liquid savings' now reads $301,808 — the same number as Balances ('Liquid today'), Home ('Cash') and the cashflow page. Your emergency-fund months use that same deployable figure.
+
+- **Root cause:** `lib/services/masterFinancialService.ts:1964`, `lib/calculations/accessibilityBuckets.ts:87`
+- **Downstream consumers (§19.4):** `app/api/safety-net/route.ts:42 (qm.liquidCash -> Safety Net page + emergency-fund months)`, `lib/calculations/accessibilityBuckets.ts (liquidToday -> hidden-wealth route -> Balances/Home//cashflow tiles)`, `app/api/dashboard/insights/route.ts:284,562 (freeToday) · app/api/cfo/advice/chat/route.ts:180 · what-if lever · decimal-cfo-scenarios (all read qm.liquidCash — converge by construction)`, `lib/verification/selfAuditInvariants.ts I9 (identity holds on the net basis)`
+- **Fix PR(s):** ##1452
+- **Holistic test (§19.4):** `tests/golden/ring2.liquidCashParity.test.ts#buckets.liquidToday === quickMetrics.liquidCash === safety-net route (the two-variants class locked)`
 - **Detail:** `neoaudit-run:VR-007`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/safety-net vs /dashboard/balances vs Home. Expected: One liquid figure, or a labelled basis. Actual: Safety Net 'Liquid savings' = $304,304 (raw cash, drives the 11.7-month emergency fund). Balances 'Liquid today' = $301,808 and Home 'Cash' = $301,808 (both net of the -$2,496 credit card). No label distinguishes them.. Evidence/run: VR-007.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/safety-net vs /dashboard/balances vs Home. Expected: One liquid figure, or a labelled basis. Actual: Safety Net 'Liquid savings' = $304,304 (raw cash, drives the 11.7-month emergency fund). Balances 'Liquid today' = $301,808 and Home 'Cash' = $301,808 (both net of the -$2,496 credit card). No label distinguishes them.. Evidence/run: VR-007. DIAGNOSED+FIXED 2026-07-18 (PR #1452, §19.2 verified): quickMetrics.liquidCash was GROSS (masterFinancialService:1964 pre-fix) while accessibilityBuckets netted creditCards internally (:87 pre-fix) — two variants of one concept (F2/Mechanism B). Fix at the ONE producer: net at source; buckets take the canonical net + reconstruct gross internally; every consumer converges. Reza confirms the NET/deployable definition at merge; Matrix Ring-3 pending.
 
 ### MON-065 — Doubled currency symbol on the salary-sacrifice What-If ('$$135,600/yr')
 

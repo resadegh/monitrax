@@ -67,8 +67,13 @@ export interface AccessibilityBuckets {
  * Split net worth into accessibility buckets.
  *
  * @param netWorth   Canonical net-worth result (`snapshot.netWorth`).
- * @param liquidCash Canonical liquid cash (`snapshot.quickMetrics.liquidCash`)
- *                   — the spendable subset of cash accounts (LIQUID_ACCOUNT_TYPES).
+ * @param liquidCash THE canonical liquid cash (`snapshot.quickMetrics.liquidCash`)
+ *                   — MON-031/064: now the DEPLOYABLE figure, i.e. spendable
+ *                   cash-account balances NET of credit cards. The engine
+ *                   reconstructs the gross cash basis internally (net + cards)
+ *                   so the bucket partition + tie-out are unchanged, and
+ *                   `liquidToday` equals the canonical figure BY CONSTRUCTION
+ *                   — one liquid number on every surface.
  */
 export function computeAccessibilityBuckets(
   netWorth: NetWorthResult,
@@ -76,13 +81,17 @@ export function computeAccessibilityBuckets(
 ): AccessibilityBuckets {
   const { assets, liabilities, breakdown } = netWorth;
 
+  // MON-031/064: the canonical input is NET of credit cards; the cash-account
+  // partition below needs the GROSS spendable balance.
+  const grossLiquidCash = liquidCash + liabilities.creditCards;
+
   // Non-liquid cash = every cash account minus the spendable subset. Term
   // deposits etc. live here — accessible, but not spendable today. Guarded at
-  // 0 so a data quirk (liquidCash > accounts) never yields a negative bucket
+  // 0 so a data quirk (gross liquid > accounts) never yields a negative bucket
   // component; the tie-out below is preserved because the same value is added
   // to `accessible` and removed from the liquid basis.
-  const nonLiquidCash = Math.max(0, assets.accounts - liquidCash);
-  const liquidBasis = assets.accounts - nonLiquidCash; // == min(liquidCash, accounts)
+  const nonLiquidCash = Math.max(0, assets.accounts - grossLiquidCash);
+  const liquidBasis = assets.accounts - nonLiquidCash; // == min(grossLiquidCash, accounts)
 
   const liquidToday = liquidBasis - liabilities.creditCards;
   const accessible = assets.investments + nonLiquidCash;

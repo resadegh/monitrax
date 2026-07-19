@@ -159,8 +159,11 @@ describe('MON-012: accessibility buckets tie out to net worth', () => {
       [{ balance: 120_000, fundType: 'RETAIL' }] as any,
       [{ currentValue: 8_000 }] as any,
     );
-    // liquidCash = only the liquid subset (SAVINGS), not the term deposit.
-    const b = computeAccessibilityBuckets(real, /* liquidCash */ 25_000);
+    // MON-031/064: the parameter is THE canonical DEPLOYABLE liquid cash —
+    // the liquid subset (SAVINGS 25,000) NET of credit cards (3,000) = 22,000.
+    // The engine reconstructs the gross basis internally (22,000 + 3,000), so
+    // the term deposit still partitions into `accessible`.
+    const b = computeAccessibilityBuckets(real, /* canonical net liquidCash */ 22_000);
     expect(b.longTermDebt).toBe(22_000); // HECS landed in personalLoans
     expect(b.creditCards).toBe(3_000);
     expect(b.nonLiquidCash).toBe(15_000); // the term deposit → accessible
