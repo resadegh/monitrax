@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**87 total** · 83 open · 🔵 22 · 🟡 7 · 🟠 25 · 🟢 29 · ✅ 3
+**87 total** · 83 open · 🔵 21 · 🟡 5 · 🟠 28 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -80,9 +80,9 @@
 | MON-071 | 🔵 OPEN | 🟡 | no | Declared income source count disagrees: /cashflow says '1 income source', /dashboard/income lists 21 | — | n/a |
 | MON-072 | 🔵 OPEN | 🟢 | no | CFO formatting/copy defects: missing thousands separators, pluralisation, doubled word, risk count mismatch | — | n/a |
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
-| MON-074 | 🔵 OPEN | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
+| MON-074 | 🟡 DIAGNOSED | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
 | MON-075 | 🟢 VERIFIED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
-| MON-076 | 🟡 DIAGNOSED | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | — | — |
+| MON-076 | 🟠 FIXING | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | ##1458 | ✅ |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟢 VERIFIED | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
@@ -90,8 +90,8 @@
 | MON-081 | 🟢 VERIFIED | 🟠 | yes | Loan cost reads $0 on non-property surfaces (raw minRepayment instead of the resolved per-loan producer) | ##1440, ##1441, ##1442 | ✅ |
 | MON-082 | 🟢 VERIFIED | 🟠 | yes | /dashboard/expenses ignores isRecurring - one-off expenses annualised into every run-rate | ##1440 | ✅ |
 | MON-083 | 🟠 FIXING | 🟡 | yes | A one-off expense still stores/displays a cadence (frequency=MONTHLY) - Mechanism C | ##1440 | ✅ |
-| MON-084 | 🟡 DIAGNOSED | 🟠 | yes | SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows | — | — |
-| MON-085 | 🟡 DIAGNOSED | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | — | — |
+| MON-084 | 🟠 FIXING | 🟠 | yes | SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows | ##1458 | ✅ |
+| MON-085 | 🟠 FIXING | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | ##1458 | ✅ |
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 | MON-087 | 🟠 FIXING | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | ##1446 | ✅ |
 
@@ -1312,14 +1312,16 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/c
 
 ### MON-074 — Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-15
+**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-15
 
 > **What was wrong:** The same income source is listed three times (Ingeus salary, Cienna PM Trust rent). Because the Ingeus rows are also typed 'Other' instead of Salary, they inflate the 'Other' income group to $192,698/yr — which feeds your declared gross and your tax estimate.
 >
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:474`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:91`
+- **Neomatrix:** `engine.intake.classifyIntake`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-007`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income (duplicate source rows). Expected: One row per real source. Actual: 'Salary Ingeus Australia' appears 3x at $1,919/mo (one 'No txns', one $0 actual/1 txn, one $5,547 actual/4 txns). 'Cienna Pm Trust Rent Payment' appears 3x on Thornland Lot 1 ($1,651 / $1,655 / $1,195). All three Ingeus rows are typed 'Other' rather than Salary/Wages, inflating the 'Other' group to $192,698/yr.. Evidence/run: VR-007.
+Root-cause anchors are PRE-#1458 lines (the mint sites as diagnosed). Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income (duplicate source rows). Expected: One row per real source. Actual: 'Salary Ingeus Australia' appears 3x at $1,919/mo (one 'No txns', one $0 actual/1 txn, one $5,547 actual/4 txns). 'Cienna Pm Trust Rent Payment' appears 3x on Thornland Lot 1 ($1,651 / $1,655 / $1,195). All three Ingeus rows are typed 'Other' rather than Salary/Wages, inflating the 'Other' group to $192,698/yr.. Evidence/run: VR-007. [2026-07-19 #1458] Root cause verified = Mechanism A (no reconcile reuse guard for non-rental income + exact-amount doc-import dedup). The GUARDRAIL (#1458) stops new mints; the existing duplicate ROWS this issue tracks are a §12.11 data merge — Part 2 ships a preview-and-confirm tool whose output IS the live row-level census (genuine same-source groups vs distinct same-payer sources, per the Reza correction: Cienna rent vs Ingeus salary are DIFFERENT incomes). No merge runs without Reza’s explicit per-group approval.
 
 ### MON-075 — Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction
 
@@ -1345,12 +1347,19 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engi
 
 ### MON-076 — Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-15
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-15
 
 > **What was wrong:** The income list holds multiple rows for what looks like the same income source (three Ingeus salary rows, three Cienna rent rows, two Hipcamp rows). If these are true duplicates rather than deliberate splits, the declared annual income is overstated — the tax estimate and run-rate would be too high. Needs a proper diagnosis before any row is touched.
 >
+> **What changed:** One shared identity rule at every intake door (transaction link, document import, manual add, onboarding): an income source is (type + normalised name + owner), so reconciliation updates the canonical row instead of minting a sibling. The already-existing duplicate rows get a preview-and-confirm merge tool (Part 2) — nothing merges without your per-group approval.
+>
+> **What you should see:** New links/imports stop creating duplicate income rows (source count stays stable). Your existing Ingeus ×3 rows are still there until you approve each merge in Part 2.
+
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:413`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:88`, `app/api/income/route.ts:241`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Neomatrix:** `engine.intake.classifyIntake`
+- **Downstream consumers (§19.4):** `app/api/transactions/[id]/link/route.ts (income + expense create branches)`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts (doc-import dedup)`, `app/api/income/route.ts POST (manual add)`, `app/api/onboarding/complete/route.ts (wizard investment income)`, `income page source count + declared tax gross + /cashflow rollups (read the income rows)`
+- **Fix PR(s):** ##1458
+- **Holistic test (§19.4):** `tests/golden/ring2.mechanismA.intakeDedup.test.ts#Mechanism A — the intake-dedup keystone (real link route, create action)`
 - **Detail:** `neoaudit-run:VR-008`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx. Evidence/run: VR-008.
@@ -1363,7 +1372,7 @@ MECHANISM CENSUS (how duplicate/fragmented income rows come to exist):
 (4) Cienna rent ×3 on Thornland — the MON-009 guard would catch these TODAY; the three rows likely predate MON-009 (mechanism fixed, data remains) or carry mismatched type/propertyId — VERIFY per-row on live data. 
 (5) Hipcamp ×2 ($75, $579) — NOT necessarily duplicates: different amounts, both now classified one-off (VR-008) — plausibly two REAL bookings. The census must judge each group by its linked-transaction evidence, not by name alone.
 POPULATION FINGERPRINT (§7 rule — enumerate ALL groups, not the three reported): income rows grouped by (relatedMerchant(name) ∨ sameMerchant(name)) ∧ same scope (propertyId/investmentAccountId or none) — each group with >1 row is a candidate; classify per group: TRUE-DUPLICATE (same stream split) vs REAL-DISTINCT (separate receipts/streams). Requires live data — Matrix/Chrome or an admin query; NOT executable from a Code session.
-DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-duplicate salary/other stream, the fix shape is (A) extend the MON-009 stream-reuse pattern to non-rental income at intake, keyed by the RC-B canonical near-duplicate decision (isNearDuplicateEntry), + user-reviewed merge of existing rows (abandoned-backfill precedent), or (B) keep rows but pool them into one logical stream at read time (bigger, touches every consumer — NOT recommended, violates one-producer simplicity). RECOMMENDATION: (A) intake guard + user-reviewed remediation, mirroring RC-B exactly. Gate: no fix code until Reza picks and the live population census lands.
+DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-duplicate salary/other stream, the fix shape is (A) extend the MON-009 stream-reuse pattern to non-rental income at intake, keyed by the RC-B canonical near-duplicate decision (isNearDuplicateEntry), + user-reviewed merge of existing rows (abandoned-backfill precedent), or (B) keep rows but pool them into one logical stream at read time (bigger, touches every consumer — NOT recommended, violates one-producer simplicity). RECOMMENDATION: (A) intake guard + user-reviewed remediation, mirroring RC-B exactly. Gate: no fix code until Reza picks and the live population census lands. [Mechanism-A keystone PR #1458 (2026-07-19)] The guardrail is BUILT: classifyIntake 'source-signature' policy (identity = kind+type+normalised name+ownerEntityId over user-wide candidates; scope-compatibility rule — same scope or one side scopeless, two differently-scoped rows never converge, the Reza distinct-sources correction enforced structurally). Routed: link-route income create (non-rental → the :831 update template), link-route expense (cross-scope tier), reconcileSuggestedAction (income cross-amount; expense stays amount-bounded), POST /api/income (409 DUPLICATE_INCOME_SOURCE on exact manual dup; rental scope-singleton converges), onboarding complete (idempotent skip). Ratchet: tests/golden/ring2.mechanismA.intakeDedup.test.ts (real route; fails pre-fix) + 6 classifier unit tests. Neomatrix: engine.intake.classifyIntake + law.intake.oneRowPerSource. Existing already-minted duplicates are UNTOUCHED by this PR — Part 2 (preview-and-confirm merge, Reza-gated per group, §12.11) is a separate PR.
 
 ### MON-077 — 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it
 
@@ -1496,35 +1505,41 @@ Calc-SSOT Wall Mechanism C (docs/architecture/CALC_SSOT_WALL.md): Reza's battery
 
 ### MON-084 — SALARY/OTHER income has no reconcile reuse guard - linking mints duplicate income rows
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-17
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-17
 
-> **What was wrong:** Linking salary deposits to your income created NEW income rows instead of updating the one you already had - e.g. 'Salary Ingeus Australia' existed three times (declared, $0 one-transaction, $5,547 four-transaction), all the same job.
+> **What was wrong:** Linking a salary or other (non-rental) deposit always created a NEW income row — 'Ingeus Australia' became three rows for one job, inflating your income-source count and the declared tax gross.
 >
-> **What changed:** Not fixed yet: reconciliation needs a source-signature reuse rule (type + normalised employer/merchant + owner) so linking always updates the ONE canonical row - the reuse guard currently exists only for rent with a property.
+> **What changed:** Every link now first checks "do I already have this source?" (same type + same normalised name + same owner) and updates that one row — your prior declared amount is kept as the budget figure.
 >
-> **What you should see:** After the fix: linking a second salary deposit updates the existing income row (no new row appears), and editing that one row changes the income page, tax and cashflow together.
+> **What you should see:** After merge: link a new Ingeus deposit — the income page still shows ONE Ingeus salary row (updated, not duplicated) and the source count does not grow. Existing duplicate rows are unchanged until you approve the Part-2 merge.
 
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:453`, `app/api/transactions/[id]/link/route.ts:413`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Neomatrix:** `engine.intake.classifyIntake`
+- **Downstream consumers (§19.4):** `app/api/transactions/[id]/link/route.ts income create branch (Ingeus-class mints — now updates the one row)`, `income page source list + count (app/dashboard/income)`, `declared tax gross via incomeAggregator → getUserTaxPosition (phantom rows inflated the base)`, `/cashflow + activity income-source rollups`
+- **Fix PR(s):** ##1458
+- **Holistic test (§19.4):** `tests/golden/ring2.mechanismA.intakeDedup.test.ts#Mechanism A — the intake-dedup keystone (real link route, create action)`
 - **Detail:** `calc-ssot-wall`
 
-Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): the link route's reuse guard fires only for RENT/RENTAL && propertyId (:453-474); everything else mints at :474 with type defaulting to OTHER at :413. Fix route (per the Wall): extend the MON-078 intake classifier with a signature-based upsert (type, normalised name/employer, ownerEntityId) and route the link-route create branch + doc-import income branch through it. Related: MON-074, MON-076, MON-009.
+Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): the link route's reuse guard fires only for RENT/RENTAL && propertyId (:453-474); everything else mints at :474 with type defaulting to OTHER at :413. Fix route (per the Wall): extend the MON-078 intake classifier with a signature-based upsert (type, normalised name/employer, ownerEntityId) and route the link-route create branch + doc-import income branch through it. Related: MON-074, MON-076, MON-009. [Mechanism-A keystone PR #1458 (2026-07-19)] The guardrail is BUILT: classifyIntake 'source-signature' policy (identity = kind+type+normalised name+ownerEntityId over user-wide candidates; scope-compatibility rule — same scope or one side scopeless, two differently-scoped rows never converge, the Reza distinct-sources correction enforced structurally). Routed: link-route income create (non-rental → the :831 update template), link-route expense (cross-scope tier), reconcileSuggestedAction (income cross-amount; expense stays amount-bounded), POST /api/income (409 DUPLICATE_INCOME_SOURCE on exact manual dup; rental scope-singleton converges), onboarding complete (idempotent skip). Ratchet: tests/golden/ring2.mechanismA.intakeDedup.test.ts (real route; fails pre-fix) + 6 classifier unit tests. Neomatrix: engine.intake.classifyIntake + law.intake.oneRowPerSource. Existing already-minted duplicates are UNTOUCHED by this PR — Part 2 (preview-and-confirm merge, Reza-gated per group, §12.11) is a separate PR.
 
 ### MON-085 — Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: expenses · opened 2026-07-17
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: expenses · opened 2026-07-17
 
-> **What was wrong:** The same expense recorded once against your home and once as a general expense (e.g. 'Battery' on HOME and 'Battery' unscoped) was never flagged as a duplicate, because duplicate-checking only compares within the same property/loan/asset scope - so it was counted twice.
+> **What was wrong:** Duplicate-detection for expenses only compared rows in the SAME scope (same property/loan/asset), so a "Battery" filed on HOME and the same battery filed as General were never compared — one real cost became three rows.
 >
-> **What changed:** Not fixed yet: duplicate candidate sets need to span scopes (compare by normalised name + amount + date window app-wide, then let the user confirm the scope), via the same intake signature-upsert as MON-084.
+> **What changed:** Candidates are now compared across scopes with a safety rule: a scoped row and a General row can converge (same real cost), but two rows on two DIFFERENT properties never do (they are genuinely separate costs).
 >
-> **What you should see:** After the fix: creating/importing an expense that matches an existing one in ANY scope surfaces a 'possible duplicate' suggestion instead of silently double-counting.
+> **What you should see:** After merge: reconciling a battery invoice without picking a property lands on the existing HOME battery row instead of minting a third. QBE insurance on two different properties stays two rows.
 
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:681`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:74`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Neomatrix:** `engine.intake.classifyIntake`
+- **Downstream consumers (§19.4):** `app/api/transactions/[id]/link/route.ts expense create branch (cross-scope battery class)`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts (doc-import expense dedup)`, `spending/expenses surfaces + property expense cards reading expense rows`
+- **Fix PR(s):** ##1458
+- **Holistic test (§19.4):** `tests/golden/ring2.mechanismA.intakeDedup.test.ts#Mechanism A — the intake-dedup keystone (real link route, create action)`
 - **Detail:** `calc-ssot-wall`
 
-Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): near-dup candidate sets are scoped by propertyId/loanId/assetId (link route :681-689; reconcileSuggestedAction.ts:74-83), and doc-import income dedup is exact amount+name+type (:89-101) so declared vs reconciled twins never match. Related: MON-037 RC-B (battery x3). Fix via the same signature-upsert keystone as MON-084.
+Calc-SSOT Wall Mechanism A (docs/architecture/CALC_SSOT_WALL.md): near-dup candidate sets are scoped by propertyId/loanId/assetId (link route :681-689; reconcileSuggestedAction.ts:74-83), and doc-import income dedup is exact amount+name+type (:89-101) so declared vs reconciled twins never match. Related: MON-037 RC-B (battery x3). Fix via the same signature-upsert keystone as MON-084. [Mechanism-A keystone PR #1458 (2026-07-19)] The guardrail is BUILT: classifyIntake 'source-signature' policy (identity = kind+type+normalised name+ownerEntityId over user-wide candidates; scope-compatibility rule — same scope or one side scopeless, two differently-scoped rows never converge, the Reza distinct-sources correction enforced structurally). Routed: link-route income create (non-rental → the :831 update template), link-route expense (cross-scope tier), reconcileSuggestedAction (income cross-amount; expense stays amount-bounded), POST /api/income (409 DUPLICATE_INCOME_SOURCE on exact manual dup; rental scope-singleton converges), onboarding complete (idempotent skip). Ratchet: tests/golden/ring2.mechanismA.intakeDedup.test.ts (real route; fails pre-fix) + 6 classifier unit tests. Neomatrix: engine.intake.classifyIntake + law.intake.oneRowPerSource. Existing already-minted duplicates are UNTOUCHED by this PR — Part 2 (preview-and-confirm merge, Reza-gated per group, §12.11) is a separate PR.
 
 ### MON-086 — Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again)
 
