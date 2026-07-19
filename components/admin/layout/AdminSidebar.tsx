@@ -115,6 +115,9 @@ const navSections: NavSection[] = [
       { label: 'NeoAudit', href: '/admin/neoaudit', icon: icons.neoaudit, permission: 'audit' },
       { label: 'Neomatrix', href: '/admin/neomatrix', icon: icons.neomatrix, permission: 'audit' },
       { label: 'Calc Audit', href: '/admin/calc-audit', icon: icons.calcAudit, permission: 'audit' },
+      // Mechanism A Part 2 (MON-074/076): the Reza-gated duplicate-merge
+      // preview-and-confirm surface (#1459).
+      { label: 'Intake Duplicates', href: '/admin/intake-duplicates', icon: icons.calcAudit, permission: 'audit' },
     ],
   },
   {
