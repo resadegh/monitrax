@@ -17,6 +17,19 @@ import { AdminCard, AdminCardHeader, EmptyState } from '@/components/admin/ui/Ad
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { safeAdminFetch } from '@/lib/admin/safeFetch';
+import { getFirebaseAuth } from '@/lib/firebase/config';
+
+/**
+ * The AdminLayoutClient token interceptor only covers `/api/admin/*` URLs;
+ * this page calls the user-scoped `/api/intake/duplicates`, so the Firebase
+ * ID token is attached explicitly (the "Authentication required" Reza hit on
+ * first use, 2026-07-20).
+ */
+async function authHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const user = getFirebaseAuth()?.currentUser;
+  const idToken = user ? await user.getIdToken() : null;
+  return { ...(extra ?? {}), ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) };
+}
 
 interface PreviewRow {
   id: string;
@@ -58,7 +71,9 @@ export default function IntakeDuplicatesPage() {
   const fetchPreview = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await safeAdminFetch<{ groups: PreviewGroup[] }>('/api/intake/duplicates');
+    const result = await safeAdminFetch<{ groups: PreviewGroup[] }>('/api/intake/duplicates', {
+      headers: await authHeaders(),
+    });
     if (result.ok && result.data) setGroups(result.data.groups);
     else setError(result.error || 'Failed to load the duplicate preview');
     setLoading(false);
@@ -75,7 +90,7 @@ export default function IntakeDuplicatesPage() {
       '/api/intake/duplicates',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           kind: g.kind,
           survivorId: g.survivorId,
