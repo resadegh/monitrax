@@ -43,7 +43,7 @@ Create `lib/intake/classifyIntake.ts`: `classifyIntake(signal) -> { frequency, i
 | Stream-reuse for expenses (battery) (C3, expense) | MON-037 RC-B | ✅ mechanism shipped #1427 |
 | One-off standing detector (D1) | MON-075 | build |
 | Frequency control (C1) + preserve weekly/fortnightly + D2 + freq source-lock | MON-001 | build — **critical, biggest live impact** |
-| Stream-reuse+near-dup for income (C3) + D3 + user-review merge | MON-076 | build — fix-shape = Reza's call |
+| Stream-reuse+near-dup for income (C3) + D3 + user-review merge | MON-076 | ✅ mechanism shipped 2026-07-19 (Mechanism-A keystone: `source-signature` policy + scope-compatibility rule; existing-duplicate merge = Part 2, Reza-gated per group) |
 | **Canonical `classifyIntake()` + intake source-lock (R1)** | **raise MON-078** | build — **the keystone** |
 
 ## 6. Build sequence (Code session · one PR per brick · handback to Matrix for the validating Ring-3)

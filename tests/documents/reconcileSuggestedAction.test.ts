@@ -7,16 +7,16 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { expenseFindMany, incomeFindFirst, loanFindFirst } = vi.hoisted(() => ({
+const { expenseFindMany, incomeFindMany, loanFindFirst } = vi.hoisted(() => ({
   expenseFindMany: vi.fn(),
-  incomeFindFirst: vi.fn(),
+  incomeFindMany: vi.fn(),
   loanFindFirst: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   prisma: {
     expense: { findMany: expenseFindMany },
-    income: { findFirst: incomeFindFirst },
+    income: { findMany: incomeFindMany },
     loan: { findFirst: loanFindFirst },
   },
 }));
@@ -26,7 +26,8 @@ import { reconcileSuggestedAction } from '@/lib/documents/intelligence/reconcile
 beforeEach(() => {
   expenseFindMany.mockReset();
   expenseFindMany.mockResolvedValue([]);
-  incomeFindFirst.mockReset();
+  incomeFindMany.mockReset();
+  incomeFindMany.mockResolvedValue([]);
   loanFindFirst.mockReset();
 });
 
@@ -76,14 +77,32 @@ describe('reconcileSuggestedAction', () => {
     expect(r).toEqual({ duplicate: false });
   });
 
-  it('scopes the expense match to the linked asset when provided', async () => {
-    expenseFindMany.mockResolvedValue([]);
-    await reconcileSuggestedAction('u1', 'EXPENSE', {
+  it('Mechanism A (MON-085): candidates are fetched ACROSS scopes; scope compatibility is decided by the classifier', async () => {
+    // A scoped candidate (asset-9) vs a row on a DIFFERENT scope (asset-1):
+    // fetched user-wide, but the classifier's scope rule blocks convergence.
+    expenseFindMany.mockResolvedValue([
+      { id: 'exp-other-asset', name: 'QBE', vendorName: null, amount: 100, propertyId: null, loanId: null, assetId: 'asset-1' },
+    ]);
+    const r = await reconcileSuggestedAction('u1', 'EXPENSE', {
       vendor: 'QBE',
       amount: 100,
       assetId: 'asset-9',
     });
-    expect(expenseFindMany.mock.calls[0][0].where.assetId).toBe('asset-9');
+    expect(r).toEqual({ duplicate: false }); // two different scopes never converge
+    const where = expenseFindMany.mock.calls[0][0].where;
+    expect(where).toEqual({ userId: 'u1' }); // user-wide fetch — no scope filter
+  });
+
+  it('Mechanism A (MON-085): a scopeless row DOES converge with a scoped candidate (the battery class)', async () => {
+    expenseFindMany.mockResolvedValue([
+      { id: 'exp-gen', name: 'Battery System', vendorName: null, amount: 11385, propertyId: null, loanId: null, assetId: null },
+    ]);
+    const r = await reconcileSuggestedAction('u1', 'EXPENSE', {
+      name: 'Battery',
+      amount: 11385,
+      propertyId: 'prop-home',
+    });
+    expect(r).toEqual({ duplicate: true, existingId: 'exp-gen' });
   });
 
   it('returns no-match for an expense with no existing row', async () => {
@@ -92,17 +111,32 @@ describe('reconcileSuggestedAction', () => {
     expect(r).toEqual({ duplicate: false });
   });
 
-  it('matches income on user + amount + name + type', async () => {
-    incomeFindFirst.mockResolvedValue({ id: 'inc-1' });
+  it('Mechanism A (MON-084/076): income matches on the SIGNATURE (type + normalised name) — a declared row and its reconciled twin converge across amount drift', async () => {
+    incomeFindMany.mockResolvedValue([
+      { id: 'inc-1', name: 'Acme Payroll Pty Ltd', amount: 8500, propertyId: null, investmentAccountId: null },
+    ]);
     const r = await reconcileSuggestedAction('u1', 'INCOME', {
       name: 'Acme Payroll',
-      amount: 5000,
+      amount: 5000, // far from 8500 — the old exact-amount match never caught this
       type: 'salary',
     });
     expect(r).toEqual({ duplicate: true, existingId: 'inc-1' });
-    const where = incomeFindFirst.mock.calls[0][0].where;
-    expect(where.name).toBe('Acme Payroll');
-    expect(where.type).toBe('SALARY');
+    const where = incomeFindMany.mock.calls[0][0].where;
+    expect(where.type).toBe('SALARY'); // type stays in the signature
+    expect(where.name).toBeUndefined(); // name matching is normalised, not SQL-exact
+  });
+
+  it('Mechanism A: income on two DIFFERENT property scopes never converges (Lot 1 vs Lot 2)', async () => {
+    incomeFindMany.mockResolvedValue([
+      { id: 'inc-lot1', name: 'Cienna PM Trust', amount: 2600, propertyId: 'p-lot1', investmentAccountId: null },
+    ]);
+    const r = await reconcileSuggestedAction('u1', 'INCOME', {
+      name: 'Cienna PM Trust',
+      amount: 2600,
+      type: 'RENTAL',
+      propertyId: 'p-lot2',
+    });
+    expect(r).toEqual({ duplicate: false });
   });
 
   it('matches loan on user + name + principal (falls back to amount)', async () => {

@@ -471,7 +471,58 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               ? rentalScopeRows.find((r: any) => r.id === rentalMatch.id) ?? null
               : null;
 
-            const income = existingRentalStream ?? (await prisma.income.create({ data: incomeData }));
+            // Mechanism A (MON-084/074): NON-rental income (SALARY / OTHER /
+            // INVESTMENT) previously had NO reuse guard — every link minted a
+            // sibling row ("Ingeus Australia" ×3, one job). Reuse is decided by
+            // the ONE classifier's source-signature policy (type + normalised
+            // name + ownerEntity; cross-scope only when one side is scopeless),
+            // and a match takes the UPDATE action (the :831 template — amount ←
+            // transaction, prior amount preserved as budgetedAmount,
+            // lastReconciled stamped) instead of inserting. Rental income is
+            // deliberately excluded: its identity is property-scoped
+            // (MON-009 scope-singleton above), and a scopeless rental deposit
+            // must never guess which property's stream to join.
+            let signatureIncome: Awaited<ReturnType<typeof prisma.income.update>> | null = null;
+            if (!isRentalIncome) {
+              const signatureRows = await prisma.income.findMany({
+                where: { userId, type: incomeData.type, ownerEntityId: incomeData.ownerEntityId },
+                orderBy: { createdAt: 'asc' },
+              });
+              const signatureMatch = classifyIntake({
+                kind: 'income',
+                source: 'TRANSACTION_LINK',
+                declaredFrequency: incomeIntake.frequency,
+                streamPolicy: 'source-signature',
+                candidate: {
+                  name: incomeData.name,
+                  amount: incomeData.amount,
+                  scopeKey: incomeData.propertyId ?? incomeData.investmentAccountId ?? null,
+                },
+                existingRows: signatureRows.map((r: any) => ({
+                  id: r.id,
+                  name: r.name,
+                  amount: r.amount,
+                  scopeKey: r.propertyId ?? r.investmentAccountId ?? null,
+                })),
+              }).streamMatch;
+              if (signatureMatch) {
+                const current = signatureRows.find((r: any) => r.id === signatureMatch.id)!;
+                const budgetedAmount = current.budgetedAmount ?? current.amount;
+                signatureIncome = await prisma.income.update({
+                  where: { id: current.id },
+                  data: {
+                    amount: transaction.amount,
+                    budgetedAmount,
+                    lastReconciled: new Date(),
+                  },
+                });
+              }
+            }
+
+            const income =
+              existingRentalStream ??
+              signatureIncome ??
+              (await prisma.income.create({ data: incomeData }));
 
             // Link transaction to the (reused or new) income stream
             await prisma.unifiedTransaction.update({
@@ -678,36 +729,76 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // the same insurer under two bank spellings ("QBE Insurance
             // (Australia) Limited" vs "Qbe Insurance (australia) Limited Abn…")
             // reuses one record instead of minting a second.
-            const scopeExpenses = await prisma.expense.findMany({
-              where: {
-                userId,
-                propertyId: expenseData.propertyId ?? null,
-                loanId: expenseData.loanId ?? null,
-                assetId: expenseData.assetId ?? null,
-              },
+            // MON-037 RC-B → MON-078 → Mechanism A (MON-085): stream reuse via
+            // the ONE classifier's source-signature policy. Candidates are the
+            // user's expenses ACROSS scopes (the old query filtered to the
+            // exact propertyId/loanId/assetId triple, so a "Battery" on HOME
+            // and a "Battery" on General were in different candidate sets and
+            // never compared — battery ×3). The classifier ranks same-scope
+            // matches first and permits a cross-scope match ONLY when one side
+            // is scopeless (General) — two DIFFERENTLY-scoped rows (QBE on
+            // property A vs property B) are distinct real streams and never
+            // converge.
+            const expenseScopeKey =
+              expenseData.propertyId ??
+              expenseData.loanId ??
+              expenseData.investmentAccountId ??
+              expenseData.assetId ??
+              null;
+            const expenseCandidates = await prisma.expense.findMany({
+              where: { userId },
               orderBy: { createdAt: 'asc' },
             });
-            // MON-037 RC-B → MON-078: stream reuse via the ONE classifier's
-            // merchant policy — exact (normalised) name match first, then the
-            // canonical near-duplicate check (token-containment + ≤10% amount:
-            // "Battery" vs "Battery System"/"Battery Replacement"), so an
-            // ACTUAL being linked reconciles INTO the existing estimate row
-            // instead of minting a same-cost sibling under a name variant.
             const expenseMatch = classifyIntake({
               kind: 'expense',
               source: 'TRANSACTION_LINK',
               declaredFrequency,
-              streamPolicy: 'merchant',
-              candidate: { name: expenseData.name, vendorName: expenseData.vendorName, amount: expenseData.amount },
-              existingRows: scopeExpenses.map((e: any) => ({
-                id: e.id, name: e.name, vendorName: e.vendorName, amount: e.amount,
+              streamPolicy: 'source-signature',
+              candidate: {
+                name: expenseData.name,
+                vendorName: expenseData.vendorName,
+                amount: expenseData.amount,
+                scopeKey: expenseScopeKey,
+              },
+              existingRows: expenseCandidates.map((e: any) => ({
+                id: e.id,
+                name: e.name,
+                vendorName: e.vendorName,
+                amount: e.amount,
+                scopeKey: e.propertyId ?? e.loanId ?? e.investmentAccountId ?? e.assetId ?? null,
               })),
             }).streamMatch;
-            const existingExpense = expenseMatch
-              ? scopeExpenses.find((e: any) => e.id === expenseMatch.id) ?? null
+            const matchedExpense = expenseMatch
+              ? expenseCandidates.find((e: any) => e.id === expenseMatch.id) ?? null
               : null;
 
-            const expense = existingExpense ?? (await prisma.expense.create({ data: expenseData }));
+            let expense;
+            if (
+              matchedExpense &&
+              (matchedExpense.propertyId ?? matchedExpense.loanId ?? matchedExpense.investmentAccountId ?? matchedExpense.assetId ?? null) ===
+                expenseScopeKey
+            ) {
+              // Same-scope match — the established #1427 behaviour: link the
+              // transaction to the existing row, no field changes.
+              expense = matchedExpense;
+            } else if (matchedExpense) {
+              // Cross-scope match (Mechanism A, new): reconciliation takes the
+              // UPDATE action (the :831 template) against the canonical row —
+              // amount ← transaction, prior amount preserved as budgetedAmount,
+              // lastReconciled stamped — instead of minting a scoped/scopeless
+              // sibling of the same real cost.
+              const budgetedAmount = matchedExpense.budgetedAmount ?? matchedExpense.amount;
+              expense = await prisma.expense.update({
+                where: { id: matchedExpense.id },
+                data: {
+                  amount: expenseData.amount,
+                  budgetedAmount,
+                  lastReconciled: new Date(),
+                },
+              });
+            } else {
+              expense = await prisma.expense.create({ data: expenseData });
+            }
 
             // Link transaction to the (reused or new) expense
             await prisma.unifiedTransaction.update({

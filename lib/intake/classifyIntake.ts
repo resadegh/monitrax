@@ -54,12 +54,35 @@ export type StreamPolicy =
    *  existing row on the scope IS the stream — reuse it unconditionally. */
   | 'scope-singleton'
   /** Merchant identity (MON-011/025 + MON-037 RC-B): normalised name equality
-   *  → exact; token-containment + ≤10% amount → near-duplicate. */
+   *  → exact; token-containment + ≤10% amount → near-duplicate. Candidates are
+   *  pre-filtered to ONE scope by the caller. */
   | 'merchant'
+  /** Mechanism A keystone (MON-084/085/074/076, Calc-SSOT Wall): SOURCE
+   *  SIGNATURE identity = (kind, type, normalised name, ownerEntityId) — the
+   *  caller supplies USER-WIDE candidates of the same kind/type/owner (NOT
+   *  pre-filtered to a propertyId/loanId/assetId scope), and the classifier
+   *  applies the scope-compatibility rule:
+   *
+   *    a candidate row and the intake row may converge when they are on the
+   *    SAME scope, or when AT LEAST ONE of them is scopeless (General) —
+   *    NEVER across two DIFFERENT non-null scopes.
+   *
+   *  Why: the live duplicates this kills are the SAME real source minted with
+   *  and without a scope ("Battery" on HOME vs "Battery" on General; an
+   *  Ingeus salary declared row vs its scopeless reconciled twin). Two rows
+   *  on two DIFFERENT scopes (QBE insurance on property A vs property B;
+   *  Cienna PM Trust rent for Lot 1 vs Lot 2) are DISTINCT real streams that
+   *  merely share a payer — Reza has corrected an over-merge here before, so
+   *  the guard lives in the classifier, not in caller discipline. */
+  | 'source-signature'
   | 'none';
 
 export interface IntakeExistingRow extends EntryForDuplicateCheck {
   id: string;
+  /** The row's linking scope for the `source-signature` compatibility rule —
+   *  `propertyId ?? loanId ?? assetId ?? investmentAccountId ?? null`.
+   *  Only consulted by the `source-signature` policy. */
+  scopeKey?: string | null;
 }
 
 export interface IntakeSignal {
@@ -78,8 +101,10 @@ export interface IntakeSignal {
    *  `detectFrequency`), so weekly/fortnightly streams are stored as
    *  WEEKLY/FORTNIGHTLY — never silently monthly. */
   transactionDates?: Array<Date | string>;
-  /** The row about to be created — needed for `merchant` stream matching. */
-  candidate?: EntryForDuplicateCheck | null;
+  /** The row about to be created — needed for `merchant` / `source-signature`
+   *  stream matching. `scopeKey` carries the intake row's linking scope for
+   *  the `source-signature` compatibility rule. */
+  candidate?: (EntryForDuplicateCheck & { scopeKey?: string | null }) | null;
   /** Existing rows on the SAME linking scope (caller fetches; this is pure). */
   existingRows?: IntakeExistingRow[];
   streamPolicy?: StreamPolicy;
@@ -215,6 +240,26 @@ function resolveStreamMatch(
       const exact = rows.find((r) => sameMerchant(r.name, signal.candidate!.name));
       if (exact) return { id: exact.id, confidence: 'exact' };
       const near = rows.find((r) => isNearDuplicateEntry(signal.candidate!, r));
+      return near ? { id: near.id, confidence: 'near-duplicate' } : null;
+    }
+    case 'source-signature': {
+      // Mechanism A: merchant identity over USER-WIDE candidates, gated by
+      // scope compatibility (same scope, or at least one side scopeless).
+      // Same-scope matches are preferred over cross-scope ones so an
+      // established same-scope stream always wins.
+      if (!signal.candidate) return null;
+      const candScope = signal.candidate.scopeKey ?? null;
+      const compatible = rows.filter((r) => {
+        const rowScope = r.scopeKey ?? null;
+        return rowScope === candScope || rowScope === null || candScope === null;
+      });
+      const ranked = [
+        ...compatible.filter((r) => (r.scopeKey ?? null) === candScope),
+        ...compatible.filter((r) => (r.scopeKey ?? null) !== candScope),
+      ];
+      const exact = ranked.find((r) => sameMerchant(r.name, signal.candidate!.name));
+      if (exact) return { id: exact.id, confidence: 'exact' };
+      const near = ranked.find((r) => isNearDuplicateEntry(signal.candidate!, r));
       return near ? { id: near.id, confidence: 'near-duplicate' } : null;
     }
     case 'none':

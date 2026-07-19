@@ -15,18 +15,20 @@
  * (findFirst) — the caller (confirm route) applies the verdict (link vs create),
  * keeping the write side in one place.
  *
- * Match keys (deliberately conservative — a false "duplicate" is worse than a
- * missed one, since the user is in the confirm loop and can always create):
- *   - EXPENSE: same user + same linking scope + the canonical near-duplicate
- *     decision (MON-037 RC-B, lib/utils/reconciliation.ts `isNearDuplicateEntry`:
- *     normalised name equality OR token-containment — "Battery" ⊂ "Battery
- *     System" — AND amount within 10%). Replaces the exact-string + exact-amount
- *     match that let one battery cost mint three name-variant rows.
- *   - INCOME:  same user + same amount + same name + same type.
- *   - LOAN:    same user + same name + same principal.
+ * Match keys (Mechanism A, MON-084/085 — the ONE classifier's source-signature
+ * policy; docs/architecture/CALC_SSOT_WALL.md):
+ *   - EXPENSE: same user, candidates ACROSS scopes; normalised-name equality or
+ *     the canonical near-duplicate decision (token-containment + ≤10% amount),
+ *     gated by scope compatibility — same scope, or one side scopeless
+ *     (General). Two differently-scoped rows never converge.
+ *   - INCOME:  same user + same type, candidates across scopes; same
+ *     signature matching + scope-compatibility rule (the old exact
+ *     `amount+name+type` match never caught a declared row's reconciled twin).
+ *   - LOAN:    same user + same name + same principal (unchanged).
  */
 
 import { prisma } from '@/lib/db';
+import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { isNearDuplicateEntry } from '@/lib/utils/reconciliation';
 
 export type ReconcileRecordType = 'EXPENSE' | 'INCOME' | 'LOAN';
@@ -64,40 +66,81 @@ export async function reconcileSuggestedAction(
   if (amount === null || !name) return NO_MATCH;
 
   if (type === 'EXPENSE') {
-    const propertyId = data.propertyId ? String(data.propertyId) : undefined;
-    const loanId = data.loanId ? String(data.loanId) : undefined;
-    const assetId = data.assetId ? String(data.assetId) : undefined;
-    // MON-037 RC-B: fetch the linking scope's candidates, then apply the ONE
-    // near-duplicate decision (name equality/containment + ≤10% amount) —
-    // the exact-string + exact-amount findFirst missed name variants of the
-    // same cost ("Battery" vs "Battery System") and estimate-vs-actual drift.
+    const propertyId = data.propertyId ? String(data.propertyId) : null;
+    const loanId = data.loanId ? String(data.loanId) : null;
+    const assetId = data.assetId ? String(data.assetId) : null;
+    // MON-037 RC-B → Mechanism A (MON-085): candidates are the user's expenses
+    // ACROSS scopes; the ONE classifier's source-signature policy applies the
+    // near-duplicate decision (name equality/containment + ≤10% amount) with
+    // the scope-compatibility rule — same scope, or one side scopeless
+    // (General). The old scope-filtered query meant a "Battery" on HOME and a
+    // "Battery" on General were never compared, so the same real cost minted
+    // scoped/scopeless siblings; two DIFFERENTLY-scoped rows (insurance on
+    // property A vs property B) remain distinct and never converge.
     const candidates = await prisma.expense.findMany({
-      where: {
-        userId,
-        ...(propertyId ? { propertyId } : {}),
-        ...(loanId ? { loanId } : {}),
-        ...(assetId ? { assetId } : {}),
-      },
-      select: { id: true, name: true, vendorName: true, amount: true },
+      where: { userId },
+      select: { id: true, name: true, vendorName: true, amount: true, propertyId: true, loanId: true, assetId: true },
       orderBy: { createdAt: 'asc' },
     });
-    const existing =
-      candidates.find((e) => isNearDuplicateEntry({ name, amount }, e)) ?? null;
-    return existing ? { duplicate: true, existingId: existing.id } : NO_MATCH;
+    const match = classifyIntake({
+      kind: 'expense',
+      source: 'DOCUMENT_IMPORT',
+      declaredFrequency: 'MONTHLY', // frequency is irrelevant to stream matching
+      streamPolicy: 'source-signature',
+      candidate: { name, amount, scopeKey: propertyId ?? loanId ?? assetId ?? null },
+      existingRows: candidates.map((e) => ({
+        id: e.id,
+        name: e.name,
+        vendorName: e.vendorName,
+        amount: e.amount,
+        scopeKey: e.propertyId ?? e.loanId ?? e.assetId ?? null,
+      })),
+    }).streamMatch;
+    if (!match) return NO_MATCH;
+    // The doc-import EXPENSE contract stays AMOUNT-BOUNDED (deliberately
+    // conservative — same name at a FAR amount is two real costs, e.g. two
+    // different battery purchases; the user is in the confirm loop and can
+    // always create). The ONE canonical decision re-checks the bound; income
+    // deliberately has no such bound — a declared row and its reconciled twin
+    // legitimately differ in amount.
+    const matchedRow = candidates.find((e) => e.id === match.id);
+    if (!matchedRow || !isNearDuplicateEntry({ name, amount }, matchedRow)) return NO_MATCH;
+    return { duplicate: true, existingId: match.id };
   }
 
   if (type === 'INCOME') {
     const incomeType = data.type ? String(data.type).toUpperCase() : undefined;
-    const existing = await prisma.income.findFirst({
-      where: {
-        userId,
-        amount,
-        name,
-        ...(incomeType ? { type: incomeType as never } : {}),
-      },
-      select: { id: true },
+    // Mechanism A (MON-084/076): the old exact `amount+name+type` findFirst
+    // never matched a declared row against its reconciled twin (amounts
+    // differ), so document confirms minted duplicate income sources. The ONE
+    // classifier's source-signature policy matches on normalised name (exact
+    // or near-duplicate) within the same type, with the scope-compatibility
+    // rule (propertyId/investmentAccountId scope must agree or one side be
+    // scopeless) — so Lot-1 vs Lot-2 rent never converge.
+    const candidates = await prisma.income.findMany({
+      where: { userId, ...(incomeType ? { type: incomeType as never } : {}) },
+      select: { id: true, name: true, amount: true, propertyId: true, investmentAccountId: true },
+      orderBy: { createdAt: 'asc' },
     });
-    return existing ? { duplicate: true, existingId: existing.id } : NO_MATCH;
+    const scopeKey = data.propertyId
+      ? String(data.propertyId)
+      : data.investmentAccountId
+        ? String(data.investmentAccountId)
+        : null;
+    const match = classifyIntake({
+      kind: 'income',
+      source: 'DOCUMENT_IMPORT',
+      declaredFrequency: 'MONTHLY', // frequency is irrelevant to stream matching
+      streamPolicy: 'source-signature',
+      candidate: { name, amount, scopeKey },
+      existingRows: candidates.map((i) => ({
+        id: i.id,
+        name: i.name,
+        amount: i.amount,
+        scopeKey: i.propertyId ?? i.investmentAccountId ?? null,
+      })),
+    }).streamMatch;
+    return match ? { duplicate: true, existingId: match.id } : NO_MATCH;
   }
 
   // LOAN — principal is the amount-equivalent; match on name + principal.

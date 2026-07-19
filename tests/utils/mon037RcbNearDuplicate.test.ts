@@ -85,12 +85,13 @@ describe('MON-037 RC-B · Ring-1 SOURCE-LOCK: both intake paths use the ONE deci
   const root = resolve(__dirname, '../..');
   const read = (p: string) => readFileSync(resolve(root, p), 'utf-8');
 
-  it('the transaction-link route consumes the ONE decision (via classifyIntake merchant policy — MON-078 keystone)', () => {
+  it('the transaction-link route consumes the ONE decision (via classifyIntake source-signature policy — Mechanism A keystone)', () => {
     const src = read('app/api/transactions/[id]/link/route.ts');
-    // Post-MON-078 the route reaches the decision through the canonical
-    // classifier rather than calling the predicate inline — the chain is
-    // route → classifyIntake(streamPolicy 'merchant') → isNearDuplicateEntry.
-    expect(src).toMatch(/streamPolicy: 'merchant'/);
+    // Post-Mechanism-A the route reaches the decision through the canonical
+    // classifier's source-signature policy (cross-scope with the scope
+    // compatibility rule) — the chain is route → classifyIntake(streamPolicy
+    // 'source-signature') → sameMerchant / isNearDuplicateEntry.
+    expect(src).toMatch(/streamPolicy: 'source-signature'/);
     expect(src).toMatch(/from '@\/lib\/intake\/classifyIntake'/);
     const classifier = read('lib/intake/classifyIntake.ts');
     expect(classifier).toMatch(/isNearDuplicateEntry\(/);

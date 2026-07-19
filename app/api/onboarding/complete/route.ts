@@ -227,6 +227,11 @@ async function wireCrossDomainLinks(
         .map((inv) => inv.id)
         .find((id): id is string => isRealId(id)) ?? null;
     const ownerEntityId = await getDefaultLegalEntityId(userId);
+    const existingInvestmentIncome = await prisma.income.findMany({
+      where: { userId, type: 'INVESTMENT' },
+      select: { id: true, name: true, amount: true, investmentAccountId: true },
+      orderBy: { createdAt: 'asc' },
+    });
     for (const inc of investmentIncome) {
       // MON-078: the wizard's explicit cadence, via the ONE intake classifier.
       const intake = classifyIntake({
@@ -234,6 +239,25 @@ async function wireCrossDomainLinks(
         source: 'ONBOARDING',
         declaredFrequency: inc.frequency as Frequency,
       });
+      // Mechanism A (MON-084/076): onboarding is idempotent — re-completing
+      // the wizard must not mint a sibling of an income source that already
+      // exists (exact signature: type + normalised name + compatible scope).
+      const incName =
+        (typeof inc.name === 'string' && inc.name.trim()) || 'Investment income';
+      const dup = classifyIntake({
+        kind: 'income',
+        source: 'ONBOARDING',
+        declaredFrequency: inc.frequency as Frequency,
+        streamPolicy: 'source-signature',
+        candidate: { name: incName, amount: inc.amount as number, scopeKey: firstInvestmentAccountId },
+        existingRows: existingInvestmentIncome.map((r) => ({
+          id: r.id,
+          name: r.name,
+          amount: r.amount,
+          scopeKey: r.investmentAccountId ?? null,
+        })),
+      }).streamMatch;
+      if (dup?.confidence === 'exact') continue;
       await prisma.income.create({
         data: {
           userId,

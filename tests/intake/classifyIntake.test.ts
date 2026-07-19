@@ -168,3 +168,46 @@ describe('MON-078 · stream matching', () => {
     ).toBe(null);
   });
 });
+
+describe('Mechanism A (MON-084/085/074/076) · source-signature policy', () => {
+  const sig = (candidate: any, existingRows: any[]) =>
+    classifyIntake({
+      kind: 'income', source: 'TRANSACTION_LINK', declaredFrequency: 'MONTHLY',
+      streamPolicy: 'source-signature', candidate, existingRows,
+    }).streamMatch;
+
+  it('the Ingeus class: a scopeless reconciled twin matches the scopeless declared row (exact)', () => {
+    const declared = { id: 'i-decl', name: 'Ingeus Australia', amount: 8500, scopeKey: null };
+    expect(sig({ name: 'ingeus australia', amount: 5547, scopeKey: null }, [declared]))
+      .toEqual({ id: 'i-decl', confidence: 'exact' });
+  });
+
+  it('the battery class: a scopeless candidate matches a SCOPED row (cross-scope, one side null)', () => {
+    const homeBattery = { id: 'e-home', name: 'Battery System', amount: 11385, scopeKey: 'p-home' };
+    expect(sig({ name: 'Battery', amount: 11385, scopeKey: null }, [homeBattery]))
+      .toEqual({ id: 'e-home', confidence: 'near-duplicate' });
+  });
+
+  it('OVER-MERGE GUARD: two DIFFERENT non-null scopes never converge (QBE on A vs B)', () => {
+    const qbeOnA = { id: 'e-a', name: 'QBE Insurance', amount: 1200, scopeKey: 'p-a' };
+    expect(sig({ name: 'QBE Insurance', amount: 1210, scopeKey: 'p-b' }, [qbeOnA])).toBe(null);
+  });
+
+  it('same non-null scope still converges, and is preferred over a scopeless match', () => {
+    const general = { id: 'e-gen', name: 'QBE Insurance', amount: 1200, scopeKey: null };
+    const onA = { id: 'e-a', name: 'QBE Insurance', amount: 1200, scopeKey: 'p-a' };
+    expect(sig({ name: 'QBE Insurance', amount: 1200, scopeKey: 'p-a' }, [general, onA]))
+      .toEqual({ id: 'e-a', confidence: 'exact' });
+  });
+
+  it('a distinct source sharing no name never converges (Cienna rent vs Ingeus salary — caller filters by type; name seals it)', () => {
+    const ingeus = { id: 'i-sal', name: 'Ingeus Australia', amount: 8500, scopeKey: null };
+    expect(sig({ name: 'Cienna PM Trust', amount: 2600, scopeKey: null }, [ingeus])).toBe(null);
+  });
+
+  it('missing scopeKey is treated as scopeless (back-compat with un-migrated callers)', () => {
+    const row = { id: 'i-1', name: 'Ingeus Australia', amount: 8500 }; // no scopeKey field
+    expect(sig({ name: 'Ingeus Australia', amount: 8500 }, [row]))
+      .toEqual({ id: 'i-1', confidence: 'exact' });
+  });
+});

@@ -5,6 +5,7 @@ import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { detectCadenceMismatch, detectOneOffFingerprint, detectRentGap } from '@/lib/intake/detectors';
 
@@ -298,6 +299,103 @@ export const POST = withPermission('income.write', async (request, auth) => {
         declaredFrequency: frequency,
         declaredIsRecurring: isRecurring !== undefined ? Boolean(isRecurring) : null, // MON-053
       });
+
+      // Mechanism A (MON-084/076): manual creation CONVERGES on the source
+      // signature instead of minting a sibling row.
+      //
+      // 1) Property rental (RENT/RENTAL + propertyId): the scope IS the stream
+      //    (MON-009 scope-singleton). This route is the wizard's SSOT write
+      //    boundary for rental income — declaring "this property's rent" when
+      //    a stream already exists UPDATES that stream's declared fields
+      //    (amount/frequency/recurrence/rentalMode), never mints a second
+      //    row. The existing row's name is preserved (it may carry the
+      //    reconciled payer identity).
+      const isRentalCreate = (type === 'RENT' || type === 'RENTAL') && propertyId;
+      if (isRentalCreate) {
+        const rentalScopeRows = await prisma.income.findMany({
+          where: { userId: auth.userId, propertyId, type: { in: ['RENT', 'RENTAL'] } },
+          orderBy: { createdAt: 'asc' },
+        });
+        const rentalMatch = classifyIntake({
+          kind: 'income',
+          source: 'MANUAL',
+          declaredFrequency: frequency,
+          streamPolicy: 'scope-singleton',
+          existingRows: rentalScopeRows.map((r: { id: string; name: string; amount: number }) => ({
+            id: r.id, name: r.name, amount: r.amount,
+          })),
+        }).streamMatch;
+        if (rentalMatch) {
+          const updated = await prisma.income.update({
+            where: { id: rentalMatch.id },
+            data: {
+              amount: toNumber(amount) ?? 0,
+              frequency: intake.frequency,
+              isRecurring: intake.isRecurring,
+              isTaxable: isTaxable !== undefined ? Boolean(isTaxable) : true,
+              rentalMode: rentalMode === 'MANAGED' ? 'MANAGED' : 'DIRECT',
+              managingAgentName:
+                rentalMode === 'MANAGED' && typeof managingAgentName === 'string' && managingAgentName.trim()
+                  ? managingAgentName.trim()
+                  : null,
+            },
+            include: { property: true, investmentAccount: true },
+          });
+          void createAuditLog({
+            userId: auth.userId,
+            action: 'UPDATE',
+            entityType: 'INCOME',
+            entityId: updated.id,
+            metadata: sanitizeCdrMetadata({ convergedBy: 'mechanism-a-rental-scope-singleton' }),
+          }).catch(() => {});
+          return NextResponse.json({ data: updated, converged: true });
+        }
+      }
+
+      // 2) Everything else: an EXACT normalised-name match on the signature
+      //    (type + ownerEntity + compatible scope) is the SAME source — a
+      //    second row would be the Ingeus-×3 class. Surfaced as 409 with the
+      //    existing row so the user edits it instead (never a silent mint,
+      //    never a silent overwrite of their data — §12.11). Near-duplicates
+      //    are deliberately NOT blocked on manual intake: intent is ambiguous
+      //    and a false block is worse (C3 doctrine — user-review, not
+      //    auto-merge).
+      if (!isRentalCreate && type !== 'RENT' && type !== 'RENTAL') {
+        const signatureRows = await prisma.income.findMany({
+          where: { userId: auth.userId, type, ownerEntityId },
+          orderBy: { createdAt: 'asc' },
+        });
+        const signatureMatch = classifyIntake({
+          kind: 'income',
+          source: 'MANUAL',
+          declaredFrequency: frequency,
+          streamPolicy: 'source-signature',
+          candidate: {
+            name,
+            amount: toNumber(amount) ?? 0,
+            scopeKey: propertyId ?? investmentAccountId ?? null,
+          },
+          existingRows: signatureRows.map(
+            (r: { id: string; name: string; amount: number; propertyId: string | null; investmentAccountId: string | null }) => ({
+              id: r.id,
+              name: r.name,
+              amount: r.amount,
+              scopeKey: r.propertyId ?? r.investmentAccountId ?? null,
+            }),
+          ),
+        }).streamMatch;
+        if (signatureMatch?.confidence === 'exact') {
+          const existing = signatureRows.find((r: { id: string }) => r.id === signatureMatch.id);
+          return NextResponse.json(
+            {
+              error: `You already have an income source "${existing?.name ?? name}" (${type}). Edit that source instead of adding a duplicate — one source, one row, so your totals stay true.`,
+              code: 'DUPLICATE_INCOME_SOURCE',
+              existingId: signatureMatch.id,
+            },
+            { status: 409 },
+          );
+        }
+      }
 
       const incomeRecord = await prisma.income.create({
         data: {
