@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**87 total** · 83 open · 🔵 21 · 🟡 5 · 🟠 28 · 🟢 29 · ✅ 3
+**87 total** · 83 open · 🔵 21 · 🟡 4 · 🟠 29 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -80,7 +80,7 @@
 | MON-071 | 🔵 OPEN | 🟡 | no | Declared income source count disagrees: /cashflow says '1 income source', /dashboard/income lists 21 | — | n/a |
 | MON-072 | 🔵 OPEN | 🟢 | no | CFO formatting/copy defects: missing thousands separators, pluralisation, doubled word, risk count mismatch | — | n/a |
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
-| MON-074 | 🟡 DIAGNOSED | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
+| MON-074 | 🟠 FIXING | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | ##1459 | — |
 | MON-075 | 🟢 VERIFIED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟠 FIXING | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | ##1458 | ✅ |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
@@ -1312,16 +1312,22 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/c
 
 ### MON-074 — Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-15
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-15
 
-> **What was wrong:** The same income source is listed three times (Ingeus salary, Cienna PM Trust rent). Because the Ingeus rows are also typed 'Other' instead of Salary, they inflate the 'Other' income group to $192,698/yr — which feeds your declared gross and your tax estimate.
+> **What was wrong:** Duplicate income rows (like 'Ingeus Australia' three times for one job) inflate your income-source count and the declared gross your tax estimate is built on.
 >
+> **What changed:** A preview page (Admin → Intake duplicates) lists each duplicate group, which row will be kept, and exactly how the declared annual figure changes. Each group merges only when you type MERGE for it — there is no merge-all, and nothing runs automatically.
+>
+> **What you should see:** Open Admin → Intake duplicates: you should see the Ingeus group (and any others) with the kept row and the effect. After YOU confirm a merge, the income page shows one row for that source and the linked transactions follow it.
+
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:474`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:91`
 - **Neomatrix:** `engine.intake.classifyIntake`
+- **Downstream consumers (§19.4):** `income page source list + count (reads the income rows a merge deletes)`, `declared tax gross via incomeAggregator -> getUserTaxPosition (the phantom rows inflate the base)`, `/cashflow + activity declared rollups`, `UnifiedTransaction/Transaction/SuperContribution incomeId links (repointed to the survivor)`, `Expense.derivedFromIncomeId + AgentDisbursementRule (Phase 59 — follow the stream, conflicts surfaced)`
+- **Fix PR(s):** ##1459
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-007`
 
-Root-cause anchors are PRE-#1458 lines (the mint sites as diagnosed). Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income (duplicate source rows). Expected: One row per real source. Actual: 'Salary Ingeus Australia' appears 3x at $1,919/mo (one 'No txns', one $0 actual/1 txn, one $5,547 actual/4 txns). 'Cienna Pm Trust Rent Payment' appears 3x on Thornland Lot 1 ($1,651 / $1,655 / $1,195). All three Ingeus rows are typed 'Other' rather than Salary/Wages, inflating the 'Other' group to $192,698/yr.. Evidence/run: VR-007. [2026-07-19 #1458] Root cause verified = Mechanism A (no reconcile reuse guard for non-rental income + exact-amount doc-import dedup). The GUARDRAIL (#1458) stops new mints; the existing duplicate ROWS this issue tracks are a §12.11 data merge — Part 2 ships a preview-and-confirm tool whose output IS the live row-level census (genuine same-source groups vs distinct same-payer sources, per the Reza correction: Cienna rent vs Ingeus salary are DIFFERENT incomes). No merge runs without Reza’s explicit per-group approval.
+Root-cause anchors are PRE-#1458 lines (the mint sites as diagnosed). Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income (duplicate source rows). Expected: One row per real source. Actual: 'Salary Ingeus Australia' appears 3x at $1,919/mo (one 'No txns', one $0 actual/1 txn, one $5,547 actual/4 txns). 'Cienna Pm Trust Rent Payment' appears 3x on Thornland Lot 1 ($1,651 / $1,655 / $1,195). All three Ingeus rows are typed 'Other' rather than Salary/Wages, inflating the 'Other' group to $192,698/yr.. Evidence/run: VR-007. [2026-07-19 #1458] Root cause verified = Mechanism A (no reconcile reuse guard for non-rental income + exact-amount doc-import dedup). The GUARDRAIL (#1458) stops new mints; the existing duplicate ROWS this issue tracks are a §12.11 data merge — Part 2 ships a preview-and-confirm tool whose output IS the live row-level census (genuine same-source groups vs distinct same-payer sources, per the Reza correction: Cienna rent vs Ingeus salary are DIFFERENT incomes). No merge runs without Reza’s explicit per-group approval. [Part 2 PR (2026-07-19)] Preview-and-confirm merge tool shipped: lib/intake/duplicateMerge.ts + GET/POST /api/intake/duplicates + /admin/intake-duplicates. Grouping = THE Part-1 signature policy (preview can never propose what the guardrail would not prevent); executeMerge repoints ALL FKs (incl. AgentDisbursementRule w/ conflict surfacing) then deletes, transactionally; POST requires confirm:MERGE + server-side re-derivation (stale → 409). Stays FIXING until Reza approves the live merges + Matrix Ring-3 confirms declared gross + tax moved consistently.
 
 ### MON-075 — Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction
 

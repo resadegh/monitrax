@@ -2132,13 +2132,15 @@
     {
       "id": "MON-074",
       "title": "Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-15",
       "area": "income",
       "plain": {
-        "issue": "The same income source is listed three times (Ingeus salary, Cienna PM Trust rent). Because the Ingeus rows are also typed 'Other' instead of Salary, they inflate the 'Other' income group to $192,698/yr — which feeds your declared gross and your tax estimate."
+        "issue": "Duplicate income rows (like 'Ingeus Australia' three times for one job) inflate your income-source count and the declared gross your tax estimate is built on.",
+        "fix": "A preview page (Admin → Intake duplicates) lists each duplicate group, which row will be kept, and exactly how the declared annual figure changes. Each group merges only when you type MERGE for it — there is no merge-all, and nothing runs automatically.",
+        "check": "Open Admin → Intake duplicates: you should see the Ingeus group (and any others) with the kept row and the effect. After YOU confirm a merge, the income page shows one row for that source and the linked transactions follow it."
       },
       "rootCause": [
         "app/api/transactions/[id]/link/route.ts:474",
@@ -2147,11 +2149,19 @@
       "semanticKeys": [
         "engine.intake.classifyIntake"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
+      "downstreamConsumers": [
+        "income page source list + count (reads the income rows a merge deletes)",
+        "declared tax gross via incomeAggregator -> getUserTaxPosition (the phantom rows inflate the base)",
+        "/cashflow + activity declared rollups",
+        "UnifiedTransaction/Transaction/SuperContribution incomeId links (repointed to the survivor)",
+        "Expense.derivedFromIncomeId + AgentDisbursementRule (Phase 59 — follow the stream, conflicts surfaced)"
+      ],
+      "fixPRs": [
+        "#1459"
+      ],
       "test": null,
       "tracker": "neoaudit-run:VR-007",
-      "notes": "Root-cause anchors are PRE-#1458 lines (the mint sites as diagnosed). Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income (duplicate source rows). Expected: One row per real source. Actual: 'Salary Ingeus Australia' appears 3x at $1,919/mo (one 'No txns', one $0 actual/1 txn, one $5,547 actual/4 txns). 'Cienna Pm Trust Rent Payment' appears 3x on Thornland Lot 1 ($1,651 / $1,655 / $1,195). All three Ingeus rows are typed 'Other' rather than Salary/Wages, inflating the 'Other' group to $192,698/yr.. Evidence/run: VR-007. [2026-07-19 #1458] Root cause verified = Mechanism A (no reconcile reuse guard for non-rental income + exact-amount doc-import dedup). The GUARDRAIL (#1458) stops new mints; the existing duplicate ROWS this issue tracks are a §12.11 data merge — Part 2 ships a preview-and-confirm tool whose output IS the live row-level census (genuine same-source groups vs distinct same-payer sources, per the Reza correction: Cienna rent vs Ingeus salary are DIFFERENT incomes). No merge runs without Reza’s explicit per-group approval."
+      "notes": "Root-cause anchors are PRE-#1458 lines (the mint sites as diagnosed). Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/income (duplicate source rows). Expected: One row per real source. Actual: 'Salary Ingeus Australia' appears 3x at $1,919/mo (one 'No txns', one $0 actual/1 txn, one $5,547 actual/4 txns). 'Cienna Pm Trust Rent Payment' appears 3x on Thornland Lot 1 ($1,651 / $1,655 / $1,195). All three Ingeus rows are typed 'Other' rather than Salary/Wages, inflating the 'Other' group to $192,698/yr.. Evidence/run: VR-007. [2026-07-19 #1458] Root cause verified = Mechanism A (no reconcile reuse guard for non-rental income + exact-amount doc-import dedup). The GUARDRAIL (#1458) stops new mints; the existing duplicate ROWS this issue tracks are a §12.11 data merge — Part 2 ships a preview-and-confirm tool whose output IS the live row-level census (genuine same-source groups vs distinct same-payer sources, per the Reza correction: Cienna rent vs Ingeus salary are DIFFERENT incomes). No merge runs without Reza’s explicit per-group approval. [Part 2 PR (2026-07-19)] Preview-and-confirm merge tool shipped: lib/intake/duplicateMerge.ts + GET/POST /api/intake/duplicates + /admin/intake-duplicates. Grouping = THE Part-1 signature policy (preview can never propose what the guardrail would not prevent); executeMerge repoints ALL FKs (incl. AgentDisbursementRule w/ conflict surfacing) then deletes, transactionally; POST requires confirm:MERGE + server-side re-derivation (stale → 409). Stays FIXING until Reza approves the live merges + Matrix Ring-3 confirms declared gross + tax moved consistently."
     },
     {
       "id": "MON-075",

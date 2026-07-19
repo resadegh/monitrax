@@ -83,3 +83,31 @@ Coverage: golden verifies the link-route create action on a visible in-test mock
 
 ### PR
 - PR URL: https://github.com/resadegh/monitrax/pull/1458 (draft — Part 1 guardrail; Part 2 separate after merge)
+
+---
+
+## Session: yhm8ug (continuation 3) — Mechanism A Part 2: Reza-gated duplicate merge (preview-and-confirm)
+
+### Changes Made
+- **Type**: Feature (data-hygiene tool — §12.11 user-confirmed destructive merge)
+- **Scope**: the ALREADY-minted duplicates the Part-1 guardrail (#1458) cannot touch (Ingeus ×3, battery ×3)
+- **Solution**: `lib/intake/duplicateMerge.ts` — `findDuplicateGroups` clusters rows under THE Part-1 signature policy (same classifier, same scope-compatibility rule; RENT/RENTAL excluded per MON-009), proposes the survivor (most-specific scope, then oldest) + the net declared-annual effect via canonical `annualRunRate`; `executeMerge` repoints EVERY FK (UnifiedTransaction / Transaction / SuperContribution / TransactionSplit / AssetServiceRecord / `derivedFromIncomeId` / AgentDisbursementRule with conflict surfacing) to the survivor inside a transaction, then deletes the siblings. The survivor's own fields are never changed. `GET/POST /api/intake/duplicates` (thin §12.3 wrappers; POST requires `confirm:"MERGE"` + server-side group re-derivation — stale groups 409, client ids never trusted, NO merge-all). Admin surface `/admin/intake-duplicates` (admin design system — §18.2 exempt) with per-group typed-MERGE confirmation.
+- **The preview IS the live row-level census** the Mechanism-A brief mandates (genuine same-source groups vs distinct same-payer sources) — Reza reads it on his data and approves each group individually.
+
+### Files Modified
+- `lib/intake/duplicateMerge.ts` — **NEW** engine (grouping + transactional merge executor)
+- `app/api/intake/duplicates/route.ts` — **NEW** GET preview + POST Reza-gated merge
+- `app/admin/intake-duplicates/page.tsx` — **NEW** admin preview/confirm surface
+- `tests/intake/duplicateMerge.test.ts` — **NEW** 7 tests: Ingeus clusters (effect −5,547×12), battery scoped-survivor, QBE A-vs-B + rentals never group, FK repoint matrix incl. AgentDisbursementRule conflict flag
+- `docs/financial-logic/graph/*` — `engine.intake.findDuplicateGroups` + 3 edges (classifyIntake feed, monthlyRunRate feed, governed-by oneRowPerSource); 3 files Layer-0 allowlisted (graphify offline, self-prune notes)
+- Registry: MON-074 → FIXING (this PR)
+
+### Build Status
+- [x] tsc clean · [x] Build passes · [x] Full suite 4,144 passed / 69 skipped · [x] all static gates green
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (brief Part-2 spec + §12.11 conformed — preview-and-confirm, never auto-run, no merge-all) · Requirements 10/10 (groups + resulting row + net effect on declared gross shown; per-group explicit confirmation; Matrix never merges) · Logic 10/10 (grouping reuses THE Part-1 policy so preview ⊆ guardrail; FK map verified against schema.prisma; transactional; stale-group 409)`
+Coverage: the engine's grouping + FK-repoint call shapes are unit-tested; NOT verified: the live preview on Reza's data (that IS the deliverable — he reads it), the admin page rendering in a browser, and any actual merge (gated on his per-group click).
+
+### PR
+- PR URL: https://github.com/resadegh/monitrax/pull/1459 (draft — the tool ships; every merge is Reza’s per-group click)
