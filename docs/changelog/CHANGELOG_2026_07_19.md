@@ -110,4 +110,4 @@ Coverage: golden verifies the link-route create action on a visible in-test mock
 Coverage: the engine's grouping + FK-repoint call shapes are unit-tested; NOT verified: the live preview on Reza's data (that IS the deliverable — he reads it), the admin page rendering in a browser, and any actual merge (gated on his per-group click).
 
 ### PR
-- PR URL: (Part 2 PR — see below)
+- PR URL: https://github.com/resadegh/monitrax/pull/1459 (draft — the tool ships; every merge is Reza’s per-group click)

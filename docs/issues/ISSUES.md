@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**87 total** · 83 open · 🔵 21 · 🟡 5 · 🟠 28 · 🟢 29 · ✅ 3
+**87 total** · 83 open · 🔵 21 · 🟡 4 · 🟠 29 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -80,7 +80,7 @@
 | MON-071 | 🔵 OPEN | 🟡 | no | Declared income source count disagrees: /cashflow says '1 income source', /dashboard/income lists 21 | — | n/a |
 | MON-072 | 🔵 OPEN | 🟢 | no | CFO formatting/copy defects: missing thousands separators, pluralisation, doubled word, risk count mismatch | — | n/a |
 | MON-073 | 🔵 OPEN | 🟠 | yes | What-If salary-sacrifice lever reads a CLOSED financial year's concessional cap (FY25-26) | — | — |
-| MON-074 | 🟡 DIAGNOSED | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | — | — |
+| MON-074 | 🟠 FIXING | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | ##1459 | — |
 | MON-075 | 🟢 VERIFIED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟠 FIXING | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | ##1458 | ✅ |
 | MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
@@ -1312,7 +1312,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/c
 
 ### MON-074 — Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-15
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: income · opened 2026-07-15
 
 > **What was wrong:** Duplicate income rows (like 'Ingeus Australia' three times for one job) inflate your income-source count and the declared gross your tax estimate is built on.
 >
@@ -1322,6 +1322,8 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/c
 
 - **Root cause:** `app/api/transactions/[id]/link/route.ts:474`, `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts:91`
 - **Neomatrix:** `engine.intake.classifyIntake`
+- **Downstream consumers (§19.4):** `income page source list + count (reads the income rows a merge deletes)`, `declared tax gross via incomeAggregator -> getUserTaxPosition (the phantom rows inflate the base)`, `/cashflow + activity declared rollups`, `UnifiedTransaction/Transaction/SuperContribution incomeId links (repointed to the survivor)`, `Expense.derivedFromIncomeId + AgentDisbursementRule (Phase 59 — follow the stream, conflicts surfaced)`
+- **Fix PR(s):** ##1459
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-007`
 
