@@ -1012,11 +1012,12 @@
         "components/balances/HiddenWealthLens.tsx (the only surface that renders liquidToday with this label)"
       ],
       "fixPRs": [
-        1368
+        "#1368",
+        "#1452"
       ],
-      "test": "tests/balances/hiddenWealthLensCopy.test.ts",
+      "test": "tests/golden/ring2.liquidCashParity.test.ts#one canonical liquid cash: quickMetrics === buckets.liquidToday === safety-net route; tie-out holds; 47,504 pin",
       "tracker": "docs/verification/runs/VR-001.md",
-      "notes": "VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → \"Spendable today (after credit cards)\"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED. [VR-010 2026-07-17] Root-cause note appended per Matrix: liquid-asset gap persists — stays FIXING; see VR-010 run notes."
+      "notes": "VR-001. Verified: NOT a math bug — Safety Net shows GROSS liquid-account balances (quickMetrics.liquidCash, correct for emergency-fund months), Balances shows liquid NET of credit cards (accessibilityBuckets liquidToday = liquidBasis − creditCards, correct for the net-worth tie-out). The $2,496 gap IS the credit-card balance (documented in accessibilityBuckets.ts:13-14). Fix = disambiguate the labels (Balances → \"Spendable today (after credit cards)\"); product-copy PR. RESOLVED per Reza decision 2026-07-12 option (a): relabel, not collapse — changesNumbers flipped to false (copy-only). Balances liquid micro-copy now cards-aware. Awaiting Reza real-data confirm to move to VERIFIED. [VR-010 2026-07-17] Root-cause note appended per Matrix: liquid-asset gap persists — stays FIXING; see VR-010 run notes. CANONICAL FIX PR #1452 (2026-07-18): liquidCash netted at the ONE master producer (gross spendable − creditCards, the DEPLOYABLE basis — Reza confirms definition at merge); buckets engine re-contracted to take the canonical net (gross reconstructed internally) so liquidToday === quickMetrics.liquidCash by construction. Ratchet ring2.liquidCashParity (47,504 pin). Stays FIXING until the Matrix Ring-3 records Safety Net === Balances === Home === /cashflow at $301,808."
     },
     {
       "id": "MON-032",
@@ -1918,21 +1919,33 @@
     {
       "id": "MON-064",
       "title": "'Liquid' has two values across surfaces ($304,304 Safety Net vs $301,808 Balances/Home)",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "low",
       "changesNumbers": false,
       "opened": "2026-07-15",
       "area": "balances",
       "plain": {
-        "issue": "'Liquid' means raw cash ($304,304) on Safety Net but cash-minus-credit-card ($301,808) on Balances and Home. Both are defensible, but neither says which it is — and the Safety Net number drives your emergency-fund months."
+        "issue": "'Liquid' meant two different things: the Safety Net page counted your cash before the credit-card balance ($304,304) while Balances, Home and the cashflow page counted it after ($301,808) — a $2,496 disagreement that was exactly the Qantas card.",
+        "fix": "One definition everywhere: liquid cash is what you could actually deploy after clearing the card, calculated once at the source. The card still shows as its own Credit line.",
+        "check": "Safety Net's 'Liquid savings' now reads $301,808 — the same number as Balances ('Liquid today'), Home ('Cash') and the cashflow page. Your emergency-fund months use that same deployable figure."
       },
-      "rootCause": [],
+      "rootCause": [
+        "lib/services/masterFinancialService.ts:1964",
+        "lib/calculations/accessibilityBuckets.ts:87"
+      ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/api/safety-net/route.ts:42 (qm.liquidCash -> Safety Net page + emergency-fund months)",
+        "lib/calculations/accessibilityBuckets.ts (liquidToday -> hidden-wealth route -> Balances/Home//cashflow tiles)",
+        "app/api/dashboard/insights/route.ts:284,562 (freeToday) · app/api/cfo/advice/chat/route.ts:180 · what-if lever · decimal-cfo-scenarios (all read qm.liquidCash — converge by construction)",
+        "lib/verification/selfAuditInvariants.ts I9 (identity holds on the net basis)"
+      ],
+      "fixPRs": [
+        "#1452"
+      ],
+      "test": "tests/golden/ring2.liquidCashParity.test.ts#buckets.liquidToday === quickMetrics.liquidCash === safety-net route (the two-variants class locked)",
       "tracker": "neoaudit-run:VR-007",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/safety-net vs /dashboard/balances vs Home. Expected: One liquid figure, or a labelled basis. Actual: Safety Net 'Liquid savings' = $304,304 (raw cash, drives the 11.7-month emergency fund). Balances 'Liquid today' = $301,808 and Home 'Cash' = $301,808 (both net of the -$2,496 credit card). No label distinguishes them.. Evidence/run: VR-007."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: /dashboard/safety-net vs /dashboard/balances vs Home. Expected: One liquid figure, or a labelled basis. Actual: Safety Net 'Liquid savings' = $304,304 (raw cash, drives the 11.7-month emergency fund). Balances 'Liquid today' = $301,808 and Home 'Cash' = $301,808 (both net of the -$2,496 credit card). No label distinguishes them.. Evidence/run: VR-007. DIAGNOSED+FIXED 2026-07-18 (PR #1452, §19.2 verified): quickMetrics.liquidCash was GROSS (masterFinancialService:1964 pre-fix) while accessibilityBuckets netted creditCards internally (:87 pre-fix) — two variants of one concept (F2/Mechanism B). Fix at the ONE producer: net at source; buckets take the canonical net + reconstruct gross internally; every consumer converges. Reza confirms the NET/deployable definition at merge; Matrix Ring-3 pending."
     },
     {
       "id": "MON-065",
