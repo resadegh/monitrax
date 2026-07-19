@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 275 · **Edges:** 369
-- **By kind:** orchestrator 11 · engine 151 · input-field 32 · number 16 · ui-surface 18 · law 40 · verification 7
-- **By status:** documented 274 · suspected-issue 1
-- **Edge provenance:** verified 369 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/178 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 276 · **Edges:** 372
+- **By kind:** orchestrator 11 · engine 152 · input-field 32 · number 16 · ui-surface 18 · law 40 · verification 7
+- **By status:** documented 275 · suspected-issue 1
+- **Edge provenance:** verified 372 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/179 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -180,6 +180,7 @@
 | **Deployable liquid cash (canonical)** | `lib/calculations/liquidCash.ts:63` | engine | core | THE canonical deployable liquid cash (MON-031/064, VR-017 re-fix): spendable-account balances (LIQUID_ACCOUNT_TYPES) NET of revolving credit in BOTH representations — CREDIT_CARD loans (caller passes netWorth.liabilities.creditCards) AND CREDIT_CARD-typed accounts carrying a negative balance (the live topology that made the #1452 loans-only netting silently inert). Feeds quickMetrics.liquidCash, the emergency fund, the accessibility buckets, and the CFO emergency-buffer signal. | Reza decision 2026-07-18 (deployable basis) + VR-017 §7 retro; lib/calculations/liquidCash.ts | tests/calculations/liquidCash.test.ts + tests/golden/ring2.liquidCashParity.test.ts + tests/golden/ring2.liquidCashParity.accountCard.test.ts | documented |
 | **Emergency fund metrics (consumer of canonical liquid)** | `lib/services/masterFinancialService.ts:1375` | service | core | Emergency-fund block on the master snapshot: monthsCovered, status, gap, targetMonths. MON-031/064: a CONSUMER of the canonical deployable liquidCash — it has NO liquid producer of its own (VR-017's gross months came from the canonical figure itself being gross, not from a sibling producer; the fix is upstream in computeLiquidCash). | lib/services/masterFinancialService.ts buildEmergencyFundMetrics; consumed by /api/safety-net, insights, safetyScore, CFO chat | tests/golden/ring2.liquidCashParity.accountCard.test.ts (I9 months identity) | documented |
 | **Intake classifier (MON-078 keystone + Mechanism A signature reuse)** | `lib/intake/classifyIntake.ts:157` | engine | neobrain | The ONE canonical intake classification for every Income/Expense producer: frequency (evidence-derived cadence, C1), isRecurring (source-aware, C2), and streamMatch (C3 + Mechanism A). Mechanism A (MON-084/085/074/076, 2026-07-19): the 'source-signature' stream policy — identity = (kind, type, normalised name, ownerEntityId) over USER-WIDE candidates with the scope-compatibility rule (same scope, or one side scopeless; two differently-scoped rows NEVER converge) — so reconciliation UPDATES the canonical row (amount ← transaction, prior amount → budgetedAmount, lastReconciled) instead of minting a sibling. Consumers: transactions/[id]/link route (income + expense create branches), documents reconcileSuggestedAction, POST /api/income (409 on exact manual duplicate), onboarding complete (idempotent skip). | docs/architecture/INTAKE_INTEGRITY_GUARDRAIL.md + docs/architecture/CALC_SSOT_WALL.md Mechanism A; lib/intake/classifyIntake.ts | tests/intake/classifyIntake.test.ts + tests/golden/ring2.mechanismA.intakeDedup.test.ts + tests/intake/intakeSourceLock.test.ts | documented |
+| **Duplicate-source preview + confirmed merge (Mechanism A Part 2)** | `lib/intake/duplicateMerge.ts:93` | engine | neobrain | The Reza-gated merge of ALREADY-minted duplicate income/expense rows (MON-074/076): findDuplicateGroups clusters rows under THE Part-1 signature policy (classifyIntake 'source-signature' — same identity + scope-compatibility, rentals excluded per MON-009), proposes the survivor (most-specific scope, then oldest) and the net declared-annual effect of the deleted siblings via the canonical annualRunRate. executeMerge repoints EVERY FK (UnifiedTransaction/Transaction/SuperContribution/TransactionSplit/AssetServiceRecord/derivedFromIncomeId/AgentDisbursementRule) to the survivor before deleting — inside a transaction, only for a group the user explicitly confirmed (there is no merge-all). The survivor's own fields are never changed. | docs/architecture/CALC_SSOT_WALL.md 'Mechanism A' Part 2; CLAUDE.md §12.11 (user-confirmed destructive merge) | tests/intake/duplicateMerge.test.ts | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -219,6 +220,7 @@
 | **Deployable liquid cash (canonical)** | VR-017 live shape: gross 304,304; account-typed card −2,496 → net 301,808; months = 301,808 ÷ 25,973 = 11.6 (was 11.7 gross) |
 | **Emergency fund metrics (consumer of canonical liquid)** | golden account-card: 47,504 ÷ 1,700 = 27.94 months; live VR-017 target: 301,808 ÷ 25,973 = 11.6 |
 | **Intake classifier (MON-078 keystone + Mechanism A signature reuse)** | Ingeus: declared SALARY 8,500 + linked deposit 5,547 → ONE row (amount 5,547, budgetedAmount 8,500); QBE on property A vs B → two rows (scope guard) |
+| **Duplicate-source preview + confirmed merge (Mechanism A Part 2)** | Ingeus ×3 → one group, survivor the declared original, effect −(5,547×12); battery ×3 → scoped HOME row survives; QBE A vs B / Cienna Lot1 vs Lot2 → never grouped |
 
 ## Number lineage — how each displayed number is born
 
@@ -284,7 +286,7 @@
 | **Merchant-noise denoising (time-strip + verified alias expansion)** | ONE shared denoise applied identically by BOTH merchant-identity producers (per-user normaliseMerchantName + shared-KB scrubToSignature) so they never drift (§12.2.1): (1) strip clock-times — HH:MM(:SS) anywhere AND a LEADING time whose colon became a space at import ('14 44hjs' → 'hjs', 54.2e), so existing ledger rows de-noise too; (2) expand EVIDENCE-GATED whole-token AU abbreviations to the canonical merchant name; (3) P2 — strip identifying NUMERIC noise (BSB / card masks / reference tails / long free-standing digit runs) while NEVER stripping location words. So same-vendor rows differing only by time/store-number/ref collapse to one key; different-location rows stay distinct (over-merge would misstate spend-by-category, §19). Aliases are never populated speculatively (§19). | Phase 54.1 — docs/blueprint/PHASE_54_NEOBRAIN.md §16; CLAUDE.md §12.2.1 + §19 | Merchant identity normaliser (per-user standardised name), De-identifier (PII scrub) |
 | **AI proposes, the user confirms (AI never auto-files)** | A categorisation with source==='AI' is NEVER written straight to the ledger, regardless of confidence — it is always parked in the review queue for a human confirm. This upholds the KB echo-chamber-safety rule (only human confirmations graduate patterns) and keeps an AI guess from silently becoming a user's spend fact (§19). Deterministic sources (RULE/USER/KB/transfer) may auto-file. | Phase 54.2 — docs/blueprint/PHASE_54_NEOBRAIN.md §17; CLAUDE.md §19 + Phase 52 echo-chamber safety | Confidence-band classifier |
 | **Accessibility buckets sum to net worth** | liquidToday + accessible + lockedLongTerm = netWorth | Derived from the accounting identity (law.accountingIdentity) — every asset and liability lands in exactly one bucket. | Hidden Wealth — accessibility buckets |
-| **One canonical row per real source (Mechanism A)** | one source ⇒ one row; converge iff signature matches ∧ scopeCompatible; distinct scopes ⇒ distinct rows | docs/architecture/CALC_SSOT_WALL.md 'Mechanism A' + Reza correction (Cienna/Ingeus are distinct incomes) | Intake classifier (MON-078 keystone + Mechanism A signature reuse) |
+| **One canonical row per real source (Mechanism A)** | one source ⇒ one row; converge iff signature matches ∧ scopeCompatible; distinct scopes ⇒ distinct rows | docs/architecture/CALC_SSOT_WALL.md 'Mechanism A' + Reza correction (Cienna/Ingeus are distinct incomes) | Intake classifier (MON-078 keystone + Mechanism A signature reuse), Duplicate-source preview + confirmed merge (Mechanism A Part 2) |
 
 ## Assurance — the Trust Engine (what proves each number correct)
 
@@ -671,6 +673,9 @@
 | Emergency fund metrics (consumer of canonical liquid) | → | Master financial snapshot | feeds | AUD→AUD | verified | masterFinancialService.ts — snapshot.emergencyFund block assembled from buildEmergencyFundMetrics result |
 | Intake classifier (MON-078 keystone + Mechanism A signature reuse) | → | One canonical row per real source (Mechanism A) | governed-by | — | verified | classifyIntake.ts 'source-signature' policy — scope-compatibility + signature identity implement the invariant; golden ring2.mechanismA.intakeDedup proves update-not-mint end-to-end on the real link route |
 | Intake classifier (MON-078 keystone + Mechanism A signature reuse) | → | Document confirm → create entity | feeds | — | verified | reconcileSuggestedAction.ts → classifyIntake(streamPolicy 'source-signature') decides duplicate-vs-create for the document-confirm flow (income cross-amount, expense amount-bounded) |
+| Intake classifier (MON-078 keystone + Mechanism A signature reuse) | → | Duplicate-source preview + confirmed merge (Mechanism A Part 2) | feeds | — | verified | duplicateMerge.ts findDuplicateGroups clusters via classifyIntake(streamPolicy 'source-signature') — the preview can never propose a merge the Part-1 guardrail wouldn't prevent |
+| One-off-aware monthly run-rate | → | Duplicate-source preview + confirmed merge (Mechanism A Part 2) | feeds | AUD/month→AUD/year | verified | duplicateMerge.ts annualDeclaredEffect = −Σ annualRunRate(deleted rows) — the canonical run-rate producer, no inline frequency math |
+| Duplicate-source preview + confirmed merge (Mechanism A Part 2) | → | One canonical row per real source (Mechanism A) | governed-by | — | verified | Part 2 converges the pre-guardrail duplicates toward the one-row invariant — only via user-confirmed, per-group merges (§12.11) |
 
 ---
 

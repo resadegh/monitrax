@@ -6420,6 +6420,34 @@
       "workedExample": null,
       "verifiedDate": "2026-07-19",
       "status": "documented"
+    },
+    {
+      "id": "engine.intake.findDuplicateGroups",
+      "kind": "engine",
+      "label": "Duplicate-source preview + confirmed merge (Mechanism A Part 2)",
+      "file": "lib/intake/duplicateMerge.ts",
+      "line": 93,
+      "layer": "engine",
+      "domain": "neobrain",
+      "trailStage": "T",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The Reza-gated merge of ALREADY-minted duplicate income/expense rows (MON-074/076): findDuplicateGroups clusters rows under THE Part-1 signature policy (classifyIntake 'source-signature' — same identity + scope-compatibility, rentals excluded per MON-009), proposes the survivor (most-specific scope, then oldest) and the net declared-annual effect of the deleted siblings via the canonical annualRunRate. executeMerge repoints EVERY FK (UnifiedTransaction/Transaction/SuperContribution/TransactionSplit/AssetServiceRecord/derivedFromIncomeId/AgentDisbursementRule) to the survivor before deleting — inside a transaction, only for a group the user explicitly confirmed (there is no merge-all). The survivor's own fields are never changed.",
+      "formula": "group iff signature-match ∧ scopeCompatible; survivor = scoped-first then oldest; annualDeclaredEffect = −Σ annualRunRate(deleted rows)",
+      "authority": "docs/architecture/CALC_SSOT_WALL.md 'Mechanism A' Part 2; CLAUDE.md §12.11 (user-confirmed destructive merge)",
+      "inputs": [
+        {
+          "name": "rows",
+          "unit": "AUD",
+          "type": "MergeableRow[]",
+          "note": "all income/expense rows for the user (route fetches; engine pure)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/intake/duplicateMerge.test.ts",
+      "workedExample": "Ingeus ×3 → one group, survivor the declared original, effect −(5,547×12); battery ×3 → scoped HOME row survives; QBE A vs B / Cienna Lot1 vs Lot2 → never grouped",
+      "verifiedDate": "2026-07-19",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -9749,6 +9777,32 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "reconcileSuggestedAction.ts → classifyIntake(streamPolicy 'source-signature') decides duplicate-vs-create for the document-confirm flow (income cross-amount, expense amount-bounded)",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.intake.classifyIntake",
+      "to": "engine.intake.findDuplicateGroups",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "duplicateMerge.ts findDuplicateGroups clusters via classifyIntake(streamPolicy 'source-signature') — the preview can never propose a merge the Part-1 guardrail wouldn't prevent",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.frequencies.monthlyRunRate",
+      "to": "engine.intake.findDuplicateGroups",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD/year",
+      "evidence": "duplicateMerge.ts annualDeclaredEffect = −Σ annualRunRate(deleted rows) — the canonical run-rate producer, no inline frequency math",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.intake.findDuplicateGroups",
+      "to": "law.intake.oneRowPerSource",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "Part 2 converges the pre-guardrail duplicates toward the one-row invariant — only via user-confirmed, per-group merges (§12.11)",
       "verifiedDate": "2026-07-19"
     }
   ]
