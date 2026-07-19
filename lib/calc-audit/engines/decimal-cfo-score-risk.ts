@@ -49,10 +49,12 @@ import type { ShadowEngine } from '@/lib/calc-audit/shadowComparison';
 // ---------------------------------------------------------------------------
 
 import { toMonthly } from '@/lib/utils/frequencies';
+import { computeLiquidCash } from '@/lib/calculations/liquidCash';
+import { calculateTotalLiabilities } from '@/lib/calculations/netWorthCalculator';
 
 interface IncomeF { id: string; amount: number; frequency: Frequency }
 interface ExpenseF { id: string; amount: number; frequency: Frequency; isEssential: boolean }
-interface LoanF { id: string; principal: number; interestRateAnnual: number; minRepayment: number; repaymentFrequency: RepaymentFrequency }
+interface LoanF { id: string; principal: number; interestRateAnnual: number; minRepayment: number; repaymentFrequency: RepaymentFrequency; type?: string }
 interface AccountF { id: string; currentBalance: number; type: string }
 interface HoldingF { units: number; averagePrice: number; type: string }
 interface InvestmentF { id: string; holdings: HoldingF[] }
@@ -94,13 +96,22 @@ function calculateDebtCoverageFloat(incomes: IncomeF[], loans: LoanF[]): number 
   return 0;
 }
 
-const LIQUID = ['CASH', 'SAVINGS', 'TRANSACTIONAL', 'OFFSET'];
-
-/** scoreCalculator.ts:216-242 */
-function calculateEmergencyBufferFloat(accounts: AccountF[], expenses: ExpenseF[]): number {
-  const liquidBalances = accounts
-    .filter((a) => LIQUID.includes(a.type))
-    .reduce((sum, a) => sum + a.currentBalance, 0);
+/**
+ * scoreCalculator.ts `calculateEmergencyBuffer` — MON-031/064 (VR-017 re-fix):
+ * the liquid basis is the ONE canonical deployable figure from
+ * `computeLiquidCash` (exported — called directly, so the mirror stays in
+ * lockstep with the producer), NET of revolving credit in both card
+ * representations (CREDIT_CARD loans + negative-balance CREDIT_CARD accounts).
+ */
+function calculateEmergencyBufferFloat(
+  accounts: AccountF[],
+  expenses: ExpenseF[],
+  loans: LoanF[] = [],
+): number {
+  const liquidBalances = computeLiquidCash(
+    accounts,
+    calculateTotalLiabilities(loans).creditCards,
+  ).net;
   const monthlyEssentialExpenses = expenses
     .filter((e) => e.isEssential)
     .reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
@@ -330,6 +341,8 @@ export const debtCoverageShadow: ShadowEngine<
 interface BufferFixtureInput {
   accounts: AccountF[];
   expenses: ExpenseF[];
+  /** MON-031/064: optional — CREDIT_CARD loans net from the liquid basis. */
+  loans?: LoanF[];
 }
 
 export const emergencyBufferShadow: ShadowEngine<
@@ -340,10 +353,46 @@ export const emergencyBufferShadow: ShadowEngine<
   name: 'cfo.scoreCalculator.emergencyBuffer.shadow',
   description: 'Shadow Float vs Decimal `calculateEmergencyBuffer` (months-covered step function).',
   sourcePath: 'lib/cfo/scoreCalculator.ts',
-  floatExecute: ({ accounts, expenses }) => calculateEmergencyBufferFloat(accounts, expenses),
-  decimalExecute: ({ accounts, expenses }) => calculateEmergencyBufferDecimal(accounts, expenses),
+  floatExecute: ({ accounts, expenses, loans }) =>
+    calculateEmergencyBufferFloat(accounts, expenses, loans ?? []),
+  decimalExecute: ({ accounts, expenses, loans }) =>
+    calculateEmergencyBufferDecimal(accounts, expenses, loans ?? []),
   fieldPolicy: {},
   fixtures: [
+    {
+      name: 'account-typed credit card nets from the liquid basis (VR-017 class)',
+      description:
+        'MON-031/064: $18k savings + a CREDIT_CARD account at −$2,496 → liquid ' +
+        'basis $15,504 (deployable), 7.75 months → 100. Before the re-fix the ' +
+        'card account was invisible to the buffer (gross basis).',
+      input: {
+        accounts: [
+          { id: 'a1', currentBalance: 18_000, type: 'SAVINGS' },
+          { id: 'cc1', currentBalance: -2_496, type: 'CREDIT_CARD' },
+        ],
+        expenses: [{ id: 'e1', amount: 2_000, frequency: 'MONTHLY' as Frequency, isEssential: true }],
+      },
+    },
+    {
+      name: 'loan-typed credit card nets from the liquid basis',
+      description:
+        'MON-031/064: $10k savings + a CREDIT_CARD loan of $4,000 → liquid ' +
+        'basis $6,000, 3 months covered → 75.',
+      input: {
+        accounts: [{ id: 'a1', currentBalance: 10_000, type: 'SAVINGS' }],
+        expenses: [{ id: 'e1', amount: 2_000, frequency: 'MONTHLY' as Frequency, isEssential: true }],
+        loans: [
+          {
+            id: 'l1',
+            principal: 4_000,
+            interestRateAnnual: 0.2,
+            minRepayment: 100,
+            repaymentFrequency: 'MONTHLY' as RepaymentFrequency,
+            type: 'CREDIT_CARD',
+          },
+        ],
+      },
+    },
     {
       name: '6+ months → 100',
       description: '$18k savings, $2k essential expenses/mo.',

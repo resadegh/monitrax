@@ -96,11 +96,14 @@ interface Bucket {
 function getMicro(key: Bucket['key'], pct: number, creditCards = 0): string {
   switch (key) {
     case 'liquid':
-      // MON-031 (Reza decision 2026-07-12, option a): this figure is liquid
-      // cash MINUS credit cards, so it reads ~$2.5k below My Safety Net's
-      // "Liquid savings" (which is gross cash — your emergency buffer). When a
-      // card balance is netted here, say so plainly so the two surfaces read as
-      // the distinct measures they are, not a discrepancy.
+      // MON-031/064 (VR-017 re-fix, 2026-07-19): "Liquid today" and My Safety
+      // Net's "Liquid savings" now BOTH read the ONE canonical deployable
+      // figure (quickMetrics.liquidCash — net of revolving credit in both card
+      // representations), so the two surfaces show the same number. The
+      // cards-aware caption below fires only for LOAN-classified cards
+      // (breakdown.creditCards is loans-only); an account-typed card nets
+      // silently — acceptable now that there is no cross-surface gap to
+      // explain.
       if (creditCards > 0) return 'Reachable today, after your credit cards.';
       if (pct < 5)
         return 'A small share of your wealth is reachable this week.';
