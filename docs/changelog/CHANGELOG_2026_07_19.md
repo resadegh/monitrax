@@ -128,4 +128,4 @@ Coverage: the engine's grouping + FK-repoint call shapes are unit-tested; NOT ve
 Coverage: verifies the partition attribution + roll-up additivity on a two-earner fixture and the API owner acceptance paths compile+typecheck; does NOT verify the live UI selectors in a browser or any live member data (Matrix Ring-3 + Reza's eyeball after merge).
 
 ### PR
-- (Part A PR — number in the follow-up commit)
+- PR URL: https://github.com/resadegh/monitrax/pull/1461 (draft)
