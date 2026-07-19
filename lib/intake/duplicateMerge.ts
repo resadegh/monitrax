@@ -86,16 +86,23 @@ export function scopeKeyOf(row: MergeableRow): string | null {
  * Cluster rows of ONE kind into duplicate groups using the Part-1 signature
  * policy. Pure and deterministic: rows are processed oldest-first; each row
  * either joins the first existing group whose SEED it signature-matches, or
- * seeds a new group. Rental income (RENT/RENTAL) is deliberately excluded —
- * its identity is property-scoped (MON-009) and per-property rental streams
- * are governed by scope-singleton, not cross-scope merging.
+ * seeds a new group. Rental income (RENT/RENTAL) participates ONLY when it is
+ * property-scoped: its identity IS the scope (MON-009 scope-singleton), so
+ * same-property rental duplicates (the Cienna Lot-1 ×3 class) group, while a
+ * scopeless rental row is never bridged and rent on two different properties
+ * never groups (both sides carry a scope, so the classifier's compatibility
+ * rule rejects the pair).
  */
 export function findDuplicateGroups(
   kind: 'income' | 'expense',
   rows: MergeableRow[],
 ): DuplicateGroup[] {
   const eligible = rows
-    .filter((r) => !(kind === 'income' && (r.type === 'RENT' || r.type === 'RENTAL')))
+    .filter((r) =>
+      kind === 'income' && (r.type === 'RENT' || r.type === 'RENTAL')
+        ? scopeKeyOf(r) !== null
+        : true,
+    )
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // Partition by (type, ownerEntityId) first — the non-name half of the
@@ -134,6 +141,8 @@ export function findDuplicateGroups(
       const survivor =
         cluster.find((r) => scopeKeyOf(r) !== null) ?? cluster[0];
       const mergeRows = cluster.filter((r) => r.id !== survivor.id);
+      const rental =
+        kind === 'income' && (cluster[0].type === 'RENT' || cluster[0].type === 'RENTAL');
       groups.push({
         groupId: survivor.id,
         kind,
@@ -142,7 +151,11 @@ export function findDuplicateGroups(
         rows: cluster,
         mergeIds: mergeRows.map((r) => r.id),
         annualDeclaredEffect: -mergeRows.reduce((sum, r) => sum + annualRunRate(r), 0),
-        warnings: [],
+        warnings: rental
+          ? [
+              'Rental stream — every row in this group is on the SAME property (scope-singleton). Rent on different properties is never grouped.',
+            ]
+          : [],
       });
     }
   }

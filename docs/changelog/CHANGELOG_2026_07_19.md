@@ -129,3 +129,26 @@ Coverage: verifies the partition attribution + roll-up additivity on a two-earne
 
 ### PR
 - PR URL: https://github.com/resadegh/monitrax/pull/1461 (draft)
+
+---
+
+## Session: yhm8ug (continuation 5, 2026-07-20) — Intake Duplicates: keep-directive recorded + same-property rental coverage (MON-074/076)
+
+### Changes Made
+- **Type**: Fix (detector coverage) + strategic-decision record
+- **Root cause (coverage gap)**: `findDuplicateGroups` excluded ALL rental income from the preview census — correct for cross-property/scopeless rent (the distinct-sources correction), but it also hid same-property rent duplicates: the VR-007 Cienna Lot-1 ×3 class, which the MON-076 Stage-1 diagnosis says likely predates MON-009 (mechanism fixed, data remains). Reza's first load after #1463 showed "No duplicate groups" — partly his own manual salary cleanup (Ingeus), partly this blind spot.
+- **Solution**: rental rows (RENT/RENTAL) now enter grouping ONLY when property-scoped; both sides of any rental pair therefore carry a scope, so the classifier's compatibility rule permits strictly SAME-property groups and rejects cross-property pairs structurally. Scopeless rental rows are never bridged. Rental groups carry an explicit "SAME property (scope-singleton)" warning in the preview.
+- **Strategic decision (Reza, 2026-07-20 — supersedes the earlier removal directive)**: the merge functionality is KEPT permanently ("let's not remove this functionality as it might be used in future if there is an issue later") — standing incident tool + sentinel, expected empty forever; a non-empty page = guardrail regression alarm. The remove-the-merge-action plan is CANCELLED. Recorded in MON-074/076 registry notes.
+
+### Files Modified
+- `lib/intake/duplicateMerge.ts` — rental eligibility narrowed from type-exclusion to scopeless-exclusion; rental-group warning
+- `tests/intake/duplicateMerge.test.ts` — +Cienna Lot-1 same-scope group test; over-merge guard updated (cross-property + scopeless rent still never group) — 8/8 green
+- `docs/issues/ISSUES.json` + generated `ISSUES.md` — MON-074/076 keep-directive + coverage record
+- `docs/financial-logic/graph/financial-graph.json` + regenerated `GENERATED_CORE.md` — findDuplicateGroups produces-text updated + anchor re-pinned :93→:96
+
+### Build Status
+- [x] targeted suite 8/8 · [x] issues gate 88 valid · [x] neomatrix gates green (193 proven · 215 modelled · 0 uncovered)
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (MON-009 scope-singleton law + MON-076 Stage-1 diagnosis re-read; deviation from the original exclusion surfaced with the evidence, not silent) · Requirements 10/10 (Reza keep-directive recorded verbatim in registry; Cienna class made visible; Lot-1 vs Lot-2 still never merge) · Logic 10/10 (both sides scoped ⇒ compatibility rule = same-scope only, proven by the new over-merge test; executeMerge unchanged — already type-agnostic incl. AgentDisbursementRule)`
+Coverage: verifies grouping semantics on fixtures (same-scope groups, cross-scope/scopeless never); does NOT verify the live Cienna rows appear on Reza's page — that is his re-check after this PR deploys, and the rows may legitimately be gone if he already cleaned them manually.
