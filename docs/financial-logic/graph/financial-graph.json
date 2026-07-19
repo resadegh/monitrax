@@ -6371,6 +6371,55 @@
       "workedExample": "golden account-card: 47,504 ÷ 1,700 = 27.94 months; live VR-017 target: 301,808 ÷ 25,973 = 11.6",
       "verifiedDate": "2026-07-19",
       "status": "documented"
+    },
+    {
+      "id": "engine.intake.classifyIntake",
+      "kind": "engine",
+      "label": "Intake classifier (MON-078 keystone + Mechanism A signature reuse)",
+      "file": "lib/intake/classifyIntake.ts",
+      "line": 157,
+      "layer": "engine",
+      "domain": "neobrain",
+      "trailStage": "T",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The ONE canonical intake classification for every Income/Expense producer: frequency (evidence-derived cadence, C1), isRecurring (source-aware, C2), and streamMatch (C3 + Mechanism A). Mechanism A (MON-084/085/074/076, 2026-07-19): the 'source-signature' stream policy — identity = (kind, type, normalised name, ownerEntityId) over USER-WIDE candidates with the scope-compatibility rule (same scope, or one side scopeless; two differently-scoped rows NEVER converge) — so reconciliation UPDATES the canonical row (amount ← transaction, prior amount → budgetedAmount, lastReconciled) instead of minting a sibling. Consumers: transactions/[id]/link route (income + expense create branches), documents reconcileSuggestedAction, POST /api/income (409 on exact manual duplicate), onboarding complete (idempotent skip).",
+      "formula": "streamMatch: exact = sameMerchant(normalised names); near-duplicate = token-containment + ≤10% amount (isNearDuplicateEntry); source-signature adds scopeCompatible(a,b) = a==b ∨ a==null ∨ b==null, same-scope ranked first",
+      "authority": "docs/architecture/INTAKE_INTEGRITY_GUARDRAIL.md + docs/architecture/CALC_SSOT_WALL.md Mechanism A; lib/intake/classifyIntake.ts",
+      "inputs": [
+        {
+          "name": "signal",
+          "unit": "n/a",
+          "type": "IntakeSignal",
+          "note": "kind/source/declared+detected cadence/candidate/existingRows (pure — callers fetch)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/intake/classifyIntake.test.ts + tests/golden/ring2.mechanismA.intakeDedup.test.ts + tests/intake/intakeSourceLock.test.ts",
+      "workedExample": "Ingeus: declared SALARY 8,500 + linked deposit 5,547 → ONE row (amount 5,547, budgetedAmount 8,500); QBE on property A vs B → two rows (scope guard)",
+      "verifiedDate": "2026-07-19",
+      "status": "documented"
+    },
+    {
+      "id": "law.intake.oneRowPerSource",
+      "kind": "law",
+      "label": "One canonical row per real source (Mechanism A)",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The intake-dedup invariant (Calc-SSOT Wall Mechanism A): every real income/expense source has exactly ONE row; reconciliation/import UPDATES it, never mints a sibling. Genuinely distinct sources that merely share a payer (rent for Lot 1 vs Lot 2, insurance on property A vs B) stay distinct — enforced structurally by the scope-compatibility rule, never by reviewer discipline. Editing the one row propagates to income page + tax gross + cashflow by construction (they read the same row).",
+      "formula": "one source ⇒ one row; converge iff signature matches ∧ scopeCompatible; distinct scopes ⇒ distinct rows",
+      "authority": "docs/architecture/CALC_SSOT_WALL.md 'Mechanism A' + Reza correction (Cienna/Ingeus are distinct incomes)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/golden/ring2.mechanismA.intakeDedup.test.ts",
+      "workedExample": null,
+      "verifiedDate": "2026-07-19",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -9684,6 +9733,22 @@
       "fromUnit": "AUD",
       "toUnit": "AUD",
       "evidence": "masterFinancialService.ts — snapshot.emergencyFund block assembled from buildEmergencyFundMetrics result",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.intake.classifyIntake",
+      "to": "law.intake.oneRowPerSource",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "classifyIntake.ts 'source-signature' policy — scope-compatibility + signature identity implement the invariant; golden ring2.mechanismA.intakeDedup proves update-not-mint end-to-end on the real link route",
+      "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.intake.classifyIntake",
+      "to": "orchestrator.documentConfirm.POST",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "reconcileSuggestedAction.ts → classifyIntake(streamPolicy 'source-signature') decides duplicate-vs-create for the document-confirm flow (income cross-amount, expense amount-bounded)",
       "verifiedDate": "2026-07-19"
     }
   ]
