@@ -289,7 +289,25 @@ export const POST = withPermission('income.write', async (request, auth) => {
         return null;
       };
 
-      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+      // MON-076 Part A (2026-07-20): "who earns this?" — the caller may
+      // attribute the income to a household member's entity. Validated as the
+      // user's own entity; absent → the primary (back-compat: the wizard F.8
+      // sync and older clients send no owner). The FORM requires a selection
+      // for SALARY (individual employment income); the server keeps the
+      // default so legacy payloads never break.
+      let ownerEntityId: string;
+      if (typeof body.ownerEntityId === 'string' && body.ownerEntityId) {
+        const ownedEntity = await prisma.legalEntity.findFirst({
+          where: { id: body.ownerEntityId, userId: auth.userId },
+          select: { id: true },
+        });
+        if (!ownedEntity) {
+          return NextResponse.json({ error: 'Owner entity not found' }, { status: 404 });
+        }
+        ownerEntityId = ownedEntity.id;
+      } else {
+        ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+      }
 
       // MON-078: frequency + recurrence are decided by the ONE intake
       // classifier — never defaulted locally (intake source-lock enforced).

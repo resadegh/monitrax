@@ -59,6 +59,8 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         // Phase 59: managed rentals (declared gross stays in amount/frequency)
         rentalMode,
         managingAgentName,
+        // MON-076 Part A: "who earns this?" — household-member attribution.
+        ownerEntityId,
       } = body;
 
       // Verify ownership
@@ -164,11 +166,26 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         }
       }
 
+      // MON-076 Part A: re-attribute to another household member's entity —
+      // validated as the user's own entity; untouched when not sent.
+      let ownerEntityUpdate: string | undefined;
+      if (typeof ownerEntityId === 'string' && ownerEntityId) {
+        const ownedEntity = await prisma.legalEntity.findFirst({
+          where: { id: ownerEntityId, userId: auth.userId },
+          select: { id: true },
+        });
+        if (!ownedEntity) {
+          return NextResponse.json({ error: 'Owner entity not found' }, { status: 404 });
+        }
+        ownerEntityUpdate = ownedEntity.id;
+      }
+
       const income = await prisma.income.update({
         where: { id },
         data: {
           name,
           type,
+          ownerEntityId: ownerEntityUpdate,
           amount: toNumber(amount) ?? ownershipResult.resource.amount,
           frequency,
           // MON-053: only touch the flag when the client explicitly sends it.

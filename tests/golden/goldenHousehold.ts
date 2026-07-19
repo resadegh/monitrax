@@ -109,6 +109,15 @@ export const GOLDEN_DB = {
   // book — the MON-045 interest leg contributes 0 here by design (it has its
   // own Ring-0 suite); serving the model keeps the fail-loud Proxy honest.
   loanTransaction: [] as never[],
+  // MON-076 Part A: getUserTaxPosition resolves income-earning household
+  // members (per-person tax partitions). The golden household records no
+  // members → findUnique(userId) returns null → the single-earner degenerate
+  // case (perMember = [the primary], identical inputs to the household
+  // position). The primary resolves via the one PERSONAL_NAME entity below.
+  householdProfile: [] as never[],
+  legalEntity: [
+    { id: 'le-golden', userId: 'golden-user-avalon', type: 'PERSONAL_NAME', role: 'PERSONAL', createdAt: NOW },
+  ],
 };
 
 /**
