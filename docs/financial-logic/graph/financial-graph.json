@@ -5842,7 +5842,7 @@
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "The ONE user-level tax position (income + deductions + Medicare + offsets + PAYG). Fetches once, calls calculateTaxPosition, and is read by BOTH /cashflow and My Guide so their tax numbers converge (MON-020). MON-045: also fetches property loans (+offset accounts) and Σ INTEREST_CHARGED per loan this FY, passing propertyLoans[] so deductible interest is auto-derived by the engine. MON-020/060 collapse (2026-07-18): now ALSO returns engineInputs (the exact assembled input) so the /api/tax/position Decimal twin + any sibling computation reuse the SAME inputs; /api/tax/position no longer fetches/assembles its own (verbatim-clone deleted), and the master snapshot tax summary is an adapter over this bundle (buildTaxSummaryFromPosition) — one assembler, every surface.",
+      "produces": "The ONE user-level tax position (income + deductions + Medicare + offsets + PAYG). Fetches once, calls calculateTaxPosition, and is read by BOTH /cashflow and My Guide so their tax numbers converge (MON-020). MON-045: also fetches property loans (+offset accounts) and Σ INTEREST_CHARGED per loan this FY, passing propertyLoans[] so deductible interest is auto-derived by the engine. MON-020/060 collapse (2026-07-18): now ALSO returns engineInputs (the exact assembled input) so the /api/tax/position Decimal twin + any sibling computation reuse the SAME inputs; /api/tax/position no longer fetches/assembles its own (verbatim-clone deleted), and the master snapshot tax summary is an adapter over this bundle (buildTaxSummaryFromPosition) — one assembler, every surface. MON-076 Part A (2026-07-20): the bundle also emits perMember — PER-PERSON tax positions computed by partitioning the SAME fetched rows by owner entity (income/expense by ownerEntityId via listIncomeEarnerEntities; property loans + depreciation follow their property; unattributed → primary) and running the SAME calculateTaxPosition per partition. Attribution + splitting only — no new tax math; the household roll-up is unchanged.",
       "formula": "getUserTaxPosition(userId) → calculateTaxPosition({incomes,expenses,depreciations,propertyLoans,super}). No tax math here — delegates to the reform-aware engine (§12.14 inherited). INTEREST_CHARGED aggregation at userTaxPosition.ts:100-113.",
       "authority": "CLAUDE.md §12.2.1 (one source); calculateTaxPosition = ATO/ITAA engine",
       "inputs": [
@@ -5854,9 +5854,9 @@
         }
       ],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:54 + tests/tax/userTaxPositionConvergence.test.ts",
+      "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:54 + tests/tax/userTaxPositionConvergence.test.ts + tests/golden/ring2.perMemberTax.test.ts",
       "workedExample": null,
-      "verifiedDate": "2026-07-18",
+      "verifiedDate": "2026-07-20",
       "status": "documented"
     },
     {

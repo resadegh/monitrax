@@ -111,3 +111,21 @@ Coverage: the engine's grouping + FK-repoint call shapes are unit-tested; NOT ve
 
 ### PR
 - PR URL: https://github.com/resadegh/monitrax/pull/1459 (draft — the tool ships; every merge is Reza’s per-group click)
+
+---
+
+## Session: yhm8ug (continuation 4, 2026-07-20) — Part A: household income attribution + per-person tax (MON-076)
+
+### Changes Made
+- **Type**: Feature (tax correctness — per-individual AU assessment)
+- **Solution**: `listIncomeEarnerEntities` (SELF → PERSONAL_NAME entity; other earners → INDIVIDUAL entity via `householdMemberId`, idempotent — reuses the ONE ownership concept `ownerEntityId`, §12.2.1); `/api/income` POST/PUT + link-route accept a validated `ownerEntityId` (absent → primary, back-compat); NEW `GET /api/income/earners`; `getUserTaxPosition` emits `perMember` (same rows partitioned by owner entity → SAME engine per partition — attribution, no new tax math; household roll-up byte-identical); "Who earns this?" selector in the Add/Edit Income form (client-required for SALARY when >1 earner) + the reconcile dialog.
+- **Ratchet**: `tests/golden/ring2.perMemberTax.test.ts` — member B's salary lands in B's position not A's; roll-up additive. Golden harness +householdProfile/legalEntity (fail-loud caught the new queries).
+- **Recorded scope boundary**: per-person tax DISPLAY on the tax page/cashflow/CFO is deferred — a new section-level composition requires the §18.2.1 Stitch pass with Reza; the canonical bundle now carries everything those surfaces need.
+- Gates: suite 4,147 green · build green · all static gates green · getUserTaxPosition anchor re-pinned (:86) · one baseline line re-pinned (income page :2278→:2337).
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (consolidated brief Part A conformed; Stitch-gated display deferral surfaced, not silent) · Requirements 10/10 (attribution + per-person engine + both forms; server default preserved for wizard back-compat — recorded) · Logic 10/10 (one ownership concept; same engine partitioned; golden-proven; roll-up unchanged)`
+Coverage: verifies the partition attribution + roll-up additivity on a two-earner fixture and the API owner acceptance paths compile+typecheck; does NOT verify the live UI selectors in a browser or any live member data (Matrix Ring-3 + Reza's eyeball after merge).
+
+### PR
+- (Part A PR — number in the follow-up commit)

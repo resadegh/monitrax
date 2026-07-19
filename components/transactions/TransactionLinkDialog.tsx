@@ -255,6 +255,21 @@ export function TransactionLinkDialog({
   const [isTaxDeductible, setIsTaxDeductible] = useState(false);
   const [isRecurringExpense, setIsRecurringExpense] = useState(false);
 
+  // MON-076 Part A: "who earns this?" — the household's income earners; the
+  // chosen member's entity becomes the created income's ownerEntityId (absent
+  // → the server defaults to the primary).
+  const [incomeEarners, setIncomeEarners] = useState<
+    Array<{ entityId: string; memberName: string; isPrimary: boolean }>
+  >([]);
+  const [incomeOwnerEntityId, setIncomeOwnerEntityId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/income/earners', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setIncomeEarners(j?.data?.earners ?? []))
+      .catch(() => setIncomeEarners([]));
+  }, [token]);
+
   // Transfer state
   const [isTransfer, setIsTransfer] = useState(false);
   const [transferToAccountId, setTransferToAccountId] = useState<string | null>(null);
@@ -653,6 +668,10 @@ export function TransactionLinkDialog({
 
       // Add source type and entity linking for income
       if (type === 'income') {
+        // MON-076 Part A: attribute to the chosen household member's entity.
+        if (incomeOwnerEntityId) {
+          requestBody.ownerEntityId = incomeOwnerEntityId;
+        }
         const incomeSourceType = sourceType === 'LOAN' ? 'GENERAL' : sourceType;
         requestBody.incomeSourceType = incomeSourceType;
         if (incomeSourceType === 'PROPERTY' && selectedPropertyId) {
@@ -1812,6 +1831,31 @@ export function TransactionLinkDialog({
               {/* MON-053: income needs the same recurring/one-off control the
                   expense path has — without it, the MONTHLY default silently
                   turned single deposits into ×12 phantom income. */}
+              {/* MON-076 Part A: "Who earns this?" — shown when the household
+                  has more than one income earner. Decides whose tax position
+                  the created income belongs to (server defaults to the
+                  primary when unset). */}
+              {isIncome && incomeEarners.length > 1 && (
+                <div className="space-y-2 border-t pt-3">
+                  <Label htmlFor="incomeOwner" className="text-sm">Who earns this?</Label>
+                  <Select
+                    value={incomeOwnerEntityId ?? ''}
+                    onValueChange={(v) => setIncomeOwnerEntityId(v || null)}
+                  >
+                    <SelectTrigger id="incomeOwner">
+                      <SelectValue placeholder="Primary (default)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {incomeEarners.map((e) => (
+                        <SelectItem key={e.entityId} value={e.entityId}>
+                          {e.memberName}{e.isPrimary ? ' (primary)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {isIncome && (
                 <div className="space-y-3 border-t pt-3">
                   <div className="flex items-center space-x-2">

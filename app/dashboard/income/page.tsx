@@ -171,6 +171,15 @@ type IncomeFormData = {
   payFrequency: string | null;
   salarySacrifice: number | null;
   frankingPercentage: number | null;
+  // MON-076 Part A: "who earns this?" — the household member's entity.
+  ownerEntityId: string | null;
+};
+
+// MON-076 Part A — an income-earning household member + their entity.
+type IncomeEarner = {
+  entityId: string;
+  memberName: string;
+  isPrimary: boolean;
 };
 
 function IncomePageContent() {
@@ -207,7 +216,10 @@ function IncomePageContent() {
     payFrequency: null,
     salarySacrifice: null,
     frankingPercentage: null,
+    ownerEntityId: null, // MON-076: null → server defaults to the primary
   });
+  // MON-076 Part A: the household's income earners (for "Who earns this?").
+  const [earners, setEarners] = useState<IncomeEarner[]>([]);
 
   // Calculated salary values (preview)
   const [salaryPreview, setSalaryPreview] = useState<{
@@ -288,6 +300,11 @@ function IncomePageContent() {
       loadProperties();
       loadInvestmentAccounts();
       loadExpenseCategories();
+      // MON-076 Part A: the household's income earners for "Who earns this?".
+      fetch('/api/income/earners', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => setEarners(j?.data?.earners ?? []))
+        .catch(() => setEarners([]));
     }
   }, [token]);
 
@@ -511,6 +528,17 @@ function IncomePageContent() {
       investmentAccountId: formData.sourceType === 'INVESTMENT' ? formData.investmentAccountId : null,
     };
 
+    // MON-076 Part A: "who earns this?" — REQUIRED for SALARY (individual
+    // employment income must sit on the right person's tax position). Other
+    // types default to the primary server-side when not chosen.
+    if (formData.type === 'SALARY' && earners.length > 1 && !formData.ownerEntityId) {
+      setSubmitError('Choose who earns this salary — it decides whose tax position it belongs to.');
+      return;
+    }
+    if (formData.ownerEntityId) {
+      submitData.ownerEntityId = formData.ownerEntityId;
+    }
+
     // Phase 59: managed rentals — only meaningful on rental streams; the
     // server also guards (MANAGED on a non-rental type stores DIRECT).
     if (formData.type === 'RENT' || formData.type === 'RENTAL') {
@@ -647,6 +675,7 @@ function IncomePageContent() {
       payFrequency: null,
       salarySacrifice: null,
       frankingPercentage: null,
+      ownerEntityId: null, // MON-076
     });
     setSalaryPreview(null);
     setAttachedDocumentId(null);
@@ -671,6 +700,7 @@ function IncomePageContent() {
       payFrequency: item.payFrequency || null,
       salarySacrifice: item.salarySacrifice || null,
       frankingPercentage: item.frankingPercentage || null,
+      ownerEntityId: (item as { ownerEntityId?: string | null }).ownerEntityId ?? null, // MON-076
     });
     setEditingId(item.id);
     setShowDialog(true);
@@ -1648,6 +1678,35 @@ function IncomePageContent() {
                     ))}
                   </SelectContent>
                 </Select>
+                {/* MON-076 Part A: "Who earns this?" — shown when the household
+                    has more than one income earner; REQUIRED for SALARY (the
+                    submit guard enforces it). Decides whose tax position the
+                    income belongs to. */}
+                {earners.length > 1 && (
+                  <div className="space-y-2 pt-2">
+                    <Label htmlFor="ownerEntity">Who earns this?</Label>
+                    <Select
+                      value={formData.ownerEntityId ?? ''}
+                      onValueChange={(v) => setFormData({ ...formData, ownerEntityId: v || null })}
+                    >
+                      <SelectTrigger id="ownerEntity">
+                        <SelectValue placeholder={formData.type === 'SALARY' ? 'Required for salary' : 'Primary (default)'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {earners.map((e) => (
+                          <SelectItem key={e.entityId} value={e.entityId}>
+                            {e.memberName}{e.isPrimary ? ' (primary)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.type === 'SALARY' && (
+                      <p className="text-xs text-muted-foreground">
+                        Salary is taxed per person — this decides whose tax position it belongs to.
+                      </p>
+                    )}
+                  </div>
+                )}
                 {formData.sourceType !== 'GENERAL' && (
                   <p className="text-xs text-muted-foreground">
                     Showing types relevant to {formData.sourceType.toLowerCase()} income
