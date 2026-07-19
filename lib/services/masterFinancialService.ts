@@ -1960,10 +1960,18 @@ async function computeMasterFinancialSnapshot(
   const taxBundle = await getUserTaxPosition(userId);
   const taxSummary = buildTaxSummaryFromPosition(taxBundle.taxPosition);
 
-  // Calculate liquid cash using centralized LIQUID_ACCOUNT_TYPES (single source of truth)
-  const liquidCash = data.accounts
+  // MON-031/064: THE canonical "liquid cash" — DEPLOYABLE basis (Reza decision
+  // 2026-07-18): spendable-account balances (LIQUID_ACCOUNT_TYPES) NET of
+  // revolving credit (credit-card balances). Before this, quickMetrics.liquidCash
+  // was GROSS while the MON-012 accessibility buckets netted credit cards — two
+  // variants of one concept under one label, so Safety Net showed $304,304
+  // while Balances/Home//cashflow showed $301,808 (gap = the card balance).
+  // Every consumer (Safety Net, emergency fund, insights freeToday, CFO chat,
+  // buckets' Liquid Today) now reads this ONE net figure.
+  const grossLiquidCash = data.accounts
     .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
     .reduce((sum, a) => sum + a.currentBalance, 0);
+  const liquidCash = grossLiquidCash - netWorth.liabilities.creditCards;
 
   // Phase 1 (cashflow-actuals) — ACTUAL transaction-based cashflow. Canonical
   // engine; route handlers must read these off quickMetrics, never re-reduce.

@@ -5760,13 +5760,13 @@
       "kind": "engine",
       "label": "Hidden Wealth — accessibility buckets",
       "file": "lib/calculations/accessibilityBuckets.ts",
-      "line": 73,
+      "line": 78,
       "layer": "engine",
       "domain": "core",
       "trailStage": "T",
       "regime": null,
       "semanticKey": null,
-      "produces": "Partitions net worth into liquidToday / accessible / lockedLongTerm — buckets ALWAYS sum to net worth (MON-012). Was a §21.5 blind spot; before the fix buckets overstated net worth (credit card + HECS netted nowhere, non-liquid cash dropped, floored equity via MON-011).",
+      "produces": "Partitions net worth into liquidToday / accessible / lockedLongTerm — buckets ALWAYS sum to net worth (MON-012). Was a §21.5 blind spot; before the fix buckets overstated net worth (credit card + HECS netted nowhere, non-liquid cash dropped, floored equity via MON-011). MON-031/064 (2026-07-18): the liquidCash parameter is now THE canonical DEPLOYABLE figure (spendable cash NET of credit cards, from quickMetrics.liquidCash); the engine reconstructs the gross basis internally, so liquidToday === the canonical figure by construction — one liquid number on every surface.",
       "formula": "liquidToday = min(liquidCash,accounts) − creditCards; accessible = investments + (accounts − min(liquidCash,accounts)); lockedLongTerm = (properties − mortgages) + super + personalAssets − personalLoans. Σ = assets.total − liabilities.total = netWorth.",
       "authority": "lib/calculations/accessibilityBuckets.ts computeAccessibilityBuckets; every input a canonical NetWorthResult field (§12.2.1)",
       "inputs": [
@@ -5786,7 +5786,7 @@
       "astHash": null,
       "verifiedBy": "tests/calculations/accessibilityBuckets.test.ts",
       "workedExample": "reported shape: liquid 47,504 + accessible 100,000 + locked 1,715,000 = 1,862,504 = netWorth; old gross-ish sum overstated by exactly 27,496 (cc 2,496 + HECS 25,000)",
-      "verifiedDate": "2026-07-08",
+      "verifiedDate": "2026-07-18",
       "status": "documented"
     },
     {
