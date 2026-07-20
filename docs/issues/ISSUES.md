@@ -99,7 +99,7 @@
 | MON-090 | 🟢 VERIFIED | 🟠 | no | Income/expense actuals not date-aware on screen: historical average masquerades as current monthly; this-month actual never displayed | ##1467 | ✅ |
 | MON-091 | 🟠 FIXING | 🟠 | yes | Rental/income links lock in a MONTHLY default: no frequency control in the link dialog + reuse paths never revisit cadence | ##1468 | ✅ |
 | MON-092 | 🟢 VERIFIED | 🟠 | yes | One-off rows wear stream clothing: raw 'Monthly' label in sibling views + same-day payments extrapolated to a phantom avg ($22,830 from two gifts) | ##1469 | ✅ |
-| MON-093 | 🟠 FIXING | 🔴 | yes | Broadbeach rental ~4x cross-surface inflation: resolver advance-pair hole annualised an unsorted first txn by a mis-declared WEEKLY cadence ($11,328/mo vs income page $2,515) | ##1472 | ✅ |
+| MON-093 | 🟠 FIXING | 🔴 | yes | Broadbeach rental ~4x cross-surface inflation: resolver advance-pair hole annualised an unsorted first txn by a mis-declared WEEKLY cadence ($11,328/mo vs income page $2,515) | ##1473 | ✅ |
 
 ---
 
@@ -1693,7 +1693,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: income page 
 - **Root cause:** `lib/calculations/monthlyResolver.ts:75`, `app/api/properties/route.ts:1`
 - **Neomatrix:** `engine.propertyActuals.calculateMonthlyAverage`
 - **Downstream consumers (§19.4):** `PRODUCER CENSUS: calculateMonthlyAverage (lib/calculations/actualsMonthlyAverage.ts - THE day-span producer, moved from propertyActuals) + resolveMonthly (lib/calculations/monthlyResolver.ts - orchestration only, now DELEGATES its >=2-txn branch to the one producer; its private daySpanMonthlyAverage math deleted); single-txn branch fixed to sort and take the LATEST payment`, `INPUT-FEED CENSUS: property detail + list both feed resolveMonthly via enrichPropertiesWithActuals(linkedTransactions) -> computePropertyCashflow; income page feeds calculateMonthlyAverage directly via /api/income; both now share identical math for the >=2 case incl. the advance-pair (2-txn) case that previously fell through`, `CONSUMER SWEEP: property detail rental stream row + hero cashflow; property list tiles; dashboard property cards; tax position rental income (getUserTaxPosition reads the same computePropertyCashflow rent); income page Actual cells; master snapshot property cashflow - all read the one producer chain after this fix`, `CONSTANT UNIFICATION: DAYS_PER_MONTH = 365.25/12 = 30.4375 is now THE one constant (income routes previously used 30.44; ~0.008% display shift, e.g. $11,624 -> $11,623)`, `NEW SIGNAL: rentCadenceSuspect on computePropertyCashflow -> amber chip on the property detail rental row when declared frequency disagrees with detected payment cadence`
-- **Fix PR(s):** ##1472
+- **Fix PR(s):** ##1473
 - **Holistic test (§19.4):** `tests/calculations/propertyCashflow.test.ts#MON-093: Broadbeach shape identity - cf.monthlyRent === calculateMonthlyAverage(txns, advance) === 2515 (never the x52 annualisation); true-weekly stream unaffected; rentCadenceSuspect fires on declared-WEEKLY/detected-MONTHLY`
 - **Detail:** `VR-019-item-16`
 

@@ -2786,7 +2786,7 @@
         "NEW SIGNAL: rentCadenceSuspect on computePropertyCashflow -> amber chip on the property detail rental row when declared frequency disagrees with detected payment cadence"
       ],
       "fixPRs": [
-        "#1472"
+        "#1473"
       ],
       "test": "tests/calculations/propertyCashflow.test.ts#MON-093: Broadbeach shape identity - cf.monthlyRent === calculateMonthlyAverage(txns, advance) === 2515 (never the x52 annualisation); true-weekly stream unaffected; rentCadenceSuspect fires on declared-WEEKLY/detected-MONTHLY",
       "tracker": "VR-019-item-16",
