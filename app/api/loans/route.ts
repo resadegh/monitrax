@@ -10,6 +10,7 @@ import {
 } from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
+import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
 
 export const GET = withPermission('loan.read', async (request, auth) => {
     try {
@@ -134,25 +135,11 @@ export const GET = withPermission('loan.read', async (request, auth) => {
         // Add actual repayments from linked transactions
         const actuals = actualsByLoanId.get(loan.id);
 
-        // Calculate monthly average from transactions using DAYS-BASED approach
-        // Important for variable rate loans where repayments fluctuate
-        let monthlyAverage = null;
-        if (actuals && actuals.transactions.length >= 2) {
-          const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
-          const firstDate = sortedTx[0].date;
-          const lastDate = sortedTx[sortedTx.length - 1].date;
-          const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-
-          // Add one payment interval to account for period the last payment covers
-          const avgPaymentInterval = daysCovered / (sortedTx.length - 1);
-          const totalDaysCovered = daysCovered + avgPaymentInterval;
-
-          // Monthly average = (sum / days) * 30.44 (average days per month)
-          monthlyAverage = (actuals.totalAmount / totalDaysCovered) * 30.44;
-        } else if (actuals && actuals.transactions.length === 1) {
-          // Single transaction - use as monthly estimate
-          monthlyAverage = actuals.totalAmount;
-        }
+        // §12.2.1 ONE producer: the day-span monthly average is
+        // `calculateMonthlyAverage` (lib/services/propertyActuals.ts). This
+        // replaces an inline copy that carried the same math (MON-089 dedup —
+        // loan repayments are ARREARS, all payments count, one interval added).
+        const monthlyAverage = actuals ? calculateMonthlyAverage(actuals.transactions) : null;
 
         return {
           ...wrapped,

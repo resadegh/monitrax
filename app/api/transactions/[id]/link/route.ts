@@ -21,6 +21,7 @@ import { applyCategoryToSimilarUnified } from '@/lib/bookkeeping/applyToSimilarU
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
 import { buildManagedRentalSuggestion } from '@/lib/services/managedRentalService';
+import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
@@ -1751,7 +1752,13 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
               sumForAverage = amounts.reduce((sum, a) => sum + a, 0);
             }
 
-            const trueMonthlyAverage = monthsCovered > 0 ? sumForAverage / monthsCovered : avgAmount;
+            // §12.2.1 ONE producer (MON-089): the day-span monthly average is
+            // `calculateMonthlyAverage` (lib/services/propertyActuals.ts). The
+            // inline division this replaces spread N ARREARS payments over
+            // N−1 intervals (daysCovered/30.44), inflating the banner
+            // ×N/(N−1) — the same defect class as the income-route copy.
+            const trueMonthlyAverage =
+              calculateMonthlyAverage(sortedTxs, paymentTiming === 'ADVANCE') ?? avgAmount;
 
             transactionPattern = {
               count: recentTxs.length,

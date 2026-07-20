@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**88 total** · 84 open · 🔵 21 · 🟡 5 · 🟠 29 · 🟢 29 · ✅ 3
+**89 total** · 85 open · 🔵 21 · 🟡 5 · 🟠 30 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -95,6 +95,7 @@
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 | MON-087 | 🟠 FIXING | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | ##1446 | ✅ |
 | MON-088 | 🟡 DIAGNOSED | 🟡 | yes | Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults | — | ✅ |
+| MON-089 | 🟠 FIXING | 🟠 | yes | Actual Monthly inflated xN/(N-1): duplicated day-span average — income-route ARREARS + link-route copies omit the first payment's covered interval | ##1465 | ✅ |
 
 ---
 
@@ -1598,4 +1599,23 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/E
 - **Detail:** `Reza question 2026-07-20 (family tax position) + ATO MLS thresholds (ato.gov.au)`
 
 VERIFIED at source (2026-07-20): medicareLevyCalculator.ts accepts familyStatus ('SINGLE'|'FAMILY'), spouseIncome, dependentChildren, hasPrivateHealthInsurance (:28-32) and applies config.medicareThresholds.family (:70-71); the ONE caller (taxPositionCalculator.ts:295) passes only { taxableIncome } so every position is computed as SINGLE / no PHI / no dependants. LAW (ATO, cited in chat): no joint lodgment exists — marginal rates are always individual and spouse income never changes them; family/spouse income drives the MLS combined-income threshold ($202,000 family vs $101,000 single, 2025-26, +$1,500 per dependent child after the first; low-earner spouse exception <= $27,222), the Medicare levy family reduction, PHI rebate tiers, and spouse offsets. FIX SHAPE (awaits Reza queueing — changes tax numbers): wire familyStatus/spouseIncome/dependentChildren from HouseholdProfile (+ a hasPrivateHealthInsurance input Monitrax doesn't yet capture) into calculateMedicareLevy at both the household and perMember level — Part A (#1461) already exposes each member's income to the other, so combined MLS income is computable without new fetches.
+
+### MON-089 — Actual Monthly inflated xN/(N-1): duplicated day-span average — income-route ARREARS + link-route copies omit the first payment's covered interval
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-20
+
+> **What was wrong:** When salary payments are categorised, the Actual Monthly column adds payments from different months as if they all landed in one month — two $11,074 salaries (14 May + 12 June) showed as $23,247 per month, more than double the truth. The same wrong number appeared in the link dialog's 'Monthly Average' banner.
+>
+> **What changed:** There is now exactly ONE formula for turning a run of payments into a monthly figure (the same one the property pages already used, which was correct), and the income list, spending list, loans list and the link dialog all read it. It counts the full period the payments cover — including the month the first payment paid for.
+>
+> **What you should see:** On My Budget → Income, Salary Transportservice's Actual Monthly reads about $11,624 (two $11,074 payments 29 days apart), sitting right beside your $11,074 net monthly — not $23,247. Ingeus-style fortnightly runs read as a sensible fortnightly-to-monthly figure, and a single categorised payment reads as one month's actual instead of blank.
+
+- **Root cause:** `app/api/income/route.ts:144`, `app/api/transactions/[id]/link/route.ts:1754`
+- **Neomatrix:** `engine.propertyActuals.calculateMonthlyAverage`
+- **Downstream consumers (§19.4):** `income page Actual Monthly column + variance (table :1161, mobile cards :1494, detail dialog :2178)`, `expenses page monthlyAverageActual field (GET /api/expenses)`, `loans page monthlyAverageActual display-history field (GET /api/loans)`, `TransactionLinkDialog pattern banner trueMonthlyAverage (:1208)`, `property pages via lib/services/propertyActuals (ALREADY canonical — unchanged numbers)`, `NOT affected: quickMetrics actuals / canonicalCashflow (calendar-month WINDOW semantics, a different concept from the cadence-smoothed run-rate — not a duplicate)`
+- **Fix PR(s):** ##1465
+- **Holistic test (§19.4):** `tests/calculations/actualsMonthlyAverage.test.ts#Reza's Transport case: 2 x $11,074, 29 days apart`
+- **Detail:** `reza-report-2026-07-20`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx (Actual Monthly column via GET /api/income) + TransactionLinkDialog pattern banner. Expected: 11624. Actual: 23247. [STAGE-1 CENSUS + FIX, same day] §19.2 verified: income-route ARREARS branch divided N payments by the N−1 intervals of their date span (route.ts:144 pre-fix: sum/daysCovered×30.44 with no added interval) — Reza's live 2×$11,074 over 29d → 22,148/29×30.44 = $23,247 EXACT match to the screenshot; correct = 22,148/58×30.44 = $11,624. PRODUCER CENSUS: FIVE copies of the day-span formula — income route ARREARS (BUGGY) + income route ADVANCE (correct) + expenses route (correct) + loans route (correct) + link-route pattern banner (BUGGY, same class: daysCovered/30.44 months for N payments). INPUT-FEED: all five read the same linked UnifiedTransaction sets. FIX (remove-the-culprit, §12.2.1): all four route copies DELETED; every surface now imports the ONE Neomatrix-modelled producer calculateMonthlyAverage (lib/services/propertyActuals.ts — was already correct: span + one avg interval; ADVANCE drops trailing part-period payment). Recorded unification: a single payment now reads as one month's actual on the income page (was blank; matches expenses/loans semantics + MON-075 chip still nudges). Ratchet: Ring-0 worked examples + a Ring-1 topology lock (migrated files must import the canonical and carry no own ×30.44 math). Stays FIXING until Reza's page re-check confirms ~$11,624 on Transport + sensible Ingeus figures (per-fix verification, Part 24 #7).
 
