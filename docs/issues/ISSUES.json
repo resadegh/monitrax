@@ -2690,6 +2690,40 @@
       "test": "tests/intake/staleStream.test.ts#detectStaleStream - frequency-aware quiet-stream nudge",
       "tracker": "reza-directive-2026-07-20-date-aware",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx + app/dashboard/expenses/page.tsx (Actual columns, group headers). [SWEEP VERDICT, same day - Reza's holistic mandate] Producer census of the transactions-to-monthly class across the whole app: the day-span formula had FIVE copies, all collapsed to calculateMonthlyAverage in #1465 (income ARREARS + link banner were the two broken ones). The calendar-month family is CLEAN: actualCashflow (canonical month window, data-driven divisor) -> canonicalCashflow/masterFinancialService/insights/intelligence all consume it; tie/analytics + moneyStoryTrend bucket by real calendar month; reconciliation.analyzeTransactionPattern is frequency-aware (toMonthly of avg payment); forecasting.ts daily/category averages are dense-stream heuristics (interval-omission immaterial) - noted, not changed. propertyActuals feeds property surfaces (already canonical). [THIS PR #1467] Display + payload only: detectStaleStream (1.5x cadence threshold, 5 unit tests incl. the honest Transport boundary - 38d quiet is NOT yet stale for monthly, chip fires ~27 Jul), lastTransactionAt on three routes, income page (declared-first per Reza: declared = baseline; avg marked and standing in only when no declared amount; variance suppressed when no declared), expenses page Actual column (was declared-only). Stitch: screen 711e25c554b54dd7b5a2c67ed4aa58c6, v1 6.5 -> v2 9.2 (SS18.8), artefacts merged #1466. Stays FIXING until Reza's page re-check + the Matrix cross-app Ring-3 (docs/verification/briefs/RING3_DATE_AWARE_NUMBERS.md)."
+    },
+    {
+      "id": "MON-091",
+      "title": "Rental/income links lock in a MONTHLY default: no frequency control in the link dialog + reuse paths never revisit cadence",
+      "status": "FIXING",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-20",
+      "area": "income",
+      "plain": {
+        "issue": "When you categorised rent payments, there was no frequency choice for income — the row silently kept Monthly. Worse, once a rental row existed, linking more payments reused it WITHOUT ever revisiting its rhythm: your four fortnightly Cienna payments piled onto a 'Monthly $1,195' row, so the declared plan (and its +202% variance) was built on the wrong cadence.",
+        "fix": "The link dialog now shows a Frequency choice for recurring income — pre-filled from the rhythm detected in the payments themselves ('Detected fortnightly from 4 payments'), which you confirm or change. When you confirm a cadence, the existing rental/income row is updated to it; if you never touch the selector and nothing was detected, NOTHING is sent and the row's stored rhythm is never silently rewritten.",
+        "check": "Open a Cienna rent payment -> Link Transaction: a Frequency dropdown appears under 'Recurring income', pre-filled 'Fortnightly' with a 'Detected fortnightly from N payments' note. Confirm it: the Thornland Lot 1 row's cadence flips to Fortnightly, so its declared plan reads ~$2,590/mo (=$1,195 x 26/12) and the +202% variance collapses to the real gap. Linking another payment later WITHOUT touching frequency leaves the corrected cadence alone."
+      },
+      "rootCause": [
+        "app/api/transactions/[id]/link/route.ts:538",
+        "components/transactions/TransactionLinkDialog.tsx:1859"
+      ],
+      "semanticKeys": [
+        "engine.intake.classifyIntake"
+      ],
+      "downstreamConsumers": [
+        "income page declared plan (Net Monthly = amount x frequency conversion) + variance for every reused stream",
+        "declared tax gross via incomeAggregator -> getUserTaxPosition (cadence drives the x26/12 vs x12 annualisation)",
+        "/cashflow + My Plan declared rollups (same frequency conversion)",
+        "cadence-mismatch chip (D2) - clears once the stored rhythm matches the payments",
+        "link route create path (classifier now receives null instead of a phantom MONTHLY when the user made no choice)"
+      ],
+      "fixPRs": [
+        "#1468"
+      ],
+      "test": "tests/golden/ring2.mechanismA.intakeDedup.test.ts#MON-091 (the Thornland class): rental reuse honours an EXPLICITLY confirmed cadence",
+      "tracker": "reza-report-2026-07-20-rental-frequency",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/transactions/TransactionLinkDialog.tsx (income section) + app/api/transactions/[id]/link/route.ts (rental scope-singleton + signature reuse). [STAGE-1 + FIX, same day] SS19.2 verified: (a) the dialog's income section (:1859) had NO frequency control while the shared requestBody always sent frequency (an invisible MONTHLY default); (b) BOTH reuse paths discarded cadence — MON-009 scope-singleton reused the row verbatim (route :538) and the Mechanism-A signature update touched only amount/budgetedAmount/lastReconciled. Reza's live case: 4 Cienna payments at 17/14/15-day intervals batch-linked onto a row born MONTHLY $1,195 -> declared plan wrong -> +202% variance vs the (correct) $3,608 avg. FIX (suggest-and-confirm, no silent writes): dialog renders the same detected-cadence Frequency selector as the expense flow for recurring income; frequency is sent ONLY when evidence-prefilled or user-touched (freqExplicit — a naked default is NOT a confirmation and is OMITTED, letting the create-path classifier derive from evidence per MON-078); server updates the reused row's frequency/isRecurring ONLY when an explicit declared frequency arrived (both rental scope-singleton and signature paths; declared amount never touched on rental reuse). SS12.11: prisma.income.update on reuse — guard = the row IS the stream being linked in this very action AND the cadence is the user's explicit confirmation from the visible selector. Ratchet: 2 golden scenarios on the REAL route (explicit FORTNIGHTLY updates the row; absent frequency never rewrites). Same PR: MON-090 grouped-view declared-first parity (the Hipcamp $0-declared rows — avg marked + variance dash; justified extra lines, same surfaces). Reza's existing Thornland row: one re-link with the confirmed cadence (or Edit) corrects it. Stays FIXING until his page re-check."
     }
   ]
 }

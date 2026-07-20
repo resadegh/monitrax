@@ -246,6 +246,10 @@ export function TransactionLinkDialog({
   const [newCategory, setNewCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false); // Track if category is custom
   const [newFrequency, setNewFrequency] = useState('MONTHLY');
+  // MON-091: income frequency is sent ONLY when it is a real confirmation —
+  // detection-prefilled (evidence-backed) or user-touched. An untouched
+  // MONTHLY default must never silently rewrite a reused stream's cadence.
+  const [freqExplicit, setFreqExplicit] = useState(false);
   const [sourceType, setSourceType] = useState<'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET'>('GENERAL');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
@@ -303,6 +307,7 @@ export function TransactionLinkDialog({
       setNewCategory('');
       setIsCustomCategory(false);
       setNewFrequency('MONTHLY');
+      setFreqExplicit(false); // MON-091: a naked default is never a confirmation
       setSourceType('GENERAL');
       setSelectedPropertyId(null);
       setSelectedLoanId(null);
@@ -394,6 +399,7 @@ export function TransactionLinkDialog({
       const tp = data.transactionPattern;
       if (tp?.detectedFrequency && (tp.count ?? 0) >= 2) {
         setNewFrequency(tp.detectedFrequency);
+        setFreqExplicit(true); // MON-091: evidence-backed prefill counts as confirmable
         setIsRecurringExpense(true);
       } else if ((tp?.count ?? 0) <= 1) {
         // MON-053 / MON-037 RC-C: a SINGLE transaction is CLASSIFIED as one-off,
@@ -644,7 +650,18 @@ export function TransactionLinkDialog({
         ...(isCustomCategory
           ? { customCategoryId: newCategory, category: 'OTHER' }
           : { category: newCategory }),
-        frequency: isRecurringExpense ? newFrequency : 'MONTHLY', // Default frequency for non-recurring
+        // MON-091: for INCOME, frequency is sent only as a real confirmation
+        // (evidence-prefilled or user-touched) — an untouched default is
+        // OMITTED so the server's classifier derives cadence from evidence
+        // and a reused stream's stored cadence is never silently rewritten.
+        frequency:
+          type === 'income'
+            ? isRecurringExpense && freqExplicit
+              ? newFrequency
+              : undefined
+            : isRecurringExpense
+              ? newFrequency
+              : 'MONTHLY', // Default frequency for non-recurring expense
         isRecurring: isRecurringExpense,
         additionalTransactionIds: Array.from(selectedVendorTransactions),
         learnMerchant,
@@ -1873,6 +1890,35 @@ export function TransactionLinkDialog({
                       ? 'This income repeats on the schedule above and counts toward your regular income.'
                       : 'One-off deposits (e.g. a tax refund) are counted once — never repeated monthly.'}
                   </p>
+                  {isRecurringExpense && (
+                    <div className="space-y-2 ml-6">
+                      <Label>Frequency</Label>
+                      {/* MON-091: income had NO frequency control — rental links
+                          silently kept the MONTHLY default while fortnightly
+                          payments piled onto the row. Same suggest-and-confirm
+                          pattern as the expense flow (MON-025): pre-filled from
+                          the detected cadence, the user confirms/overrides. */}
+                      {transactionPattern?.detectedFrequency && (transactionPattern.count ?? 0) >= 2 && (
+                        <p className="flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-300">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+                          Detected {transactionPattern.detectedFrequency.toLowerCase().replace('_', '-')} from{' '}
+                          {transactionPattern.count} payments — change below if this isn&apos;t right.
+                        </p>
+                      )}
+                      <Select value={newFrequency} onValueChange={(v) => { setNewFrequency(v); setFreqExplicit(true); }}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="WEEKLY">Weekly</SelectItem>
+                          <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                          <SelectItem value="MONTHLY">Monthly</SelectItem>
+                          <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                          <SelectItem value="ANNUAL">Annual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1907,7 +1953,7 @@ export function TransactionLinkDialog({
                             {transactionPattern.count} payments — change below if this isn&apos;t right.
                           </p>
                         )}
-                        <Select value={newFrequency} onValueChange={setNewFrequency}>
+                        <Select value={newFrequency} onValueChange={(v) => { setNewFrequency(v); setFreqExplicit(true); }}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>

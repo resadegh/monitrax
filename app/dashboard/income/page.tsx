@@ -1537,6 +1537,10 @@ function IncomePageContent() {
                         // Phase 30: Budget vs Actual - use monthly average
                         const hasActual = item.hasTransactions && item.transactionCount && item.transactionCount > 0;
                         const actualMonthly = item.monthlyAverageActual || 0;
+                        // MON-090/091 (Reza declared-first): no declared amount →
+                        // the average stands in and variance is moot (grouped-view
+                        // parity with the list view — the Hipcamp $0 rows).
+                        const declaredMissing = !item.amount || item.amount === 0;
                         // Variance = Actual - Net Monthly
                         const variance = hasActual ? actualMonthly - effectiveMonthly : 0;
                         const variancePercent = hasActual && effectiveMonthly > 0
@@ -1567,7 +1571,13 @@ function IncomePageContent() {
                               </div>
                             </div>
                             <div className="col-span-2 text-right">
-                              <span className="text-sm font-medium">{formatCurrency(effectiveMonthly)}</span>
+                              {declaredMissing && hasActual ? (
+                                <span className="text-sm font-medium" title="No declared amount — showing the average of what actually landed, at this row's payment rhythm">
+                                  {formatCurrency(actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">avg</span>
+                                </span>
+                              ) : (
+                                <span className="text-sm font-medium">{formatCurrency(effectiveMonthly)}</span>
+                              )}
                             </div>
                             <div className="col-span-2 text-right">
                               {hasActual ? (
@@ -1602,7 +1612,7 @@ function IncomePageContent() {
                               )}
                             </div>
                             <div className="col-span-2 text-right flex items-center justify-end gap-1">
-                              {hasActual ? (
+                              {hasActual && !declaredMissing ? (
                                 <>
                                   <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
                                     <div className="flex items-center gap-1 justify-end">

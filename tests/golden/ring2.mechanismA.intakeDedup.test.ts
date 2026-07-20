@@ -45,7 +45,20 @@ function freshDb(): Record<string, Row[]> {
         propertyId: null, investmentAccountId: null,
         createdAt: new Date('2026-02-01'),
       },
+      {
+        // MON-091 (the Thornland class): a rental stream born MONTHLY while
+        // its real payments arrive fortnightly. The scope-singleton reuse
+        // must honour an EXPLICITLY confirmed cadence — and never touch the
+        // stored one without it.
+        id: 'i-rent-lot1', userId: USER_ID, ownerEntityId: 'le-1',
+        name: 'Thornland Rent Payment', type: 'RENT', amount: 1_195,
+        budgetedAmount: null, lastReconciled: null,
+        frequency: 'MONTHLY', isRecurring: true, isTaxable: true,
+        propertyId: 'p-lot1', investmentAccountId: null, rentalMode: 'DIRECT',
+        createdAt: new Date('2026-02-01'),
+      },
     ],
+    agentDisbursementRule: [],
     expense: [
       {
         // Distinct real stream: insurance ON property A.
@@ -72,6 +85,8 @@ function freshDb(): Record<string, Row[]> {
       { id: 't-hip', userId: USER_ID, amount: 75, date: new Date('2026-07-02'), direction: 'IN', merchantStandardised: 'Hipcamp', description: 'Hipcamp payout', incomeId: null, expenseId: null, loanId: null },
       { id: 't-qbe-b', userId: USER_ID, amount: 1_210, date: new Date('2026-07-03'), direction: 'OUT', merchantStandardised: 'QBE Insurance', description: 'Insurance premium', incomeId: null, expenseId: null, loanId: null },
       { id: 't-batt', userId: USER_ID, amount: 11_385, date: new Date('2026-07-04'), direction: 'OUT', merchantStandardised: 'Battery', description: 'Battery invoice', incomeId: null, expenseId: null, loanId: null },
+      { id: 't-rent-1', userId: USER_ID, amount: 1_195, date: new Date('2026-06-16'), direction: 'IN', merchantStandardised: 'Cienna Pm Trust', description: 'Rent payment', incomeId: null, expenseId: null, loanId: null },
+      { id: 't-rent-2', userId: USER_ID, amount: 1_655, date: new Date('2026-06-01'), direction: 'IN', merchantStandardised: 'Cienna Pm Trust', description: 'Rent payment', incomeId: null, expenseId: null, loanId: null },
     ],
   };
 }
@@ -155,8 +170,8 @@ describe('Mechanism A — the intake-dedup keystone (real link route, create act
     expect(status).toBe(200);
     expect(json.success).toBe(true);
     // ONE salary row, updated in place with the :831 update-template semantics.
-    expect(db.income).toHaveLength(1);
-    const row = db.income[0];
+    expect(db.income.filter((r) => r.type === 'SALARY')).toHaveLength(1);
+    const row = db.income.find((r) => r.id === 'i-ingeus')!;
     expect(row.id).toBe('i-ingeus');
     expect(row.amount).toBe(5_547);
     expect(row.budgetedAmount).toBe(8_500); // prior declared amount preserved
@@ -171,8 +186,8 @@ describe('Mechanism A — the intake-dedup keystone (real link route, create act
       type: 'income', category: 'OTHER', frequency: 'MONTHLY', isRecurring: false,
     });
     expect(status).toBe(200);
-    expect(db.income).toHaveLength(2); // Ingeus + the new Hipcamp row
-    const hip = db.income.find((r) => r.id !== 'i-ingeus')!;
+    expect(db.income).toHaveLength(3); // Ingeus + Lot-1 rental + the new Hipcamp row
+    const hip = db.income.find((r) => r.name === 'Hipcamp')!;
     expect(hip.name).toBe('Hipcamp');
     // The Ingeus row is untouched.
     expect(db.income.find((r) => r.id === 'i-ingeus')!.amount).toBe(8_500);
@@ -189,6 +204,37 @@ describe('Mechanism A — the intake-dedup keystone (real link route, create act
     const a = db.expense.find((e) => e.id === 'e-qbe-a')!;
     expect(a.amount).toBe(1_200); // untouched
     expect(a.propertyId).toBe('p-a');
+  });
+
+  it('MON-091 (the Thornland class): rental reuse honours an EXPLICITLY confirmed cadence', async () => {
+    const { status } = await callCreate('t-rent-1', {
+      type: 'income', category: 'RENT', frequency: 'FORTNIGHTLY', isRecurring: true,
+      incomeSourceType: 'PROPERTY', propertyId: 'p-lot1',
+    });
+    expect(status).toBe(200);
+    // Scope-singleton: no new row minted; the ONE Lot-1 stream is reused…
+    expect(db.income.filter((r) => r.type === 'RENT')).toHaveLength(1);
+    const row = db.income.find((r) => r.id === 'i-rent-lot1')!;
+    // …and its cadence updates to the user's confirmed FORTNIGHTLY,
+    // while the declared amount (the gross plan) is never touched.
+    expect(row.frequency).toBe('FORTNIGHTLY');
+    expect(row.isRecurring).toBe(true);
+    expect(row.amount).toBe(1_195);
+    expect(db.unifiedTransaction.find((t) => t.id === 't-rent-1')!.incomeId).toBe('i-rent-lot1');
+  });
+
+  it('MON-091 clobber guard: rental reuse WITHOUT an explicit frequency never rewrites the stored cadence', async () => {
+    const { status } = await callCreate('t-rent-2', {
+      type: 'income', category: 'RENT', isRecurring: true,
+      incomeSourceType: 'PROPERTY', propertyId: 'p-lot1',
+      // NO frequency — the dialog omits it when the selector was neither
+      // detection-prefilled nor touched (a naked default is not a confirmation).
+    });
+    expect(status).toBe(200);
+    const row = db.income.find((r) => r.id === 'i-rent-lot1')!;
+    expect(row.frequency).toBe('MONTHLY'); // untouched
+    expect(row.amount).toBe(1_195);
+    expect(db.unifiedTransaction.find((t) => t.id === 't-rent-2')!.incomeId).toBe('i-rent-lot1');
   });
 
   it('the battery class: a scopeless link converges INTO the scoped row via the update action', async () => {
