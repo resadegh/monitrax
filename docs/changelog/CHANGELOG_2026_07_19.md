@@ -202,3 +202,21 @@ Coverage: verifies the formula on fixtures and locks the topology; does NOT veri
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (approved Stitch design conformed + Reza's declared-first amendment implemented verbatim; sweep re-read the canonical engines, not memory) · Requirements 10/10 (both figures date-aware on income AND expenses; average-as-fallback only without declared amount; sweep verdict recorded per producer) · Logic 10/10 (staleness = ONE producer with frequency-derived threshold, unit-locked incl. the honest not-yet-stale boundary; no calculation changed — changesNumbers: false; group rollup sums the canonical per-row month actual)`
 Coverage: verifies the detector thresholds and compile/lint integrity; does NOT verify rendered live numbers — that is Reza's eyeball + the Matrix Ring-3 brief (docs/verification/briefs/RING3_DATE_AWARE_NUMBERS.md).
+
+---
+
+## Session: yhm8ug (continuation 8, 2026-07-20) — MON-091: income frequency at the link boundary (the Thornland fortnightly class)
+
+### Changes Made
+- **Type**: Fix (declared-cadence correctness at intake)
+- **Root Cause (§19.2, Reza-reported + verified at source)**: (a) the link dialog's income section had NO frequency control while the shared requestBody always sent an invisible MONTHLY default; (b) BOTH income reuse paths discarded cadence — MON-009 rental scope-singleton reused the row verbatim, the Mechanism-A signature update touched only amount fields. Live case: 4 Cienna payments (17/14/15-day intervals) batch-linked onto a Lot-1 row born MONTHLY $1,195 → wrong declared plan → +202% variance vs the (correct) $3,608 avg. The $3,608 was reproduced exactly (ADVANCE branch: $5,511 over 46.5 covered days × 30.44).
+- **Solution (suggest-and-confirm, zero silent writes)**: income section gains the same detected-cadence Frequency selector as the expense flow; frequency is sent ONLY when evidence-prefilled or user-touched (`freqExplicit` — a naked default is OMITTED, so the create-path classifier derives from evidence per MON-078 and a reused stream's stored cadence can never be clobbered); the server updates the reused row's frequency/isRecurring ONLY on an explicit declared frequency (both reuse paths; rental declared amount never touched).
+- **Same PR (justified)**: MON-090 grouped-view declared-first parity — the Hipcamp $0-declared rows now show the average marked "avg" and a variance dash in the grouped view too.
+- **Ratchet**: 2 new golden scenarios on the REAL link route (explicit FORTNIGHTLY updates the reused Lot-1 row, amount untouched; absent frequency never rewrites) — 6/6.
+
+### Build Status
+- [x] tsc clean · [x] full suite 4,164 passed / 69 skipped · [x] all static gates green (1 baseline re-pin :2400→:2410)
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (MON-025/078/080 suggest-and-confirm doctrine conformed; §12.11 answered for the reuse update — guard = the stream being linked in this very action + the user's explicit visible confirmation) · Requirements 10/10 (Reza's exact gap: "no frequency available for the rental category… defaults to monthly" — closed at both the UI and both reuse paths) · Logic 10/10 (clobber trap found in self-review and closed: the always-sent default became conditional freqExplicit; golden proves both directions on the real route)`
+Coverage: verifies the route reuse semantics + dialog compile; does NOT verify the rendered dialog or Reza's live Thornland correction — his re-link/eyeball after deploy.

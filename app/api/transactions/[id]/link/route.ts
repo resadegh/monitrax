@@ -530,9 +530,36 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                     amount: transaction.amount,
                     budgetedAmount,
                     lastReconciled: new Date(),
+                    // MON-091: the dialog now shows a frequency control for
+                    // income — an EXPLICIT declared cadence is the user's
+                    // confirmation and updates the reused stream. Absent →
+                    // the row's stored cadence is never touched (no silent
+                    // rewrite; suggest-and-confirm doctrine, MON-025/080).
+                    ...(declaredFrequency
+                      ? { frequency: incomeIntake.frequency, isRecurring: incomeIntake.isRecurring }
+                      : {}),
                   },
                 });
               }
+            }
+
+            // MON-091: same explicit-confirmation rule for the MON-009 rental
+            // scope-singleton reuse — the Thornland class: four fortnightly
+            // payments linked onto a row born MONTHLY kept the wrong cadence
+            // forever because the reuse path never revisited it. Only the
+            // dialog's explicitly-declared frequency updates the stream; the
+            // declared amount (the gross plan) is never touched here.
+            if (existingRentalStream && declaredFrequency) {
+              await prisma.income.update({
+                where: { id: existingRentalStream.id },
+                data: {
+                  frequency: incomeIntake.frequency,
+                  isRecurring: incomeIntake.isRecurring,
+                  lastReconciled: new Date(),
+                },
+              });
+              existingRentalStream.frequency = incomeIntake.frequency;
+              existingRentalStream.isRecurring = incomeIntake.isRecurring;
             }
 
             const income =
