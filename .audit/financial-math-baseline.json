@@ -5,7 +5,7 @@
   "entries": [
     {
       "file": "app/dashboard/income/page.tsx",
-      "line": 2410,
+      "line": 2443,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits",
       "note": "Line re-pinned 2073\u21922169 on 2026-07-16 (Phase 59 income-form insertions shifted the file; the violation itself is untouched/pre-existing). Re-pinned 2169\u21922277 on 2026-07-17 (MON-080 income-form insertions shifted the file; violation untouched)."

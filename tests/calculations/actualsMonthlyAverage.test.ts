@@ -64,6 +64,36 @@ describe('calculateMonthlyAverage — §19.2 worked examples (MON-089)', () => {
     expect(calculateMonthlyAverage([tx('2026-06-12', 11_074)])).toBe(11_074);
     expect(calculateMonthlyAverage([])).toBeNull();
   });
+
+  it("MON-092 (Reza's gift case): SAME-DAY payments carry no cadence — total counted as one month, NEVER extrapolated", () => {
+    // Two gifts on 18 May ($800 + $700). Pre-fix: span clamped to 1 day →
+    // 1,500/2 × 30.44 = $22,830/mo phantom. Correct: no observable interval →
+    // the total, one month's worth.
+    const r = calculateMonthlyAverage([tx('2026-05-18', 800), tx('2026-05-18', 700)]);
+    expect(r).toBe(1_500);
+  });
+});
+
+describe('MON-092 topology lock — the ONE one-off label rule on every income/expense frequency render', () => {
+  // The recurrence pattern this kills: the one-off label rule (MON-048) was
+  // applied to ONE view while sibling renderings of the SAME row kept
+  // printing the raw stored placeholder ("Monthly") — list view fixed in
+  // MON-053, grouped view + detail panel + expenses column missed until a
+  // one-off gift row showed "Monthly" for the third time (2026-07-20).
+  it.each(['app/dashboard/income/page.tsx', 'app/dashboard/expenses/page.tsx'])(
+    '%s renders no raw frequency label outside the activityFrequencyLabel gate',
+    (file) => {
+      const src = readFileSync(join(process.cwd(), file), 'utf8');
+      // Every JSX-rendered `item.frequency.toLowerCase()` must sit on a line
+      // that applies the gate; title/tooltip templates are exempt (prose).
+      const offenders = src
+        .split('\n')
+        .filter((l) => l.includes('{item.frequency.toLowerCase()}'))
+        .filter((l) => !l.includes('activityFrequencyLabel'))
+        .filter((l) => !l.includes('title=')); // tooltip prose, not a label render
+      expect(offenders).toEqual([]);
+    },
+  );
 });
 
 describe('MON-089 topology lock — no re-inlined day-span math in the migrated producers', () => {

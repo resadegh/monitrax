@@ -1245,7 +1245,19 @@ function IncomePageContent() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          {hasActual ? (
+                          {hasActual && item.isRecurring === false ? (
+                            /* MON-092: a ONE-OFF is counted once — never dressed
+                               in stream language ("avg /mo", "this month so
+                               far"). Total received + when, and that's all. */
+                            <div>
+                              <span className="font-medium text-green-600" title="One-off — counted once, on the date it happened; never part of the monthly run-rate">
+                                {formatCurrency(item.actualFromTransactions ?? actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">once</span>
+                              </span>
+                              <span className="text-xs text-muted-foreground block">
+                                {item.transactionCount} payment{(item.transactionCount ?? 0) === 1 ? '' : 's'} · {shortDate(item.lastTransactionAt)}
+                              </span>
+                            </div>
+                          ) : hasActual ? (
                             /* MON-090: date + frequency aware actuals — the
                                cadence average carries its evidence, and the
                                calendar month speaks for itself. */
@@ -1278,7 +1290,7 @@ function IncomePageContent() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          {hasActual && !declaredMissing ? (
+                          {hasActual && !declaredMissing && item.isRecurring !== false ? (
                             <div className="flex items-center justify-end gap-2">
                               <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
                                 <div className="flex items-center gap-1">
@@ -1402,7 +1414,8 @@ function IncomePageContent() {
                     </p>
                     <p className="text-xl font-bold text-green-600">{formatCurrency(item.amount)}</p>
                     <p className="text-xs text-muted-foreground capitalize">
-                      {item.frequency.toLowerCase()}
+                      {/* MON-092: one-off label rule (MON-048) in the detail panel too */}
+                      {activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}
                     </p>
                   </div>
 
@@ -1561,7 +1574,10 @@ function IncomePageContent() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="capitalize">{item.frequency.toLowerCase()}</span>
+                                {/* MON-092: the ONE one-off label rule (MON-048) —
+                                    the grouped view printed the raw stored
+                                    frequency ("Monthly") for one-off rows. */}
+                                <span className="capitalize">{activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}</span>
                                 {viewMode === 'type' && item.property && (
                                   <span className="text-blue-500">{item.property.name}</span>
                                 )}
@@ -1571,7 +1587,13 @@ function IncomePageContent() {
                               </div>
                             </div>
                             <div className="col-span-2 text-right">
-                              {declaredMissing && hasActual ? (
+                              {item.isRecurring === false ? (
+                                /* MON-092: one-off — not part of the monthly
+                                   run-rate (parity with the list view). */
+                                <span className="text-sm font-medium" title={`One-off of ${formatCurrency(item.amount)} — not part of the monthly run-rate`}>
+                                  — <span className="text-xs text-muted-foreground">({formatCurrency(item.amount)} once)</span>
+                                </span>
+                              ) : declaredMissing && hasActual ? (
                                 <span className="text-sm font-medium" title="No declared amount — showing the average of what actually landed, at this row's payment rhythm">
                                   {formatCurrency(actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">avg</span>
                                 </span>
@@ -1580,7 +1602,18 @@ function IncomePageContent() {
                               )}
                             </div>
                             <div className="col-span-2 text-right">
-                              {hasActual ? (
+                              {hasActual && item.isRecurring === false ? (
+                                /* MON-092: one-off — counted once, no stream
+                                   language (parity with the list view). */
+                                <div>
+                                  <span className="font-medium text-green-600" title="One-off — counted once, on the date it happened; never part of the monthly run-rate">
+                                    {formatCurrency(item.actualFromTransactions ?? actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">once</span>
+                                  </span>
+                                  <span className="text-xs text-muted-foreground block">
+                                    {item.transactionCount} payment{(item.transactionCount ?? 0) === 1 ? '' : 's'} · {shortDate(item.lastTransactionAt)}
+                                  </span>
+                                </div>
+                              ) : hasActual ? (
                                 /* MON-090: date-aware — average with evidence,
                                    this-month actual, staleness nudge. */
                                 <div>
@@ -1612,7 +1645,7 @@ function IncomePageContent() {
                               )}
                             </div>
                             <div className="col-span-2 text-right flex items-center justify-end gap-1">
-                              {hasActual && !declaredMissing ? (
+                              {hasActual && !declaredMissing && item.isRecurring !== false ? (
                                 <>
                                   <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
                                     <div className="flex items-center gap-1 justify-end">

@@ -50,6 +50,19 @@ export function calculateMonthlyAverage(transactions: ActualTx[], isAdvance = fa
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
 
+  // MON-092: payments all landing on ONE day carry no cadence evidence — the
+  // old `max(1, span)` clamp turned a zero-day span into "per day" and
+  // extrapolated ×30.44 (two same-day $700/$800 gifts → a phantom
+  // $22,830/mo). With no observable interval, the honest monthly figure is
+  // the same as a single payment: the total, counted as one month's worth.
+  const fullSpanDays =
+    (new Date(sortedTx[sortedTx.length - 1].date).getTime() -
+      new Date(sortedTx[0].date).getTime()) /
+    (1000 * 60 * 60 * 24);
+  if (fullSpanDays < 1) {
+    return sortedTx.reduce((s, tx) => s + Math.abs(tx.amount), 0);
+  }
+
   const payments = isAdvance ? sortedTx.slice(0, -1) : sortedTx;
   if (payments.length < 1) return null;
 
