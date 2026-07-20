@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List, Radio } from 'lucide-react';
 import { formatCurrency, formatShortDayMonth as shortDate } from '@/lib/utils/formatters';
+import { activityFrequencyLabel } from '@/lib/properties/activityFrequencyLabel';
 import { toAnnual, toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
 import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -132,6 +133,7 @@ interface Expense {
   // Phase 29: Linked recurring payments from bank detection
   linkedRecurringPayments?: LinkedRecurringPayment[];
   // MON-090: date-aware actuals (produced by GET /api/expenses)
+  actualFromTransactions?: number | null;
   currentMonthActual?: number | null;
   monthlyAverageActual?: number | null;
   transactionCount?: number;
@@ -1119,10 +1121,22 @@ function ExpensesPageContent() {
                         <td className="px-4 py-3 text-right font-medium text-red-600">
                           {formatCurrency(item.amount)}
                         </td>
-                        <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
+                        {/* MON-092: the ONE one-off label rule (MON-048) — never
+                            print the raw stored frequency for a one-off. */}
+                        <td className="px-4 py-3 text-sm capitalize">{activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}</td>
                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(monthlyAmount)}</td>
                         <td className="px-4 py-3 text-right">
-                          {item.hasTransactions ? (
+                          {item.hasTransactions && item.isRecurring === false ? (
+                            /* MON-092: one-off — counted once, no stream language. */
+                            <div>
+                              <span className="font-medium" title="One-off — counted once, on the date it happened; never part of the monthly run-rate">
+                                {formatCurrency(item.actualFromTransactions ?? item.monthlyAverageActual ?? 0)} <span className="text-[10px] font-normal text-muted-foreground">once</span>
+                              </span>
+                              <span className="text-xs text-muted-foreground block">
+                                {item.transactionCount} payment{(item.transactionCount ?? 0) === 1 ? '' : 's'} · {shortDate(item.lastTransactionAt)}
+                              </span>
+                            </div>
+                          ) : item.hasTransactions ? (
                             /* MON-090: date-aware actuals — same pattern as the
                                income page (avg + evidence + this month/stale). */
                             <div>
@@ -1278,7 +1292,8 @@ function ExpensesPageContent() {
                     <p className="text-xs text-muted-foreground mb-1">Amount</p>
                     <p className="text-xl font-bold text-red-600">{formatCurrency(item.amount)}</p>
                     <p className="text-xs text-muted-foreground capitalize">
-                      {item.frequency.toLowerCase()}
+                      {/* MON-092: one-off label rule (MON-048) */}
+                      {activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}
                     </p>
                   </div>
 
@@ -1401,7 +1416,8 @@ function ExpensesPageContent() {
                               <span className="font-medium text-red-600">{formatCurrency(item.amount)}</span>
                             </div>
                             <div className="col-span-2">
-                              <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
+                              {/* MON-092: one-off label rule (MON-048) */}
+                              <span className="text-sm capitalize">{activityFrequencyLabel(item).toLowerCase() === 'one-off' ? 'One-off' : item.frequency.toLowerCase()}</span>
                             </div>
                             <div className="col-span-2">
                               <span className="text-sm">{formatCurrency(monthlyAmount)}</span>

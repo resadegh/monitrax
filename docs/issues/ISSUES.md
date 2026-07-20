@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**91 total** · 87 open · 🔵 21 · 🟡 5 · 🟠 32 · 🟢 29 · ✅ 3
+**92 total** · 88 open · 🔵 21 · 🟡 5 · 🟠 33 · 🟢 29 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -98,6 +98,7 @@
 | MON-089 | 🟠 FIXING | 🟠 | yes | Actual Monthly inflated xN/(N-1): duplicated day-span average — income-route ARREARS + link-route copies omit the first payment's covered interval | ##1465 | ✅ |
 | MON-090 | 🟠 FIXING | 🟠 | no | Income/expense actuals not date-aware on screen: historical average masquerades as current monthly; this-month actual never displayed | ##1467 | ✅ |
 | MON-091 | 🟠 FIXING | 🟠 | yes | Rental/income links lock in a MONTHLY default: no frequency control in the link dialog + reuse paths never revisit cadence | ##1468 | ✅ |
+| MON-092 | 🟠 FIXING | 🟠 | yes | One-off rows wear stream clothing: raw 'Monthly' label in sibling views + same-day payments extrapolated to a phantom avg ($22,830 from two gifts) | ##1469 | ✅ |
 
 ---
 
@@ -1658,4 +1659,23 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 - **Detail:** `reza-report-2026-07-20-rental-frequency`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/transactions/TransactionLinkDialog.tsx (income section) + app/api/transactions/[id]/link/route.ts (rental scope-singleton + signature reuse). [STAGE-1 + FIX, same day] SS19.2 verified: (a) the dialog's income section (:1859) had NO frequency control while the shared requestBody always sent frequency (an invisible MONTHLY default); (b) BOTH reuse paths discarded cadence — MON-009 scope-singleton reused the row verbatim (route :538) and the Mechanism-A signature update touched only amount/budgetedAmount/lastReconciled. Reza's live case: 4 Cienna payments at 17/14/15-day intervals batch-linked onto a row born MONTHLY $1,195 -> declared plan wrong -> +202% variance vs the (correct) $3,608 avg. FIX (suggest-and-confirm, no silent writes): dialog renders the same detected-cadence Frequency selector as the expense flow for recurring income; frequency is sent ONLY when evidence-prefilled or user-touched (freqExplicit — a naked default is NOT a confirmation and is OMITTED, letting the create-path classifier derive from evidence per MON-078); server updates the reused row's frequency/isRecurring ONLY when an explicit declared frequency arrived (both rental scope-singleton and signature paths; declared amount never touched on rental reuse). SS12.11: prisma.income.update on reuse — guard = the row IS the stream being linked in this very action AND the cadence is the user's explicit confirmation from the visible selector. Ratchet: 2 golden scenarios on the REAL route (explicit FORTNIGHTLY updates the row; absent frequency never rewrites). Same PR: MON-090 grouped-view declared-first parity (the Hipcamp $0-declared rows — avg marked + variance dash; justified extra lines, same surfaces). Reza's existing Thornland row: one re-link with the confirmed cadence (or Edit) corrects it. Stays FIXING until his page re-check.
+
+### MON-092 — One-off rows wear stream clothing: raw 'Monthly' label in sibling views + same-day payments extrapolated to a phantom avg ($22,830 from two gifts)
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: income · opened 2026-07-20
+
+> **What was wrong:** A gift deposit linked with 'Recurring income' UNTICKED was stored correctly as a one-off — but the grouped income view still printed the internal 'Monthly' placeholder, and the Actual cell dressed it in stream language ('$700 avg /mo · this month $0 so far'). Worse, two same-day gifts ($800+$700 on 18 May) were extrapolated into a phantom '$22,830 avg /mo' because a zero-day span was clamped to one day.
+>
+> **What changed:** Two fixes. (1) The one-off label rule now applies to EVERY view: a one-off shows 'One-off' (never the internal Monthly placeholder), its Actual cell reads '$X once + date' with no 'avg /mo', no 'this month so far', no staleness chip, and no variance - on the income list, the grouped view, the detail panel, and all three expenses views. (2) The average formula gained a same-day guard: payments all landing on one day carry no rhythm evidence, so the total is counted as one month's worth instead of being extrapolated per-day.
+>
+> **What you should see:** The Newsha gift rows read 'One-off' with '$700 once - 18 May' / '$1,500 once - 18 May' (not 'Monthly', not '$22,830 avg /mo'), variance '-'. A test now enumerates every frequency-label render site in both pages, so a sibling view can never drift back.
+
+- **Root cause:** `app/dashboard/income/page.tsx:1564`, `lib/services/propertyActuals.ts:61`
+- **Neomatrix:** `engine.propertyActuals.calculateMonthlyAverage`
+- **Downstream consumers (§19.4):** `income page: list view (already gated), grouped view label+net+actual+variance, detail panel label`, `expenses page: list Frequency column, tile view label, grouped view label, Actual cell`, `calculateMonthlyAverage same-day guard: income/expenses/loans routes + link banner + property surfaces (all read the one producer)`, `NOT affected: run-rates/plan totals (one-offs already contribute 0 via monthlyRunRate - Wall B2); the guard only changes the DISPLAYED average for same-day-only payment sets`
+- **Fix PR(s):** ##1469
+- **Holistic test (§19.4):** `tests/calculations/actualsMonthlyAverage.test.ts#MON-092 (Reza's gift case): SAME-DAY payments carry no cadence`
+- **Detail:** `reza-report-2026-07-20-oneoff-display`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: income page grouped view + detail panel; expenses page column/tile/grouped; calculateMonthlyAverage same-day degenerate span. Expected: 1500. Actual: 22830. [STAGE-1 + FIX, same day - the THIRD recurrence of the monthly-default family, diagnosed honestly] The data layer was CORRECT this time: recurring-unticked stored isRecurring=false (classifier honours declaredIsRecurring; Net $0 in Reza's screenshot proves the one-off run-rate held). The failure was DISPLAY: (a) the grouped view (:1564) + income detail panel (:1405) + expenses column/tile/grouped views printed the raw stored frequency placeholder - the MON-048 ONE-label rule existed but was wired into only the list view (MON-053), the classic fixed-here-drifted-there sibling-view pattern; (b) the MON-090 Actual cells dressed one-offs in stream language (avg /mo, this-month-so-far); (c) REAL formula edge: calculateMonthlyAverage clamped a ZERO-day span to 1 day - two same-day gifts ($800+$700, 18 May) -> 1,500/2x30.44 = $22,830/mo EXACT reproduction. FIX: same-day guard in the ONE producer (span<1d -> sum, one-month semantics, consistent with N=1); one-off branch in every Actual cell; activityFrequencyLabel gate on every label render. RATCHET: the gift worked-example + a topology lock that ENUMERATES every frequency-label render site in both pages and fails on any ungated line - the lock caught a third ungated expenses-tile render during the build. NOTED follow-ups (not this PR): unlink leaves the auto-created income row behind (the third 'No txns' Newsha row - Reza can delete it; behaviour change needs his call); bank-descriptor names ('Mrs Newsha Javahe Am 18may Credit To Acc') fragment identity per-deposit - a NeoBrain naming improvement candidate.
 

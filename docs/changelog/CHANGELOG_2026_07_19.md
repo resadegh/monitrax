@@ -220,3 +220,21 @@ Coverage: verifies the detector thresholds and compile/lint integrity; does NOT 
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (MON-025/078/080 suggest-and-confirm doctrine conformed; §12.11 answered for the reuse update — guard = the stream being linked in this very action + the user's explicit visible confirmation) · Requirements 10/10 (Reza's exact gap: "no frequency available for the rental category… defaults to monthly" — closed at both the UI and both reuse paths) · Logic 10/10 (clobber trap found in self-review and closed: the always-sent default became conditional freqExplicit; golden proves both directions on the real route)`
 Coverage: verifies the route reuse semantics + dialog compile; does NOT verify the rendered dialog or Reza's live Thornland correction — his re-link/eyeball after deploy.
+
+---
+
+## Session: yhm8ug (continuation 9, 2026-07-20) — MON-092: one-off display rule on EVERY view + the same-day phantom average
+
+### Changes Made
+- **Type**: Fix (display correctness + a real formula edge in the canonical producer)
+- **The honest diagnosis (third recurrence of the monthly-default family)**: the DATA was right this time — recurring-unticked stored `isRecurring=false` (Net $0 proved the run-rate held). The DISPLAY lied: the grouped income view, income detail panel and three expenses views printed the raw stored "Monthly" placeholder (the MON-048 ONE-label rule was wired into only the list view — the classic fixed-here-drifted-there sibling-view pattern), and the MON-090 Actual cells dressed one-offs in stream language. PLUS a genuine formula edge: `calculateMonthlyAverage` clamped a zero-day span to 1 day — two same-day gifts ($800+$700, 18 May) extrapolated to **$22,830/mo** (1,500/2×30.44, reproduced exactly).
+- **Solution**: same-day guard in the ONE producer (span < 1 day → the total, one-month semantics, consistent with N=1); one-off branch in every Actual cell ("$X once · date", no avg/this-month/stale/variance); `activityFrequencyLabel` gate on EVERY frequency-label render (income grouped + detail panel; expenses column + tile + grouped).
+- **Ratchet**: the gift worked-example (1,500, never 22,830) + a topology lock that ENUMERATES every `{item.frequency.toLowerCase()}` render site in both pages and fails on any ungated line — the lock caught a third ungated expenses-tile render during this very build.
+- **Noted follow-ups (Reza's call, not this PR)**: unlink leaves the auto-created income row behind (the "No txns" Newsha orphan — deletable today); bank-descriptor names ("…Am 18may Credit To Acc") fragment identity per deposit — NeoBrain naming candidate.
+
+### Build Status
+- [x] tsc clean · [x] full suite 4,167 passed / 69 skipped · [x] all static gates green (1 baseline re-pin :2410→:2443)
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (MON-048/053 label doctrine + Wall-B2 one-off semantics re-read and applied class-wide, not spot-fixed) · Requirements 10/10 (both of Reza's reports answered: the "Monthly" label AND the $22,830 — each reproduced to the dollar before fixing) · Logic 10/10 (guard changes ONLY degenerate same-day sets; run-rates untouched — one-offs already contribute 0; enumerating lock makes sibling-view drift a test failure)`
+Coverage: verifies the producer edge-case + the render-site enumeration; does NOT verify the rendered page — Reza's refresh after deploy (gift rows read "One-off · $X once").
