@@ -7,6 +7,7 @@ import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { detectCadenceMismatch, detectOneOffFingerprint } from '@/lib/intake/detectors';
+import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
 
 export const GET = withPermission('expense.read', async (request, auth) => {
     try {
@@ -108,28 +109,11 @@ export const GET = withPermission('expense.read', async (request, auth) => {
         // Phase 30: Add actual from transactions with days-based monthly average
         const actuals = actualsByExpenseId.get(expense.id);
 
-        // Calculate monthly average from transactions using DAYS-BASED approach
-        // This provides accurate averages regardless of how payments fall across calendar months
-        // Formula: (sum / totalDaysCovered) * 30.44 = monthly average
-        // Expenses are typically paid in ARREARS (covering a completed period)
-        let monthlyAverage = null;
-        if (actuals && actuals.transactions.length >= 2) {
-          const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
-          const firstDate = sortedTx[0].date;
-          const lastDate = sortedTx[sortedTx.length - 1].date;
-          const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-
-          // For accurate monthly average, add one payment interval to days covered
-          // This accounts for the period the last payment covers
-          const avgPaymentInterval = daysCovered / (sortedTx.length - 1);
-          const totalDaysCovered = daysCovered + avgPaymentInterval;
-
-          // Monthly average = (sum / days) * 30.44 (average days per month)
-          monthlyAverage = (actuals.totalAmount / totalDaysCovered) * 30.44;
-        } else if (actuals && actuals.transactions.length === 1) {
-          // Single transaction - assume it represents one period based on expense frequency
-          monthlyAverage = actuals.totalAmount; // Will be normalized by frequency in UI
-        }
+        // §12.2.1 ONE producer: the day-span monthly average is
+        // `calculateMonthlyAverage` (lib/services/propertyActuals.ts). This
+        // replaces an inline copy that carried the same math (MON-089 dedup —
+        // expenses are ARREARS, all payments count, one interval added).
+        const monthlyAverage = actuals ? calculateMonthlyAverage(actuals.transactions) : null;
 
         return {
           ...wrapped,

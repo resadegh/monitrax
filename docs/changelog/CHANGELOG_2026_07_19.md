@@ -152,3 +152,27 @@ Coverage: verifies the partition attribution + roll-up additivity on a two-earne
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (MON-009 scope-singleton law + MON-076 Stage-1 diagnosis re-read; deviation from the original exclusion surfaced with the evidence, not silent) · Requirements 10/10 (Reza keep-directive recorded verbatim in registry; Cienna class made visible; Lot-1 vs Lot-2 still never merge) · Logic 10/10 (both sides scoped ⇒ compatibility rule = same-scope only, proven by the new over-merge test; executeMerge unchanged — already type-agnostic incl. AgentDisbursementRule)`
 Coverage: verifies grouping semantics on fixtures (same-scope groups, cross-scope/scopeless never); does NOT verify the live Cienna rows appear on Reza's page — that is his re-check after this PR deploys, and the rows may legitimately be gone if he already cleaned them manually.
+
+---
+
+## Session: yhm8ug (continuation 6, 2026-07-20) — MON-089: Actual Monthly ×N/(N−1) inflation — one producer for the day-span average
+
+### Changes Made
+- **Type**: Fix (financial correctness — Reza-reported live)
+- **Root Cause (§19.2 verified with his exact numbers)**: the income route's ARREARS branch divided N payments by the N−1 intervals of their date span — the period the FIRST payment paid for was missing from the denominator. Live case: 2 × $11,074 salaries 29 days apart → 22,148 ÷ 29 × 30.44 = **$23,247** (exact screenshot match); correct = 22,148 ÷ 58 × 30.44 = **$11,624**. Producer census found FIVE copies of the day-span formula: income ARREARS (buggy) + income ADVANCE + expenses route + loans route + link-route pattern banner (buggy, same class).
+- **Solution (remove-the-culprit, §12.2.1)**: all four route copies deleted; income/expenses/loans routes + the link-route banner now import THE Neomatrix-modelled canonical `calculateMonthlyAverage` (lib/services/propertyActuals.ts — already correct: span + one average interval; ADVANCE drops the trailing part-period payment). Recorded unification: a single payment now reads as one month's actual on the income page (was blank; matches expenses/loans; MON-075 chip still nudges).
+- **Ratchet**: `tests/calculations/actualsMonthlyAverage.test.ts` — Ring-0 worked examples (Transport 2×$11,074/29d → 11,623.88; monthly identity → P; Ingeus-class fortnightly; ADVANCE; N=1/N=0) + Ring-1 topology lock (migrated files must import the canonical and carry no own ×30.44 math).
+
+### Files Modified
+- `app/api/income/route.ts` — 56-line dual-branch inline block → one canonical call
+- `app/api/expenses/route.ts`, `app/api/loans/route.ts` — inline copies → canonical call
+- `app/api/transactions/[id]/link/route.ts` — banner `trueMonthlyAverage` → canonical call
+- `docs/issues/ISSUES.json`/`ISSUES.md` — MON-089 raised → FIXING (censuses + trio + test + #1465)
+- `docs/financial-logic/graph/*` — canonical node produces/verifiedBy updated (no anchor drift — file untouched)
+
+### Build Status
+- [x] tsc clean · [x] targeted suites 26/26 · [x] full suite 4,157 passed / 69 skipped · [x] issues gate 89 valid · [x] neomatrix green (0 uncovered) · [x] source-lock + financial-math no new violations
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Neomatrix consulted FIRST — the canonical producer was already modelled; SEARCH-FIRST found it; MATRIX_FIX_DISCIPLINE 5-item checklist in PR body) · Requirements 10/10 (Reza's exact reported numbers reproduced then corrected; all five producers collapsed, not just the reported one) · Logic 10/10 (×N/(N−1) proven algebraically + by worked example; ADVANCE semantics preserved verbatim; N=1 unification recorded, not silent)`
+Coverage: verifies the formula on fixtures and locks the topology; does NOT verify the rendered page numbers on live data — that is Reza's per-fix re-check (Part 24 #7): Transport ≈ $11,624, Ingeus fortnightly ≈ sensible, variance no longer +110%.

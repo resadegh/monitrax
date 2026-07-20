@@ -5492,7 +5492,7 @@
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
-      "produces": "A true monthly average for a linked income/expense/loan from its reconciled-transaction cadence — so fortnightly rent annualises correctly (×26/12), not as if monthly.",
+      "produces": "A true monthly average for a linked income/expense/loan from its reconciled-transaction cadence — so fortnightly rent annualises correctly (×26/12), not as if monthly. Since MON-089 (2026-07-20) this is the ONE user-wide producer of the day-span average: the income route (Actual Monthly column), expenses route, loans route and the link-route pattern banner all import it — their inline copies (two of which divided N ARREARS payments by N−1 intervals, inflating ×N/(N−1)) were deleted.",
       "formula": "avg = (Σ|amount| / totalDays) × 30.44, where totalDays = daysSpan + avgInterval over the cadence; ADVANCE (rent) drops the trailing part-period payment; <2 tx → single |amount| or null.",
       "authority": "Day-span averaging over the actual transaction cadence (§19.1 actuals-first). 30.44 = mean days/month.",
       "inputs": [
@@ -5510,7 +5510,7 @@
         }
       ],
       "astHash": null,
-      "verifiedBy": "tests/calculations/propertyCashflow.test.ts (actuals-first cadence example)",
+      "verifiedBy": "tests/calculations/propertyCashflow.test.ts (actuals-first cadence example); tests/calculations/actualsMonthlyAverage.test.ts (MON-089 worked examples + topology lock)",
       "workedExample": "fortnightly $1195 → monthlyAvg ≈ 1195×26/12 = 2588.3 → ×12 ≈ $31,060/yr (not $14,340)",
       "verifiedDate": "2026-07-03",
       "status": "documented"

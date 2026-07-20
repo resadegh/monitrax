@@ -8,6 +8,7 @@ import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { detectCadenceMismatch, detectOneOffFingerprint, detectRentGap } from '@/lib/intake/detectors';
+import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
@@ -94,61 +95,18 @@ export const GET = withPermission('income.read', async (request, auth) => {
         // Phase 30: Add actual from transactions
         const actuals = actualsByIncomeId.get(inc.id);
 
-        // Calculate monthly average from transactions using DAYS-BASED approach
-        // This provides accurate averages regardless of how payments fall across calendar months
-        // Formula: (sum / totalDaysCovered) * 30.44 = monthly average
-        //
-        // Payment timing matters:
-        // - ADVANCE (rent): Last payment covers future period, exclude from average
-        // - ARREARS (salary, etc.): All payments cover completed periods, include all
-        let monthlyAverage = null;
-        if (actuals && actuals.transactions.length >= 2) {
-          const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-          // Determine payment timing based on income type
-          // RENTAL income is typically paid in ADVANCE
-          const isRentalIncome = inc.type === 'RENTAL' || inc.type === 'RENT' || inc.propertyId;
-          const paymentTiming = isRentalIncome ? 'ADVANCE' : 'ARREARS';
-
-          if (paymentTiming === 'ADVANCE') {
-            // For ADVANCE payments (rent): exclude last payment (covers future period)
-            // Calculate days-based average for accurate monthly figure
-            const completedPayments = sortedTx.slice(0, -1); // Exclude last payment
-            if (completedPayments.length >= 1) {
-              const sumForAverage = completedPayments.reduce((sum, tx) => sum + tx.amount, 0);
-              const firstDate = completedPayments[0].date;
-              const lastCompletedDate = completedPayments[completedPayments.length - 1].date;
-
-              if (completedPayments.length === 1) {
-                // Single completed payment - assume it represents one month
-                monthlyAverage = sumForAverage;
-              } else {
-                // Multiple payments: calculate based on actual days
-                const daysSpan = Math.max(1, (lastCompletedDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-
-                // Calculate average payment interval to account for period covered by last completed payment
-                const avgPaymentInterval = daysSpan / (completedPayments.length - 1);
-
-                // Total days covered = span + one interval (for period the last completed payment covers)
-                const totalDaysCovered = daysSpan + avgPaymentInterval;
-
-                // Monthly average = (sum / days) * 30.44 (average days per month)
-                monthlyAverage = (sumForAverage / totalDaysCovered) * 30.44;
-              }
-            }
-          } else {
-            // For ARREARS payments (salary, etc.): include all payments
-            // Calculate based on actual date range covered
-            const firstDate = sortedTx[0].date;
-            const lastDate = sortedTx[sortedTx.length - 1].date;
-            const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-
-            // Monthly average = (sum / days) * 30.44
-            if (daysCovered > 0) {
-              monthlyAverage = (actuals.totalAmount / daysCovered) * 30.44;
-            }
-          }
-        }
+        // §12.2.1 ONE producer: the day-span monthly average is
+        // `calculateMonthlyAverage` (lib/services/propertyActuals.ts — the
+        // Neomatrix-modelled canonical). The inline ARREARS copy this replaces
+        // omitted the first payment's covered interval, dividing N payments by
+        // N−1 intervals and inflating the average ×N/(N−1) — MON-089: two
+        // $11,074 salaries 29 days apart displayed as $23,247/mo. Rental
+        // income (paid in ADVANCE) drops the trailing part-period payment;
+        // everything else is ARREARS and keeps all payments.
+        const isRentalIncome = inc.type === 'RENTAL' || inc.type === 'RENT' || Boolean(inc.propertyId);
+        const monthlyAverage = actuals
+          ? calculateMonthlyAverage(actuals.transactions, isRentalIncome)
+          : null;
 
         return {
           ...wrapped,
