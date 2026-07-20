@@ -45,7 +45,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils/formatters';
+import { formatCurrency, formatShortDayMonth as shortDate } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { sumUnmatchedDeclaredAnnualIncome } from '@/lib/income/unmatchedDeclaredIncome';
 import { activityFrequencyLabel } from '@/lib/properties/activityFrequencyLabel';
@@ -142,6 +142,9 @@ interface Income {
     gapAnnual: number;
     disbursementFrequency: string;
   } | null;
+  // MON-090: date-awareness — newest linked payment + the stale-stream nudge.
+  lastTransactionAt?: string | null;
+  staleStream?: { lastPaymentAt: string; daysSince: number; expectedIntervalDays: number } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -1159,6 +1162,10 @@ function IncomePageContent() {
                     // Phase 30: Budget vs Actual - use monthly average for comparison
                     const hasActual = item.hasTransactions && item.transactionCount && item.transactionCount > 0;
                     const actualMonthly = item.monthlyAverageActual || 0;
+                    // MON-090 (Reza 2026-07-20): declared-first — the declared
+                    // plan is the comparison baseline; with NO declared amount
+                    // the cadence average stands in and variance is moot.
+                    const declaredMissing = !item.amount || item.amount === 0;
                     // Variance = Actual - Net Monthly (positive = above budget, negative = below)
                     const variance = hasActual ? actualMonthly - effectiveMonthly : 0;
                     const variancePercent = hasActual && effectiveMonthly > 0
@@ -1226,26 +1233,52 @@ function IncomePageContent() {
                             <span title={`One-off of ${formatCurrency(item.amount)} — not part of the monthly run-rate`}>
                               — <span className="text-xs text-muted-foreground">({formatCurrency(item.amount)} once)</span>
                             </span>
+                          ) : declaredMissing && hasActual ? (
+                            /* MON-090 (Reza 2026-07-20): no declared amount →
+                               the cadence average stands in as the monthly
+                               figure, marked so it never reads as a plan. */
+                            <span title="No declared amount — showing the average of what actually landed, at this row's payment rhythm">
+                              {formatCurrency(actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">avg</span>
+                            </span>
                           ) : (
                             formatCurrency(effectiveMonthly)
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {hasActual ? (
+                            /* MON-090: date + frequency aware actuals — the
+                               cadence average carries its evidence, and the
+                               calendar month speaks for itself. */
                             <div>
-                              <span className="font-medium text-green-600">
-                                {formatCurrency(actualMonthly)}
+                              <span className="font-medium text-green-600" title="Average per month across the period the payments actually cover (date-span, frequency aware)">
+                                {formatCurrency(actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">avg /mo</span>
                               </span>
                               <span className="text-xs text-muted-foreground block">
-                                {item.transactionCount} txns
+                                {item.transactionCount} payment{(item.transactionCount ?? 0) === 1 ? '' : 's'} · last {shortDate(item.lastTransactionAt)}
                               </span>
+                              {item.staleStream ? (
+                                <span
+                                  className="mt-0.5 inline-block rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                                  title={`No payment for ${item.staleStream.daysSince} days — more than 1.5× this row's ${item.frequency.toLowerCase()} rhythm. The average above reflects the old run, not current income.`}
+                                >
+                                  Nothing since {shortDate(item.staleStream.lastPaymentAt)}
+                                </span>
+                              ) : (item.currentMonthActual ?? 0) > 0 ? (
+                                <span className="block text-xs text-emerald-600 dark:text-emerald-400">
+                                  this month · {formatCurrency(item.currentMonthActual!)}
+                                </span>
+                              ) : (
+                                <span className="block text-xs text-muted-foreground">
+                                  this month · $0 so far
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">No txns</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          {hasActual ? (
+                          {hasActual && !declaredMissing ? (
                             <div className="flex items-center justify-end gap-2">
                               <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
                                 <div className="flex items-center gap-1">
@@ -1441,6 +1474,11 @@ function IncomePageContent() {
           {incomeGroups.map((group) => {
             const isExpanded = expandedGroups.has(group.id);
             const annualTotal = group.totalMonthly * 12;
+            // MON-090: calendar-month actual received across the group.
+            const groupReceivedThisMonth = group.incomes.reduce( // @source-lock-allowed: rolls up the route's canonical currentMonthActual per row (actualCashflow-family product), not a raw declared read
+              (s, i) => s + (i.currentMonthActual || 0),
+              0,
+            );
 
             return (
               <Card key={group.id} className="overflow-hidden">
@@ -1462,6 +1500,13 @@ function IncomePageContent() {
                       <div className="text-right">
                         <p className="text-xl font-bold text-green-600">{formatCurrency(group.totalMonthly)}</p>
                         <p className="text-xs text-muted-foreground">per month • {formatCurrency(annualTotal)}/yr</p>
+                        {/* MON-090: the group's date-aware calendar actual —
+                            what actually landed this month vs the plan above. */}
+                        {group.incomes.some((i) => i.hasTransactions) && (
+                          <p className={`text-xs ${groupReceivedThisMonth > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                            received this month • {formatCurrency(groupReceivedThisMonth)}
+                          </p>
+                        )}
                       </div>
                       {isExpanded ? (
                         <ChevronUp className="h-5 w-5 text-muted-foreground" />
@@ -1526,13 +1571,31 @@ function IncomePageContent() {
                             </div>
                             <div className="col-span-2 text-right">
                               {hasActual ? (
+                                /* MON-090: date-aware — average with evidence,
+                                   this-month actual, staleness nudge. */
                                 <div>
-                                  <span className="font-medium text-green-600">
-                                    {formatCurrency(actualMonthly)}
+                                  <span className="font-medium text-green-600" title="Average per month across the period the payments actually cover (date-span, frequency aware)">
+                                    {formatCurrency(actualMonthly)} <span className="text-[10px] font-normal text-muted-foreground">avg /mo</span>
                                   </span>
                                   <span className="text-xs text-muted-foreground block">
-                                    {item.transactionCount} txns
+                                    {item.transactionCount} payment{(item.transactionCount ?? 0) === 1 ? '' : 's'} · last {shortDate(item.lastTransactionAt)}
                                   </span>
+                                  {item.staleStream ? (
+                                    <span
+                                      className="mt-0.5 inline-block rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                                      title={`No payment for ${item.staleStream.daysSince} days — more than 1.5× this row's ${item.frequency.toLowerCase()} rhythm. The average reflects the old run, not current income.`}
+                                    >
+                                      Nothing since {shortDate(item.staleStream.lastPaymentAt)}
+                                    </span>
+                                  ) : (item.currentMonthActual ?? 0) > 0 ? (
+                                    <span className="block text-xs text-emerald-600 dark:text-emerald-400">
+                                      this month · {formatCurrency(item.currentMonthActual!)}
+                                    </span>
+                                  ) : (
+                                    <span className="block text-xs text-muted-foreground">
+                                      this month · $0 so far
+                                    </span>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">No txns</span>

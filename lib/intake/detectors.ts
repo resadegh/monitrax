@@ -22,6 +22,7 @@
 
 import { Frequency } from '@/lib/types/prisma-enums';
 import { detectFrequency } from '@/lib/utils/reconciliation';
+import { periodsPerYear } from '@/lib/utils/frequencies';
 import { normalizeFrequency } from '@/lib/intake/classifyIntake';
 import { reconcileManagedRental } from '@/lib/calculations/rentalReconciliation';
 
@@ -164,4 +165,54 @@ export function detectCadenceMismatch(row: {
   if (implied === stored) return null;
 
   return { stored, implied, confidence, transactionCount: dates.length };
+}
+
+// =============================================================================
+// MON-090 — stale-stream detector (date + frequency awareness, Reza 2026-07-20)
+// =============================================================================
+
+export interface StaleStreamFlag {
+  /** ISO date of the newest linked payment. */
+  lastPaymentAt: string;
+  /** Whole days since that payment (at detection time). */
+  daysSince: number;
+  /** The cadence interval (days) the threshold was derived from. */
+  expectedIntervalDays: number;
+}
+
+/**
+ * A RECURRING row whose newest linked payment is older than ~1.5× its own
+ * cadence interval — the stream has gone quiet, so its cadence average must
+ * not masquerade as current income/spend ("Nothing since 12 Jun"). Pure
+ * display nudge; nothing auto-changes. ONE producer for every surface
+ * (income / expenses / loans routes) — §12.2.1.
+ */
+export function detectStaleStream(row: {
+  frequency: string | null | undefined;
+  isRecurring?: boolean | null;
+  lastTransactionAt: Date | string | null | undefined;
+  now?: Date;
+}): StaleStreamFlag | null {
+  if (row.isRecurring === false) return null; // one-off: staleness is meaningless
+  if (!row.lastTransactionAt) return null; // no payments linked → nothing to date
+
+  const stored = normalizeFrequency(row.frequency);
+  if (!stored) return null;
+
+  const last =
+    row.lastTransactionAt instanceof Date
+      ? row.lastTransactionAt
+      : new Date(row.lastTransactionAt);
+  if (Number.isNaN(last.getTime())) return null;
+
+  const expectedIntervalDays = 365.25 / periodsPerYear(stored as Frequency);
+  const now = row.now ?? new Date();
+  const daysSince = (now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSince <= expectedIntervalDays * 1.5) return null;
+
+  return {
+    lastPaymentAt: last.toISOString(),
+    daysSince: Math.floor(daysSince),
+    expectedIntervalDays: Math.round(expectedIntervalDays * 100) / 100,
+  };
 }

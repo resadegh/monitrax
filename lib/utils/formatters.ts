@@ -174,6 +174,18 @@ export function formatDate(
 }
 
 /**
+ * "12 Jun" — day + short month, no year. The date-awareness shorthand used by
+ * the MON-090 actuals cells (income / expenses lists) — ONE producer for the
+ * display form so the pages can't drift (§12.2.1 at the formatting level).
+ */
+export function formatShortDayMonth(date: Date | string | null | undefined): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
+/**
  * Format a date relative to now
  */
 function formatRelativeDate(date: Date): string {

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List, Radio } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils/formatters';
+import { formatCurrency, formatShortDayMonth as shortDate } from '@/lib/utils/formatters';
 import { toAnnual, toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
 import { resolveLoanMonthlyCost } from '@/lib/calculations/propertyCashflow';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -131,6 +131,13 @@ interface Expense {
   asset?: Asset | null;
   // Phase 29: Linked recurring payments from bank detection
   linkedRecurringPayments?: LinkedRecurringPayment[];
+  // MON-090: date-aware actuals (produced by GET /api/expenses)
+  currentMonthActual?: number | null;
+  monthlyAverageActual?: number | null;
+  transactionCount?: number;
+  hasTransactions?: boolean;
+  lastTransactionAt?: string | null;
+  staleStream?: { lastPaymentAt: string; daysSince: number; expectedIntervalDays: number } | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -1082,6 +1089,7 @@ function ExpensesPageContent() {
                     <th className="px-4 py-3 text-right">Amount</th>
                     <th className="px-4 py-3">Frequency</th>
                     <th className="px-4 py-3 text-right">Monthly</th>
+                    <th className="px-4 py-3 text-right">Actual</th>
                     <th className="px-4 py-3 text-center">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -1113,6 +1121,38 @@ function ExpensesPageContent() {
                         </td>
                         <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(monthlyAmount)}</td>
+                        <td className="px-4 py-3 text-right">
+                          {item.hasTransactions ? (
+                            /* MON-090: date-aware actuals — same pattern as the
+                               income page (avg + evidence + this month/stale). */
+                            <div>
+                              <span className="font-medium" title="Average per month across the period the payments actually cover (date-span, frequency aware)">
+                                {formatCurrency(item.monthlyAverageActual || 0)} <span className="text-[10px] font-normal text-muted-foreground">avg /mo</span>
+                              </span>
+                              <span className="text-xs text-muted-foreground block">
+                                {item.transactionCount} payment{(item.transactionCount ?? 0) === 1 ? '' : 's'} · last {shortDate(item.lastTransactionAt)}
+                              </span>
+                              {item.staleStream ? (
+                                <span
+                                  className="mt-0.5 inline-block rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                                  title={`No payment for ${item.staleStream.daysSince} days — more than 1.5× this row's ${item.frequency.toLowerCase()} rhythm. The average reflects the old run, not current spend.`}
+                                >
+                                  Nothing since {shortDate(item.staleStream.lastPaymentAt)}
+                                </span>
+                              ) : (item.currentMonthActual ?? 0) > 0 ? (
+                                <span className="block text-xs text-red-600/80">
+                                  this month · {formatCurrency(item.currentMonthActual!)}
+                                </span>
+                              ) : (
+                                <span className="block text-xs text-muted-foreground">
+                                  this month · $0 so far
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No txns</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
                             {item.linkedRecurringPayments && item.linkedRecurringPayments.length > 0 && (
@@ -1153,7 +1193,7 @@ function ExpensesPageContent() {
                   <tr className="font-medium">
                     <td colSpan={5} className="px-4 py-3 text-right">Total Monthly:</td>
                     <td className="px-4 py-3 text-right text-red-600">{formatCurrency(totalMonthly)}</td>
-                    <td colSpan={2}></td>
+                    <td colSpan={3}></td>
                   </tr>
                 </tfoot>
               </table>
