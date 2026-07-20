@@ -7,8 +7,16 @@ import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
-import { detectCadenceMismatch, detectOneOffFingerprint, detectRentGap } from '@/lib/intake/detectors';
+import { detectCadenceMismatch, detectOneOffFingerprint, detectRentGap, detectStaleStream } from '@/lib/intake/detectors';
 import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
+
+/** Newest linked-transaction date for a row (explicit max — order-independent). */
+function lastTxDate(transactions: Array<{ date: Date }>): Date | null {
+  return transactions.reduce<Date | null>(
+    (max, t) => (max === null || t.date > max ? t.date : max),
+    null,
+  );
+}
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
@@ -156,6 +164,16 @@ export const GET = withPermission('income.read', async (request, auth) => {
           transactionCount: actuals ? actuals.totalCount : 0,
           currentMonthTransactionCount: actuals ? actuals.currentMonthCount : 0,
           hasTransactions: actuals !== undefined && actuals.totalCount > 0,
+          // MON-090: date-awareness — the newest linked payment + the
+          // stale-stream nudge (recurring row gone quiet past ~1.5× cadence).
+          lastTransactionAt: actuals ? lastTxDate(actuals.transactions) : null,
+          staleStream: actuals
+            ? detectStaleStream({
+                frequency: inc.frequency,
+                isRecurring: inc.isRecurring,
+                lastTransactionAt: lastTxDate(actuals.transactions),
+              })
+            : null,
         };
       });
 

@@ -176,3 +176,29 @@ Coverage: verifies grouping semantics on fixtures (same-scope groups, cross-scop
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (Neomatrix consulted FIRST — the canonical producer was already modelled; SEARCH-FIRST found it; MATRIX_FIX_DISCIPLINE 5-item checklist in PR body) · Requirements 10/10 (Reza's exact reported numbers reproduced then corrected; all five producers collapsed, not just the reported one) · Logic 10/10 (×N/(N−1) proven algebraically + by worked example; ADVANCE semantics preserved verbatim; N=1 unification recorded, not silent)`
 Coverage: verifies the formula on fixtures and locks the topology; does NOT verify the rendered page numbers on live data — that is Reza's per-fix re-check (Part 24 #7): Transport ≈ $11,624, Ingeus fortnightly ≈ sensible, variance no longer +110%.
+
+---
+
+## Session: yhm8ug (continuation 7, 2026-07-20) — MON-090: date-aware actuals display, declared-first (+ the holistic sweep verdict)
+
+### Changes Made
+- **Type**: Feature/Fix (display correctness — Reza directive: "the data should be date aware... average AND the actual, based on the dates... all other transactions... date and frequency aware")
+- **Sweep verdict (Reza's holistic mandate, §19.2-verified per producer)**: the transactions→monthly class had FIVE producers of the day-span formula — all collapsed to `calculateMonthlyAverage` in #1465 (income-ARREARS + link-banner were the broken two). The calendar-month family is CLEAN: `actualCashflow` (canonical month window) → canonicalCashflow/master/insights/intelligence; tie/analytics + moneyStoryTrend bucket by real calendar months; `analyzeTransactionPattern` is frequency-aware; forecasting daily/category averages are dense-stream heuristics (noted, unchanged). Expenses were calculation-correct but displayed NO actuals at all.
+- **Solution**: `detectStaleStream` (ONE producer, lib/intake/detectors.ts — recurring stream quiet past 1.5× its own cadence); `lastTransactionAt` + `staleStream` on income/expenses/loans routes; income page — declared-first (declared = plan + variance baseline; cadence average marked "avg /mo" with evidence "N payments · last <date>", standing in only when no declared amount), "this month · $X" calendar actual, amber quiet-stream chip, group "received this month" rollup; expenses page — new Actual column, same pattern; `formatShortDayMonth` (one display producer).
+- **Design**: Stitch screen `711e25c554b54dd7b5a2c67ed4aa58c6` (project 1859462351962811110), §18.8 gate v1 6.5 → v2 9.2; artefacts merged in #1466; Reza approved with the declared-first amendment.
+- **Honest boundary**: Transportservice (last payment 12 Jun, 38 days quiet) is NOT yet stale for a monthly cadence (threshold ≈ 46d) — shows "this month · $0 so far"; the chip fires ~27 Jul. Locked in the unit test.
+
+### Files Modified
+- `lib/intake/detectors.ts` (+detectStaleStream) · `lib/utils/formatters.ts` (+formatShortDayMonth)
+- `app/api/{income,expenses,loans}/route.ts` (+lastTransactionAt, +staleStream)
+- `app/dashboard/income/page.tsx` (table + grouped views, declared-first) · `app/dashboard/expenses/page.tsx` (new Actual column)
+- `tests/intake/staleStream.test.ts` (5 worked examples incl. the Transport boundary)
+- Registry MON-090 → FIXING (#1467) · `docs/verification/briefs/RING3_DATE_AWARE_NUMBERS.md` (the Matrix handout)
+- `.audit/financial-math-baseline.json` (1 line re-pin :2337→:2400) · 1 `@source-lock-allowed` annotation (group rollup of the canonical currentMonthActual)
+
+### Build Status
+- [x] tsc clean · [x] staleStream 5/5 · [x] financial-surfaces + source-lock + neomatrix + issues gates green · [ ] full suite (running at push)
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (approved Stitch design conformed + Reza's declared-first amendment implemented verbatim; sweep re-read the canonical engines, not memory) · Requirements 10/10 (both figures date-aware on income AND expenses; average-as-fallback only without declared amount; sweep verdict recorded per producer) · Logic 10/10 (staleness = ONE producer with frequency-derived threshold, unit-locked incl. the honest not-yet-stale boundary; no calculation changed — changesNumbers: false; group rollup sums the canonical per-row month actual)`
+Coverage: verifies the detector thresholds and compile/lint integrity; does NOT verify rendered live numbers — that is Reza's eyeball + the Matrix Ring-3 brief (docs/verification/briefs/RING3_DATE_AWARE_NUMBERS.md).

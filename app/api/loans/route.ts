@@ -11,6 +11,15 @@ import {
 import { createAuditLog } from '@/lib/security/auditLog';
 import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
 import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
+import { detectStaleStream } from '@/lib/intake/detectors';
+
+/** Newest linked-transaction date for a row (explicit max — order-independent). */
+function lastTxDate(transactions: Array<{ date: Date }>): Date | null {
+  return transactions.reduce<Date | null>(
+    (max, t) => (max === null || t.date > max ? t.date : max),
+    null,
+  );
+}
 
 export const GET = withPermission('loan.read', async (request, auth) => {
     try {
@@ -154,6 +163,16 @@ export const GET = withPermission('loan.read', async (request, auth) => {
           transactionCount: actuals ? actuals.totalCount : 0,
           currentMonthTransactionCount: actuals ? actuals.currentMonthCount : 0,
           hasTransactions: actuals !== undefined && actuals.totalCount > 0,
+          // MON-090: date-awareness — newest linked repayment + stale nudge
+          // (repayments use the loan's repaymentFrequency cadence).
+          lastTransactionAt: actuals ? lastTxDate(actuals.transactions) : null,
+          staleStream: actuals
+            ? detectStaleStream({
+                frequency: loan.repaymentFrequency ?? 'MONTHLY',
+                isRecurring: true,
+                lastTransactionAt: lastTxDate(actuals.transactions),
+              })
+            : null,
           // THE canonical monthly cost (actuals-first) + its basis flags.
           resolvedCost: resolvedCosts.get(loan.id) ?? null,
         };

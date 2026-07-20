@@ -2656,6 +2656,40 @@
       "test": "tests/calculations/actualsMonthlyAverage.test.ts#Reza's Transport case: 2 x $11,074, 29 days apart",
       "tracker": "reza-report-2026-07-20",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx (Actual Monthly column via GET /api/income) + TransactionLinkDialog pattern banner. Expected: 11624. Actual: 23247. [STAGE-1 CENSUS + FIX, same day] §19.2 verified: income-route ARREARS branch divided N payments by the N−1 intervals of their date span (route.ts:144 pre-fix: sum/daysCovered×30.44 with no added interval) — Reza's live 2×$11,074 over 29d → 22,148/29×30.44 = $23,247 EXACT match to the screenshot; correct = 22,148/58×30.44 = $11,624. PRODUCER CENSUS: FIVE copies of the day-span formula — income route ARREARS (BUGGY) + income route ADVANCE (correct) + expenses route (correct) + loans route (correct) + link-route pattern banner (BUGGY, same class: daysCovered/30.44 months for N payments). INPUT-FEED: all five read the same linked UnifiedTransaction sets. FIX (remove-the-culprit, §12.2.1): all four route copies DELETED; every surface now imports the ONE Neomatrix-modelled producer calculateMonthlyAverage (lib/services/propertyActuals.ts — was already correct: span + one avg interval; ADVANCE drops trailing part-period payment). Recorded unification: a single payment now reads as one month's actual on the income page (was blank; matches expenses/loans semantics + MON-075 chip still nudges). Ratchet: Ring-0 worked examples + a Ring-1 topology lock (migrated files must import the canonical and carry no own ×30.44 math). Stays FIXING until Reza's page re-check confirms ~$11,624 on Transport + sensible Ingeus figures (per-fix verification, Part 24 #7)."
+    },
+    {
+      "id": "MON-090",
+      "title": "Income/expense actuals not date-aware on screen: historical average masquerades as current monthly; this-month actual never displayed",
+      "status": "FIXING",
+      "severity": "high",
+      "changesNumbers": false,
+      "opened": "2026-07-20",
+      "area": "income",
+      "plain": {
+        "issue": "Even with the average formula fixed, the income page labelled a historical average as 'Actual Monthly' — a June salary still read as if it were flowing in July, with no sign that this month had received $0. The spending page showed no actuals at all. Group totals (Salary/Wages, Rental) showed only the declared plan.",
+        "fix": "Every actuals figure on the income and spending lists is now date and frequency aware, declared-first: your declared amount stays the plan and the comparison baseline; the cadence average is clearly marked 'avg /mo' with its evidence (how many payments, when the last one landed) and stands in only when no amount is declared. A new 'this month' line shows what actually landed this calendar month, an amber 'Nothing since <date>' chip flags a recurring stream that has gone quiet past 1.5x its own rhythm, and group headers show 'received this month' next to the plan.",
+        "check": "Income page: Transportservice shows its average marked 'avg /mo' with '1 payment - last 12 Jun' beneath, and 'this month - $0 so far' (the amber quiet-stream chip appears from ~27 Jul if nothing lands). Ingeus shows 'this month' with the July receipts. The Salary/Wages and Rental group headers gain a 'received this month' line. Spending page: a new Actual column with the same treatment."
+      },
+      "rootCause": [
+        "app/dashboard/income/page.tsx:1161",
+        "app/dashboard/expenses/page.tsx:1115"
+      ],
+      "semanticKeys": [
+        "engine.propertyActuals.calculateMonthlyAverage"
+      ],
+      "downstreamConsumers": [
+        "income page table + grouped views (avg/evidence/this-month/stale chip; declared-first fallback)",
+        "expenses page list view (new Actual column, same pattern)",
+        "GET /api/income + /api/expenses + /api/loans payloads (+lastTransactionAt, +staleStream)",
+        "lib/intake/detectors.ts detectStaleStream (ONE producer for the quiet-stream rule)",
+        "NOT changed: any calculation or stored number - display + payload fields only (changesNumbers: false)"
+      ],
+      "fixPRs": [
+        "#1467"
+      ],
+      "test": "tests/intake/staleStream.test.ts#detectStaleStream - frequency-aware quiet-stream nudge",
+      "tracker": "reza-directive-2026-07-20-date-aware",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx + app/dashboard/expenses/page.tsx (Actual columns, group headers). [SWEEP VERDICT, same day - Reza's holistic mandate] Producer census of the transactions-to-monthly class across the whole app: the day-span formula had FIVE copies, all collapsed to calculateMonthlyAverage in #1465 (income ARREARS + link banner were the two broken ones). The calendar-month family is CLEAN: actualCashflow (canonical month window, data-driven divisor) -> canonicalCashflow/masterFinancialService/insights/intelligence all consume it; tie/analytics + moneyStoryTrend bucket by real calendar month; reconciliation.analyzeTransactionPattern is frequency-aware (toMonthly of avg payment); forecasting.ts daily/category averages are dense-stream heuristics (interval-omission immaterial) - noted, not changed. propertyActuals feeds property surfaces (already canonical). [THIS PR #1467] Display + payload only: detectStaleStream (1.5x cadence threshold, 5 unit tests incl. the honest Transport boundary - 38d quiet is NOT yet stale for monthly, chip fires ~27 Jul), lastTransactionAt on three routes, income page (declared-first per Reza: declared = baseline; avg marked and standing in only when no declared amount; variance suppressed when no declared), expenses page Actual column (was declared-only). Stitch: screen 711e25c554b54dd7b5a2c67ed4aa58c6, v1 6.5 -> v2 9.2 (SS18.8), artefacts merged #1466. Stays FIXING until Reza's page re-check + the Matrix cross-app Ring-3 (docs/verification/briefs/RING3_DATE_AWARE_NUMBERS.md)."
     }
   ]
 }
