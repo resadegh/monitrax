@@ -238,3 +238,15 @@ Coverage: verifies the route reuse semantics + dialog compile; does NOT verify t
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (MON-048/053 label doctrine + Wall-B2 one-off semantics re-read and applied class-wide, not spot-fixed) · Requirements 10/10 (both of Reza's reports answered: the "Monthly" label AND the $22,830 — each reproduced to the dollar before fixing) · Logic 10/10 (guard changes ONLY degenerate same-day sets; run-rates untouched — one-offs already contribute 0; enumerating lock makes sibling-view drift a test failure)`
 Coverage: verifies the producer edge-case + the render-site enumeration; does NOT verify the rendered page — Reza's refresh after deploy (gift rows read "One-off · $X once").
+
+---
+
+## Session: yhm8ug (continuation 10, 2026-07-20) — Ring-3 brief v2: the complete date-aware chain handout
+
+### Changes Made
+- **Type**: Docs (verification brief — Reza's request for the "complete check on this fix")
+- `docs/verification/briefs/RING3_DATE_AWARE_NUMBERS.md` → v2, superseding v1 in place: now covers the FULL chain (MON-089 formula ×N/(N−1) + MON-092 same-day guard · MON-090 date-aware/declared-first display incl. both-view parity · MON-092 one-off rule across all six render sites · MON-091 frequency-at-intake incl. the clobber guard · Mechanism A · cross-surface SSOT · flux-aware guards). 21 numbered checks; items 1/2/9/13/14 flagged as class-killers.
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (every check traces to a shipped PR #1463–#1469 and its registry entry) · Requirements 10/10 (complete-chain coverage, not just the last fix) · Logic 10/10 (thresholds/formulas in the brief match the shipped code — 1.5× cadence, ×26/12, same-day→total)`
+Coverage: the brief itself; execution is the Matrix's run.
