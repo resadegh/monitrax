@@ -2791,6 +2791,31 @@
       "test": "tests/calculations/propertyCashflow.test.ts#MON-093: Broadbeach shape identity - cf.monthlyRent === calculateMonthlyAverage(txns, advance) === 2515 (never the x52 annualisation); true-weekly stream unaffected; rentCadenceSuspect fires on declared-WEEKLY/detected-MONTHLY",
       "tracker": "VR-019-item-16",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Node: ring3/VR-019-item-16. Surface: app/dashboard/properties/[id]/page.tsx. Expected: 2515. Actual: 11328.4. Evidence/run: VR-019. Unmodelled semanticKey(s) — MODEL then attach (§21.5): engine.calculations.resolveMonthly. [STAGE-1 CENSUS + FIX, same PR] ROOT (S19.2-exact): resolveMonthly's private daySpanMonthlyAverage dropped the trailing payment of a 2-txn rental (isAdvance), got 1<2 remaining, returned null - then the single-txn fallback annualised UNSORTED txs[0] ($2,614.25, the NEWER June payout listed first) by the mis-declared WEEKLY row frequency: 2614.25 x 52/12 = $11,328.40/mo = $135,941/yr EXACT reproduction of the property + tax numbers, while the income page's calculateMonthlyAverage returned the completed May payment $2,515 as one month. SIXTH divergent copy of the day-span math - killed by delegation, not by patching the copy. DATA NOTE: Reza will also correct the Broadbeach declared row to a consistent basis ($680/wk or $2,947/mo); the fix is basis-independent (rules, not account patches). RATCHET: Ring-0/2 identity test pins property-surface rent === the one producer for the advance-pair shape; rentCadenceSuspect surfaces the remaining data mismatch instead of silently computing through it."
+    },
+    {
+      "id": "MON-094",
+      "title": "Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-20",
+      "area": "tax",
+      "surface": "app/dashboard/tax/page.tsx (Income tab - Other Income bucket)",
+      "plain": {
+        "issue": "The tax page's Other Income line shows $10,300, and about $10,050 of it is two ATO deposits - tax refunds - which are not taxable income. Counting them overstates taxable income and the estimated tax."
+      },
+      "rootCause": [
+        "lib/tax-engine/income/taxabilityRules.ts:224",
+        "lib/tax-engine/position/taxPositionCalculator.ts:201"
+      ],
+      "semanticKeys": [
+        "engine.taxPositionCalculator.calculateTaxPosition"
+      ],
+      "tracker": "VR-019-item-11-19",
+      "notes": "Raised from VR-019 items 11/19 (run docs/verification/runs/VR-019.md; evidence: Ato Ato002000023189359 $9,098 + Ato Ato001100022493651 $952 + Col/Service NSW inside the $10,300 bucket). [STAGE-1 CENSUS, S19.2-verified at file:line, distinct from CLOSED MON-053 (that was x12 annualisation; this is counted-ONCE-but-should-be-ZERO)] (1) ONE-OFF RULE IS ALREADY CONSISTENT: taxPositionCalculator.ts:159-163 (MON-053 guard) counts isRecurring=false income ONCE, never xfrequency - Float and Decimal twins both. The brief's inconsistency hypothesis (b) is DISCONFIRMED at the engine: the income page shows $0/mo for one-offs because monthlyRunRate excludes them (Wall B2), while tax counts them once in the annual gross - both are the DESIGNED semantics. (2) THE REAL DEFECT is classification: IncomeType enum (schema:146) has only SALARY/RENT/RENTAL/INVESTMENT/OTHER, so an ATO-refund income row can only be OTHER; determineTaxability's OTHER/default branch (taxabilityRules.ts:224) returns taxable-for-safety (ITAA s6-5) -> lands in incomeBreakdown.other (taxPositionCalculator.ts:201) counted once. (3) THE MECHANISM ALREADY EXISTS: Income.taxCategory (TaxCategory? - schema:1928, Phase 20 'replaces isTaxable') includes TAX_EXEMPT/GIFTS/GOVERNMENT_EXEMPT, and taxabilityRules has exempt handling - but getUserTaxPosition's IncomeItem mapping (userTaxPosition.ts:172-185) does NOT carry taxCategory, so a row-level exemption can never reach the engine. FIX SHAPE (pending Reza's rule confirmation): (a) carry taxCategory into IncomeItem and respect a row-level non-assessable override before the type switch; (b) classifyIntake tags ATO-refund descriptors (+ internal transfers, loan drawdowns) non-assessable at link time -> taxCategory TAX_EXEMPT + taxNotes; (c) existing mis-classified rows surfaced for Reza's per-row confirm (S12.11 - no silent rewrite of his rows); (d) golden: an ATO-refund one-off contributes $0 taxable; a genuine one-off assessable receipt counts once. NO schema change needed - the field exists. DECISION GATE: Reza confirms the assessable-only rule before any fix code (VR-019 brief). NOTE: issues:raise deduped this against MON-040 (coarse semanticKey+surface match) - filed directly; surfaces disambiguated.",
+      "test": null,
+      "downstreamConsumers": [],
+      "fixPRs": []
     }
   ]
 }
