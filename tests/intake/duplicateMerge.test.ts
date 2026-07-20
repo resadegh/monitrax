@@ -58,7 +58,7 @@ describe('findDuplicateGroups — the preview census', () => {
     expect(groups[0].annualDeclaredEffect).toBe(-0);
   });
 
-  it('OVER-MERGE GUARDS: two different scopes never group; rentals are excluded entirely', () => {
+  it('OVER-MERGE GUARDS: two different scopes never group; cross-property + scopeless rent never groups', () => {
     expect(
       findDuplicateGroups('expense', [
         row({ id: 'e-a', name: 'QBE Insurance', type: 'INSURANCE', amount: 1_200, propertyId: 'p-a', createdAt: '2026-01-01' }),
@@ -66,13 +66,30 @@ describe('findDuplicateGroups — the preview census', () => {
       ]),
     ).toHaveLength(0);
 
+    // Lot-1 vs Lot-2 are DISTINCT real streams (the Reza correction) and a
+    // scopeless rental row is never bridged into a scoped one — rent identity
+    // IS the property scope (MON-009).
     expect(
       findDuplicateGroups('income', [
         row({ id: 'r-1', name: 'Cienna PM Trust', type: 'RENTAL', amount: 2_600, propertyId: 'p-lot1', createdAt: '2026-01-01' }),
         row({ id: 'r-2', name: 'Cienna PM Trust', type: 'RENTAL', amount: 2_600, propertyId: 'p-lot2', createdAt: '2026-02-01' }),
         row({ id: 'r-3', name: 'Cienna PM Trust', type: 'RENTAL', amount: 2_600, createdAt: '2026-03-01' }),
       ]),
-    ).toHaveLength(0); // RENT/RENTAL never enters the merge census (MON-009 scope-singleton)
+    ).toHaveLength(0);
+  });
+
+  it('the Cienna Lot-1 class: rental rows on the SAME property group (scope-singleton), with the rental warning', () => {
+    const groups = findDuplicateGroups('income', [
+      row({ id: 'r-old', name: 'Cienna Pm Trust Rent Payment', type: 'RENT', amount: 1_651, propertyId: 'p-lot1', createdAt: '2026-01-01' }),
+      row({ id: 'r-mid', name: 'Cienna Pm Trust Rent Payment', type: 'RENT', amount: 1_655, propertyId: 'p-lot1', createdAt: '2026-02-01' }),
+      row({ id: 'r-new', name: 'Cienna Pm Trust Rent Payment', type: 'RENT', amount: 1_195, propertyId: 'p-lot1', createdAt: '2026-03-01' }),
+    ]);
+    expect(groups).toHaveLength(1);
+    const g = groups[0];
+    expect(g.survivorId).toBe('r-old'); // all same scope → oldest declared row
+    expect(g.mergeIds.sort()).toEqual(['r-mid', 'r-new']);
+    expect(g.annualDeclaredEffect).toBe(-((1_655 + 1_195) * 12));
+    expect(g.warnings.some((w) => w.includes('SAME property'))).toBe(true);
   });
 
   it('different types / different owners never group; singletons are not groups', () => {
