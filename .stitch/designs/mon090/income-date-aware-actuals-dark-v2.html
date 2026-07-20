@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Income Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #050913;
+            font-family: 'Inter', sans-serif;
+            color: #dde5d9;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-panel {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .hover-row:hover .row-actions {
+            opacity: 1;
+        }
+        .row-actions {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#62df7d",
+                        "on-primary": "#003914",
+                        "surface": "#050913",
+                        "surface-container": "#0E1424",
+                        "outline-variant": "rgba(255, 255, 255, 0.1)",
+                        "on-surface": "#dde5d9",
+                        "on-surface-variant": "#94a3b8", // Muted slate
+                        "background": "#050913"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-hero": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased text-on-surface bg-background">
+<!-- Global Navigation Shell -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-[#0E1424] border-r border-outline-variant w-64 h-full">
+<div class="p-6">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="text-on-surface-variant font-label-md text-label-md opacity-60">Wealth OS</p>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1">
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-body-md text-body-md">My Household</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="font-body-md text-body-md">My Accounts</span>
+</div>
+<!-- Active State: My Budget -->
+<div class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 rounded-r-lg">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="font-body-md text-body-md">My Budget</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">health_and_safety</span>
+<span class="font-body-md text-body-md">My Safety Net</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">trending_up</span>
+<span class="font-body-md text-body-md">My Wealth</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">map</span>
+<span class="font-body-md text-body-md">My Guide</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md text-body-md">Reports</span>
+</div>
+</nav>
+<div class="p-6">
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-lg font-label-md text-label-md font-bold transition-all active:scale-95">Update Plan</button>
+</div>
+</aside>
+<!-- Header Section -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-background/80">
+<div class="flex items-center space-x-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant opacity-50">search</span>
+<input class="bg-white/5 border-none rounded-full pl-10 pr-4 py-1.5 text-body-sm font-body-sm focus:ring-1 focus:ring-primary w-64 text-on-surface" placeholder="Search accounts..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">settings</span>
+<div class="w-8 h-8 rounded-full bg-white/10 border border-outline-variant flex items-center justify-center text-xs font-bold overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN6gh7WNrGW53lxMkcZMEuwoFRy3HfnaFyjMGw2lEIR2WMOE_-elAGMgFkU5R2cxbni2XU5I3r8r_dmGtAo4DQruGUb6P2X8RAGgix0igAz_eQBxCRjVR_orp1TlmeyPYiCoPGKwiqaGXpQgZjepIdGMCKGp8YRmo_4Vof_gjGJPufrH6Gdx8mEpNFGhxw04FFMDZ05Hn3_UHh-ahzC8CRpc6szKGG5AbkI6mWwrTOWki64t7E19xOHMWIliBfxz1U2QtWBX12gyE"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 pb-12 px-8 min-h-screen">
+<div class="max-w-[1200px] mx-auto">
+<!-- Page Title Row -->
+<div class="mb-10">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Income</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant opacity-70">Plan vs what actually landed — every figure is date and frequency aware</p>
+</div>
+<!-- Salary/Wages Section -->
+<div class="glass-panel rounded-lg overflow-hidden transition-all duration-300">
+<!-- Group Header -->
+<div class="p-6 flex items-start justify-between border-b border-white/5">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary border border-primary/20">
+<span class="material-symbols-outlined">work</span>
+</div>
+<div>
+<div class="flex items-center space-x-2">
+<h3 class="font-headline-md text-lg text-on-surface">Salary/Wages</h3>
+<span class="material-symbols-outlined text-on-surface-variant opacity-30 text-sm">expand_more</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant opacity-60">2 income sources</p>
+</div>
+</div>
+<div class="text-right">
+<div class="flex items-baseline space-x-2 justify-end">
+<span class="font-headline-md text-2xl text-on-surface tabular-nums">$15,232</span>
+<span class="font-body-sm text-body-sm text-on-surface opacity-80">planned / month · $182,788/yr</span>
+</div>
+<p class="font-body-sm text-body-sm text-[#62df7d] tabular-nums mt-1">Received this month · $4,163</p>
+</div>
+</div>
+<!-- Table Content -->
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-label-caps font-label-caps text-on-surface-variant border-b border-white/5">
+<th class="px-6 py-4 font-semibold opacity-50">NAME</th>
+<th class="px-6 py-4 font-semibold opacity-50">PLAN /MO</th>
+<th class="px-6 py-4 font-semibold opacity-50">ACTUAL</th>
+<th class="px-6 py-4 font-semibold opacity-50">VARIANCE</th>
+<th class="px-6 py-4 font-semibold opacity-50 text-right">ACTIONS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<!-- Row 1 -->
+<tr class="hover-row transition-colors hover:bg-white/[0.02]">
+<td class="px-6 py-6">
+<div class="font-body-md text-body-md text-on-surface">Salary Transportservice</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant opacity-50">Monthly</div>
+</td>
+<td class="px-6 py-6 font-body-md text-body-md text-on-surface tabular-nums">$11,074</td>
+<td class="px-6 py-6">
+<div class="flex items-center space-x-3">
+<div>
+<div class="font-body-md text-body-md text-on-surface tabular-nums">$11,074 avg /mo</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant opacity-50">from 2 payments · May–Jun</div>
+</div>
+<div class="bg-[#FBBF24]/10 text-[#FBBF24] px-2 py-0.5 rounded text-[11px] font-medium flex items-center border border-[#FBBF24]/20 whitespace-nowrap">
+                                            Nothing since 12 Jun
+                                        </div>
+</div>
+</td>
+<td class="px-6 py-6 font-body-md text-body-md text-on-surface-variant tabular-nums">−0%</td>
+<td class="px-6 py-6 text-right">
+<div class="row-actions flex items-center justify-end space-x-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-xl cursor-pointer hover:text-on-surface transition-colors">visibility</span>
+<span class="material-symbols-outlined text-xl cursor-pointer hover:text-on-surface transition-colors">edit</span>
+<span class="material-symbols-outlined text-xl cursor-pointer hover:text-red-400 transition-colors">delete</span>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover-row transition-colors hover:bg-white/[0.02]">
+<td class="px-6 py-6">
+<div class="font-body-md text-body-md text-on-surface">Salary Ingeus Australia</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant opacity-50">Fortnightly</div>
+</td>
+<td class="px-6 py-6 font-body-md text-body-md text-on-surface tabular-nums">$4,159</td>
+<td class="px-6 py-6">
+<div class="font-body-md text-body-md text-on-surface tabular-nums">$4,163 avg /mo</div>
+<div class="font-body-sm text-body-sm text-[#62df7d] tabular-nums">this month · $4,163</div>
+</td>
+<td class="px-6 py-6 font-body-md text-body-md text-on-surface-variant tabular-nums">+0%</td>
+<td class="px-6 py-6 text-right">
+<div class="row-actions flex items-center justify-end space-x-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-xl cursor-pointer hover:text-on-surface transition-colors">visibility</span>
+<span class="material-symbols-outlined text-xl cursor-pointer hover:text-on-surface transition-colors">edit</span>
+<span class="material-symbols-outlined text-xl cursor-pointer hover:text-red-400 transition-colors">delete</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Add New Source Row -->
+<div class="px-6 py-4 bg-white/[0.01] flex items-center justify-between">
+<button class="flex items-center space-x-2 text-primary hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+<span class="text-label-caps font-label-caps">ADD NEW SOURCE</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Smooth transitions for row hovers
+        document.querySelectorAll('.hover-row').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.transform = 'translateX(4px)';
+                row.style.transition = 'all 0.2s ease-out';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.transform = 'translateX(0)';
+            });
+        });
+    </script>
+</body></html>
