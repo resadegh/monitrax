@@ -30,10 +30,17 @@
  */
 
 import { toMonthly } from '@/lib/utils/frequencies';
+import { calculateMonthlyAverage, DAYS_PER_MONTH } from '@/lib/calculations/actualsMonthlyAverage';
 import type { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
 
-/** Mean days per month (365.25 / 12) — the day-span → month normaliser. */
-export const DAYS_PER_MONTH = 30.4375;
+// MON-093 (VR-019 item 16): the day-span math itself now lives in the ONE
+// producer `calculateMonthlyAverage` — this module keeps the actuals-first
+// ORCHESTRATION (actual vs declared basis, cadence label, declared fallback).
+// The resolver's private copy diverged three ways (no same-day guard, a
+// different constant, and an advance-pair hole that fell through to
+// declared-frequency annualisation of an unsorted first transaction — the
+// Broadbeach ~4× rent inflation).
+export { DAYS_PER_MONTH };
 
 export type ResolverTx = { date: Date | string; amount: number };
 
@@ -75,23 +82,22 @@ const ms = (d: Date | string) => new Date(d).getTime();
 export function daySpanMonthlyAverage(
   transactions: ResolverTx[],
   isAdvance = false,
-): { monthly: number; cadenceDays: number } | null {
+): { monthly: number; cadenceDays: number | null } | null {
   if (!transactions || transactions.length < 2) return null;
 
-  const sorted = [...transactions].sort((a, b) => ms(a.date) - ms(b.date));
-  const payments = isAdvance ? sorted.slice(0, -1) : sorted;
-  if (payments.length < 2) return null;
+  // MON-093: the monthly figure comes from THE one producer — identical to
+  // the income page for every case, including the advance-pair (one completed
+  // payment = one month's worth) and same-day sets (total, counted once).
+  const monthly = calculateMonthlyAverage(transactions, isAdvance);
+  if (monthly == null) return null;
 
-  const sum = payments.reduce((s, tx) => s + Math.abs(tx.amount), 0);
-  const daysSpan = Math.max(
-    1,
-    (ms(payments[payments.length - 1].date) - ms(payments[0].date)) / 86_400_000,
-  );
-  const avgInterval = daysSpan / (payments.length - 1);
-  // Add one average interval so the window covers the periods, not just the
-  // gaps between observed dates (N payments span N-1 gaps + 1 trailing period).
-  const totalDays = daysSpan + avgInterval;
-  return { monthly: (sum / totalDays) * DAYS_PER_MONTH, cadenceDays: avgInterval };
+  // The cadence LABEL reads the raw inter-payment rhythm (all N dates, N−1
+  // gaps) — observable evidence, independent of the advance drop.
+  const sorted = [...transactions].sort((a, b) => ms(a.date) - ms(b.date));
+  const rawSpanDays = (ms(sorted[sorted.length - 1].date) - ms(sorted[0].date)) / 86_400_000;
+  const cadenceDays = rawSpanDays >= 1 ? rawSpanDays / (sorted.length - 1) : null;
+
+  return { monthly, cadenceDays };
 }
 
 /** Map a mean inter-payment interval (days) to a human cadence label. */
@@ -137,9 +143,14 @@ export function resolveMonthly(input: ResolveMonthlyInput): MonthlyResolution {
     };
   }
 
-  // Exactly 1 usable tx → real amount, cadence assumed from the declared freq.
+  // Exactly 1 usable tx → real amount, cadence assumed from the declared freq
+  // (the lone-quarterly-water-rate doctrine: never treat a lone quarterly
+  // payment as monthly). MON-093: reachable ONLY when txCount === 1 now — the
+  // advance-pair no longer falls through here — and the amount is the LATEST
+  // payment by date (deterministic; was unsorted array order).
   if (txCount >= 1) {
-    const amt = Math.abs(txs[0].amount);
+    const latest = [...txs].sort((a, b) => ms(a.date) - ms(b.date))[txs.length - 1];
+    const amt = Math.abs(latest.amount);
     const freq = (input.cadenceHintFrequency ?? 'MONTHLY') as Frequency;
     return {
       monthly: toMonthly(amt, freq),

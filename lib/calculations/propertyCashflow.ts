@@ -147,6 +147,14 @@ export interface PropertyCashflow {
   usedActuals: { income: boolean; expenses: boolean; loans: boolean };
   /** Cadence detected from the rental transactions, for display ("fortnightly"). */
   detectedRentFrequency: DetectedFrequency | null;
+  /**
+   * MON-093 plausibility guard: the rental payments' observed rhythm
+   * contradicts the row's DECLARED frequency (the Broadbeach class — a
+   * monthly-magnitude amount declared WEEKLY). A mis-declared cadence is
+   * SURFACED, never silently annualised. Null when no contradiction (or no
+   * evidence).
+   */
+  rentCadenceSuspect: { declared: string; detected: DetectedFrequency } | null;
 }
 
 const txFor = (txs: CashflowTransaction[], pick: (t: CashflowTransaction) => string | null | undefined, id?: string) =>
@@ -303,6 +311,18 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
   const basis: PropertyCashflow['basis'] =
     actualContributing === 0 ? 'declared' : actualContributing === contributing ? 'actual' : 'mixed';
 
+  // MON-093: cadence plausibility — when the payments' observed rhythm and
+  // the declared frequency disagree, flag it (nudge; nothing auto-changes).
+  const declaredRentFrequency = rentalRows[0]?.frequency ?? null;
+  const rentCadenceSuspect =
+    rent.usedActuals &&
+    rent.detectedFrequency &&
+    rent.detectedFrequency !== 'IRREGULAR' &&
+    declaredRentFrequency &&
+    String(declaredRentFrequency).toUpperCase() !== rent.detectedFrequency
+      ? { declared: String(declaredRentFrequency), detected: rent.detectedFrequency }
+      : null;
+
   return {
     annualRent,
     annualExpenses,
@@ -319,5 +339,6 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     basis,
     usedActuals: { income: incomeUsedActuals, expenses: expensesUsedActuals, loans: loansUsedActuals },
     detectedRentFrequency: rent.detectedFrequency,
+    rentCadenceSuspect,
   };
 }

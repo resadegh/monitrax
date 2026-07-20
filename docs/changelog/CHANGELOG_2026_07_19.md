@@ -250,3 +250,32 @@ Coverage: verifies the producer edge-case + the render-site enumeration; does NO
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (every check traces to a shipped PR #1463–#1469 and its registry entry) · Requirements 10/10 (complete-chain coverage, not just the last fix) · Logic 10/10 (thresholds/formulas in the brief match the shipped code — 1.5× cadence, ×26/12, same-day→total)`
 Coverage: the brief itself; execution is the Matrix's run.
+
+---
+
+## Session: yhm8ug (continuation 11, 2026-07-20) — MON-093: the Broadbeach ×4 rental — the SIXTH copy of the day-span math, killed by delegation
+
+### Changes Made
+- **Type**: Fix (Sev-1 cross-surface number inflation — VR-019 item 16)
+- **Root cause (§19.2-exact)**: `resolveMonthly`'s private `daySpanMonthlyAverage` dropped the trailing payment of a 2-txn rental (rent-in-advance), got 1 < 2 remaining, returned null — then the single-txn fallback annualised UNSORTED `txs[0]` ($2,614.25, the NEWER June payout listed first) by the mis-declared WEEKLY row frequency: 2,614.25 × 52 / 12 = **$11,328.40/mo = $135,941/yr** — exact reproduction of both the property page and the tax estimate, while the income page's `calculateMonthlyAverage` correctly returned the completed May payment **$2,515** as one month.
+- **Solution (remove the culprit — §23.2.1)**: the day-span producer MOVED to its canonical calculations home `lib/calculations/actualsMonthlyAverage.ts` (`DAYS_PER_MONTH = 365.25/12` now THE one constant); `resolveMonthly` DELEGATES its ≥2-txn branch to it (private math deleted — the sixth divergent copy after #1465's five); the 1-txn branch sorts and annualises the LATEST payment; income/expenses/loans/link routes import from the new home.
+- **Plausibility guard**: new `rentCadenceSuspect` on `computePropertyCashflow` → amber chip on the property detail rental row when declared frequency disagrees with the detected payment cadence ("declared weekly, but payments look monthly — check the row's frequency"). Surfaces the data mismatch instead of silently computing through it; Reza will also correct the declared row basis.
+- **Neo-sync (§21.2.1 + graphify-offline precedent 1ff5803d)**: semantic anchors re-pinned (calculateMonthlyAverage → new home :30, resolveMonthly :129, computePropertyCashflow :212, resolveLoanMonthlyCost :188); structural graph hand-moved (stale propertyActuals node removed, new file + symbols added, edges re-pointed, propertyActuals lines re-pinned); coverage-allowlist entry pruned (file now in-graph).
+- **Registry**: MON-093 raised → FIXING (full censuses + plain trio + #1472); VR-019 verdicts applied — MON-089/090/092 → VERIFIED; MON-091 stays FIXING (write checks 13/14 pending Reza's authorisation).
+
+### Files Modified
+- `lib/calculations/actualsMonthlyAverage.ts` (NEW) — THE day-span producer + DAYS_PER_MONTH
+- `lib/calculations/monthlyResolver.ts` — delegation; latest-payment single-txn branch
+- `lib/calculations/propertyCashflow.ts` — rentCadenceSuspect
+- `lib/services/propertyActuals.ts` — local producer deleted; imports the canonical home
+- `app/api/{income,expenses,loans}/route.ts`, `app/api/transactions/[id]/link/route.ts` — import migration
+- `app/dashboard/properties/[id]/page.tsx` — amber cadence-suspect chip
+- tests: propertyCashflow (MON-093 identity: property rent ≡ the one producer ≡ 2,515, never ×52) + actualsMonthlyAverage (new home, DAYS_PER_MONTH, updated topology locks)
+- Neomatrix: financial-graph.json + GENERATED_CORE.md + structural-graph.json + coverage-allowlist.json; docs/issues/ISSUES.{json,md}
+
+### Build Status
+- [x] tsc clean · [x] full suite 4,170 passed / 69 skipped · [x] neomatrix:check all gates green (census 0 uncovered) · [x] lint:financial-surfaces + lint:source-lock green · [x] issues:check 93 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (MATRIX_FIX_DISCIPLINE four clauses + FIX_PROTOCOL censuses done BEFORE code; Neomatrix consulted first and moved with the fix incl. the structural-graph hand-move per the 1ff5803d graphify-offline precedent) · Requirements 10/10 (the brief's fix shape delivered: ONE canonical rental figure feeds property+income+tax; plausibility guard shipped; constant unified — recorded ~0.008% display shift $11,624→$11,623) · Logic 10/10 (exact §19.2 reproduction 2,614.25×52/12=11,328.40 before fixing; delegation kills the class, not the instance; Ring-0/2 identity test pins property rent ≡ the one producer for the advance-pair shape)`
+Coverage: verifies the resolver→producer identity + the cadence-suspect trigger + true-weekly non-regression in unit/golden form; does NOT verify the rendered live page or Reza's actual Broadbeach values — that is the per-fix Chrome check after merge (expect ~$2,515/mo on the property page ≡ income page; tax rental ~$30,180/yr).

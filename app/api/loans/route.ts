@@ -10,7 +10,7 @@ import {
 } from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
-import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
+import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
 import { detectStaleStream } from '@/lib/intake/detectors';
 
 /** Newest linked-transaction date for a row (explicit max — order-independent). */

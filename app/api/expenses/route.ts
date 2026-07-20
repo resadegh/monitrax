@@ -7,7 +7,7 @@ import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { detectCadenceMismatch, detectOneOffFingerprint, detectStaleStream } from '@/lib/intake/detectors';
-import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
+import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
 
 /** Newest linked-transaction date for a row (explicit max — order-independent). */
 function lastTxDate(transactions: Array<{ date: Date }>): Date | null {

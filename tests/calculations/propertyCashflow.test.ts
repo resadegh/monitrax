@@ -112,3 +112,55 @@ describe('property cashflow — single source (§19.4)', () => {
     });
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MON-093 (VR-019 item 16, Sev-1) — the Broadbeach ~4× rent inflation class.
+// The resolver's advance-pair hole (2 payments, trailing dropped → null →
+// declared-frequency annualisation of an unsorted first tx) read a ~$2,614
+// monthly-magnitude payout × a mis-declared WEEKLY cadence as $11,328/mo while
+// the income page showed $2,515. One producer now; identity locked.
+// ─────────────────────────────────────────────────────────────────────────────
+import { calculateMonthlyAverage } from '../../lib/calculations/actualsMonthlyAverage';
+
+describe('MON-093 — property rent ≡ income page (one producer), mis-declared cadence guarded', () => {
+  it('the Broadbeach shape: 2 advance payments a month apart on a WEEKLY-declared row → the completed payment as one month, NEVER ×52', () => {
+    const income = [{ id: 'rb', type: 'RENTAL', amount: 2947, frequency: 'WEEKLY' }];
+    const transactions = [
+      { incomeId: 'rb', date: new Date('2026-06-01'), amount: 2614.25 },
+      { incomeId: 'rb', date: new Date('2026-05-01'), amount: 2515 }, // unsorted on purpose
+    ];
+    const cf = computePropertyCashflow({ income, transactions });
+    // IDENTITY with the income page's producer — the load-bearing assertion.
+    const incomePageFigure = calculateMonthlyAverage(
+      transactions.map((t) => ({ date: t.date, amount: t.amount })),
+      true,
+    )!;
+    expect(cf.monthlyRent).toBeCloseTo(incomePageFigure, 2);
+    expect(cf.monthlyRent).toBeCloseTo(2515, 2); // completed (earlier) payment = one month
+    // The dead class: 2,614.25 × 52/12 = 11,328.4 → 135,941/yr.
+    expect(cf.monthlyRent).toBeLessThan(4000);
+    expect(cf.annualRent).toBeLessThan(48000);
+    // The plausibility guard fires: payments look MONTHLY, row declared WEEKLY.
+    expect(cf.rentCadenceSuspect).toEqual({ declared: 'WEEKLY', detected: 'MONTHLY' });
+  });
+
+  it('a TRUE weekly stream stays correct and unflagged (regression guard)', () => {
+    const income = [{ id: 'rw', type: 'RENTAL', amount: 680, frequency: 'WEEKLY' }];
+    const transactions = Array.from({ length: 6 }, (_, k) => ({
+      incomeId: 'rw', date: at(k, 7), amount: 680,
+    }));
+    const cf = computePropertyCashflow({ income, transactions });
+    // 680/wk → ~2,956/mo by day-span (≈ 680 × 30.4375/7); declared path would be 2,946.67.
+    expect(cf.monthlyRent).toBeCloseTo((680 * 5 / 35) * 30.4375, 0);
+    expect(cf.detectedRentFrequency).toBe('WEEKLY');
+    expect(cf.rentCadenceSuspect).toBeNull();
+  });
+
+  it('lone-quarterly doctrine preserved: a single quarterly expense payment normalises by the declared frequency', () => {
+    const cf = computePropertyCashflow({
+      expenses: [{ id: 'e1', amount: 300, frequency: 'QUARTERLY' }],
+      transactions: [{ expenseId: 'e1', date: new Date('2026-05-10'), amount: 300 }],
+    });
+    expect(cf.monthlyExpenses).toBeCloseTo(100, 2); // 300 ÷ 3 — never treated as monthly
+  });
+});

@@ -22,6 +22,11 @@
 
 import prisma from '@/lib/db';
 import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
+import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
+
+// MON-093: the day-span average lives at its canonical calculations home
+// (lib/calculations/actualsMonthlyAverage.ts) — ONE producer, ONE import
+// path; this service consumes it like every other caller.
 
 export type ActualTx = { date: Date; amount: number };
 
@@ -33,48 +38,6 @@ export interface ActualsFields {
   monthlyAverageActual: number | null;
   transactionCount: number;
   hasTransactions: boolean;
-}
-
-/**
- * Day-span monthly average from a cadence of transactions. Handles fortnightly
- * rent correctly (the §19.1 fix — declared MONTHLY on a fortnightly cadence was
- * under-counting). `isAdvance` (rent paid in advance) excludes the trailing
- * payment so a part-period doesn't drag the average down.
- */
-export function calculateMonthlyAverage(transactions: ActualTx[], isAdvance = false): number | null {
-  if (transactions.length < 2) {
-    return transactions.length === 1 ? Math.abs(transactions[0].amount) : null;
-  }
-
-  const sortedTx = [...transactions].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
-
-  // MON-092: payments all landing on ONE day carry no cadence evidence — the
-  // old `max(1, span)` clamp turned a zero-day span into "per day" and
-  // extrapolated ×30.44 (two same-day $700/$800 gifts → a phantom
-  // $22,830/mo). With no observable interval, the honest monthly figure is
-  // the same as a single payment: the total, counted as one month's worth.
-  const fullSpanDays =
-    (new Date(sortedTx[sortedTx.length - 1].date).getTime() -
-      new Date(sortedTx[0].date).getTime()) /
-    (1000 * 60 * 60 * 24);
-  if (fullSpanDays < 1) {
-    return sortedTx.reduce((s, tx) => s + Math.abs(tx.amount), 0);
-  }
-
-  const payments = isAdvance ? sortedTx.slice(0, -1) : sortedTx;
-  if (payments.length < 1) return null;
-
-  const sum = payments.reduce((s, tx) => s + Math.abs(tx.amount), 0);
-  if (payments.length === 1) return sum;
-
-  const firstDate = new Date(payments[0].date);
-  const lastDate = new Date(payments[payments.length - 1].date);
-  const daysSpan = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-  const avgInterval = daysSpan / (payments.length - 1);
-  const totalDays = daysSpan + avgInterval;
-  return (sum / totalDays) * 30.44;
 }
 
 interface ActualsAgg {
