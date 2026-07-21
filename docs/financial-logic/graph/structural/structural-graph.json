@@ -6,12 +6,12 @@
       "lib",
       "app"
     ],
-    "note": "Layer 0 \u2014 structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
+    "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
     "counts": {
-      "files": 1081,
-      "filesOnDisk": 1082,
-      "nodes": 8736,
-      "edges": 15380,
+      "files": 1082,
+      "filesOnDisk": 1083,
+      "nodes": 8738,
+      "edges": 15382,
       "allowlisted": 3
     }
   },
@@ -716,6 +716,7 @@
     "lib/calc-audit/userAudit/types.ts",
     "lib/calculations/accessibilityBuckets.ts",
     "lib/calculations/actualCashflow.ts",
+    "lib/calculations/actualsMonthlyAverage.ts",
     "lib/calculations/assetValuation.ts",
     "lib/calculations/canonicalCashflow.ts",
     "lib/calculations/cashflowOrchestrator.ts",
@@ -44008,79 +44009,73 @@
       "services_propertyactuals_actualsagg",
       "ActualsAgg",
       "lib/services/propertyActuals.ts",
-      66
+      43
     ],
     [
       "services_propertyactuals_actualsfields",
       "ActualsFields",
       "lib/services/propertyActuals.ts",
-      28
+      34
     ],
     [
       "services_propertyactuals_actualtx",
       "ActualTx",
       "lib/services/propertyActuals.ts",
-      25
+      31
     ],
     [
       "services_propertyactuals_attach",
       "attach()",
       "lib/services/propertyActuals.ts",
-      94
-    ],
-    [
-      "services_propertyactuals_calculatemonthlyaverage",
-      "calculateMonthlyAverage()",
-      "lib/services/propertyActuals.ts",
-      43
+      71
     ],
     [
       "services_propertyactuals_enrichableproperty",
       "EnrichableProperty",
       "lib/services/propertyActuals.ts",
-      116
+      93
     ],
     [
       "services_propertyactuals_enrichedproperty",
       "EnrichedProperty",
       "lib/services/propertyActuals.ts",
-      131
+      108
     ],
     [
       "services_propertyactuals_enrichpropertieswithactuals",
       "enrichPropertiesWithActuals()",
       "lib/services/propertyActuals.ts",
-      144
+      121
     ],
     [
       "services_propertyactuals_expenselike",
       "ExpenseLike",
       "lib/services/propertyActuals.ts",
-      113
+      90
     ],
     [
       "services_propertyactuals_group",
       "group()",
       "lib/services/propertyActuals.ts",
-      73
+      50
     ],
     [
       "services_propertyactuals_incomelike",
       "IncomeLike",
       "lib/services/propertyActuals.ts",
-      112
+      89
     ],
     [
       "services_propertyactuals_linkedtransaction",
       "LinkedTransaction",
       "lib/services/propertyActuals.ts",
-      123
+      100
     ],
     [
       "services_propertyactuals_loanlike",
       "LoanLike",
       "lib/services/propertyActuals.ts",
-      114
+      91
     ],
     [
       "services_setupstateservice",
@@ -53525,6 +53520,24 @@
       "sameMerchant",
       "lib/bank/merchantNormalize.ts",
       40
+    ],
+    [
+      "calculations_actualsmonthlyaverage",
+      "actualsMonthlyAverage.ts",
+      "lib/calculations/actualsMonthlyAverage.ts",
+      1
+    ],
+    [
+      "calculations_actualsmonthlyaverage_actualtx",
+      "ActualTx",
+      "lib/calculations/actualsMonthlyAverage.ts",
+      28
+    ],
+    [
+      "calculations_actualsmonthlyaverage_calculatemonthlyaverage",
+      "calculateMonthlyAverage()",
+      "lib/calculations/actualsMonthlyAverage.ts",
+      30
     ]
   ],
   "edges": [
@@ -140989,9 +141002,9 @@
     [
       "calls",
       "services_propertyactuals_attach",
-      "services_propertyactuals_calculatemonthlyaverage",
+      "calculations_actualsmonthlyaverage_calculatemonthlyaverage",
       "lib/services/propertyActuals.ts",
-      100
+      77
     ],
     [
       "calls",
@@ -141041,13 +141054,6 @@
       "services_propertyactuals_attach",
       "lib/services/propertyActuals.ts",
       94
-    ],
-    [
-      "contains",
-      "services_propertyactuals",
-      "services_propertyactuals_calculatemonthlyaverage",
-      "lib/services/propertyActuals.ts",
-      43
     ],
     [
       "contains",
@@ -161187,6 +161193,27 @@
       "xero_tokenrefresh_tokenrefresherror",
       "lib/integrations/xero/tokenRefresh.ts",
       33
+    ],
+    [
+      "contains",
+      "calculations_actualsmonthlyaverage",
+      "calculations_actualsmonthlyaverage_actualtx",
+      "lib/calculations/actualsMonthlyAverage.ts",
+      28
+    ],
+    [
+      "contains",
+      "calculations_actualsmonthlyaverage",
+      "calculations_actualsmonthlyaverage_calculatemonthlyaverage",
+      "lib/calculations/actualsMonthlyAverage.ts",
+      30
+    ],
+    [
+      "calls",
+      "calculations_monthlyresolver_dayspanmonthlyaverage",
+      "calculations_actualsmonthlyaverage_calculatemonthlyaverage",
+      "lib/calculations/monthlyResolver.ts",
+      91
     ]
   ]
 }

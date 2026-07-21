@@ -21,7 +21,7 @@ import { applyCategoryToSimilarUnified } from '@/lib/bookkeeping/applyToSimilarU
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
 import { buildManagedRentalSuggestion } from '@/lib/services/managedRentalService';
-import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
+import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';

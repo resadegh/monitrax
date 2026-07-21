@@ -8,7 +8,7 @@ import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { classifyIntake } from '@/lib/intake/classifyIntake';
 import { detectCadenceMismatch, detectOneOffFingerprint, detectRentGap, detectStaleStream } from '@/lib/intake/detectors';
-import { calculateMonthlyAverage } from '@/lib/services/propertyActuals';
+import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
 
 /** Newest linked-transaction date for a row (explicit max — order-independent). */
 function lastTxDate(transactions: Array<{ date: Date }>): Date | null {
