@@ -13,11 +13,50 @@ import { Decimal, toDecimal } from '@/lib/decimal';
 const CORPORATE_TAX_RATE = 0.30;
 
 /**
+ * MON-094: TaxCategory values that mean "NOT assessable income" — a row
+ * carrying one of these contributes $0 to the taxable gross, regardless of
+ * its IncomeType. This is THE one list (§12.2.1): the row-level override in
+ * both determineTaxability twins reads it, and nothing else re-decides
+ * assessability. The categories mirror the Prisma TaxCategory enum comments
+ * (schema.prisma:567): an ATO tax refund is a return of tax already paid,
+ * not ordinary income (ITAA 1997 s6-5 concerns income "according to ordinary
+ * concepts" — a refund of your own money is not); gifts/inheritance/insurance
+ * payouts are generally exempt receipts.
+ */
+export const NON_ASSESSABLE_TAX_CATEGORIES: ReadonlySet<string> = new Set([
+  'TAX_EXEMPT',
+  'GOVERNMENT_EXEMPT',
+  'GIFTS',
+  'INHERITANCE',
+  'INSURANCE_PAYOUT',
+]);
+
+/**
  * Determine the taxability of income based on its type and context
  */
 export function determineTaxability(context: IncomeContext): TaxabilityResult {
   const { incomeType, amount, frankingPercentage = 0 } = context;
   const explicitFrankingCredits = context.frankingCredits;
+
+  // MON-094: row-level non-assessable override — a stored Income.taxCategory
+  // in the non-assessable set wins over the type switch below. This is what
+  // lets an ATO-refund row (typed OTHER, which defaults to taxable-for-safety)
+  // contribute $0 once it is tagged TAX_EXEMPT (at intake by classifyIntake's
+  // detector, or by Reza's per-row confirm on the review surface). Only an
+  // EXPLICITLY stored category triggers this — an untagged row keeps the
+  // safe taxable default.
+  if (context.taxCategory && NON_ASSESSABLE_TAX_CATEGORIES.has(context.taxCategory)) {
+    return {
+      category: context.taxCategory,
+      taxableAmount: 0,
+      exemptAmount: amount,
+      frankingCredits: 0,
+      grossedUpAmount: 0,
+      explanation:
+        'This receipt is classified as non-assessable (e.g. an ATO tax refund, internal transfer, or exempt receipt) — it is not counted in your taxable income.',
+      references: ['ITAA 1997 s6-5 (ordinary income)', 'ATO: Amounts you do not include as income'],
+    };
+  }
 
   switch (incomeType.toUpperCase()) {
     // ==========================================================================
@@ -339,6 +378,9 @@ export interface IncomeContextDecimal {
   /** Audit fix 2026-06-12 (finding 2) — explicit credits win over the 30/70 recomputation. */
   frankingCredits?: number | string | Decimal;
   paymentType?: string;
+  /** MON-094: the row's stored Income.taxCategory — a value in
+   *  NON_ASSESSABLE_TAX_CATEGORIES short-circuits to taxableAmount 0. */
+  taxCategory?: string | null;
 }
 
 export interface TaxabilityResultDecimal {
@@ -386,6 +428,21 @@ export function determineTaxabilityDecimal(context: IncomeContextDecimal): Taxab
   const { incomeType, frankingPercentage = 0 } = context;
   const amountDec = toDecimal(context.amount) ?? new Decimal(0);
   const zero = new Decimal(0);
+
+  // MON-094: row-level non-assessable override — Decimal twin of the Float
+  // guard above (§12.2.1: the two paths must never disagree on assessability).
+  if (context.taxCategory && NON_ASSESSABLE_TAX_CATEGORIES.has(context.taxCategory)) {
+    return {
+      category: context.taxCategory,
+      taxableAmount: zero,
+      exemptAmount: amountDec,
+      frankingCredits: zero,
+      grossedUpAmount: zero,
+      explanation:
+        'This receipt is classified as non-assessable (e.g. an ATO tax refund, internal transfer, or exempt receipt) — it is not counted in your taxable income.',
+      references: ['ITAA 1997 s6-5 (ordinary income)', 'ATO: Amounts you do not include as income'],
+    };
+  }
 
   // Run the Float classification with the numeric amount so we inherit the
   // same category + explanation + references. Then re-compute the numeric

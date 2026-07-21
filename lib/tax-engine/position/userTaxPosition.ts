@@ -182,6 +182,10 @@ export async function getUserTaxPosition(
     paygWithholding: income.paygWithholding || undefined,
     frankingPercentage: income.frankingPercentage || undefined,
     frankingCredits: income.frankingCredits || undefined,
+    // MON-094: carry the stored taxCategory so a non-assessable row (ATO
+    // refund tagged TAX_EXEMPT) contributes $0 — this was the severed link
+    // that let refunds ride into "Other Income" as taxable-for-safety.
+    taxCategory: income.taxCategory ?? undefined,
   }));
 
   const expenseItems: ExpenseItem[] = expenses.map((expense: any) => ({

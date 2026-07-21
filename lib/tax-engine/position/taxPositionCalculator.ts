@@ -43,6 +43,10 @@ export interface IncomeItem {
   paygWithholding?: number;
   frankingPercentage?: number;
   frankingCredits?: number;
+  /** MON-094: the row's stored Income.taxCategory — a non-assessable value
+   *  (TAX_EXEMPT, GOVERNMENT_EXEMPT, …) makes the taxability engine return
+   *  taxableAmount 0 for this row (an ATO refund is not assessable income). */
+  taxCategory?: string | null;
 }
 
 export interface ExpenseItem {
@@ -171,6 +175,7 @@ export function calculateTaxPosition(
       investmentAccountId: income.investmentAccountId,
       frankingPercentage: income.frankingPercentage,
       frankingCredits: income.frankingCredits,
+      taxCategory: income.taxCategory, // MON-094: non-assessable rows → $0 taxable
     });
 
     // Add to appropriate category
@@ -707,6 +712,7 @@ export function calculateTaxPositionDecimal(
       investmentAccountId: income.investmentAccountId,
       frankingPercentage: income.frankingPercentage,
       frankingCredits: income.frankingCredits,
+      taxCategory: income.taxCategory, // MON-094: non-assessable rows → $0 taxable (twin)
     });
 
     const incomeType = income.type?.toUpperCase();

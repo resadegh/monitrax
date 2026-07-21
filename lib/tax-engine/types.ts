@@ -358,6 +358,10 @@ export interface IncomeContext {
   isFromTrust?: boolean;
   isGovernmentPayment?: boolean;
   paymentType?: string;
+  /** MON-094: the row's stored Income.taxCategory — a non-assessable value
+   *  (TAX_EXEMPT, GOVERNMENT_EXEMPT, …) short-circuits determineTaxability to
+   *  taxableAmount 0. Undefined/null = classify by type as before. */
+  taxCategory?: string | null;
 }
 
 // =============================================================================

@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
-import { classifyIntake } from '@/lib/intake/classifyIntake';
+import { classifyIntake, detectNonAssessable } from '@/lib/intake/classifyIntake';
 import { detectFrequency } from '@/lib/utils/reconciliation';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
@@ -409,6 +409,13 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               transactionDates: evidenceDates, // C1 (MON-001)
               declaredIsRecurring: body.isRecurring !== undefined ? Boolean(body.isRecurring) : null,
             });
+            // MON-094: non-assessable receipts (ATO refunds, internal
+            // transfers, loan drawdowns) are tagged at intake by the ONE
+            // detector so the tax engine counts them at $0 — a refund of tax
+            // already paid is not assessable income. Detection is by the
+            // canonical classifier; assessability is then decided ONLY by
+            // determineTaxability's NON_ASSESSABLE_TAX_CATEGORIES override.
+            const nonAssessable = detectNonAssessable(name);
             const incomeData: {
               userId: string;
               ownerEntityId: string;
@@ -422,6 +429,8 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               investmentAccountId?: string;
               isTaxable?: boolean;
               isRecurring?: boolean;
+              taxCategory?: 'TAX_EXEMPT';
+              taxNotes?: string;
             } = {
               userId,
               ownerEntityId,
@@ -431,6 +440,10 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               frequency: incomeIntake.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
               isRecurring: incomeIntake.isRecurring,
             };
+            if (nonAssessable) {
+              incomeData.taxCategory = nonAssessable.taxCategory;
+              incomeData.taxNotes = nonAssessable.reason;
+            }
 
             // If custom category is provided, add it and validate ownership
             if (body.customCategoryId) {
