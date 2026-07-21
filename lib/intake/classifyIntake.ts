@@ -266,3 +266,74 @@ function resolveStreamMatch(
       return null;
   }
 }
+
+// =============================================================================
+// MON-094 — non-assessable receipt detection (Reza rule 2026-07-21:
+// "assessable-only, exclude all non-assessable — auto")
+// =============================================================================
+
+export interface NonAssessableDetection {
+  /** The TaxCategory to store on the row (Prisma enum value). */
+  taxCategory: 'TAX_EXEMPT';
+  /** Which rule matched — for taxNotes + the review surface. */
+  kind: 'ATO_REFUND' | 'INTERNAL_TRANSFER' | 'LOAN_DRAWDOWN';
+  /** Plain-English reason, stored as Income.taxNotes. */
+  reason: string;
+}
+
+/**
+ * Detect a NON-ASSESSABLE receipt from its descriptor, at intake.
+ *
+ * The tax gross is assessable income only (ITAA 1997 s6-5): an ATO tax
+ * refund is a return of tax already paid, an internal transfer is your own
+ * money moving between accounts, and a loan drawdown is borrowing — none of
+ * them are income. A detected row is stored with `taxCategory: TAX_EXEMPT`
+ * (+ the reason as `taxNotes`) so the ONE taxability engine
+ * (`determineTaxability`, NON_ASSESSABLE_TAX_CATEGORIES) counts it at $0 —
+ * assessability is decided in the engine, never re-derived per surface.
+ *
+ * DELIBERATELY CONSERVATIVE (§10 never-guess): patterns match the bank
+ * descriptor shapes verified live (VR-019/VR-020: "Ato Ato002000023189359",
+ * "Ato Ato001100022493651") plus the unambiguous transfer/drawdown wordings.
+ * A miss stays taxable-for-safety and can be reclassified on the review
+ * surface with Reza's per-row confirm (§12.11) — a false negative costs a
+ * click; a false positive would silently understate tax, so the list stays
+ * tight. Extending the list = editing THIS function (one source), surfaced
+ * in the PR for Reza's confirmation.
+ */
+export function detectNonAssessable(name: string | null | undefined): NonAssessableDetection | null {
+  if (!name) return null;
+  const n = String(name).toLowerCase().trim();
+
+  // ATO tax refunds — "Ato Ato00…" descriptor shape, or explicit wording.
+  if (/^ato\b/.test(n) || /\baustralian taxation office\b/.test(n) || /\btax (?:return )?refund\b/.test(n)) {
+    return {
+      taxCategory: 'TAX_EXEMPT',
+      kind: 'ATO_REFUND',
+      reason:
+        'ATO tax refund — a return of tax already paid, not assessable income (ITAA 1997 s6-5). Auto-classified non-assessable (MON-094).',
+    };
+  }
+
+  // Internal transfers — own-account movements are not income.
+  if (/\binternal transfer\b/.test(n) || /\btransfer (?:to|from|between) (?:own |my )?(?:acct|account)/.test(n)) {
+    return {
+      taxCategory: 'TAX_EXEMPT',
+      kind: 'INTERNAL_TRANSFER',
+      reason:
+        'Internal transfer between your own accounts — not income. Auto-classified non-assessable (MON-094).',
+    };
+  }
+
+  // Loan / director-loan drawdowns — borrowings are not income.
+  if (/\b(?:loan|director'?s? loan) (?:drawdown|advance)\b/.test(n) || /\bredraw\b/.test(n) || /\bdrawdown\b/.test(n)) {
+    return {
+      taxCategory: 'TAX_EXEMPT',
+      kind: 'LOAN_DRAWDOWN',
+      reason:
+        'Loan drawdown/redraw — borrowed money is not income. Auto-classified non-assessable (MON-094).',
+    };
+  }
+
+  return null;
+}

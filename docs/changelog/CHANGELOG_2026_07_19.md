@@ -279,3 +279,32 @@ Coverage: the brief itself; execution is the Matrix's run.
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (MATRIX_FIX_DISCIPLINE four clauses + FIX_PROTOCOL censuses done BEFORE code; Neomatrix consulted first and moved with the fix incl. the structural-graph hand-move per the 1ff5803d graphify-offline precedent) · Requirements 10/10 (the brief's fix shape delivered: ONE canonical rental figure feeds property+income+tax; plausibility guard shipped; constant unified — recorded ~0.008% display shift $11,624→$11,623) · Logic 10/10 (exact §19.2 reproduction 2,614.25×52/12=11,328.40 before fixing; delegation kills the class, not the instance; Ring-0/2 identity test pins property rent ≡ the one producer for the advance-pair shape)`
 Coverage: verifies the resolver→producer identity + the cadence-suspect trigger + true-weekly non-regression in unit/golden form; does NOT verify the rendered live page or Reza's actual Broadbeach values — that is the per-fix Chrome check after merge (expect ~$2,515/mo on the property page ≡ income page; tax rental ~$30,180/yr).
+
+---
+
+## Session: yhm8ug (continuation 12, 2026-07-21) — MON-093 VERIFIED at VR-020 · MON-094 built: assessable-only tax gross (ATO refunds → $0)
+
+### Changes Made
+- **Type**: Fix (tax correctness — VR-019 items 11/19; VR-020 §D pre-fix baseline "Other Income $10,300")
+- **MON-093 fold-in**: registry FIXING → VERIFIED with the VR-020 evidence (Broadbeach $2,947/$35,360/5.89% ≡ list ≡ tax; amber chip live; guards clean; no unexplained baseline delta); STATE cursor advanced to the merge of #1474. #1473's §17.2: production deploy `dpl_DTgQ2kDo…` READY (~00:08Z); runtime-log pull timed out (fresh deploy, no traffic) — VR-020's live captures serve as the runtime check.
+- **MON-094 root cause (census-verified, distinct from CLOSED MON-053)**: classification, not annualisation. An ATO-refund row can only be typed `OTHER` (IncomeType enum), `OTHER` defaults to taxable-for-safety (`taxabilityRules.ts`), and the Phase 20 exemption mechanism (`Income.taxCategory` incl. `TAX_EXEMPT`) never reached the engine — `userTaxPosition.ts`'s IncomeItem map dropped it.
+- **Reza's rule (2026-07-21)**: tax gross = assessable income only — recurring declared + genuine one-off assessable receipts (counted once); ATO refunds / internal transfers / loan drawdowns excluded, auto. Exact descriptor list = confirm-at-merge; NO silent rewrite of existing rows.
+- **Solution (no schema change — the field existed)**: (a) `NON_ASSESSABLE_TAX_CATEGORIES` row-level override at the top of BOTH `determineTaxability` twins (Float + Decimal) — a tagged row contributes $0/full-exempt; `taxCategory` carried through IncomeContext/IncomeItem/the userTaxPosition map/both engine call sites; `/api/tax/position` + master inherit via the MON-020 bundle. (b) `detectNonAssessable(name)` in the ONE intake classifier (conservative: live ATO descriptor shapes, unambiguous transfer/drawdown wordings; a miss stays taxable-for-safety); link-route income create stores the tag + taxNotes. (c) `GET/POST /api/tax/non-assessable-review` + `/admin/tax-review` (admin design system, §18.2 exempt): server re-derived detection, per-row typed-RECLASSIFY confirm, 409 on stale, only `taxCategory`/`taxNotes` columns ever written (§12.11). (d) MON-053's one-off guard + all other income branches untouched.
+
+### Files Modified
+- `lib/tax-engine/income/taxabilityRules.ts` — NON_ASSESSABLE_TAX_CATEGORIES + override in both twins; IncomeContextDecimal.taxCategory
+- `lib/tax-engine/types.ts` — IncomeContext.taxCategory
+- `lib/tax-engine/position/taxPositionCalculator.ts` — IncomeItem.taxCategory + both call sites pass it
+- `lib/tax-engine/position/userTaxPosition.ts` — the severed link closed (map carries taxCategory)
+- `lib/intake/classifyIntake.ts` — detectNonAssessable (ONE detector)
+- `app/api/transactions/[id]/link/route.ts` — income create stores the detection
+- `app/api/tax/non-assessable-review/route.ts` (NEW) + `app/admin/tax-review/page.tsx` (NEW)
+- `tests/tax/mon094NonAssessable.test.ts` (NEW, 13 tests) — Ring-0 override both twins + detector; Ring-2 worked example (Other = $250, not $10,300; Float===Decimal); Ring-1 topology locks
+- Neomatrix semantic (2 anchors re-pinned :136/:289 + produces on 3 nodes) + structural (2 new files + detectNonAssessable, per the graphify-offline precedent); `docs/blueprint/PHASE_54_NEOBRAIN.md` (intake classification note); registry MON-093 VERIFIED + MON-094 FIXING; STATE
+
+### Build Status
+- [x] tsc clean · [x] full suite 4,183 passed / 69 skipped · [x] neomatrix:check all green (anchors 167/167, census 0 uncovered) · [x] lint:financial-surfaces + lint:source-lock green · [x] issues:check 94 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Matrix code brief followed to shape; MATRIX_FIX_DISCIPLINE censuses confirmed live at HEAD before code — incl. DISCONFIRMING the brief's one-off-inconsistency hypothesis; Neomatrix consulted + moved with the fix; Neobrain doc updated same PR) · Requirements 10/10 (Reza's assessable-only rule built exactly: auto-exclusion at intake, $0 via the ONE engine, per-row confirm for existing rows — no silent rewrite; descriptor list surfaced for merge-time confirmation) · Logic 10/10 (override at the TOP of both twins so Float/Decimal can never disagree; untagged rows keep taxable-for-safety — no silent exemption; worked example $10,300 → $250 pinned; MON-053 path untouched and re-verified green)`
+Coverage: verifies the engine override, the detector, the worked-example arithmetic, and the wiring topology in unit form; does NOT verify the rendered tax page, the Admin review flow end-to-end in a browser, or Reza's live values — that is his two review-page clicks + the Matrix's VR-021 after merge.
