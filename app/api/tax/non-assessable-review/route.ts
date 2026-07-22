@@ -32,6 +32,8 @@ import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { detectNonAssessable } from '@/lib/intake/classifyIntake';
 import { NON_ASSESSABLE_TAX_CATEGORIES } from '@/lib/tax-engine/income/taxabilityRules';
+import { toAnnual } from '@/lib/utils/frequencies';
+import type { Frequency } from '@/lib/types/prisma-enums';
 
 interface ReviewRow {
   id: string;
@@ -79,6 +81,16 @@ async function fetchSuggestions(userId: string) {
         suggestedTaxCategory: detection.taxCategory,
         kind: detection.kind,
         reason: detection.reason,
+        // The annual tax-gross effect of confirming — computed HERE (the
+        // thin-wrapper route, from canonical producers) so the page never
+        // sums money on the surface (source-lock). Mirrors the engine's
+        // assessable-base semantics (taxPositionCalculator.ts MON-053
+        // guard): a one-off counts ONCE; a recurring row annualises via
+        // THE canonical toAnnual.
+        annualEffect:
+          row.isRecurring === false
+            ? Math.abs(row.amount)
+            : toAnnual(Math.abs(row.amount), row.frequency as Frequency),
       },
     ];
   });
@@ -87,7 +99,8 @@ async function fetchSuggestions(userId: string) {
 export const GET = withPermission('income.read', async (_request, auth) => {
   try {
     const suggestions = await fetchSuggestions(auth.userId);
-    return NextResponse.json({ success: true, data: { suggestions } });
+    const totalAnnualEffect = suggestions.reduce((s, x) => s + x.annualEffect, 0);
+    return NextResponse.json({ success: true, data: { suggestions, totalAnnualEffect } });
   } catch (error) {
     console.error('[tax/non-assessable-review] preview error:', error);
     return NextResponse.json(

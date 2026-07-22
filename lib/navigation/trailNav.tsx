@@ -23,6 +23,7 @@ import {
   Users,
   Target,
   Archive,
+  Sparkles,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 
@@ -173,6 +174,22 @@ export const trailNavItems: NavItem[] = [
     icon: FileText,
     tourId: 'nav-reports',
     matchRoutes: ['/dashboard/reports'],
+  },
+  {
+    // Housekeeping — personal-data review tools (MON-094 relocation,
+    // Reza ruling 2026-07-21: these live in the app, NEVER the staff
+    // admin portal — the VR-021 principal-mismatch class). Every action
+    // is per-item typed-confirmation; nothing changes without the user.
+    // Design: Stitch screen 124c6e36cc8d4289ad7d152edd29d1ef (PR #1477).
+    name: 'Housekeeping',
+    href: '/dashboard/housekeeping/tax',
+    icon: Sparkles,
+    tourId: 'nav-housekeeping',
+    matchRoutes: ['/dashboard/housekeeping'],
+    children: [
+      { name: 'Tax classification', href: '/dashboard/housekeeping/tax' },
+      { name: 'Duplicate income', href: '/dashboard/housekeeping/duplicates' },
+    ],
   },
 ];
 
@@ -365,6 +382,7 @@ export const mobileMoreItems: NavItem[] = [
   trailNavItems.find((i) => i.name === 'My Household')!,
   trailNavItems.find((i) => i.name === 'My Vault')!,
   trailNavItems.find((i) => i.name === 'Reports')!,
+  trailNavItems.find((i) => i.name === 'Housekeeping')!,
   settingsNavItem,
 ];
 
