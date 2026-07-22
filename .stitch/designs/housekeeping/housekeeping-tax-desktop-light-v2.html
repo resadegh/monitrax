@@ -19,7 +19,7 @@
                         "inverse-primary": "#62df7d",
                         "on-background": "#171d16",
                         "surface-container-lowest": "#ffffff",
-                        "background": "#f4fcf0",
+                        "background": "#FAFAF7",
                         "primary-container": "#00873a",
                         "on-primary-fixed-variant": "#005320",
                         "secondary": "#585e6f",
@@ -27,7 +27,7 @@
                         "on-error-container": "#93000a",
                         "surface-container-low": "#eff6ea",
                         "surface-dim": "#d5dcd1",
-                        "surface-bright": "#f4fcf0",
+                        "surface-bright": "#FFFFFF",
                         "secondary-fixed": "#dce2f6",
                         "trail-sky": "#0EA5E9",
                         "outline": "#6e7b6c",
@@ -59,13 +59,13 @@
                         "error-red": "#DC2626",
                         "primary": "#006b2c",
                         "error": "#ba1a1a",
-                        "surface": "#f4fcf0",
+                        "surface": "#FAFAF7",
                         "tertiary-fixed-dim": "#b7c8e1",
                         "secondary-container": "#d9dff4",
                         "on-primary-container": "#f7fff2",
                         "on-error": "#ffffff",
                         "error-container": "#ffdad6",
-                        "surface-container": "#e9f0e5",
+                        "surface-container": "#F1EFE8",
                         "surface-container-high": "#e3eadf",
                         "primary-fixed": "#7ffc97",
                         "surface-ivory": "#FAFAF7"
@@ -177,7 +177,10 @@
 <span class="font-label-md text-label-md">Reports</span>
 </a>
 <!-- Divider -->
-<div class="h-px w-full bg-outline-variant/50 my-4"></div>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a><div class="h-px w-full bg-outline-variant/50 my-4"></div>
 <!-- Housekeeping Section (Active) -->
 <div>
 <a class="flex items-center justify-between h-11 bg-gradient-to-r from-trail-amber/10 to-transparent text-trail-amber font-medium border-l-[3px] border-trail-amber px-4 rounded-r-lg" href="#">
@@ -212,7 +215,7 @@
 <header class="fixed top-0 right-0 left-0 md:left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
 <div class="flex-1 flex items-center">
 <!-- Search placeholder -->
-<div class="hidden md:flex items-center text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/50 w-64 hover:border-outline-variant transition-colors group cursor-text">
+<div class="hidden md:flex items-center text-on-surface-variant bg-[#FAF8F3] px-3 py-1.5 rounded-lg border border-outline-variant/50 w-64 hover:bg-[#E9E6DD] hover:border-outline-variant transition-colors group cursor-text">
 <span class="material-symbols-outlined text-[18px] mr-2 group-hover:text-primary transition-colors">search</span>
 <span class="font-body-sm text-body-sm">Search records...</span>
 </div>
@@ -245,7 +248,7 @@
                         </p>
 </div>
 <!-- Segmented Control -->
-<div class="inline-flex bg-surface-container-low rounded-xl p-1 border-[1.5px] border-outline-variant/50 mb-10 w-full sm:w-auto">
+<div style="background-color: #FAF8F3;" class="inline-flex rounded-xl p-1 border-[1.5px] border-outline-variant/50 mb-10 w-full sm:w-auto">
 <button class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg bg-white shadow-[0_1px_3px_rgba(11,18,32,0.04)] font-label-md text-label-md text-on-surface border-[1.5px] border-outline-variant/40 relative overflow-hidden transition-all">
                             Tax classification
                             <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-gradient-to-r from-trail-amber to-error-red rounded-t-full"></div>
@@ -256,7 +259,7 @@
 </div>
 <!-- Explainer Content -->
 <div class="mb-8">
-<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed bg-surface-container-lowest p-6 rounded-2xl border-[1.5px] border-outline-variant/40 shadow-[0_2px_8px_rgba(11,18,32,0.02)] relative overflow-hidden">
+<p style="background-color: #F1EFE8;" class="font-body-md text-body-md text-on-surface-variant leading-relaxed p-6 rounded-2xl border-[1.5px] border-outline-variant/40 shadow-[0_2px_8px_rgba(11,18,32,0.02)] relative overflow-hidden">
 <span class="absolute top-0 left-0 w-[4px] h-full bg-primary/20"></span>
                             Some receipts look like they aren't assessable income — ATO refunds, transfers between your own accounts, or loan drawdowns. Confirm each one to leave it out of your taxable income.
                         </p>
@@ -289,17 +292,7 @@
 </div>
 <div class="mb-8">
 <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">A return of tax already paid, not assessable.</p>
-<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-xl border-[1px] border-outline-variant/30">
-<div class="flex-1">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1">Currently</p>
-<p class="font-body-md text-body-md text-on-surface">Counted as taxable</p>
-</div>
-<span class="material-symbols-outlined text-outline-slate">arrow_right_alt</span>
-<div class="flex-1">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1">After confirmation</p>
-<p class="font-body-md text-body-md text-trail-emerald font-medium"><span class="tabular-nums">$0</span> taxable</p>
-</div>
-</div>
+<div class="flex items-center gap-4 bg-[#F1EFE8] p-4 rounded-xl border-[1px] border-outline-variant/30"><div class="flex-1"><p class="font-label-md text-label-md text-on-surface-variant mb-1">Currently</p><p class="font-body-md text-body-md text-on-surface">Counted as taxable</p></div><span class="material-symbols-outlined text-slate-500">arrow_right_alt</span><div class="flex-1"><p class="font-label-md text-label-md text-on-surface-variant mb-1">After confirmation</p><p class="font-body-md text-body-md text-on-secondary-fixed font-medium"><span class="tabular-nums">$0</span> taxable</p></div></div>
 </div>
 <!-- Inline Form -->
 <div class="border-t border-outline-variant/50 pt-6">
