@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Housekeeping</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-variant": "#dde5d9",
+                        "inverse-primary": "#62df7d",
+                        "on-background": "#171d16",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f4fcf0",
+                        "primary-container": "#00873a",
+                        "on-primary-fixed-variant": "#005320",
+                        "secondary": "#585e6f",
+                        "outline-slate": "#94A3B8",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#eff6ea",
+                        "surface-dim": "#d5dcd1",
+                        "surface-bright": "#f4fcf0",
+                        "secondary-fixed": "#dce2f6",
+                        "trail-sky": "#0EA5E9",
+                        "outline": "#6e7b6c",
+                        "trail-emerald": "#16A34A",
+                        "trail-violet": "#8B5CF6",
+                        "surface-container-highest": "#dde5d9",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "inverse-surface": "#2b322b",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fdfcff",
+                        "outline-variant": "#bdcaba",
+                        "on-primary-fixed": "#002109",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#404757",
+                        "trail-amber": "#F59E0B",
+                        "on-secondary-container": "#5c6274",
+                        "trail-indigo": "#6366F1",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "tertiary-container": "#66768d",
+                        "tertiary": "#4d5d73",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-surface": "#171d16",
+                        "surface-tint": "#006e2d",
+                        "on-surface-variant": "#3e4a3d",
+                        "error-red": "#DC2626",
+                        "primary": "#006b2c",
+                        "error": "#ba1a1a",
+                        "surface": "#f4fcf0",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "secondary-container": "#d9dff4",
+                        "on-primary-container": "#f7fff2",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#e9f0e5",
+                        "surface-container-high": "#e3eadf",
+                        "primary-fixed": "#7ffc97",
+                        "surface-ivory": "#FAFAF7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "glass": "22px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "section-gap": "48px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "eyebrow": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for an editorial feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d5dcd1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #bdcaba; }
+    </style>
+</head>
+<body class="bg-surface-ivory text-on-surface font-body-md antialiased selection:bg-trail-emerald/20 selection:text-primary">
+<!-- App Wrapper -->
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64 h-full hidden md:flex pb-6">
+<!-- Brand -->
+<div class="h-16 flex items-center px-6 shrink-0 mt-4">
+<span class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">Monitrax</span>
+<span class="ml-2 px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-eyebrow text-[10px] uppercase">Wealth OS</span>
+</div>
+<!-- Scrollable Nav -->
+<div class="flex-1 overflow-y-auto mt-4 px-2 space-y-1">
+<!-- Standard Tabs -->
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">group</span>
+<span class="font-label-md text-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">account_balance</span>
+<span class="font-label-md text-label-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">account_balance_wallet</span>
+<span class="font-label-md text-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">health_and_safety</span>
+<span class="font-label-md text-label-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">trending_up</span>
+<span class="font-label-md text-label-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">map</span>
+<span class="font-label-md text-label-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors">analytics</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+<!-- Divider -->
+<div class="h-px w-full bg-outline-variant/50 my-4"></div>
+<!-- Housekeeping Section (Active) -->
+<div>
+<a class="flex items-center justify-between h-11 bg-gradient-to-r from-trail-amber/10 to-transparent text-trail-amber font-medium border-l-[3px] border-trail-amber px-4 rounded-r-lg" href="#">
+<div class="flex items-center">
+<span class="material-symbols-outlined mr-3 text-[20px]">cleaning_services</span>
+<span class="font-label-md text-label-md">Housekeeping</span>
+</div>
+</a>
+<!-- Sub-tabs -->
+<div class="ml-11 mt-1 space-y-1 pr-2 border-l border-outline-variant/30 pl-3">
+<a class="flex items-center justify-between h-9 text-on-surface-variant hover:text-on-surface transition-colors px-2 rounded-lg group" href="#">
+<span class="font-body-sm text-body-sm">Duplicate income</span>
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-container-high text-on-surface-variant font-eyebrow text-[10px]">1</span>
+</a>
+<a class="flex items-center justify-between h-9 bg-trail-amber/5 text-trail-amber font-medium px-2 rounded-lg group" href="#">
+<span class="font-body-sm text-body-sm">Tax classification</span>
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-br from-trail-amber to-error-red text-white font-eyebrow text-[10px]">2</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Bottom Action -->
+<div class="px-4 shrink-0 mt-auto pt-4">
+<button class="w-full flex items-center justify-center h-11 rounded-xl border-[1.5px] border-on-secondary-fixed text-on-secondary-fixed font-label-md text-label-md hover:bg-surface-container-low transition-colors">
+                    Update Plan
+                </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-0 md:ml-64 w-full h-full relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex-1 flex items-center">
+<!-- Search placeholder -->
+<div class="hidden md:flex items-center text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/50 w-64 hover:border-outline-variant transition-colors group cursor-text">
+<span class="material-symbols-outlined text-[18px] mr-2 group-hover:text-primary transition-colors">search</span>
+<span class="font-body-sm text-body-sm">Search records...</span>
+</div>
+</div>
+<div class="flex items-center space-x-6 text-on-surface-variant">
+<button class="hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error-red rounded-full border border-surface-ivory"></span>
+</button>
+<button class="hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-white font-label-md font-semibold overflow-hidden border border-outline-variant/30 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                        JD
+                    </div>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<main class="flex-1 overflow-y-auto mt-16 p-margin-mobile md:p-margin-desktop w-full">
+<div class="max-w-[800px] mx-auto w-full">
+<!-- Page Header -->
+<div class="mb-12">
+<p class="font-eyebrow text-eyebrow uppercase text-on-surface-variant tracking-widest mb-3 flex items-center">
+<span class="w-4 h-[1.5px] bg-trail-amber mr-3 rounded-full"></span>
+                            Housekeeping
+                        </p>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4">Housekeeping</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+                            Review and confirm changes to your own data — nothing changes until you confirm.
+                        </p>
+</div>
+<!-- Segmented Control -->
+<div class="inline-flex bg-surface-container-low rounded-xl p-1 border-[1.5px] border-outline-variant/50 mb-10 w-full sm:w-auto">
+<button class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg bg-white shadow-[0_1px_3px_rgba(11,18,32,0.04)] font-label-md text-label-md text-on-surface border-[1.5px] border-outline-variant/40 relative overflow-hidden transition-all">
+                            Tax classification
+                            <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-gradient-to-r from-trail-amber to-error-red rounded-t-full"></div>
+</button>
+<button class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">
+                            Duplicate income
+                        </button>
+</div>
+<!-- Explainer Content -->
+<div class="mb-8">
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed bg-surface-container-lowest p-6 rounded-2xl border-[1.5px] border-outline-variant/40 shadow-[0_2px_8px_rgba(11,18,32,0.02)] relative overflow-hidden">
+<span class="absolute top-0 left-0 w-[4px] h-full bg-primary/20"></span>
+                            Some receipts look like they aren't assessable income — ATO refunds, transfers between your own accounts, or loan drawdowns. Confirm each one to leave it out of your taxable income.
+                        </p>
+</div>
+<!-- Summary Bar -->
+<div class="mb-10 w-full rounded-2xl bg-white/60 backdrop-blur-md border-[1.5px] border-outline-variant px-6 py-5 shadow-[0_4px_24px_rgba(11,18,32,0.03)] flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-trail-sky/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-trail-sky filled text-[20px]">info</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+                            Confirming the flagged receipts below removes about <span class="font-headline-sm text-headline-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-trail-sky to-trail-indigo tabular-nums">$10,050</span> from your taxable income.
+                        </p>
+</div>
+<!-- Review Cards Section -->
+<div class="space-y-6">
+<!-- Card 1: Expanded (Active Review) -->
+<div class="rounded-[22px] bg-white/70 backdrop-blur-md border-[1.5px] border-outline-variant shadow-[0_8px_32px_rgba(11,18,32,0.04)] relative overflow-hidden transition-all duration-300 transform translate-y-0">
+<!-- Amber-Rose Accent Strip -->
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-amber to-error-red opacity-80"></div>
+<div class="p-6 md:p-8">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-wider mb-2">Ato Ato002000023189359</p>
+<h3 class="font-data-lg text-data-lg text-on-surface tabular-nums tracking-tight">$9,098.00</h3>
+</div>
+<div class="bg-trail-amber/10 border border-trail-amber/20 text-trail-amber px-3 py-1.5 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">account_balance</span>
+<span class="font-label-md text-[13px]">ATO tax refund</span>
+</div>
+</div>
+<div class="mb-8">
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">A return of tax already paid, not assessable.</p>
+<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-xl border-[1px] border-outline-variant/30">
+<div class="flex-1">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Currently</p>
+<p class="font-body-md text-body-md text-on-surface">Counted as taxable</p>
+</div>
+<span class="material-symbols-outlined text-outline-slate">arrow_right_alt</span>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">After confirmation</p>
+<p class="font-body-md text-body-md text-trail-emerald font-medium"><span class="tabular-nums">$0</span> taxable</p>
+</div>
+</div>
+</div>
+<!-- Inline Form -->
+<div class="border-t border-outline-variant/50 pt-6">
+<div class="flex flex-col md:flex-row items-center gap-4">
+<div class="w-full md:w-auto flex-1 relative">
+<label class="sr-only" for="confirm-input">Type RECLASSIFY to confirm</label>
+<input class="w-full h-12 rounded-xl border-[1.5px] border-outline-slate bg-transparent px-4 font-body-md text-body-md text-on-surface placeholder:text-outline-slate focus:border-trail-emerald focus:ring-0 transition-colors" id="confirm-input" placeholder="Type RECLASSIFY to confirm" type="text"/>
+</div>
+<div class="flex items-center gap-4 w-full md:w-auto">
+<!-- Disabled state visually represented for design task -->
+<button class="flex-1 md:flex-none h-12 px-6 rounded-xl bg-outline-slate/20 text-outline-slate font-label-md text-label-md font-medium cursor-not-allowed border border-outline-slate/10" disabled="">
+                                                Confirm — not taxable
+                                            </button>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors px-2">
+                                                Cancel
+                                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2: Collapsed (Pending Review) -->
+<div class="rounded-[22px] bg-white/40 backdrop-blur-sm border-[1.5px] border-outline-variant/60 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/60 hover:shadow-md transition-all cursor-pointer group">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-wider mb-1">Ato Ato001100022493651</p>
+<div class="flex items-center gap-3">
+<h3 class="font-headline-md text-headline-md text-on-surface tabular-nums tracking-tight">$952.00</h3>
+<span class="inline-flex w-2 h-2 rounded-full bg-trail-amber"></span>
+</div>
+</div>
+<button class="h-10 px-5 rounded-xl border-[1.5px] border-on-secondary-fixed text-on-secondary-fixed font-label-md text-label-md group-hover:bg-on-secondary-fixed group-hover:text-white transition-colors flex items-center justify-center shrink-0">
+                                Reclassify...
+                            </button>
+</div>
+</div>
+<!-- Preview Strip -->
+<div class="mt-12 mb-16 relative">
+<div aria-hidden="true" class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/30"></div>
+</div>
+<div class="relative flex justify-center">
+<span class="bg-surface-ivory px-4 font-eyebrow text-eyebrow uppercase text-on-surface-variant tracking-widest">Up Next</span>
+</div>
+<div class="mt-6 rounded-xl bg-transparent border-[1.5px] border-dashed border-outline-variant/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-lowest/50 transition-colors">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-outline-slate mt-0.5">content_copy</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface mb-1">Duplicate income: Ingeus salary</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">3 copies detected → 1 canonical row · declared gross unchanged</p>
+</div>
+</div>
+<button class="h-9 px-4 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors shrink-0">
+                                Review &amp; merge
+                            </button>
+</div>
+</div>
+<!-- Footer Disclaimer -->
+<footer class="pt-8 pb-12 border-t border-outline-variant/30">
+<p class="font-body-sm text-body-sm text-outline-slate text-center md:text-left max-w-3xl mx-auto md:mx-0">
+                            General information only — not personal tax advice. Confirmations only change how Monitrax classifies your own records. Monitrax Pty Ltd (AFSL 123456).
+                        </p>
+</footer>
+</div>
+</main>
+</div>
+</div>
+</body></html>
