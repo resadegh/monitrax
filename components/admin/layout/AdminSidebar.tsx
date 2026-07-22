@@ -115,9 +115,9 @@ const navSections: NavSection[] = [
       { label: 'NeoAudit', href: '/admin/neoaudit', icon: icons.neoaudit, permission: 'audit' },
       { label: 'Neomatrix', href: '/admin/neomatrix', icon: icons.neomatrix, permission: 'audit' },
       { label: 'Calc Audit', href: '/admin/calc-audit', icon: icons.calcAudit, permission: 'audit' },
-      // Mechanism A Part 2 (MON-074/076): the Reza-gated duplicate-merge
-      // preview-and-confirm surface (#1459).
-      { label: 'Intake Duplicates', href: '/admin/intake-duplicates', icon: icons.calcAudit, permission: 'audit' },
+      // Intake Duplicates RELOCATED to /dashboard/housekeeping/duplicates
+      // (MON-094 / VR-021 principal-mismatch class, Reza ruling 2026-07-21:
+      // personal-data tools live in the app, never the staff portal).
     ],
   },
   {
