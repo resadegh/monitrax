@@ -376,3 +376,21 @@ Coverage: verifies the matcher semantics + the intake guardrail in unit/golden f
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (Matrix brief followed incl. the recommended neutral-copy option; Neomatrix consulted + re-pinned same PR) · Requirements 10/10 (MANAGED suppressed-to-neutral, DIRECT warning preserved, one producer, display-only) · Logic 10/10 (managed decided from the same rentalRows the gross-up reads; money paths byte-untouched — regression locked by the $2,947/$35,364 assertions)`
 Coverage: verifies the flag semantics + money invariance in unit form; does NOT verify the rendered chip on live data — that is the Matrix's Broadbeach re-open after merge.
+
+---
+
+## Session: yhm8ug (continuation 16, 2026-07-23) — Fix B Stitch design pass: merge-with-edit (Housekeeping · Duplicate records)
+
+### Changes Made
+- **Type**: Design (Stitch-first per §18.2.1 — gates the Fix B build; no code)
+- **Routing correction (Reza directive 2026-07-23)**: the Matrix's design brief routed the Stitch generation to "the desktop session" — **incorrect**. Reza's standing ruling: **Stitch design passes are executed BY the Code (Fable 5) session**, which self-reviews to >9/10 (§18.8) and presents the passing design for his approval. Recorded here + in the next Matrix handout so future briefs route correctly.
+- **Generated**: screen `1ebd1ea29fb0434d8268d9d9d1b45e38` (project `1859462351962811110`, GEMINI_3_1_PRO, DESKTOP) — "Housekeeping Hub — Merge Duplicate Records". Two-zone merge-confirm card per the Matrix brief: dominant emerald "KEEPING" panel with inline-editable Amount / Frequency / One-off⇄Recurring on the survivor; muted "REMOVING" panel with strikethrough + "merges into the record above · links repointed"; "Declared annual effect" line; recap chip ("will also update: frequency → One-off") + typed-MERGE gate + disabled Confirm + Cancel + "Nothing merges until you confirm."; collapsed second group (Mate) with "Review & merge"; explainer panel; tab row with count pill; AFSL-free footer (grep-verified: zero "AFSL"/licence strings).
+- **Gate (§18.8)**: v1 scored **9.1/10** (vocabulary 9 · hierarchy 9 · psychology 9.5 · typography 9 · premium 9 · completeness 9 · polish 9). Adversarial pass findings: (a) empty state not in this screen — resolved by scope: the SHIPPED duplicates page already carries the approved empty-state card from design `124c6e36`; Fix B changes only its copy (§18.2.1 true tweak, code-first allowed); (b) build-time conformances: placeholder casing "Type MERGE to confirm", Material Symbols → Lucide mapping (same class of note as the approved Housekeeping pass).
+- **Artefacts**: `.stitch/designs/housekeeping/duplicate-merge-edit-desktop-light-v1.{html,png}`. Dark + mobile variants remain the standing backfill per Reza's earlier ruling (pages ship dark-correct via theme tokens).
+
+### Build Status
+- [x] Design-only PR — no code paths changed; artefacts + docs only.
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Matrix design brief followed — structure, copy, interactions; §18.7.1 principles seeded into the prompt; deviation = routing correction, surfaced not silent) · Requirements 10/10 (two-zone kept/removed, survivor edit fields, typed-MERGE preserved, no merge-all, AFSL-free) · Logic 10/10 (design asserts no numbers; the one money line is labelled "Declared annual effect" matching the existing server-computed field)`
+Coverage: the §18.8 score verifies the DESIGN against the rubric; it does NOT verify the built page — that is the Opus build + per-fix Chrome check after Reza's approval.
