@@ -29,10 +29,11 @@
  */
 
 import { Frequency } from '@/lib/types/prisma-enums';
-import { sameMerchant } from '@/lib/bank/merchantNormalize';
+import { sameMerchant, hasDisjointIdentifiers } from '@/lib/bank/merchantNormalize';
 import {
   detectFrequency,
   isNearDuplicateEntry,
+  DUPLICATE_AMOUNT_TOLERANCE,
   type EntryForDuplicateCheck,
 } from '@/lib/utils/reconciliation';
 
@@ -224,6 +225,45 @@ function resolveIsRecurring(signal: IntakeSignal): boolean {
   }
 }
 
+/**
+ * MON-095 — the EXPENSE duplicate-compatibility guard (the AIA class,
+ * Reza live review 2026-07-23). `normalizeMerchant` strips policy/account
+ * numbers before names compare, so "Aia … 68718123" ($131) and
+ * "Aia … 68718100" ($158) — two DIFFERENT policies — normalised to the
+ * same name and grouped as exact duplicates; merging would delete a real
+ * policy. Two rules, applied to the exact AND near paths of both
+ * name-matching policies, in this ONE decision layer (§12.2.1 — the
+ * intake guardrail and the Housekeeping duplicates preview both read it):
+ *
+ *   1. AMOUNT GUARD: same-name expenses only converge inside the ONE
+ *      near-duplicate band (`DUPLICATE_AMOUNT_TOLERANCE`, ≤10%) — a
+ *      20%-different premium is a different policy, not a duplicate.
+ *   2. IDENTIFIER FAIL-SAFE: when both raw names carry policy/account
+ *      identifier tokens (long digit runs, ABN/ACN excluded) and they
+ *      share NONE, the rows are distinct sources — never auto-merged,
+ *      whatever the amounts. Fail safe: a wrongly-split duplicate merely
+ *      waits for Reza's review; a wrongly-merged policy loses data.
+ *
+ * EXPENSE-SCOPED by pinned doctrine: INCOME deliberately converges across
+ * amount drift (a declared salary and its reconciled twin differ — the
+ * Mechanism A rule, locked by ring2.mechanismA.intakeDedup), and income
+ * deposit descriptors carry per-payment reference numbers — an identifier
+ * veto there would re-fragment salaries (the MON-076 class).
+ */
+function expenseDuplicateCompatible(
+  signal: IntakeSignal,
+  row: IntakeExistingRow,
+): boolean {
+  if (signal.kind !== 'expense' || !signal.candidate) return true;
+  if (hasDisjointIdentifiers(signal.candidate.name, row.name)) return false;
+  const a = Math.abs(signal.candidate.amount);
+  const b = Math.abs(row.amount);
+  if (a > 0 && b > 0 && Math.abs(a - b) > Math.max(a, b) * DUPLICATE_AMOUNT_TOLERANCE) {
+    return false;
+  }
+  return true;
+}
+
 function resolveStreamMatch(
   signal: IntakeSignal,
 ): IntakeClassification['streamMatch'] {
@@ -237,9 +277,13 @@ function resolveStreamMatch(
       return { id: rows[0].id, confidence: 'exact' };
     case 'merchant': {
       if (!signal.candidate) return null;
-      const exact = rows.find((r) => sameMerchant(r.name, signal.candidate!.name));
+      const exact = rows.find(
+        (r) => sameMerchant(r.name, signal.candidate!.name) && expenseDuplicateCompatible(signal, r),
+      );
       if (exact) return { id: exact.id, confidence: 'exact' };
-      const near = rows.find((r) => isNearDuplicateEntry(signal.candidate!, r));
+      const near = rows.find(
+        (r) => isNearDuplicateEntry(signal.candidate!, r) && expenseDuplicateCompatible(signal, r),
+      );
       return near ? { id: near.id, confidence: 'near-duplicate' } : null;
     }
     case 'source-signature': {
@@ -257,9 +301,13 @@ function resolveStreamMatch(
         ...compatible.filter((r) => (r.scopeKey ?? null) === candScope),
         ...compatible.filter((r) => (r.scopeKey ?? null) !== candScope),
       ];
-      const exact = ranked.find((r) => sameMerchant(r.name, signal.candidate!.name));
+      const exact = ranked.find(
+        (r) => sameMerchant(r.name, signal.candidate!.name) && expenseDuplicateCompatible(signal, r),
+      );
       if (exact) return { id: exact.id, confidence: 'exact' };
-      const near = ranked.find((r) => isNearDuplicateEntry(signal.candidate!, r));
+      const near = ranked.find(
+        (r) => isNearDuplicateEntry(signal.candidate!, r) && expenseDuplicateCompatible(signal, r),
+      );
       return near ? { id: near.id, confidence: 'near-duplicate' } : null;
     }
     case 'none':

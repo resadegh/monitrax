@@ -10,8 +10,8 @@
     "counts": {
       "files": 1085,
       "filesOnDisk": 1086,
-      "nodes": 8748,
-      "edges": 15388,
+      "nodes": 8751,
+      "edges": 15391,
       "allowlisted": 3
     }
   },
@@ -53565,7 +53565,7 @@
       "intake_classifyintake_detectnonassessable",
       "detectNonAssessable()",
       "lib/intake/classifyIntake.ts",
-      304
+      352
     ],
     [
       "dashboard_housekeeping_shell",
@@ -53602,6 +53602,24 @@
       "HousekeepingDuplicatesPage()",
       "app/dashboard/housekeeping/duplicates/page.tsx",
       56
+    ],
+    [
+      "intake_classifyintake_expenseduplicatecompatible",
+      "expenseDuplicateCompatible()",
+      "lib/intake/classifyIntake.ts",
+      253
+    ],
+    [
+      "bank_merchantnormalize_extractidentifiertokens",
+      "extractIdentifierTokens()",
+      "lib/bank/merchantNormalize.ts",
+      74
+    ],
+    [
+      "bank_merchantnormalize_hasdisjointidentifiers",
+      "hasDisjointIdentifiers()",
+      "lib/bank/merchantNormalize.ts",
+      90
     ]
   ],
   "edges": [
@@ -161320,6 +161338,27 @@
       "dashboard_housekeeping_duplicates_page_housekeepingduplicatespage",
       "app/dashboard/housekeeping/duplicates/page.tsx",
       56
+    ],
+    [
+      "contains",
+      "intake_classifyintake",
+      "intake_classifyintake_expenseduplicatecompatible",
+      "lib/intake/classifyIntake.ts",
+      253
+    ],
+    [
+      "contains",
+      "bank_merchantnormalize",
+      "bank_merchantnormalize_extractidentifiertokens",
+      "lib/bank/merchantNormalize.ts",
+      74
+    ],
+    [
+      "contains",
+      "bank_merchantnormalize",
+      "bank_merchantnormalize_hasdisjointidentifiers",
+      "lib/bank/merchantNormalize.ts",
+      90
     ]
   ]
 }
