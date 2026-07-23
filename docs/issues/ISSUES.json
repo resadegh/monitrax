@@ -2596,7 +2596,7 @@
     {
       "id": "MON-088",
       "title": "Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": true,
       "opened": "2026-07-20",
@@ -2619,7 +2619,9 @@
         "master snapshot tax summary (activity Sankey / dashboard tiles) via the MON-020 bundle",
         "estimate callers (salaryProcessor, cashflow incomeNormalizer, super/optimize) — DELIBERATELY unchanged (engine default stays covered); named follow-up"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1491"
+      ],
       "test": "tests/tax/mon088MedicareFamily.test.ts#rule matrix (a)-(h): family-threshold MLS on combined income, own-income base, all-or-nothing cover (the ATO correction to the brief's (c)), +$1,500/child after first, low-earner exception, blank never asserts cover, legacy default unchanged, levy family-reduction on FAMILY income; Float===Decimal; position wiring incl. income-tax-never-moves",
       "tracker": "Reza question 2026-07-20 (family tax position) + ATO MLS thresholds (ato.gov.au)",
       "notes": "VERIFIED at source (2026-07-20): medicareLevyCalculator.ts accepts familyStatus ('SINGLE'|'FAMILY'), spouseIncome, dependentChildren, hasPrivateHealthInsurance (:28-32) and applies config.medicareThresholds.family (:70-71); the ONE caller (taxPositionCalculator.ts:295) passes only { taxableIncome } so every position is computed as SINGLE / no PHI / no dependants. LAW (ATO, cited in chat): no joint lodgment exists — marginal rates are always individual and spouse income never changes them; family/spouse income drives the MLS combined-income threshold ($202,000 family vs $101,000 single, 2025-26, +$1,500 per dependent child after the first; low-earner spouse exception <= $27,222), the Medicare levy family reduction, PHI rebate tiers, and spouse offsets. FIX SHAPE (awaits Reza queueing — changes tax numbers): wire familyStatus/spouseIncome/dependentChildren from HouseholdProfile (+ a hasPrivateHealthInsurance input Monitrax doesn't yet capture) into calculateMedicareLevy at both the household and perMember level — Part A (#1461) already exposes each member's income to the other, so combined MLS income is computable without new fetches. BUILD 2026-07-23 (Reza GO; family-income rule confirmed in chat): HouseholdMember.hasPrivateHospitalCover Boolean? (nullable = 'not sure', additive migration 20260723000000) + member-dialog tri-state control (Stitch 16e804559bf74af8b1c2b02d2e7f8b78, §18.8 9.2/10) + medicareContext threaded getUserTaxPosition -> calculateTaxPosition (Float+Decimal) -> calculateMedicareLevy; MLS family tiers config-driven (medicareSurchargeFamily {singleMultiplier: 2, dependentChildIncrease: 1500}); golden household re-pinned 30,724 -> 32,284 (SINGLE, no cover recorded -> 1.25% x 124,800 = 1,560 — the conservative default made visible)."

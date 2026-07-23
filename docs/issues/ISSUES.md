@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**96 total** · 92 open · 🔵 21 · 🟡 5 · 🟠 30 · 🟢 36 · ✅ 3
+**96 total** · 92 open · 🔵 21 · 🟡 4 · 🟠 31 · 🟢 36 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -94,7 +94,7 @@
 | MON-085 | 🟠 FIXING | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | ##1458 | ✅ |
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 | MON-087 | 🟠 FIXING | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | ##1446 | ✅ |
-| MON-088 | 🟡 DIAGNOSED | 🟡 | yes | Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults | — | ✅ |
+| MON-088 | 🟠 FIXING | 🟡 | yes | Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults | ##1491 | ✅ |
 | MON-089 | 🟢 VERIFIED | 🟠 | yes | Actual Monthly inflated xN/(N-1): duplicated day-span average — income-route ARREARS + link-route copies omit the first payment's covered interval | ##1465 | ✅ |
 | MON-090 | 🟢 VERIFIED | 🟠 | no | Income/expense actuals not date-aware on screen: historical average masquerades as current monthly; this-month actual never displayed | ##1467 | ✅ |
 | MON-091 | 🟠 FIXING | 🟠 | yes | Rental/income links lock in a MONTHLY default: no frequency control in the link dialog + reuse paths never revisit cadence | ##1468 | ✅ |
@@ -1595,7 +1595,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/E
 
 ### MON-088 — Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-20
+**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-20
 
 > **What was wrong:** Australia has no joint family tax return — each person is taxed at individual rates — but FAMILY income does change the Medicare levy surcharge threshold ($202,000 combined for 2025-26 vs $101,000 single, +$1,500 per child after the first), the low-income Medicare levy reduction, and private-health-rebate tiers. Monitrax's Medicare calculator supports all of this but is always called as SINGLE with no spouse income or dependants, so a couple can be shown a Medicare levy surcharge they wouldn't actually pay (or vice versa).
 >
@@ -1606,6 +1606,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/E
 - **Root cause:** `lib/tax-engine/position/taxPositionCalculator.ts:295`, `lib/tax-engine/core/medicareLevyCalculator.ts:30`
 - **Neomatrix:** `service.tax.getUserTaxPosition`
 - **Downstream consumers (§19.4):** `tax page + /cashflow FY estimate + CFO (all read getUserTaxPosition -> tax.medicareLevy/medicareSurcharge/total)`, `perMember positions (two-pass: each member's MLS uses combined income + own base + shared cover flag)`, `master snapshot tax summary (activity Sankey / dashboard tiles) via the MON-020 bundle`, `estimate callers (salaryProcessor, cashflow incomeNormalizer, super/optimize) — DELIBERATELY unchanged (engine default stays covered); named follow-up`
+- **Fix PR(s):** ##1491
 - **Holistic test (§19.4):** `tests/tax/mon088MedicareFamily.test.ts#rule matrix (a)-(h): family-threshold MLS on combined income, own-income base, all-or-nothing cover (the ATO correction to the brief's (c)), +$1,500/child after first, low-earner exception, blank never asserts cover, legacy default unchanged, levy family-reduction on FAMILY income; Float===Decimal; position wiring incl. income-tax-never-moves`
 - **Detail:** `Reza question 2026-07-20 (family tax position) + ATO MLS thresholds (ato.gov.au)`
 
