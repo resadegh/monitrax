@@ -2858,7 +2858,7 @@
         "SHARED CONSTANT: DUPLICATE_AMOUNT_TOLERANCE (reconciliation.ts) - isNearDuplicateEntry's 10% band reused, no second threshold"
       ],
       "fixPRs": [
-        "#1480"
+        "#1481"
       ],
       "test": "tests/intake/mon095DuplicateAccuracy.test.ts: AIA repro (different policies+20% apart do NOT group - RED pre-fix), same-amount-different-identifier fail-safe, QBE/Mate genuine duplicates still group (ABN not an identifier), intake guardrail returns no match for a differing-identifier new expense, income doctrine lock",
       "tracker": "reza-live-review-2026-07-23",

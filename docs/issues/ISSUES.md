@@ -101,7 +101,7 @@
 | MON-092 | 🟢 VERIFIED | 🟠 | yes | One-off rows wear stream clothing: raw 'Monthly' label in sibling views + same-day payments extrapolated to a phantom avg ($22,830 from two gifts) | ##1469 | ✅ |
 | MON-093 | 🟢 VERIFIED | 🔴 | yes | Broadbeach rental ~4x cross-surface inflation: resolver advance-pair hole annualised an unsorted first txn by a mis-declared WEEKLY cadence ($11,328/mo vs income page $2,515) | ##1473 | ✅ |
 | MON-094 | 🟠 FIXING | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
-| MON-095 | 🟠 FIXING | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1480 | ✅ |
+| MON-095 | 🟠 FIXING | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
 
 ---
 
@@ -1733,7 +1733,7 @@ Raised from VR-019 items 11/19 (run docs/verification/runs/VR-019.md; evidence: 
 - **Root cause:** `lib/bank/merchantNormalize.ts:28`, `lib/bank/merchantNormalize.ts:38`, `lib/intake/classifyIntake.ts:267`
 - **Neomatrix:** `engine.intake.classifyIntake`
 - **Downstream consumers (§19.4):** `PRODUCER: classifyIntake resolveStreamMatch (merchant + source-signature policies) - THE one decision layer; expenseDuplicateCompatible guard added to the exact AND near branches of both`, `CONSUMERS: findDuplicateGroups (Housekeeping duplicates preview + POST re-derivation), link-route expense create (intake guardrail #1458), reconcileSuggestedAction expense path, POST /api/expenses dedup - all flow through the classifier; no second matcher exists`, `NOT TOUCHED: income convergence (Mechanism A doctrine - locked by ring2.mechanismA.intakeDedup, re-run green), scope-singleton rental reuse (MON-009), the tax engine / MON-094`, `SHARED CONSTANT: DUPLICATE_AMOUNT_TOLERANCE (reconciliation.ts) - isNearDuplicateEntry's 10% band reused, no second threshold`
-- **Fix PR(s):** ##1480
+- **Fix PR(s):** ##1481
 - **Holistic test (§19.4):** `tests/intake/mon095DuplicateAccuracy.test.ts: AIA repro (different policies+20% apart do NOT group - RED pre-fix), same-amount-different-identifier fail-safe, QBE/Mate genuine duplicates still group (ABN not an identifier), intake guardrail returns no match for a differing-identifier new expense, income doctrine lock`
 - **Detail:** `reza-live-review-2026-07-23`
 

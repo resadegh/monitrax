@@ -344,7 +344,7 @@ Coverage: verifies the topology, auth pattern, AFSL guard, and nav SSOT in test 
 - `lib/utils/reconciliation.ts` — DUPLICATE_AMOUNT_TOLERANCE exported; isNearDuplicateEntry reads it
 - `lib/intake/classifyIntake.ts` — expenseDuplicateCompatible on both policies' exact+near branches
 - `tests/intake/mon095DuplicateAccuracy.test.ts` (NEW, 9 tests) — AIA repro (RED pre-fix) + fail-safe + genuine-duplicate + intake-guardrail + income-doctrine locks
-- Neomatrix: engine.intake.classifyIntake anchor re-pinned :158 + produces note; structural graph +3 symbols, detectNonAssessable re-pinned :352; registry MON-095 FIXING (#1480)
+- Neomatrix: engine.intake.classifyIntake anchor re-pinned :158 + produces note; structural graph +3 symbols, detectNonAssessable re-pinned :352; registry MON-095 FIXING (#1481)
 
 ### Build Status
 - [x] Targeted suites 74/74 (incl. mechanismA doctrine + merchantNormalize) · tsc + full suite running at commit time (recorded in the PR)
