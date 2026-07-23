@@ -188,7 +188,7 @@ export const trailNavItems: NavItem[] = [
     matchRoutes: ['/dashboard/housekeeping'],
     children: [
       { name: 'Tax classification', href: '/dashboard/housekeeping/tax' },
-      { name: 'Duplicate income', href: '/dashboard/housekeeping/duplicates' },
+      { name: 'Duplicate records', href: '/dashboard/housekeeping/duplicates' },
     ],
   },
 ];

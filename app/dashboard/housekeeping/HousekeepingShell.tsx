@@ -25,7 +25,7 @@ import type { ReactNode } from 'react';
 
 const TABS = [
   { name: 'Tax classification', href: '/dashboard/housekeeping/tax' },
-  { name: 'Duplicate income', href: '/dashboard/housekeeping/duplicates' },
+  { name: 'Duplicate records', href: '/dashboard/housekeeping/duplicates' },
 ] as const;
 
 export interface HousekeepingShellProps {

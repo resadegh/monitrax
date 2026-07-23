@@ -177,7 +177,10 @@ export interface MergeDbClient {
     updateMany: (args: unknown) => Promise<unknown>;
     deleteMany: (args: unknown) => Promise<{ count: number }>;
   };
-  income: { deleteMany: (args: unknown) => Promise<{ count: number }> };
+  income: {
+    updateMany: (args: unknown) => Promise<unknown>;
+    deleteMany: (args: unknown) => Promise<{ count: number }>;
+  };
   agentDisbursementRule: {
     findMany: (args: unknown) => Promise<Array<{ id: string; incomeStreamId: string }>>;
     update: (args: unknown) => Promise<unknown>;
@@ -190,6 +193,93 @@ export interface MergeResult {
   /** True when a merged sibling's AgentDisbursementRule was dropped because
    *  the survivor already had one (surfaced, never silent). */
   droppedDisbursementRule: boolean;
+}
+
+// =============================================================================
+// Fix B — merge-with-edit (Reza directive 2026-07-23; design 1ebd1ea2)
+// The user may correct the SURVIVOR's amount / frequency / one-off flag as
+// part of the merge (QBE monthly→one-off, Mate one-off→recurring). The edit
+// is a separate explicit step in the route — `executeMerge` stays the pure
+// FK-repoint + delete engine and never rewrites the survivor's own fields.
+// =============================================================================
+
+/** The Frequency enum values (prisma/schema.prisma) — the ONE list. */
+export const VALID_FREQUENCIES = [
+  'WEEKLY',
+  'FORTNIGHTLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'ANNUAL',
+  'HALF_YEARLY',
+] as const;
+
+export interface SurvivorEdits {
+  amount?: number;
+  frequency?: string;
+  isRecurring?: boolean;
+}
+
+/**
+ * Validate the optional `survivorEdits` payload. Absent/empty → `{edits:null}`
+ * (a no-edit merge is byte-identical to the pre-Fix-B behaviour). Any present
+ * field must be valid or the whole request is rejected — a partially-valid
+ * edit is never silently trimmed.
+ */
+export function validateSurvivorEdits(raw: unknown): { edits: SurvivorEdits | null; error: string | null } {
+  if (raw == null) return { edits: null, error: null };
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return { edits: null, error: 'survivorEdits must be an object' };
+  }
+  const o = raw as Record<string, unknown>;
+  const unknownKeys = Object.keys(o).filter((k) => !['amount', 'frequency', 'isRecurring'].includes(k));
+  if (unknownKeys.length > 0) {
+    return { edits: null, error: `survivorEdits: unknown field(s) ${unknownKeys.join(', ')}` };
+  }
+  const edits: SurvivorEdits = {};
+  if (o.amount !== undefined) {
+    if (typeof o.amount !== 'number' || !Number.isFinite(o.amount) || o.amount < 0) {
+      return { edits: null, error: 'survivorEdits.amount must be a finite number ≥ 0' };
+    }
+    edits.amount = o.amount;
+  }
+  if (o.frequency !== undefined) {
+    if (typeof o.frequency !== 'string' || !(VALID_FREQUENCIES as readonly string[]).includes(o.frequency)) {
+      return { edits: null, error: `survivorEdits.frequency must be one of ${VALID_FREQUENCIES.join(', ')}` };
+    }
+    edits.frequency = o.frequency;
+  }
+  if (o.isRecurring !== undefined) {
+    if (typeof o.isRecurring !== 'boolean') {
+      return { edits: null, error: 'survivorEdits.isRecurring must be a boolean' };
+    }
+    edits.isRecurring = o.isRecurring;
+  }
+  if (Object.keys(edits).length === 0) return { edits: null, error: null };
+  return { edits, error: null };
+}
+
+/**
+ * Apply validated survivor edits — ONLY the fields present, ONLY to the
+ * survivor row, ownership enforced in the WHERE (§12.11: updateMany with
+ * `{ id, userId }` so no other row can ever match). MUST run inside the same
+ * transaction as `executeMerge`. Returns the applied field names for the
+ * audit log.
+ */
+export async function applySurvivorEdits(
+  db: MergeDbClient,
+  userId: string,
+  kind: 'income' | 'expense',
+  survivorId: string,
+  edits: SurvivorEdits,
+): Promise<string[]> {
+  const data: Record<string, unknown> = {};
+  if (edits.amount !== undefined) data.amount = edits.amount;
+  if (edits.frequency !== undefined) data.frequency = edits.frequency;
+  if (edits.isRecurring !== undefined) data.isRecurring = edits.isRecurring;
+  if (Object.keys(data).length === 0) return [];
+  const model = kind === 'income' ? db.income : db.expense;
+  await model.updateMany({ where: { id: survivorId, userId }, data });
+  return Object.keys(data);
 }
 
 /**

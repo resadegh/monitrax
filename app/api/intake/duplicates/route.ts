@@ -27,6 +27,8 @@ import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import {
   findDuplicateGroups,
   executeMerge,
+  validateSurvivorEdits,
+  applySurvivorEdits,
   type MergeableRow,
   type MergeDbClient,
 } from '@/lib/intake/duplicateMerge';
@@ -83,6 +85,14 @@ export const POST = withPermission('income.write', async (request, auth) => {
     const body = await request.json();
     const { kind, survivorId, mergeIds, confirm } = body ?? {};
 
+    // Fix B (merge-with-edit, design 1ebd1ea2): optional corrections to the
+    // SURVIVOR's amount / frequency / one-off flag, applied as a separate
+    // explicit step inside the same transaction — executeMerge stays pure.
+    const { edits: survivorEdits, error: editsError } = validateSurvivorEdits(body?.survivorEdits);
+    if (editsError) {
+      return NextResponse.json({ error: editsError }, { status: 400 });
+    }
+
     if (confirm !== 'MERGE') {
       return NextResponse.json(
         { error: 'Merge requires the explicit confirmation payload (confirm: "MERGE") — nothing merges without it.' },
@@ -113,9 +123,18 @@ export const POST = withPermission('income.write', async (request, auth) => {
       );
     }
 
-    const result = await prisma.$transaction(async (tx: unknown) =>
-      executeMerge(tx as MergeDbClient, auth.userId, kind, survivorId, group.mergeIds),
-    );
+    const { result, editedFields } = await prisma.$transaction(async (tx: unknown) => {
+      const mergeResult = await executeMerge(
+        tx as MergeDbClient, auth.userId, kind, survivorId, group.mergeIds,
+      );
+      // §12.11: only the fields present, only the survivor row, ownership in
+      // the WHERE. A no-edit merge skips this entirely (byte-identical to
+      // the pre-Fix-B behaviour).
+      const applied = survivorEdits
+        ? await applySurvivorEdits(tx as MergeDbClient, auth.userId, kind, survivorId, survivorEdits)
+        : [];
+      return { result: mergeResult, editedFields: applied };
+    });
 
     void createAuditLog({
       userId: auth.userId,
@@ -126,6 +145,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
         mergedBy: 'mechanism-a-part2-user-confirmed',
         deletedCount: result.deleted,
         droppedDisbursementRule: result.droppedDisbursementRule,
+        survivorEditedFields: editedFields,
       }),
     }).catch(() => {});
 
@@ -136,6 +156,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
         deleted: result.deleted,
         droppedDisbursementRule: result.droppedDisbursementRule,
         annualDeclaredEffect: group.annualDeclaredEffect,
+        survivorEditedFields: editedFields,
       },
     });
   } catch (error) {
