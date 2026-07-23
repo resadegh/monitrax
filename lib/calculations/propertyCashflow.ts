@@ -153,8 +153,15 @@ export interface PropertyCashflow {
    * monthly-magnitude amount declared WEEKLY). A mis-declared cadence is
    * SURFACED, never silently annualised. Null when no contradiction (or no
    * evidence).
+   *
+   * MON-096: `managed` marks the mismatch as the NORMAL state — a MANAGED
+   * stream's lease cadence (weekly) legitimately differs from the agent's
+   * disbursement cadence (monthly). Consumers render neutral explanatory
+   * copy for `managed: true`, the amber warning only for `managed: false`
+   * (the DIRECT mis-declaration class MON-093 guards). Mode is decided
+   * HERE, in the one producer — never re-derived in a page (§12.2.1).
    */
-  rentCadenceSuspect: { declared: string; detected: DetectedFrequency } | null;
+  rentCadenceSuspect: { declared: string; detected: DetectedFrequency; managed: boolean } | null;
 }
 
 const txFor = (txs: CashflowTransaction[], pick: (t: CashflowTransaction) => string | null | undefined, id?: string) =>
@@ -313,6 +320,10 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
 
   // MON-093: cadence plausibility — when the payments' observed rhythm and
   // the declared frequency disagree, flag it (nudge; nothing auto-changes).
+  // MON-096: on a MANAGED stream the actuals are the agent's disbursements,
+  // so declared-weekly/detected-monthly is expected — `managed: true` turns
+  // the flag informational (neutral copy) instead of a false alarm, while
+  // DIRECT streams keep the warning (the Broadbeach mis-declaration class).
   const declaredRentFrequency = rentalRows[0]?.frequency ?? null;
   const rentCadenceSuspect =
     rent.usedActuals &&
@@ -320,7 +331,11 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
     rent.detectedFrequency !== 'IRREGULAR' &&
     declaredRentFrequency &&
     String(declaredRentFrequency).toUpperCase() !== rent.detectedFrequency
-      ? { declared: String(declaredRentFrequency), detected: rent.detectedFrequency }
+      ? {
+          declared: String(declaredRentFrequency),
+          detected: rent.detectedFrequency,
+          managed: rentalRows.some((r) => r.rentalMode === 'MANAGED'),
+        }
       : null;
 
   return {
