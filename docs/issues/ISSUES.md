@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**96 total** · 92 open · 🔵 21 · 🟡 5 · 🟠 31 · 🟢 35 · ✅ 3
+**96 total** · 92 open · 🔵 21 · 🟡 5 · 🟠 30 · 🟢 36 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -102,7 +102,7 @@
 | MON-093 | 🟢 VERIFIED | 🔴 | yes | Broadbeach rental ~4x cross-surface inflation: resolver advance-pair hole annualised an unsorted first txn by a mis-declared WEEKLY cadence ($11,328/mo vs income page $2,515) | ##1473 | ✅ |
 | MON-094 | 🟢 VERIFIED | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
 | MON-095 | 🟢 VERIFIED | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
-| MON-096 | 🟠 FIXING | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
+| MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
 
 ---
 
@@ -1742,7 +1742,7 @@ Reza live review 2026-07-23 on /dashboard/housekeeping/duplicates + the Matrix c
 
 ### MON-096 — MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal)
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: property · opened 2026-07-23
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: property · opened 2026-07-23
 
 > **What was wrong:** On a managed rental (like Broadbeach), the property page showed an amber warning saying "declared weekly, but payments look monthly — check the row's frequency" — but nothing was wrong. A weekly lease paid out monthly by your agent is exactly how managed rentals work.
 >
@@ -1757,5 +1757,5 @@ Reza live review 2026-07-23 on /dashboard/housekeeping/duplicates + the Matrix c
 - **Holistic test (§19.4):** `tests/calculations/propertyCashflow.test.ts#MON-096: MANAGED weekly-declared stream with monthly agent payouts -> managed flag, money unchanged; MANAGED agreeing cadences -> null; DIRECT mismatch still warns (managed: false)`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip). Display-only (changesNumbers: false) — monthlyRent/annualRent/tax untouched; the flag gained a `managed` boolean decided in the ONE producer (§12.2.1), page renders neutral copy for managed, amber only for DIRECT (MON-093 protection preserved). Reza live finding 2026-07-23; root cause verified at HEAD dea8eee. Root cause detail: rentCadenceSuspect compared declared vs detected frequency only, never consulting rentalMode (carried on the input rows at :48 and already used for the MANAGED gross-up) — so the chip fired by construction on every managed weekly/fortnightly lease whose agent disburses monthly.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip). Display-only (changesNumbers: false) — monthlyRent/annualRent/tax untouched; the flag gained a `managed` boolean decided in the ONE producer (§12.2.1), page renders neutral copy for managed, amber only for DIRECT (MON-093 protection preserved). Reza live finding 2026-07-23; root cause verified at HEAD dea8eee. Root cause detail: rentCadenceSuspect compared declared vs detected frequency only, never consulting rentalMode (carried on the input rows at :48 and already used for the MANAGED gross-up) — so the chip fired by construction on every managed weekly/fortnightly lease whose agent disburses monthly. VERIFIED at VR-024 (2026-07-23, docs/verification/runs/VR-024.md): Broadbeach amber gone, neutral managed note present ('declared weekly · paid monthly by your agent'); DIRECT protection verified LIVE on Guildford (declared-Monthly/paid-weekly still warns); money guards identical to VR-020/022 ($2,947/$35,360/5.89%/$15,879/$14,921/$432 fee).
 
