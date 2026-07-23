@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**96 total** · 92 open · 🔵 22 · 🟡 5 · 🟠 32 · 🟢 33 · ✅ 3
+**96 total** · 92 open · 🔵 21 · 🟡 5 · 🟠 33 · 🟢 33 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -102,7 +102,7 @@
 | MON-093 | 🟢 VERIFIED | 🔴 | yes | Broadbeach rental ~4x cross-surface inflation: resolver advance-pair hole annualised an unsorted first txn by a mis-declared WEEKLY cadence ($11,328/mo vs income page $2,515) | ##1473 | ✅ |
 | MON-094 | 🟠 FIXING | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
 | MON-095 | 🟠 FIXING | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
-| MON-096 | 🔵 OPEN | 🟠 | yes | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | — | — |
+| MON-096 | 🟠 FIXING | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
 
 ---
 
@@ -1742,12 +1742,20 @@ Reza live review 2026-07-23 on /dashboard/housekeeping/duplicates + the Matrix c
 
 ### MON-096 — MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: property · opened 2026-07-23
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: property · opened 2026-07-23
 
-> **What was wrong:** A verification check found a mismatch on app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip).
+> **What was wrong:** On a managed rental (like Broadbeach), the property page showed an amber warning saying "declared weekly, but payments look monthly — check the row's frequency" — but nothing was wrong. A weekly lease paid out monthly by your agent is exactly how managed rentals work.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** The engine now knows the stream is agent-managed and marks the cadence difference as normal instead of suspicious. The page shows a calm explanation — "declared weekly · paid monthly by your agent (normal for managed rentals)" — instead of the amber warning. Direct rentals keep the warning, because there a mismatch really does mean a mis-declared row.
+>
+> **What you should see:** Open Broadbeach: the amber "check the row's frequency" note is gone, replaced by the neutral managed-rental explanation. Every money number is unchanged ($2,947/mo gross, $35,360/yr, 5.89% yield, net $2,515).
+
+- **Root cause:** `lib/calculations/propertyCashflow.ts:324`
+- **Neomatrix:** `engine.propertyCashflow.computePropertyCashflow`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx (rental stream row — the ONLY render site of rentCadenceSuspect; grep-verified 2026-07-23)`
+- **Fix PR(s):** ##1484
+- **Holistic test (§19.4):** `tests/calculations/propertyCashflow.test.ts#MON-096: MANAGED weekly-declared stream with monthly agent payouts -> managed flag, money unchanged; MANAGED agreeing cadences -> null; DIRECT mismatch still warns (managed: false)`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip).
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip). Display-only (changesNumbers: false) — monthlyRent/annualRent/tax untouched; the flag gained a `managed` boolean decided in the ONE producer (§12.2.1), page renders neutral copy for managed, amber only for DIRECT (MON-093 protection preserved). Reza live finding 2026-07-23; root cause verified at HEAD dea8eee. Root cause detail: rentCadenceSuspect compared declared vs detected frequency only, never consulting rentalMode (carried on the input rows at :48 and already used for the MANAGED gross-up) — so the chip fired by construction on every managed weekly/fortnightly lease whose agent disburses monthly.
 

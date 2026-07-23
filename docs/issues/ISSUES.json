@@ -2867,7 +2867,7 @@
     {
       "id": "MON-096",
       "title": "MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal)",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-23",
@@ -2886,7 +2886,9 @@
       "downstreamConsumers": [
         "app/dashboard/properties/[id]/page.tsx (rental stream row — the ONLY render site of rentCadenceSuspect; grep-verified 2026-07-23)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1484"
+      ],
       "test": "tests/calculations/propertyCashflow.test.ts#MON-096: MANAGED weekly-declared stream with monthly agent payouts -> managed flag, money unchanged; MANAGED agreeing cadences -> null; DIRECT mismatch still warns (managed: false)",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip). Display-only (changesNumbers: false) — monthlyRent/annualRent/tax untouched; the flag gained a `managed` boolean decided in the ONE producer (§12.2.1), page renders neutral copy for managed, amber only for DIRECT (MON-093 protection preserved). Reza live finding 2026-07-23; root cause verified at HEAD dea8eee. Root cause detail: rentCadenceSuspect compared declared vs detected frequency only, never consulting rentalMode (carried on the input rows at :48 and already used for the MANAGED gross-up) — so the chip fired by construction on every managed weekly/fortnightly lease whose agent disburses monthly."
