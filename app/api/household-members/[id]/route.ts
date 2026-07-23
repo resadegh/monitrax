@@ -30,6 +30,8 @@ const UpdateMemberSchema = z.object({
   relationship: z.nativeEnum(HouseholdRelationship).optional(),
   dateOfBirth: z.string().datetime().optional().nullable(),
   isIncomeEarner: z.boolean().optional(),
+  // MON-088: tri-state cover — true/false/null (null = "not sure").
+  hasPrivateHospitalCover: z.boolean().nullable().optional(),
   sortOrder: z.number().int().min(0).optional(),
 });
 
@@ -138,6 +140,7 @@ export const PUT = withPermission<RouteContext>('settings.write', async (request
             ? (updateData.dateOfBirth ? new Date(updateData.dateOfBirth) : null)
             : undefined,
           isIncomeEarner: updateData.isIncomeEarner,
+          hasPrivateHospitalCover: updateData.hasPrivateHospitalCover,
           sortOrder: updateData.sortOrder,
         },
         include: {

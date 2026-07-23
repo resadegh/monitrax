@@ -89,6 +89,18 @@ export interface MedicareSurchargeThreshold {
   rate: number;
 }
 
+/**
+ * MON-088: family MLS parameters (ATO: family tiers are the singles tiers
+ * doubled, +$1,500 per dependent child after the first). Config-driven —
+ * never hardcoded in the engine; updates with each FY config.
+ */
+export interface MedicareSurchargeFamilyConfig {
+  /** Family tier bounds = singles bounds × this (ATO: 2). */
+  singleMultiplier: number;
+  /** Added to the family thresholds per dependent child AFTER the first. */
+  dependentChildIncrease: number;
+}
+
 export interface LITOWithdrawalTier {
   threshold: number; // Income threshold for this tier
   withdrawalRate: number; // Rate per dollar (e.g., 0.05 = 5 cents)
@@ -121,6 +133,10 @@ export interface TaxYearConfig {
   medicareRate: number;
   medicareThresholds: MedicareThresholds;
   medicareSurchargeThresholds: MedicareSurchargeThreshold[];
+  /** MON-088: family MLS parameters. Optional for back-compat — when absent
+   *  the engine falls back to {singleMultiplier: 2, dependentChildIncrease:
+   *  1500} (the ATO structural rule, stable across recent FYs). */
+  medicareSurchargeFamily?: MedicareSurchargeFamilyConfig;
 
   // Tax offsets
   lito: LITOConfig;

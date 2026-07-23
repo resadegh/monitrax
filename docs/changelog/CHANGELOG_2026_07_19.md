@@ -420,3 +420,34 @@ Coverage: the §18.8 score verifies the DESIGN against the rubric; it does NOT v
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (built to the approved Stitch design + the HANDOFF §Fix B spec verbatim — separate edit step, pure executeMerge, same transaction, post-GROUP_STALE, canonical-path frequency storage with no inline arithmetic) · Requirements 10/10 (survivorEdits exactly as specified; no-edit merge byte-identical; rename included; no merge-all) · Logic 10/10 (whole-or-rejected validation; §12.11 WHERE {id,userId}; recap chip derives from the SAME changedEdits function that builds the payload — the chip can never lie about what will be written)`
 Coverage: verifies the validator/applier semantics + topology in unit form; does NOT verify the rendered page or a live merge — that is Reza's QBE/Mate merges + the Matrix's final duplicates re-check after merge.
+
+---
+
+## Session: yhm8ug (continuation 18, 2026-07-23) — MON-088: family Medicare legs + private-hospital-cover capture (ALL USERS)
+
+### Changes Made
+- **Type**: Feature/Fix (tax-facing, `changesNumbers: yes` — Reza GO 2026-07-23 after the census + rule-matrix presentation; the family-income MLS rule confirmed by Reza in chat)
+- **STEP-0 census (verified)**: the live Medicare $3,509 was computed-and-zero on the surcharge — `hasPrivateHealthInsurance` defaulted `true` in both twins (the engine silently asserted cover for every user), the tier lookup read own income vs singles tiers only, and the one caller passed `{ taxableIncome }` alone. §12.11/§12.12: additive nullable column, approval given with the GO.
+- **ATO rule matrix implemented** (correcting the Matrix brief's example (c)): (1) cover is family ALL-OR-NOTHING — one uncovered member makes every over-threshold adult liable; (2) FAMILY MLS tier selected on COMBINED income vs family tiers (config-driven: singles × `medicareSurchargeFamily.singleMultiplier` + `dependentChildIncrease` per child after the first), surcharge levied on OWN income; (3) low-earner exception (own ≤ levy low single threshold → no MLS personally); (4) levy family-reduction leg now tests FAMILY income (no fabricated reduction for a low earner in a rich family; shade-in apportioned by own share).
+- **Capture**: `HouseholdMember.hasPrivateHospitalCover Boolean?` (nullable = "not sure"; a blank NEVER silently asserts cover — conservatively uncovered) + additive migration + tri-state Yes/No/Not-sure control in the member dialog (Stitch screen `16e804559bf74af8b1c2b02d2e7f8b78`, §18.8 **9.2/10**) + both member APIs accept the field.
+- **Feed**: `TaxPositionCalculationInput.medicareContext` threaded on BOTH Float+Decimal paths; `getUserTaxPosition` derives the context ONCE from HouseholdProfile/members; household bundle = combined income (spouseIncome 0); `perMember` = TWO-PASS through the ONE engine (pass 1 partitions → taxable incomes, pass 2 with spouse income) — no second producer (§12.2.1). Income-tax rates untouched (AU has no joint return) — locked by test.
+- **Deliberately unchanged (surfaced)**: the engine parameter default stays `true` for the three estimate callers (salaryProcessor / incomeNormalizer / super-optimize) so salary/take-home projections don't silently change — named follow-up in the registry.
+- **Golden re-pin (§19.2)**: golden household 30,724 → **32,284** — no profile recorded → conservatively uncovered SINGLE at $124,800 → 1.25% × 124,800 = $1,560 MLS. The pin's hand-computation updated in the test header.
+
+### Files Modified
+- `prisma/schema.prisma` + `prisma/migrations/20260723000000_mon088_private_hospital_cover/` — the additive nullable column
+- `lib/tax-engine/types.ts` + `config/taxYearConfig.ts` — `MedicareSurchargeFamilyConfig` + per-FY values (2023-24/2024-25/2025-26); NO hardcodes in the engine
+- `lib/tax-engine/core/medicareLevyCalculator.ts` — family MLS (combined tier / own base / low-earner / all-or-nothing cover) + family-income levy reduction, BOTH twins
+- `lib/tax-engine/position/taxPositionCalculator.ts` — `medicareContext` input + threading (Float + Decimal)
+- `lib/tax-engine/position/userTaxPosition.ts` — profile fetch, context derivation, per-member two-pass
+- `app/api/household-members/{route,[id]/route}.ts` — accept the tri-state field
+- `app/dashboard/household-profile/page.tsx` — the Yes/No/Not-sure control (design 16e80455…)
+- `tests/tax/mon088MedicareFamily.test.ts` (NEW, 16 tests) + `tests/golden/ring2.taxParity.test.ts` re-pin
+- Neomatrix: 3 nodes noted with the MON-088 lineage; anchors re-pinned (:55/:153/:377); `GENERATED_CORE.md` regenerated
+
+### Build Status
+- [x] tsc clean · [x] tax+golden+calculations 1,206 passed (after the documented golden re-pin) + mon088 16/16 · [x] `npm run build` passes · [x] `neomatrix:check` green · [x] both lints green · [x] `issues:check` 96 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (brief followed with TWO surfaced deviations — the ATO all-or-nothing cover rule replacing example (c), Reza-confirmed in chat; Boolean? replacing @default(false), presented + GO'd; Neomatrix consulted + updated same PR) · Requirements 10/10 (capture + feed both built, config-driven, both engine paths, per-member, form control designed ≥9/10 first) · Logic 10/10 (§19.2 worked examples (a)-(h) hand-computed; Float===Decimal; income tax provably unmoved; conservative direction verified — a blank can only overstate, never hide, a surcharge)`
+Coverage: verifies the rule matrix, twin parity, position wiring, and cross-surface plumbing on the golden household; does NOT verify live rendered numbers or the member-dialog UX in a browser — that is Reza's cover entry + the Matrix's Ring-3 after merge.

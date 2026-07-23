@@ -136,6 +136,20 @@ export async function getUserTaxPosition(
     include: { income: true, expenses: true, loans: { include: { offsetAccount: true } } },
   });
 
+  // MON-088: household composition + hospital cover drive the Medicare legs
+  // (family threshold, MLS combined-income tier, cover). One fetch here —
+  // never re-derived per surface (§12.2.1).
+  const householdProfile = await prisma.householdProfile.findUnique({
+    where: { userId },
+    select: {
+      adultsCount: true,
+      childrenCount: true,
+      members: {
+        select: { relationship: true, hasPrivateHospitalCover: true },
+      },
+    },
+  });
+
   // MON-045: actuals-first interest — Σ INTEREST_CHARGED ledger rows this FY,
   // per loan (the same source app/api/loans/[id]/ledger reads). One grouped
   // query for all property loans (§12.10 — no N+1).
@@ -215,6 +229,36 @@ export async function getUserTaxPosition(
     { concessional: 0, nonConcessional: 0 },
   );
 
+  // MON-088: the Medicare context, derived ONCE from the household profile.
+  // Family = 2+ adults or an explicit SPOUSE member. Cover is the ATO
+  // all-or-nothing rule: the family is covered only when every ADULT answered
+  // "Yes"; a child left blank follows the adults (family policies typically
+  // cover children — approximation surfaced in the PR), a child answered "No"
+  // breaks cover; an adult blank ("Not sure") = conservatively NOT covered.
+  const memberRows = householdProfile?.members ?? [];
+  const adultRows = memberRows.filter((m: any) => m.relationship !== 'CHILD');
+  const isFamily =
+    (householdProfile?.adultsCount ?? adultRows.length) >= 2 ||
+    memberRows.some((m: any) => m.relationship === 'SPOUSE');
+  const dependentChildren =
+    householdProfile?.childrenCount ??
+    memberRows.filter((m: any) => m.relationship === 'CHILD').length;
+  const familyCovered: boolean | null =
+    adultRows.length > 0
+      ? adultRows.every((m: any) => m.hasPrivateHospitalCover === true) &&
+        !memberRows.some(
+          (m: any) => m.relationship === 'CHILD' && m.hasPrivateHospitalCover === false,
+        )
+      : null; // no members recorded → unknown → engine treats as uncovered
+  const medicareContext = {
+    familyStatus: (isFamily ? 'FAMILY' : 'SINGLE') as 'FAMILY' | 'SINGLE',
+    dependentChildren,
+    // The household bundle's taxableIncome is already the COMBINED income of
+    // every earner, so no spouse income is added on top here.
+    spouseIncome: 0,
+    familyCovered,
+  };
+
   const engineInputs: TaxPositionCalculationInput = {
     incomes: incomeItems,
     expenses: expenseItems,
@@ -222,6 +266,7 @@ export async function getUserTaxPosition(
     propertyLoans: propertyLoanItems, // MON-045: auto-derived deductible interest
     superContributions: superTotals,
     financialYear: fyYear,
+    medicareContext,
   };
   const taxPosition = calculateTaxPosition(engineInputs);
 
@@ -243,7 +288,7 @@ export async function getUserTaxPosition(
     properties.flatMap((p: any) => p.loans.map((l: any) => [l.id, p.id] as [string, string])),
   );
 
-  const perMember = earners.map((earner) => {
+  const perMemberDraft = earners.map((earner) => {
     const mine = (ownerEntityId: string | null | undefined) =>
       ownerOf(ownerEntityId) === earner.entityId;
     // A property-attached item follows its property's owner; a property we
@@ -267,12 +312,28 @@ export async function getUserTaxPosition(
           : { concessional: 0, nonConcessional: 0 },
       financialYear: fyYear,
     };
+    return { earner, memberInputs };
+  });
+
+  // MON-088 two-pass: each member's MLS tier needs the OTHER members'
+  // taxable income (combined family income). Pass 1 = the SAME engine on the
+  // partition without context (yields each taxable income — no second
+  // producer, §12.2.1); pass 2 = final positions with the family context.
+  const pass1Taxable = perMemberDraft.map(
+    ({ memberInputs }) => calculateTaxPosition(memberInputs).tax.taxableIncome,
+  );
+  const perMember = perMemberDraft.map(({ earner, memberInputs }, i) => {
+    const spouseIncome = pass1Taxable.reduce((s, t, j) => (j === i ? s : s + t), 0);
+    const inputs: TaxPositionCalculationInput = {
+      ...memberInputs,
+      medicareContext: { ...medicareContext, spouseIncome },
+    };
     return {
       entityId: earner.entityId,
       memberName: earner.memberName,
       isPrimary: earner.isPrimary,
-      taxPosition: calculateTaxPosition(memberInputs),
-      engineInputs: memberInputs,
+      taxPosition: calculateTaxPosition(inputs),
+      engineInputs: inputs,
     };
   });
 

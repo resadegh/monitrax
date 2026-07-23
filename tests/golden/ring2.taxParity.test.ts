@@ -13,7 +13,12 @@
  * §19.2 hand-computed pin (golden household, FY25-26 resident brackets):
  *   salary 7,800/mo = 93,600 + rent 600/wk = 31,200 → taxable 124,800.
  *   Tax: (45,000−18,200)×16% = 4,288 + (124,800−45,000)×30% = 23,940
- *   + Medicare 2% = 2,496 → NET TAX 30,724.
+ *   + Medicare levy 2% = 2,496
+ *   + MON-088 Medicare levy SURCHARGE: the golden household has NO
+ *     HouseholdProfile (no cover recorded → conservatively uncovered,
+ *     a blank never silently asserts cover) and is SINGLE; 124,800 sits
+ *     in the 113,001–151,000 tier → 1.25% × 124,800 = 1,560
+ *   → NET TAX 32,284.
  *
  * Honest coverage: the golden fixture has no loan-ledger rows and its
  * property-loans include resolves empty, so the MON-045 deductible-interest
@@ -47,7 +52,7 @@ import { getMasterFinancialSnapshot, type MasterFinancialSnapshot } from '@/lib/
 import { GOLDEN_USER_ID } from './goldenHousehold';
 
 // The §19.2 hand-computed pin (see file header).
-const PIN = { taxableIncome: 124_800, netTax: 30_724, totalDeductions: 0 };
+const PIN = { taxableIncome: 124_800, netTax: 32_284, totalDeductions: 0 };
 
 let bundleNetTax: number;
 let bundleTaxable: number;
