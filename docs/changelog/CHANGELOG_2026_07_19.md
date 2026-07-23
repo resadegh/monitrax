@@ -327,3 +327,28 @@ Coverage: verifies the engine override, the detector, the worked-example arithme
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (built to the approved Stitch screen + the Matrix brief; §18.4 screen-ID JSDoc on all three components; §7 retro written; deviations surfaced, not silent) · Requirements 10/10 (both tools relocated, both admin pages deleted, engine/detector/merge logic byte-untouched, AFSL guard, topology ratchet) · Logic 10/10 (no number changes; the one money figure on the page is server-computed from canonical producers; per-item typed confirms preserved exactly)`
 Coverage: verifies the topology, auth pattern, AFSL guard, and nav SSOT in test form; does NOT verify the rendered pages in a browser or the live counts — that is Reza's eyeball + VR-022 after merge.
+
+---
+
+## Session: yhm8ug (continuation 14, 2026-07-23) — MON-095: duplicate-matcher accuracy — the AIA false-positive class (systemic guardrail)
+
+### Changes Made
+- **Type**: Fix (data-integrity guardrail — Reza's live review of Housekeeping → Duplicate income; Fix A of the Matrix brief; Fix B = merge-with-edit is the separate Stitch-first → Opus build)
+- **Root cause (§19.2-verified)**: `normalizeMerchant` strips any 5+ digit run, so policy/account numbers are discarded before names compare — "Aia … 68718123" ($131) and "Aia … 68718100" ($158) both normalise to "aia" — and `sameMerchant` has NO amount check, so the classifier's exact branch grouped two DIFFERENT insurance policies as duplicates. Systemic: the same path is the intake guardrail (#1458) — a new distinct policy could be silently auto-absorbed at import, for any user. Merging would delete a real policy.
+- **Solution (ONE decision layer — brief options (a)+(c), expense-scoped)**: `expenseDuplicateCompatible` in `classifyIntake`, applied to the exact AND near branches of both name-matching policies: (1) amount guard — same-name expenses only converge inside THE one ≤10% band (`DUPLICATE_AMOUNT_TOLERANCE` exported from reconciliation.ts; `isNearDuplicateEntry` now reads it — no second threshold); (2) identifier fail-safe — `extractIdentifierTokens`/`hasDisjointIdentifiers` (merchantNormalize.ts, ABN/ACN excluded): disjoint policy numbers → never auto-merged, whatever the amounts. Both the Housekeeping preview and every intake door inherit (they all flow through the classifier).
+- **INCOME deliberately exempt (surfaced, not silent)**: the Mechanism A doctrine converges declared↔reconciled income across amount drift (locked by ring2.mechanismA — re-run green), and income deposit descriptors carry per-payment refs — a digit-token veto would re-fragment salaries (the MON-076 class).
+- **Effect on Reza's data**: the AIA group disappears from the review list (correctly); QBE $216/$216 and Mate $150/$150 still group (genuine). QBE/Mate held for Fix B so cadence is corrected in the merge step.
+
+### Files Modified
+- `lib/bank/merchantNormalize.ts` — extractIdentifierTokens + hasDisjointIdentifiers (ONE extractor)
+- `lib/utils/reconciliation.ts` — DUPLICATE_AMOUNT_TOLERANCE exported; isNearDuplicateEntry reads it
+- `lib/intake/classifyIntake.ts` — expenseDuplicateCompatible on both policies' exact+near branches
+- `tests/intake/mon095DuplicateAccuracy.test.ts` (NEW, 9 tests) — AIA repro (RED pre-fix) + fail-safe + genuine-duplicate + intake-guardrail + income-doctrine locks
+- Neomatrix: engine.intake.classifyIntake anchor re-pinned :158 + produces note; structural graph +3 symbols, detectNonAssessable re-pinned :352; registry MON-095 FIXING (#1481)
+
+### Build Status
+- [x] Targeted suites 74/74 (incl. mechanismA doctrine + merchantNormalize) · tsc + full suite running at commit time (recorded in the PR)
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Matrix brief followed — option (a)+(c) as recommended; the §20.5 income/expense scoping fork resolved from the PINNED Mechanism-A doctrine and surfaced explicitly, not guessed) · Requirements 10/10 (systemic guardrail in the ONE decision layer, not a data patch; AIA no longer groups; QBE/Mate still do; no second threshold invented) · Logic 10/10 (guard is expense-scoped with the doctrine lock re-run green; fail-safe direction correct — a wrongly-split duplicate waits for review, a wrongly-merged policy loses data)`
+Coverage: verifies the matcher semantics + the intake guardrail in unit/golden form; does NOT verify the rendered duplicates page on live data — that is Reza's re-open of Housekeeping → Duplicate records + the Matrix's live re-check after merge.

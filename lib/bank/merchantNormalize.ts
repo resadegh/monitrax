@@ -62,3 +62,37 @@ export function relatedMerchant(a: string | null | undefined, b: string | null |
   for (const t of small) if (!large.has(t)) return false;
   return true;
 }
+
+/**
+ * MON-095 — identifier tokens: the long digit runs in a RAW merchant string
+ * that plausibly identify a specific policy / account / membership (e.g.
+ * "Aia Australia . 68718123 /26" → ["68718123"]). ABN/ACN numbers are
+ * excluded first (company-level, shared by every policy of the insurer).
+ * PURE. ONE source — both the intake guardrail and the duplicates review
+ * read identifiers through this function, never a second regex.
+ */
+export function extractIdentifierTokens(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  let s = raw.toLowerCase();
+  s = s.replace(/\bab[cn]\b[\s:]*[\d\s]{5,}/g, ' ');
+  const runs = s.match(/\d{5,}/g) ?? [];
+  return [...new Set(runs)];
+}
+
+/**
+ * MON-095 — true when BOTH strings carry identifier tokens and they share
+ * none: the fingerprint of two DIFFERENT policies/accounts at the same
+ * provider ("Aia … 68718123" vs "Aia … 68718100"). Merging these deletes a
+ * real policy — the false-positive class Reza caught live (2026-07-23).
+ * When either side has no identifier, this returns false (no evidence of
+ * distinctness — the amount guard still applies separately).
+ */
+export function hasDisjointIdentifiers(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const ta = extractIdentifierTokens(a);
+  const tb = extractIdentifierTokens(b);
+  if (ta.length === 0 || tb.length === 0) return false;
+  return !ta.some((t) => tb.includes(t));
+}

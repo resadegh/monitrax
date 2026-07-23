@@ -532,6 +532,13 @@ export function convertFrequency(
 // MON-037 RC-B — near-duplicate entry detection (the ONE decision, §12.2.1)
 // =============================================================================
 
+/**
+ * THE one amount tolerance for duplicate decisions (§12.2.1 — never a second
+ * threshold): two rows are amount-compatible when they differ by ≤10%.
+ * Shared by `isNearDuplicateEntry` and the MON-095 exact-path amount guard.
+ */
+export const DUPLICATE_AMOUNT_TOLERANCE = 0.1;
+
 /** The fields the near-duplicate decision reads — satisfied by Expense rows
  *  and by intake candidates before they're written. */
 export interface EntryForDuplicateCheck {
@@ -564,7 +571,7 @@ export interface EntryForDuplicateCheck {
 export function isNearDuplicateEntry(
   candidate: EntryForDuplicateCheck,
   existing: EntryForDuplicateCheck,
-  amountTolerance = 0.1,
+  amountTolerance = DUPLICATE_AMOUNT_TOLERANCE,
 ): boolean {
   const a = Math.abs(candidate.amount);
   const b = Math.abs(existing.amount);
