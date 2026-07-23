@@ -394,3 +394,29 @@ Coverage: verifies the flag semantics + money invariance in unit form; does NOT 
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (Matrix design brief followed — structure, copy, interactions; §18.7.1 principles seeded into the prompt; deviation = routing correction, surfaced not silent) · Requirements 10/10 (two-zone kept/removed, survivor edit fields, typed-MERGE preserved, no merge-all, AFSL-free) · Logic 10/10 (design asserts no numbers; the one money line is labelled "Declared annual effect" matching the existing server-computed field)`
 Coverage: the §18.8 score verifies the DESIGN against the rubric; it does NOT verify the built page — that is the Opus build + per-fix Chrome check after Reza's approval.
+
+---
+
+## Session: yhm8ug (continuation 17, 2026-07-23) — Fix B build: merge-with-edit (Housekeeping · Duplicate records)
+
+### Changes Made
+- **Type**: Feature (the Fix B build per the approved design `1ebd1ea2` (§18.8 9.1/10, merged #1486) + HANDOFF_dedup-accuracy-and-merge-edit.md §Fix B; Reza's "continue" after design approval routed the build here)
+- **API**: `POST /api/intake/duplicates` accepts optional `survivorEdits { amount?, frequency?, isRecurring? }`. Validated whole-or-rejected (`validateSurvivorEdits` — finite amount ≥ 0, schema Frequency enum, boolean flag, unknown fields 400); applied by `applySurvivorEdits` ONLY to the survivor with `{ id, userId }` in the WHERE (§12.11), ONLY the fields present, inside the SAME `prisma.$transaction` as `executeMerge`, AFTER the existing server-side re-derivation + GROUP_STALE guard. `executeMerge` byte-untouched (stays the pure FK-repoint + delete engine). Audit log + response carry `survivorEditedFields`.
+- **Page** (`app/dashboard/housekeeping/duplicates/page.tsx`): the flat table became the approved two-zone composition — emerald KEEPING panel (survivor with prefilled editable Amount / Frequency select / One-off⇄Recurring toggle + helper line), muted REMOVING panel (struck-through rows + "merges into the record above · links repointed"), amber recap chip listing exactly the fields that differ ("will also update: …"), typed-MERGE gate + disabled Confirm + Cancel + "Nothing merges until you confirm.", collapsed cards with "Keeping/Removing" preview + emerald-outline "Review & merge". An untouched merge sends NO survivorEdits — byte-identical to the pre-Fix-B request. Empty state re-worded to the design ("Nothing to merge"). No merge-all anywhere.
+- **Rename**: "Duplicate income" → **"Duplicate records"** in the trailNav SSOT + HousekeepingShell tab (the list holds expense groups — QBE/AIA/Mate).
+- **Effect on Reza's data**: QBE merges with type corrected to One-off; Mate merges with type corrected to Recurring Monthly — cadence fixed in the same deliberate step, per the live-review directive.
+
+### Files Modified
+- `lib/intake/duplicateMerge.ts` — VALID_FREQUENCIES + validateSurvivorEdits + applySurvivorEdits (new, pure); MergeDbClient.income gains updateMany; executeMerge untouched
+- `app/api/intake/duplicates/route.ts` — survivorEdits validation + transactional apply step + audit/response fields
+- `app/dashboard/housekeeping/duplicates/page.tsx` — two-zone rebuild to design 1ebd1ea2 (JSDoc updated)
+- `lib/navigation/trailNav.tsx` + `app/dashboard/housekeeping/HousekeepingShell.tsx` — tab rename
+- `tests/intake/duplicateMerge.test.ts` — +7 Fix B tests (validator gate incl. QBE/Mate shapes + whole-or-rejected; applier §12.11 WHERE lock; empty-edit no-op)
+- `tests/housekeeping/relocation.test.ts` — rename lock (nav + shell say "Duplicate records", never "Duplicate income")
+
+### Build Status
+- [x] tsc clean · [x] duplicateMerge 15/15 + mon095 9/9 + relocation 5/5 · [x] `npm run build` passes · [x] `neomatrix:check` green (anchors :96/:158 unmoved — additions land after the modelled symbols; the new helpers are write-path, not calc producers) · [x] both lints green, no exception-count rise
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (built to the approved Stitch design + the HANDOFF §Fix B spec verbatim — separate edit step, pure executeMerge, same transaction, post-GROUP_STALE, canonical-path frequency storage with no inline arithmetic) · Requirements 10/10 (survivorEdits exactly as specified; no-edit merge byte-identical; rename included; no merge-all) · Logic 10/10 (whole-or-rejected validation; §12.11 WHERE {id,userId}; recap chip derives from the SAME changedEdits function that builds the payload — the chip can never lie about what will be written)`
+Coverage: verifies the validator/applier semantics + topology in unit form; does NOT verify the rendered page or a live merge — that is Reza's QBE/Mate merges + the Matrix's final duplicates re-check after merge.

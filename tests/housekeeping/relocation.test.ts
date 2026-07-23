@@ -77,4 +77,15 @@ describe('MON-094 · Housekeeping relocation topology', () => {
     expect(nav).toMatch(/\/dashboard\/housekeeping\/tax/);
     expect(nav).toMatch(/\/dashboard\/housekeeping\/duplicates/);
   });
+
+  // Fix B rename: the tab lists EXPENSE groups too (QBE/Mate are expenses) —
+  // "Duplicate income" was a lie by narrowness. Locked in nav + shell.
+  it('the duplicates tab is named "Duplicate records" (not "Duplicate income") in nav + shell', () => {
+    const nav = readFileSync(resolve(ROOT, 'lib/navigation/trailNav.tsx'), 'utf8');
+    const shell = readFileSync(resolve(ROOT, 'app/dashboard/housekeeping/HousekeepingShell.tsx'), 'utf8');
+    for (const src of [nav, shell]) {
+      expect(src).toMatch(/Duplicate records/);
+      expect(src).not.toMatch(/Duplicate income/);
+    }
+  });
 });

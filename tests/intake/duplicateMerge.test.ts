@@ -181,3 +181,99 @@ describe('executeMerge — FK repoint + delete, survivor untouched', () => {
     expect((calls['expense.deleteMany'][0] as any)).toEqual({ where: { userId: 'u1', id: { in: ['e-gen1', 'e-gen2'] } } });
   });
 });
+
+// =============================================================================
+// Fix B — merge-with-edit (design 1ebd1ea2; HANDOFF_dedup-accuracy-and-merge-edit
+// §Fix B). The survivor's amount/frequency/one-off flag may be corrected as
+// part of the merge; executeMerge stays pure and a NO-EDIT merge is
+// byte-identical to the pre-Fix-B behaviour.
+// =============================================================================
+import {
+  validateSurvivorEdits,
+  applySurvivorEdits,
+  VALID_FREQUENCIES,
+} from '../../lib/intake/duplicateMerge';
+
+describe('Fix B — validateSurvivorEdits (the request gate)', () => {
+  it('absent / empty payloads mean NO edits (byte-identical merge)', () => {
+    expect(validateSurvivorEdits(undefined)).toEqual({ edits: null, error: null });
+    expect(validateSurvivorEdits(null)).toEqual({ edits: null, error: null });
+    expect(validateSurvivorEdits({})).toEqual({ edits: null, error: null });
+  });
+
+  it('the QBE correction validates: recurring Monthly → One-off', () => {
+    expect(validateSurvivorEdits({ isRecurring: false })).toEqual({
+      edits: { isRecurring: false },
+      error: null,
+    });
+  });
+
+  it('the Mate correction validates: One-off → Recurring Monthly', () => {
+    expect(validateSurvivorEdits({ isRecurring: true, frequency: 'MONTHLY' })).toEqual({
+      edits: { isRecurring: true, frequency: 'MONTHLY' },
+      error: null,
+    });
+  });
+
+  it('an invalid frequency / negative amount / unknown field is rejected whole (never trimmed)', () => {
+    expect(validateSurvivorEdits({ frequency: 'DAILY' }).error).toMatch(/frequency/);
+    expect(validateSurvivorEdits({ amount: -5 }).error).toMatch(/amount/);
+    expect(validateSurvivorEdits({ amount: Number.NaN }).error).toMatch(/amount/);
+    expect(validateSurvivorEdits({ name: 'sneaky' }).error).toMatch(/unknown field/);
+    expect(validateSurvivorEdits('MERGE').error).toMatch(/object/);
+    // every schema Frequency value is accepted
+    for (const f of VALID_FREQUENCIES) {
+      expect(validateSurvivorEdits({ frequency: f }).error).toBeNull();
+    }
+  });
+});
+
+describe('Fix B — applySurvivorEdits (survivor only, ownership in the WHERE)', () => {
+  function editDb() {
+    const calls: Record<string, unknown[]> = {};
+    const rec = (model: string, method: string) => (args: unknown) => {
+      calls[`${model}.${method}`] = [...(calls[`${model}.${method}`] ?? []), args];
+      return Promise.resolve({ count: 1 });
+    };
+    return {
+      calls,
+      db: {
+        income: { updateMany: rec('income', 'updateMany'), deleteMany: rec('income', 'deleteMany') },
+        expense: { updateMany: rec('expense', 'updateMany'), deleteMany: rec('expense', 'deleteMany') },
+      } as unknown as MergeDbClient,
+    };
+  }
+
+  it('applies ONLY the present fields, ONLY to {id, userId} — §12.11 guard in the WHERE', async () => {
+    const { db, calls } = editDb();
+    const applied = await applySurvivorEdits(db, 'u1', 'expense', 'e-qbe', { isRecurring: false });
+    expect(applied).toEqual(['isRecurring']);
+    expect(calls['expense.updateMany']).toHaveLength(1);
+    expect(calls['expense.updateMany'][0]).toEqual({
+      where: { id: 'e-qbe', userId: 'u1' },
+      data: { isRecurring: false },
+    });
+    expect(calls['income.updateMany']).toBeUndefined();
+  });
+
+  it('income edits hit the income model; amount+frequency together apply both', async () => {
+    const { db, calls } = editDb();
+    const applied = await applySurvivorEdits(db, 'u1', 'income', 'i-decl', {
+      amount: 150,
+      frequency: 'MONTHLY',
+      isRecurring: true,
+    });
+    expect(applied.sort()).toEqual(['amount', 'frequency', 'isRecurring']);
+    expect(calls['income.updateMany'][0]).toEqual({
+      where: { id: 'i-decl', userId: 'u1' },
+      data: { amount: 150, frequency: 'MONTHLY', isRecurring: true },
+    });
+  });
+
+  it('empty edits are a NO-OP — no updateMany call at all (byte-identical merge)', async () => {
+    const { db, calls } = editDb();
+    const applied = await applySurvivorEdits(db, 'u1', 'expense', 'e-qbe', {});
+    expect(applied).toEqual([]);
+    expect(calls['expense.updateMany']).toBeUndefined();
+  });
+});
