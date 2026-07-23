@@ -2863,6 +2863,33 @@
       "test": "tests/intake/mon095DuplicateAccuracy.test.ts: AIA repro (different policies+20% apart do NOT group - RED pre-fix), same-amount-different-identifier fail-safe, QBE/Mate genuine duplicates still group (ABN not an identifier), intake guardrail returns no match for a differing-identifier new expense, income doctrine lock",
       "tracker": "reza-live-review-2026-07-23",
       "notes": "Reza live review 2026-07-23 on /dashboard/housekeeping/duplicates + the Matrix code brief. ROOT (S19.2-verified): normalizeMerchant:28 strips any 5+ digit run (policy/account numbers discarded before comparison - 'Aia ... 68718123' and 'Aia ... 68718100' both -> 'aia'); sameMerchant:38 returns true on name equality with NO amount check; resolveStreamMatch's exact branch used it bare -> two distinct policies = exact duplicates, systemically (the same path is the intake guardrail, so a new policy could be silently auto-absorbed at import for ANY user). FIX (brief option (a) + (c), expense-scoped): amount guard (the ONE <=10% band) + disjoint-identifier fail-safe (extractIdentifierTokens excludes ABN/ACN; either side lacking identifiers -> no veto) in expenseDuplicateCompatible, applied in the classifier only - both the review tool and every intake door inherit. INCOME exempt by pinned doctrine (declared<->reconciled amount drift converges; deposit descriptors carry per-payment refs - a veto would re-fragment salaries, the MON-076 class) - surfaced in the PR, not silent. Fix B (merge-with-edit + clearer kept/removed view + 'Duplicate records' rename) is the separate Stitch-first -> Opus build per the brief. DATA GUIDANCE: AIA never merges (distinct policies); QBE/Mate held for Fix B so cadence is corrected in the same merge step."
+    },
+    {
+      "id": "MON-096",
+      "title": "MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal)",
+      "status": "DIAGNOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-07-23",
+      "area": "property",
+      "plain": {
+        "issue": "On a managed rental (like Broadbeach), the property page showed an amber warning saying \"declared weekly, but payments look monthly — check the row's frequency\" — but nothing was wrong. A weekly lease paid out monthly by your agent is exactly how managed rentals work.",
+        "fix": "The engine now knows the stream is agent-managed and marks the cadence difference as normal instead of suspicious. The page shows a calm explanation — \"declared weekly · paid monthly by your agent (normal for managed rentals)\" — instead of the amber warning. Direct rentals keep the warning, because there a mismatch really does mean a mis-declared row.",
+        "check": "Open Broadbeach: the amber \"check the row's frequency\" note is gone, replaced by the neutral managed-rental explanation. Every money number is unchanged ($2,947/mo gross, $35,360/yr, 5.89% yield, net $2,515)."
+      },
+      "rootCause": [
+        "lib/calculations/propertyCashflow.ts:324"
+      ],
+      "semanticKeys": [
+        "engine.propertyCashflow.computePropertyCashflow"
+      ],
+      "downstreamConsumers": [
+        "app/dashboard/properties/[id]/page.tsx (rental stream row — the ONLY render site of rentCadenceSuspect; grep-verified 2026-07-23)"
+      ],
+      "fixPRs": [],
+      "test": "tests/calculations/propertyCashflow.test.ts#MON-096: MANAGED weekly-declared stream with monthly agent payouts -> managed flag, money unchanged; MANAGED agreeing cadences -> null; DIRECT mismatch still warns (managed: false)",
+      "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip). Display-only (changesNumbers: false) — monthlyRent/annualRent/tax untouched; the flag gained a `managed` boolean decided in the ONE producer (§12.2.1), page renders neutral copy for managed, amber only for DIRECT (MON-093 protection preserved). Reza live finding 2026-07-23; root cause verified at HEAD dea8eee. Root cause detail: rentCadenceSuspect compared declared vs detected frequency only, never consulting rentalMode (carried on the input rows at :48 and already used for the MANAGED gross-up) — so the chip fired by construction on every managed weekly/fortnightly lease whose agent disburses monthly."
     }
   ]
 }

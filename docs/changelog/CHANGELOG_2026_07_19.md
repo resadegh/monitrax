@@ -352,3 +352,27 @@ Coverage: verifies the topology, auth pattern, AFSL guard, and nav SSOT in test 
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (Matrix brief followed — option (a)+(c) as recommended; the §20.5 income/expense scoping fork resolved from the PINNED Mechanism-A doctrine and surfaced explicitly, not guessed) · Requirements 10/10 (systemic guardrail in the ONE decision layer, not a data patch; AIA no longer groups; QBE/Mate still do; no second threshold invented) · Logic 10/10 (guard is expense-scoped with the doctrine lock re-run green; fail-safe direction correct — a wrongly-split duplicate waits for review, a wrongly-merged policy loses data)`
 Coverage: verifies the matcher semantics + the intake guardrail in unit/golden form; does NOT verify the rendered duplicates page on live data — that is Reza's re-open of Housekeeping → Duplicate records + the Matrix's live re-check after merge.
+
+---
+
+## Session: yhm8ug (continuation 15, 2026-07-23) — MON-096: the MON-093 cadence chip false-fires on MANAGED rentals
+
+### Changes Made
+- **Type**: Fix (display-only — `changesNumbers: false`; no money number moves)
+- **Root cause (§19.2-verified at HEAD `dea8eee`)**: `rentCadenceSuspect` (`lib/calculations/propertyCashflow.ts`) compared declared frequency vs detected payment frequency only — it never consulted `rentalMode`, though the input rows carry it and the SAME function already uses it for the MANAGED gross-up. On a managed stream the bank actuals are the agent's MONTHLY net disbursements while the lease is declared WEEKLY, so the amber "check the row's frequency" chip fired by construction on every managed weekly/fortnightly lease — a false alarm on correct data (Broadbeach: $680/wk gross = $2,947/mo − $432 fee = $2,515/mo net, all reconciled).
+- **Solution (the Matrix brief's recommended option — reassure, don't go silent)**: the flag gains a `managed` boolean decided in the ONE producer (`rentalRows.some(rentalMode === 'MANAGED')`). The property page renders neutral copy for `managed: true` — "declared weekly · paid monthly by your agent (normal for managed rentals)" — in the normal emerald tone; the amber warning survives ONLY for DIRECT streams (the MON-093 Broadbeach mis-declaration protection is untouched). Mode is never re-derived in the page (§12.2.1).
+- **Behaviour-psychology lens**: the false alarm told the user to "fix" correct data; the neutral note explains the pattern instead — no manufactured urgency, and the genuine warning keeps its signal value by staying rare.
+
+### Files Modified
+- `lib/calculations/propertyCashflow.ts` — `rentCadenceSuspect` type + computation gain `managed`; MON-096 doc comments
+- `app/dashboard/properties/[id]/page.tsx` — neutral managed copy vs amber DIRECT warning (`suspectWarns`)
+- `tests/calculations/propertyCashflow.test.ts` — +2 MON-096 tests (MANAGED mismatch → `managed: true`, money unchanged 2,947/35,364; MANAGED agreeing cadences → null) + DIRECT assertion extended to `managed: false` (RED on pre-fix code — the field didn't exist)
+- Neomatrix: `engine.propertyCashflow.{computePropertyCashflow,resolveLoanMonthlyCost}` anchors re-pinned :219/:195 + MON-096 rentalMode note; `GENERATED_CORE.md` regenerated
+- `docs/issues/ISSUES.json` — MON-096 raised → DIAGNOSED (root cause, censuses, plain trio, test) → FIXING at PR creation
+
+### Build Status
+- [x] tsc clean · [x] propertyCashflow 13/13 + registry 8/8 + neomatrix suite green · [x] `npm run build` passes · [x] `neomatrix:check` 0 uncovered, all anchors resolve · [x] `issues:check` 96 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Matrix brief followed incl. the recommended neutral-copy option; Neomatrix consulted + re-pinned same PR) · Requirements 10/10 (MANAGED suppressed-to-neutral, DIRECT warning preserved, one producer, display-only) · Logic 10/10 (managed decided from the same rentalRows the gross-up reads; money paths byte-untouched — regression locked by the $2,947/$35,364 assertions)`
+Coverage: verifies the flag semantics + money invariance in unit form; does NOT verify the rendered chip on live data — that is the Matrix's Broadbeach re-open after merge.

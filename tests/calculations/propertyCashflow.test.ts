@@ -141,7 +141,8 @@ describe('MON-093 — property rent ≡ income page (one producer), mis-declared
     expect(cf.monthlyRent).toBeLessThan(4000);
     expect(cf.annualRent).toBeLessThan(48000);
     // The plausibility guard fires: payments look MONTHLY, row declared WEEKLY.
-    expect(cf.rentCadenceSuspect).toEqual({ declared: 'WEEKLY', detected: 'MONTHLY' });
+    // MON-096: a DIRECT stream (no rentalMode) warns — managed: false.
+    expect(cf.rentCadenceSuspect).toEqual({ declared: 'WEEKLY', detected: 'MONTHLY', managed: false });
   });
 
   it('a TRUE weekly stream stays correct and unflagged (regression guard)', () => {
@@ -153,6 +154,40 @@ describe('MON-093 — property rent ≡ income page (one producer), mis-declared
     // 680/wk → ~2,956/mo by day-span (≈ 680 × 30.4375/7); declared path would be 2,946.67.
     expect(cf.monthlyRent).toBeCloseTo((680 * 5 / 35) * 30.4375, 0);
     expect(cf.detectedRentFrequency).toBe('WEEKLY');
+    expect(cf.rentCadenceSuspect).toBeNull();
+  });
+
+  // ── MON-096 — the chip must NOT warn on a MANAGED rental (Reza live find,
+  // 2026-07-23): a weekly lease disbursed monthly by the agent is the NORMAL
+  // managed state, not a mis-declared row. The producer marks the mismatch
+  // `managed: true` (neutral copy downstream); DIRECT keeps the amber warning
+  // (the test above). Display-only — no money number moves.
+  it('MON-096: MANAGED weekly-declared stream with monthly agent payouts → managed flag, money unchanged', () => {
+    const income = [{ id: 'bb', type: 'RENTAL', amount: 680, frequency: 'WEEKLY', rentalMode: 'MANAGED' }];
+    const expenses = [
+      // The derived agent-cost row the B3 gross-up adds back (recurring).
+      { id: 'fee', amount: 432, frequency: 'MONTHLY', derivedFromIncomeId: 'bb' },
+    ];
+    const transactions = [
+      { incomeId: 'bb', date: new Date('2026-05-01'), amount: 2515 },
+      { incomeId: 'bb', date: new Date('2026-06-01'), amount: 2515 },
+    ];
+    const cf = computePropertyCashflow({ income, expenses, transactions });
+    // The mismatch is still REPORTED (declared/detected), but marked managed —
+    // never null (the page explains instead of going silent), never a warning.
+    expect(cf.rentCadenceSuspect).toEqual({ declared: 'WEEKLY', detected: 'MONTHLY', managed: true });
+    // Regression: the B3 gross-up is untouched — net 2,515 + fee 432 = 2,947 gross.
+    expect(cf.monthlyRent).toBeCloseTo(2947, 2);
+    expect(cf.annualRent).toBeCloseTo(35364, 0);
+  });
+
+  it('MON-096: a MANAGED stream whose cadences AGREE stays unflagged (no phantom chip)', () => {
+    const income = [{ id: 'bm', type: 'RENTAL', amount: 2515, frequency: 'MONTHLY', rentalMode: 'MANAGED' }];
+    const transactions = [
+      { incomeId: 'bm', date: new Date('2026-05-01'), amount: 2515 },
+      { incomeId: 'bm', date: new Date('2026-06-01'), amount: 2515 },
+    ];
+    const cf = computePropertyCashflow({ income, transactions });
     expect(cf.rentCadenceSuspect).toBeNull();
   });
 

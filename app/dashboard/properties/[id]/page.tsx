@@ -725,17 +725,24 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
     // MON-093: the payments' rhythm contradicts the declared cadence — the
     // Broadbeach class (a monthly-magnitude amount declared WEEKLY). Surface
     // it; never silently annualise a mis-declared row.
+    // MON-096: on a MANAGED stream that mismatch is normal (weekly lease,
+    // monthly agent disbursement) — the producer marks it `managed`, and we
+    // render a neutral explanation instead of the amber warning. Mode is
+    // never re-derived here (§12.2.1 — one producer).
     const suspect = cf.rentCadenceSuspect;
+    const suspectWarns = Boolean(suspect && !suspect.managed);
     items.push({
       id: 'inc-rental-stream',
       icon: TrendingUp,
       iconTone: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
       title: 'Rental income',
       subtitle: suspect
-        ? `${cadence} · declared ${suspect.declared.toLowerCase()}, but payments look ${suspect.detected.toLowerCase()} — check the row's frequency`
+        ? suspect.managed
+          ? `declared ${suspect.declared.toLowerCase()} · paid ${suspect.detected.toLowerCase()} by your agent (normal for managed rentals)`
+          : `${cadence} · declared ${suspect.declared.toLowerCase()}, but payments look ${suspect.detected.toLowerCase()} — check the row's frequency`
         : `${cadence} · from ${rentalRows.length} ${rentalRows.length === 1 ? 'source' : 'sources'}`,
       amount: `+${formatCurrency(cf.monthlyRent)}/mo`,
-      amountTone: suspect ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300',
+      amountTone: suspectWarns ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300',
       href: '/dashboard/income',
     });
   }

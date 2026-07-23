@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**95 total** · 91 open · 🔵 21 · 🟡 5 · 🟠 32 · 🟢 33 · ✅ 3
+**96 total** · 92 open · 🔵 22 · 🟡 5 · 🟠 32 · 🟢 33 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -102,6 +102,7 @@
 | MON-093 | 🟢 VERIFIED | 🔴 | yes | Broadbeach rental ~4x cross-surface inflation: resolver advance-pair hole annualised an unsorted first txn by a mis-declared WEEKLY cadence ($11,328/mo vs income page $2,515) | ##1473 | ✅ |
 | MON-094 | 🟠 FIXING | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
 | MON-095 | 🟠 FIXING | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
+| MON-096 | 🔵 OPEN | 🟠 | yes | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | — | — |
 
 ---
 
@@ -1738,4 +1739,15 @@ Raised from VR-019 items 11/19 (run docs/verification/runs/VR-019.md; evidence: 
 - **Detail:** `reza-live-review-2026-07-23`
 
 Reza live review 2026-07-23 on /dashboard/housekeeping/duplicates + the Matrix code brief. ROOT (S19.2-verified): normalizeMerchant:28 strips any 5+ digit run (policy/account numbers discarded before comparison - 'Aia ... 68718123' and 'Aia ... 68718100' both -> 'aia'); sameMerchant:38 returns true on name equality with NO amount check; resolveStreamMatch's exact branch used it bare -> two distinct policies = exact duplicates, systemically (the same path is the intake guardrail, so a new policy could be silently auto-absorbed at import for ANY user). FIX (brief option (a) + (c), expense-scoped): amount guard (the ONE <=10% band) + disjoint-identifier fail-safe (extractIdentifierTokens excludes ABN/ACN; either side lacking identifiers -> no veto) in expenseDuplicateCompatible, applied in the classifier only - both the review tool and every intake door inherit. INCOME exempt by pinned doctrine (declared<->reconciled amount drift converges; deposit descriptors carry per-payment refs - a veto would re-fragment salaries, the MON-076 class) - surfaced in the PR, not silent. Fix B (merge-with-edit + clearer kept/removed view + 'Duplicate records' rename) is the separate Stitch-first -> Opus build per the brief. DATA GUIDANCE: AIA never merges (distinct policies); QBE/Mate held for Fix B so cadence is corrected in the same merge step.
+
+### MON-096 — MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: property · opened 2026-07-23
+
+> **What was wrong:** A verification check found a mismatch on app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip).
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip).
 

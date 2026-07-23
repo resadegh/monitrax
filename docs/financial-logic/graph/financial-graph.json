@@ -5520,7 +5520,7 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 212,
+      "line": 219,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -5577,7 +5577,8 @@
       "verifiedBy": "tests/calculations/propertyCashflow.test.ts (§19.2 worked examples + §19.4 one-source proof)",
       "workedExample": "Lot 1: rent 14,340 − expenses 43,546 − P&I 71,704.56 = −100,910.56 cash (tax −90,671.23 using interest 61,465.23)",
       "verifiedDate": "2026-07-03",
-      "status": "documented"
+      "status": "documented",
+      "notes": "MON-096: rentalMode (MANAGED) marks rentCadenceSuspect as managed (informational, not a warning) — lease cadence vs agent disbursement cadence legitimately differ."
     },
     {
       "id": "number.propertyCashflow",
@@ -6183,7 +6184,7 @@
       "kind": "engine",
       "label": "Per-loan monthly cost (interest floor)",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 188,
+      "line": 195,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
