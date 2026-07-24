@@ -521,3 +521,32 @@ Coverage: verifies the wiring semantics + twin parity + no-input inertness in un
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (P2 brief followed — STEP-0 census a-d completed FIRST with the reachability DECISION stated (deferred, documented), the MON-097 template mirrored verbatim; Neomatrix consulted + moved same PR) · Requirements 10/10 (both twins wired; 47% rate engine-owned never re-hard-coded; UNCOMPUTED surfaced never defaulted; ratchets a-d; allowlist 2→1) · Logic 10/10 (§19.2 hand-computed FTDT $47,000 / withholding $37,600 locked; absent input = byte-identical, locked; Float===Decimal locked; ONE producer — the orchestrator calls, never re-implements)`
 Coverage: verifies the wiring semantics + twin parity + citation/flag aggregation + no-input inertness in unit form; does NOT verify any live rendered number (none can move — census gaps 1+2) and does NOT verify the classifier's internals beyond the worked examples (calc-audit's fixtures + its own 25-case suite own those).
+
+---
+
+## Session: yhm8ug (continuation 22, 2026-07-24) — MON-099 (Neo-G4 · P3): wire the Div 152 overlay — the A6 island list is now EMPTY
+
+### Changes Made
+- **Type**: Fix/Feature (tax plumbing; `changesNumbers: yes-CONDITIONAL` — wiring real in both twins, ZERO live movement: Div 152 inputs 100% uncaptured + the live entity route bypasses the orchestrator)
+- **Root cause (verified)**: `buildMasterTaxPosition` (`lib/tax-engine/orchestrator/masterTaxPosition.ts:245`, pre-fix :224) documented `applyDiv152` as a step-3 overlay (:27-34) but never called it — the THIRD and LAST Neo-G4 unwired engine. Product-wide: a small-business active-asset capital gain got NO Div 152 concession (15-year exemption s152-105, 50% active-asset reduction s152-205, retirement exemption s152-305/310, rollover s152-410) — over-taxed with no relief applied.
+- **Fix (mirrors MON-097/098 with ONE deliberate upgrade)**: `input.div152ByEntity?: Record<string, Div152Input>` → step-3.8 block in BOTH twins; **the Decimal twin uses the engine's TRUE Decimal sibling `applyDiv152Decimal` with `Div152ResultDecimal`** — the loss-rule precedent (PSI/FTE reused the Float type only because those engines lack Decimal siblings). Citations (Div 152, s152-10/105/205/305/310/410, s152-15) + UNCOMPUTED flags (UC-DIV152-AGGREGATION near MNAV/turnover thresholds, UC-DIV152-RETIREMENT-CAP, UC-DIV152-ROLLOVER) aggregate to the top level — surfaced, never silently defaulted. Thresholds stay engine-owned (MNAV_THRESHOLD $6M / turnover $2M / retirement cap $500k) — never re-hard-coded (§12.14).
+- **MILESTONE**: `A6_ISLAND_ALLOWLIST` is now **EMPTY** — every built tax engine reaches the live position. Recorded in graphlib.mjs with the future-entry rigor note.
+- **The surfaced gaps (unchanged class)**: (1) Div 152 inputs captured NOWHERE (grep: zero occurrences outside engine+tests) — capture feature is the named follow-up; (2) reachability rides the MON-098 deferral (documented): `/api/tax/entity/[entityId]` bypasses the orchestrator — all three overlays stay test/tool-only until capture + reachability land.
+- **Ratchet**: `tests/tax/mon099Div152Overlay.test.ts` (7 tests, RED pre-fix): 15-year exemption ($200k → $0) / 50% AAR ($200k → $100k) / basic-conditions fail ($200k unchanged) / near-threshold aggregation flag (warns, never zeroes) / retirement lifetime cap ($300k gain, $400k used → applied $100k → assessable $50k, cap flag) / absent-input byte-parity / Float===Decimal across 6 cases (numeric comparison — Decimal twin returns true Decimals).
+
+### Files Modified
+- `lib/tax-engine/orchestrator/masterTaxPosition.ts` — Float + Decimal imports, `div152ByEntity` input (capture-gap JSDoc), both CrossCutting types (Decimal uses `Div152ResultDecimal`), step-3.8 wiring + ingestion in BOTH twins
+- `tests/tax/mon099Div152Overlay.test.ts` (NEW, 7 tests)
+- `scripts/neomatrix/graphlib.mjs` — allowlist EMPTIED (1→0) with the Neo-G4 completion note
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — Div 152 edge + node wired-update; orchestrator anchors re-pinned 224→245; PSI/FTE refs refreshed (:331/:673, :346/:685)
+- `docs/issues/ISSUES.json` + `ISSUES.md` — MON-099 raised → DIAGNOSED (census + plain trio)
+
+### Build Status
+- [x] tsc clean · [x] mon099 7/7 + mon098 6/6 + mon097 5/5 + suites 1,374 passed (87 files) · [x] `npm run build` passes · [x] `neomatrix:check` green (A6 allowlist EMPTY) · [x] both lints green, no exception-count rise · [x] `issues:check` 99 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (P3 brief followed — census a-d FIRST; reachability rides the documented MON-098 deferral; ONE surfaced upgrade vs the brief: the Decimal twin uses applyDiv152Decimal/Div152ResultDecimal (the engine's true sibling, loss-rule precedent) rather than reusing the Float type — strictly closer to the established pattern, stated not silent) · Requirements 10/10 (both twins; thresholds engine-owned; UNCOMPUTED surfaced; ratchets a-d; allowlist EMPTIED) · Logic 10/10 (§19.2 hand-computed: 15-yr $0, AAR $100k, cap-bound retirement $50k assessable with $100k applied; absent input byte-identical, locked; Float===Decimal locked numerically)`
+Coverage: verifies wiring semantics + twin parity + flag aggregation + inertness in unit form; does NOT verify any live rendered number (none can move — gaps 1+2), does NOT verify the engine's internal stacking beyond the worked examples (its own suites + calc-audit shadow-parity fixtures own those), and does NOT fold the concession into entity totals (overlay v1 doctrine — a v2 orchestrator decision, same as PSI/FTE).
+
+### Push note
+Built while PR #1499 (MON-098) was still open on the same branch — commit held locally and pushed AFTER #1499 merged (Part 24 one-issue-one-PR; the branch hosts one open PR at a time).
