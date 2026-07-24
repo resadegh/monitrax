@@ -4324,3 +4324,11 @@ One rule per managed stream (`incomeStreamId @unique`). After the user confirms 
 | `tolerancePct` | `Float @default(0.2)` |
 
 **SSOT (§12.2.1):** the gap is computed ONLY by `reconcileManagedRental()`; derived rows are persisted ONLY by `app/api/rental-reconciliation` (R1 source-lock `tests/tax/rentalReconciliationSourceLock.test.ts`). The derived row (`isTaxDeductible` + `propertyId` + `PROPERTY_MANAGEMENT`) flows into `calculateTaxPosition().deductions.property` through the existing deductible-expense loop — gross income unchanged.
+
+## Private hospital cover — `HouseholdMember.hasPrivateHospitalCover` (MON-088, 2026-07-23)
+
+| Field | Type | Semantics |
+|---|---|---|
+| `hasPrivateHospitalCover` | `Boolean?` (nullable, no default) | Per-member private HOSPITAL cover (extras never count) — the input to the Medicare levy surcharge. **`null` = "not sure / not entered"**: the tax engine treats it conservatively as NO cover (the surcharge applies when income is over the threshold) while the UI shows it honestly as "Not sure" — a blank never silently asserts cover. Written only by the My Household member dialog (tri-state Yes/No/Not-sure control, Stitch `16e80455…`). |
+
+Consumption path (one producer, §12.2.1): `getUserTaxPosition` fetches the profile+members once and derives `medicareContext` — `familyStatus` (2+ adults or a SPOUSE member), `dependentChildren`, and `familyCovered` under the ATO all-or-nothing rule (every adult answered Yes; a child's explicit No breaks cover; a blank adult = uncovered). The context threads through `calculateTaxPosition` (Float + Decimal) into `calculateMedicareLevy`; family MLS tiers are config-driven (`TaxYearConfig.medicareSurchargeFamily`). Migration: `20260723000000_mon088_private_hospital_cover` (additive, no backfill).

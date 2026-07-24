@@ -113,6 +113,23 @@ export interface TaxPositionCalculationInput {
     nonConcessional: number;
   };
   financialYear?: string;
+  /**
+   * MON-088: household context for the Medicare legs (levy family threshold
+   * + MLS combined-income tier + cover). Optional — absent preserves the
+   * pre-MON-088 SINGLE/covered behaviour for estimate callers. Sourced from
+   * HouseholdProfile/members by getUserTaxPosition; never re-derived per
+   * surface (§12.2.1). AU has no joint return: this NEVER touches income-tax
+   * marginal rates — Medicare only.
+   */
+  medicareContext?: {
+    familyStatus: 'SINGLE' | 'FAMILY';
+    dependentChildren: number;
+    /** The OTHER adult's taxable income (for the combined MLS tier test). */
+    spouseIncome: number;
+    /** ATO all-or-nothing: true only when the WHOLE family holds hospital
+     *  cover. null/undefined = not entered → conservatively uncovered. */
+    familyCovered: boolean | null;
+  };
 }
 
 // =============================================================================
@@ -296,8 +313,21 @@ export function calculateTaxPosition(
   // Calculate tax on taxable income
   const incomeTaxResult = calculateIncomeTax(taxableIncome, fyConfig);
 
-  // Calculate Medicare levy
-  const medicareResult = calculateMedicareLevy({ taxableIncome }, fyConfig);
+  // Calculate Medicare levy (MON-088: family + cover context when provided;
+  // absent context = pre-MON-088 SINGLE/covered behaviour for estimators).
+  const mc = input.medicareContext;
+  const medicareResult = calculateMedicareLevy(
+    mc
+      ? {
+          taxableIncome,
+          familyStatus: mc.familyStatus,
+          dependentChildren: mc.dependentChildren,
+          spouseIncome: mc.spouseIncome,
+          hasPrivateHealthInsurance: mc.familyCovered === true,
+        }
+      : { taxableIncome },
+    fyConfig,
+  );
 
   // Calculate offsets
   const offsetsResult = calculateAllOffsets({
@@ -818,7 +848,20 @@ export function calculateTaxPositionDecimal(
   const taxableIncome = Decimal.max(zero, assessableIncome.minus(deductionBreakdown.total));
 
   const incomeTaxResult = calculateIncomeTaxDecimal(taxableIncome, fyConfig);
-  const medicareResult = calculateMedicareLevyDecimal({ taxableIncome }, fyConfig);
+  // MON-088: same context as the Float path — Float === Decimal by twin rule.
+  const mcD = input.medicareContext;
+  const medicareResult = calculateMedicareLevyDecimal(
+    mcD
+      ? {
+          taxableIncome,
+          familyStatus: mcD.familyStatus,
+          dependentChildren: mcD.dependentChildren,
+          spouseIncome: mcD.spouseIncome,
+          hasPrivateHealthInsurance: mcD.familyCovered === true,
+        }
+      : { taxableIncome },
+    fyConfig,
+  );
   const offsetsResult = calculateAllOffsetsDecimal(
     { taxableIncome, frankingCredits: incomeBreakdown.frankingCredits },
     fyConfig,

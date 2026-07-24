@@ -1,5 +1,14 @@
 'use client';
 
+/**
+ * My Household — profile + members. MON-088 adds the per-member
+ * "Private hospital cover?" tri-state control (Yes / No / Not sure) to the
+ * member dialog — it drives the Medicare levy surcharge in the tax engine
+ * (null = not entered → conservatively treated as no cover).
+ * Control design: Stitch screen 16e804559bf74af8b1c2b02d2e7f8b78, project
+ * 1859462351962811110 (§18.8 9.2/10).
+ */
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -78,6 +87,8 @@ interface HouseholdMember {
   relationship: HouseholdRelationship;
   dateOfBirth: string | null;
   isIncomeEarner: boolean;
+  /** MON-088: private hospital cover — null = "not sure / not entered". */
+  hasPrivateHospitalCover: boolean | null;
   sortOrder: number;
   linkedCategories: LinkedCategory[];
 }
@@ -152,6 +163,7 @@ export default function HouseholdProfilePage() {
     relationship: 'SELF' as HouseholdRelationship,
     dateOfBirth: '',
     isIncomeEarner: false,
+    hasPrivateHospitalCover: null as boolean | null,
   });
   const [savingMember, setSavingMember] = useState(false);
 
@@ -222,6 +234,7 @@ export default function HouseholdProfilePage() {
       relationship: hasSelf ? 'SPOUSE' : 'SELF',
       dateOfBirth: '',
       isIncomeEarner: true,
+      hasPrivateHospitalCover: null,
     });
     setMemberDialogOpen(true);
   };
@@ -233,6 +246,7 @@ export default function HouseholdProfilePage() {
       relationship: member.relationship,
       dateOfBirth: member.dateOfBirth ? member.dateOfBirth.split('T')[0] : '',
       isIncomeEarner: member.isIncomeEarner,
+      hasPrivateHospitalCover: member.hasPrivateHospitalCover ?? null,
     });
     setMemberDialogOpen(true);
   };
@@ -262,6 +276,7 @@ export default function HouseholdProfilePage() {
           relationship: memberForm.relationship,
           dateOfBirth: memberForm.dateOfBirth || null,
           isIncomeEarner: memberForm.isIncomeEarner,
+          hasPrivateHospitalCover: memberForm.hasPrivateHospitalCover,
         }),
       });
 
@@ -848,6 +863,35 @@ export default function HouseholdProfilePage() {
                     Creates salary and work expense categories
                   </span>
                 </Label>
+              </div>
+            )}
+            {memberForm.relationship !== 'CHILD' && (
+              <div>
+                <Label className="text-[13px]">Private hospital cover?</Label>
+                <div className="mt-1.5 flex rounded-full border border-foreground/15 bg-background p-0.5">
+                  {([
+                    ['Yes', true],
+                    ['No', false],
+                    ['Not sure', null],
+                  ] as const).map(([label, value]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setMemberForm({ ...memberForm, hasPrivateHospitalCover: value })}
+                      className={
+                        memberForm.hasPrivateHospitalCover === value
+                          ? 'flex-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[13px] font-medium text-emerald-700 dark:text-emerald-300'
+                          : 'flex-1 rounded-full px-3 py-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground'
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Affects the Medicare levy surcharge. If you&apos;re not sure, we assume no
+                  cover — you can update this any time.
+                </p>
               </div>
             )}
           </div>

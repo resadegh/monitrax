@@ -4810,6 +4810,15 @@ model HouseholdMember {
   // Financial Role
   isIncomeEarner Boolean @default(false) // Does this member earn income?
 
+  // MON-088: private HOSPITAL cover (extras never count) — drives the
+  // Medicare levy surcharge. NULLABLE by design: null = "not entered /
+  // not sure", which the tax engine treats conservatively as NO cover
+  // (the surcharge applies over-threshold) but the UI shows honestly as
+  // "Not sure" — a blank never silently asserts cover. Per-member: the
+  // ATO family rule is all-or-nothing (one uncovered member makes every
+  // over-threshold adult liable), derived in userTaxPosition.
+  hasPrivateHospitalCover Boolean?
+
   // Metadata
   sortOrder Int      @default(0) // For UI ordering
   createdAt DateTime @default(now())

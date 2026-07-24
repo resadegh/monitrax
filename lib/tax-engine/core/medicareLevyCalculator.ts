@@ -25,10 +25,27 @@ export interface MedicareLevyResult {
 
 export interface MedicareLevyInput {
   taxableIncome: number;
+  /**
+   * MON-088: for a FAMILY this means "the WHOLE family holds private
+   * hospital cover" (ATO all-or-nothing rule — one uncovered member makes
+   * every over-threshold adult liable; a covered partner is NOT exempt
+   * while their spouse is uncovered). For a SINGLE it is their own cover.
+   * Default `true` is legacy behaviour kept for the estimate callers
+   * (salaryProcessor / incomeNormalizer / super-optimize) — the tax-position
+   * producer ALWAYS passes an explicit value from captured data.
+   */
   hasPrivateHealthInsurance?: boolean;
   hasMedicareExemption?: boolean;
   familyStatus?: 'SINGLE' | 'FAMILY';
   dependentChildren?: number;
+  /**
+   * MON-088: the spouse's taxable income. For FAMILY, the MLS tier is
+   * selected on COMBINED income (own + spouse) against the family tiers
+   * (singles × multiplier, +child increase after the first), but the
+   * surcharge is levied on the person's OWN taxableIncome. An adult whose
+   * own income is at or below the levy low-income threshold pays no MLS
+   * personally (the ATO low-earner exception).
+   */
   spouseIncome?: number;
 }
 
@@ -40,7 +57,13 @@ export function calculateMedicareLevy(
   config: TaxYearConfig = getCurrentTaxYearConfig()
 ): MedicareLevyResult {
   const calculations: CalculationStep[] = [];
-  const { taxableIncome, hasMedicareExemption = false, familyStatus = 'SINGLE', dependentChildren = 0 } = input;
+  const {
+    taxableIncome,
+    hasMedicareExemption = false,
+    familyStatus = 'SINGLE',
+    dependentChildren = 0,
+    spouseIncome = 0,
+  } = input;
 
   // Check for exemption
   if (hasMedicareExemption) {
@@ -75,6 +98,16 @@ export function calculateMedicareLevy(
 
   const shadeOutThreshold = threshold * config.medicareThresholds.shadeOutMultiplier;
 
+  // MON-088: the family low-income reduction is a FAMILY-income test (ATO —
+  // the reduction depends on family income, not just the individual's). The
+  // tested income is own + spouse; the levy itself stays on OWN income,
+  // apportioned in the shade range by income share (approximates the s8
+  // spouse apportionment; exact for SINGLE and for the combined household
+  // bundle where spouseIncome is 0).
+  const testedIncome = familyStatus === 'FAMILY'
+    ? taxableIncome + Math.max(0, spouseIncome)
+    : taxableIncome;
+
   calculations.push({
     label: 'Taxable Income',
     value: taxableIncome,
@@ -92,7 +125,7 @@ export function calculateMedicareLevy(
   let isShadeIn = false;
 
   // Below threshold: no levy
-  if (taxableIncome <= threshold) {
+  if (testedIncome <= threshold) {
     calculations.push({
       label: 'Income below threshold',
       value: 0,
@@ -101,16 +134,18 @@ export function calculateMedicareLevy(
     });
   }
   // Shade-in range
-  else if (taxableIncome < shadeOutThreshold) {
-    // Shade-in formula: 10% of (income - threshold)
-    const excessOverThreshold = taxableIncome - threshold;
-    medicareLevy = excessOverThreshold * 0.10;
+  else if (testedIncome < shadeOutThreshold) {
+    // Shade-in formula: 10% of (tested income - threshold), apportioned to
+    // this person's share of the tested income.
+    const excessOverThreshold = testedIncome - threshold;
+    const ownShare = testedIncome > 0 ? taxableIncome / testedIncome : 1;
+    medicareLevy = excessOverThreshold * 0.10 * ownShare;
     isShadeIn = true;
 
     calculations.push({
       label: 'Income in shade-in range',
       value: excessOverThreshold,
-      explanation: `$${taxableIncome.toLocaleString()} - $${threshold.toLocaleString()} = $${excessOverThreshold.toLocaleString()}`,
+      explanation: `$${testedIncome.toLocaleString()} - $${threshold.toLocaleString()} = $${excessOverThreshold.toLocaleString()}`,
     });
 
     calculations.push({
@@ -120,7 +155,7 @@ export function calculateMedicareLevy(
       explanation: 'Levy phases in gradually to avoid sudden jumps',
     });
   }
-  // Above shade-out: full 2% levy
+  // Above shade-out: full 2% levy on OWN income
   else {
     medicareLevy = taxableIncome * config.medicareRate;
 
@@ -163,36 +198,81 @@ export function calculateMedicareLevy(
 }
 
 /**
- * Calculate Medicare Levy Surcharge for those without private health insurance
+ * MON-088: resolve the MLS tier RATE for an income tested against the
+ * configured tiers, optionally scaled to the family thresholds
+ * (singles bounds × multiplier, + child increase after the first child).
+ * ONE tier table, config-driven — the family bounds are derived, never a
+ * second hardcoded list.
+ */
+function mlsTierRate(
+  testedIncome: number,
+  config: TaxYearConfig,
+  family: boolean,
+  dependentChildren: number,
+): number {
+  const fam = config.medicareSurchargeFamily ?? { singleMultiplier: 2, dependentChildIncrease: 1500 };
+  const childUplift = family ? Math.max(0, dependentChildren - 1) * fam.dependentChildIncrease : 0;
+  const scale = family ? fam.singleMultiplier : 1;
+  for (const tier of config.medicareSurchargeThresholds) {
+    const min = tier.min <= 0 ? 0 : tier.min * scale + childUplift;
+    const max = tier.max == null ? Infinity : tier.max * scale + childUplift;
+    if (testedIncome >= min && testedIncome <= max) return tier.rate;
+  }
+  return 0;
+}
+
+/**
+ * Calculate Medicare Levy Surcharge for those without private hospital cover.
+ *
+ * MON-088 (ATO "Medicare levy surcharge"): the surcharge depends on cover
+ * AND income together —
+ *   - SINGLE: own income tested against the singles tiers.
+ *   - FAMILY: COMBINED income (own + spouse) tested against the family
+ *     tiers (singles × multiplier, +$increase per child after the first);
+ *     the resulting rate is levied on the person's OWN taxableIncome.
+ *   - Low-earner exception: an adult whose own income is at or below the
+ *     levy low-income single threshold pays no MLS personally, even in an
+ *     over-threshold uncovered family.
+ *   - Cover is family-all-or-nothing — the CALLER passes
+ *     hasPrivateHealthInsurance = "whole family covered" for FAMILY.
  */
 function calculateMedicareSurcharge(
   input: MedicareLevyInput,
   config: TaxYearConfig
 ): { surcharge: number; explanation: string } {
-  const { taxableIncome, hasPrivateHealthInsurance = true } = input;
+  const {
+    taxableIncome,
+    hasPrivateHealthInsurance = true,
+    familyStatus = 'SINGLE',
+    dependentChildren = 0,
+    spouseIncome = 0,
+  } = input;
 
-  // No surcharge if has private health insurance
+  // No surcharge when the family (or the single person) holds hospital cover.
   if (hasPrivateHealthInsurance) {
     return { surcharge: 0, explanation: 'No surcharge - has private health insurance' };
   }
 
-  // Find applicable surcharge rate
-  for (const tier of config.medicareSurchargeThresholds) {
-    const max = tier.max ?? Infinity;
-    if (taxableIncome >= tier.min && taxableIncome <= max) {
-      if (tier.rate === 0) {
-        return { surcharge: 0, explanation: 'Income below surcharge threshold' };
-      }
+  const family = familyStatus === 'FAMILY';
 
-      const surcharge = taxableIncome * tier.rate;
-      return {
-        surcharge: Math.round(surcharge * 100) / 100,
-        explanation: `${(tier.rate * 100).toFixed(2)}% surcharge - no private health insurance`,
-      };
-    }
+  // ATO low-earner exception: own income at/below the levy low-income single
+  // threshold → no MLS for this person, whatever the family income.
+  if (family && taxableIncome <= config.medicareThresholds.single) {
+    return { surcharge: 0, explanation: 'No surcharge - own income below the low-earner threshold' };
   }
 
-  return { surcharge: 0, explanation: '' };
+  const testedIncome = family ? taxableIncome + Math.max(0, spouseIncome) : taxableIncome;
+  const rate = mlsTierRate(testedIncome, config, family, dependentChildren);
+  if (rate === 0) {
+    return { surcharge: 0, explanation: 'Income below surcharge threshold' };
+  }
+
+  // The rate from the (combined for FAMILY) tier applies to OWN income.
+  const surcharge = taxableIncome * rate;
+  return {
+    surcharge: Math.round(surcharge * 100) / 100,
+    explanation: `${(rate * 100).toFixed(2)}% surcharge - no private hospital cover${family ? ' (family income tested)' : ''}`,
+  };
 }
 
 // =============================================================================
@@ -224,29 +304,43 @@ function calculateMedicareSurchargeDecimal(
   input: MedicareLevyInputDecimal,
   config: TaxYearConfig,
 ): { surcharge: Decimal } {
-  const { taxableIncome, hasPrivateHealthInsurance = true } = input;
+  const {
+    taxableIncome,
+    hasPrivateHealthInsurance = true,
+    familyStatus = 'SINGLE',
+    dependentChildren = 0,
+    spouseIncome = 0,
+  } = input;
   if (hasPrivateHealthInsurance) return { surcharge: new Decimal(0) };
 
   const taxableDec = toDecimal(taxableIncome) ?? new Decimal(0);
   const taxableNumber = taxableDec.toNumber();
+  const family = familyStatus === 'FAMILY';
 
-  for (const tier of config.medicareSurchargeThresholds) {
-    const max = tier.max ?? Infinity;
-    if (taxableNumber >= tier.min && taxableNumber <= max) {
-      if (tier.rate === 0) return { surcharge: new Decimal(0) };
-      // Mirror Float's `Math.round(surcharge * 100) / 100` rounding.
-      const surcharge = taxableDec.times(tier.rate).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
-      return { surcharge };
-    }
+  // MON-088 — mirror Float exactly: low-earner exception, then the
+  // combined-income tier lookup (family bounds derived from the ONE table),
+  // rate applied to OWN income.
+  if (family && taxableNumber <= config.medicareThresholds.single) {
+    return { surcharge: new Decimal(0) };
   }
-  return { surcharge: new Decimal(0) };
+  const testedIncome = family ? taxableNumber + Math.max(0, spouseIncome) : taxableNumber;
+  const rate = mlsTierRate(testedIncome, config, family, dependentChildren);
+  if (rate === 0) return { surcharge: new Decimal(0) };
+  // Mirror Float's `Math.round(surcharge * 100) / 100` rounding.
+  const surcharge = taxableDec.times(rate).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+  return { surcharge };
 }
 
 export function calculateMedicareLevyDecimal(
   input: MedicareLevyInputDecimal,
   config: TaxYearConfig = getCurrentTaxYearConfig(),
 ): MedicareLevyResultDecimal {
-  const { hasMedicareExemption = false, familyStatus = 'SINGLE', dependentChildren = 0 } = input;
+  const {
+    hasMedicareExemption = false,
+    familyStatus = 'SINGLE',
+    dependentChildren = 0,
+    spouseIncome = 0,
+  } = input;
   const taxableDec = toDecimal(input.taxableIncome) ?? new Decimal(0);
 
   if (hasMedicareExemption) {
@@ -277,14 +371,21 @@ export function calculateMedicareLevyDecimal(
   const threshold = new Decimal(baseThreshold);
   const shadeOutThreshold = threshold.times(config.medicareThresholds.shadeOutMultiplier);
 
+  // MON-088 — mirror Float: family low-income test on COMBINED income; the
+  // levy stays on OWN income, apportioned by share in the shade range.
+  const testedDec = familyStatus === 'FAMILY'
+    ? taxableDec.plus(Math.max(0, spouseIncome))
+    : taxableDec;
+
   let medicareLevy = new Decimal(0);
   let isShadeIn = false;
 
-  if (taxableDec.lte(threshold)) {
+  if (testedDec.lte(threshold)) {
     // No levy.
-  } else if (taxableDec.lt(shadeOutThreshold)) {
-    // Shade-in: 10% of excess.
-    medicareLevy = taxableDec.minus(threshold).times('0.10');
+  } else if (testedDec.lt(shadeOutThreshold)) {
+    // Shade-in: 10% of excess of the tested income, × own share.
+    const ownShare = testedDec.gt(0) ? taxableDec.div(testedDec) : new Decimal(1);
+    medicareLevy = testedDec.minus(threshold).times('0.10').times(ownShare);
     isShadeIn = true;
   } else {
     medicareLevy = taxableDec.times(config.medicareRate);

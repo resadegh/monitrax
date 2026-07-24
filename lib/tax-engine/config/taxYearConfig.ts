@@ -77,6 +77,10 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
     { min: 113001, max: 151000, rate: 0.0125 },
     { min: 151001, max: null, rate: 0.015 },
   ],
+  // MON-088: family MLS = singles tiers doubled (+$1,500 per dependent child
+  // after the first) — ato.gov.au "Medicare levy surcharge income, thresholds
+  // and rates". FY24-25 family base = $194,000.
+  medicareSurchargeFamily: { singleMultiplier: 2, dependentChildIncrease: 1500 },
 
   // Low Income Tax Offset (LITO) - ATO two-tier phase out
   // Full $700 for income up to $37,500
@@ -179,6 +183,7 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
   medicareRate: 0.02,
   medicareThresholds: TAX_YEAR_2024_25.medicareThresholds, // pending ATO update
   medicareSurchargeThresholds: TAX_YEAR_2024_25.medicareSurchargeThresholds,
+  medicareSurchargeFamily: TAX_YEAR_2024_25.medicareSurchargeFamily, // MON-088 (pending ATO update with the rest)
 
   lito: TAX_YEAR_2024_25.lito,
   saptoSingle: 2230,
@@ -271,6 +276,8 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
     { min: 108001, max: 144000, rate: 0.0125 },
     { min: 144001, max: null, rate: 0.015 },
   ],
+  // MON-088: family MLS = singles tiers doubled (+$1,500/child after first).
+  medicareSurchargeFamily: { singleMultiplier: 2, dependentChildIncrease: 1500 },
 
   // Low Income Tax Offset (LITO) - ATO two-tier phase out
   lito: {

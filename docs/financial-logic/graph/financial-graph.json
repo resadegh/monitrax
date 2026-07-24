@@ -1061,7 +1061,7 @@
       "kind": "engine",
       "label": "Income tax position",
       "file": "lib/tax-engine/position/taxPositionCalculator.ts",
-      "line": 136,
+      "line": 153,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -1094,7 +1094,8 @@
       "verifiedBy": "lib/tax-engine/position/taxPositionCalculator.ts:132 + tests/tax/mon045PropertyLoanInterest.test.ts (Ring-0/2 + source-lock) + tests/tax/mon053OneOffIncome.test.ts",
       "workedExample": null,
       "verifiedDate": "2026-07-15",
-      "status": "documented"
+      "status": "documented",
+      "notes": "MON-088: optional medicareContext {familyStatus, dependentChildren, spouseIncome, familyCovered} threaded to calculateMedicareLevy on BOTH Float+Decimal paths; absent = legacy SINGLE/covered (estimate callers unchanged). Income-tax rates NEVER touched by family context (AU has no joint return)."
     },
     {
       "id": "engine.salaryProcessor.processSalary",
@@ -1135,7 +1136,7 @@
       "kind": "engine",
       "label": "FY tax thresholds (canonical)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 370,
+      "line": 377,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -2052,7 +2053,7 @@
       "kind": "engine",
       "label": "Medicare levy (2% + shade-in)",
       "file": "lib/tax-engine/core/medicareLevyCalculator.ts",
-      "line": 38,
+      "line": 55,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -2066,7 +2067,8 @@
       "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/medicareLevyCalculator.ts:38",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
-      "status": "documented"
+      "status": "documented",
+      "notes": "MON-088: family + cover legs wired — MLS tier on COMBINED income vs family tiers (singles × medicareSurchargeFamily.singleMultiplier, +dependentChildIncrease per child after the first), surcharge on OWN income; family cover is ALL-OR-NOTHING (hasPrivateHealthInsurance = whole family covered); low-earner exception (own ≤ levy low single threshold); levy family-reduction leg tests FAMILY income with shade-in apportioned by own share. Inputs now include HouseholdMember.hasPrivateHospitalCover via getUserTaxPosition medicareContext."
     },
     {
       "id": "engine.aggregateEngine.calculateAggregateScore",
@@ -5858,7 +5860,8 @@
       "verifiedBy": "lib/tax-engine/position/userTaxPosition.ts:54 + tests/tax/userTaxPositionConvergence.test.ts + tests/golden/ring2.perMemberTax.test.ts",
       "workedExample": null,
       "verifiedDate": "2026-07-20",
-      "status": "documented"
+      "status": "documented",
+      "notes": "MON-088: fetches HouseholdProfile+members once; derives familyStatus (2+ adults or SPOUSE member), dependentChildren, familyCovered (every adult answered Yes; a child's explicit No breaks cover; blank adult = conservatively uncovered); household bundle passes spouseIncome 0 (already combined); perMember runs TWO-PASS through the ONE engine (pass 1 partitions → taxable incomes; pass 2 with spouseIncome = other members' taxable) — no second producer."
     },
     {
       "id": "ui.dashboard.propertyTileCashflow",

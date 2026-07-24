@@ -27,6 +27,9 @@ const CreateMemberSchema = z.object({
   relationship: z.nativeEnum(HouseholdRelationship),
   dateOfBirth: z.string().datetime().optional().nullable(),
   isIncomeEarner: z.boolean().default(false),
+  // MON-088: private HOSPITAL cover — null/absent = "not sure" (the tax
+  // engine treats it conservatively as no cover; the UI shows it honestly).
+  hasPrivateHospitalCover: z.boolean().optional().nullable(),
 });
 
 // =============================================================================
@@ -107,7 +110,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         );
       }
 
-      const { name, relationship, dateOfBirth, isIncomeEarner } = parseResult.data;
+      const { name, relationship, dateOfBirth, isIncomeEarner, hasPrivateHospitalCover } = parseResult.data;
 
       // Get or create household profile
       let profile = await prisma.householdProfile.findUnique({
@@ -140,6 +143,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
           relationship,
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           isIncomeEarner,
+          hasPrivateHospitalCover: hasPrivateHospitalCover ?? null,
           sortOrder: memberCount,
         },
         include: {
