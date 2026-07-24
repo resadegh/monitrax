@@ -93,6 +93,11 @@ import {
   type FteIeeInput,
   type FteIeeClassificationResult,
 } from '../divisions/fteIeeClassifier';
+import {
+  applyDiv152,
+  type Div152Input,
+  type Div152Result,
+} from '../divisions/div152SmallBusinessConcessions';
 import { renderBoundaryFootnote, type BoundaryFootnote } from '../boundaries';
 import type { AustralianState } from '../landTax/stateLandTax';
 import type { TrustDeedExtraction } from '@/lib/integrations/trust-deed/types';
@@ -161,6 +166,20 @@ export interface MasterTaxPositionInput {
    */
   fteIeeByEntity?: Record<string, FteIeeInput>;
   /**
+   * Neo-G4 P3 (MON-099) — per-entity Div 152 small-business CGT
+   * concession facts (ITAA 1997 Div 152). Keyed by `entityId`. The
+   * engine is the ONE producer of the concession stack (§12.2.1):
+   * 15-year exemption → 50% active-asset reduction → retirement
+   * exemption ($500k lifetime cap) → rollover, on a gain ALREADY
+   * Div 115-discounted. NOTE (STEP-0 census 2026-07-24): these facts
+   * (gain, MNAV, aggregated turnover, active-asset test, months held,
+   * retirement/incapacity, elections) are captured NOWHERE in the
+   * product — until a capture feature ships, this input can only be
+   * exercised by tests/tools; absent input = overlay skipped =
+   * byte-identical output.
+   */
+  div152ByEntity?: Record<string, Div152Input>;
+  /**
    * Phase 41f.4-extension — CONFIRMED trust-deed rules per entity.
    * Keyed by `entityId`. When provided alongside a trust entity's
    * `trustDistribution`, the orchestrator runs
@@ -193,6 +212,8 @@ export interface CrossCuttingTaxResult {
   psiByEntity?: Record<string, PsiClassificationResult>;
   /** Neo-G4 P2 (MON-098) — per-entity FTE/IEE (FTDT + TFN-withholding) overlay. */
   fteIeeByEntity?: Record<string, FteIeeClassificationResult>;
+  /** Neo-G4 P3 (MON-099) — per-entity Div 152 small-business CGT concession overlay. */
+  div152ByEntity?: Record<string, Div152Result>;
   /** Phase 41f.4-extension — per-entity trust-deed validation overlays. */
   trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
@@ -326,6 +347,21 @@ export function buildMasterTaxPosition(
     }
     modulesInvoked.push('fteIeeClassifier');
   }
+
+  // 3.8 Neo-G4 P3 (MON-099): Div 152 overlay — the LAST previously-unwired
+  // step-3 engine (A6 island list now empty). Per-entity, exactly like
+  // PSI/FTE-IEE: run the ONE engine, surface the concession stack
+  // (15-year s152-105 / 50% active-asset s152-205 / retirement s152-305
+  // capped s152-310 / rollover s152-410) + citations + UNCOMPUTED
+  // (UC-DIV152-AGGREGATION near the MNAV/turnover thresholds). Thresholds
+  // live in the engine (MNAV_THRESHOLD etc.) — never re-hard-coded (§12.14).
+  if (input.div152ByEntity) {
+    crossCutting.div152ByEntity = {};
+    for (const [entityId, d152Input] of Object.entries(input.div152ByEntity)) {
+      crossCutting.div152ByEntity[entityId] = applyDiv152(d152Input);
+    }
+    modulesInvoked.push('div152SmallBusinessConcessions');
+  }
   // 4. Aggregate household totals from entities + citations + UNCOMPUTED.
   let assessableIncome = 0;
   let taxableIncome = 0;
@@ -425,6 +461,12 @@ export function buildMasterTaxPosition(
       ingestUncomputed(r.uncomputed);
     }
   }
+  if (crossCutting.div152ByEntity) {
+    for (const r of Object.values(crossCutting.div152ByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
 
   // 5. Boundary footer envelope.
   const boundary = renderBoundaryFootnote({
@@ -459,6 +501,10 @@ export function buildMasterTaxPosition(
 // ============================================================================
 
 import { Decimal } from '@/lib/decimal';
+import {
+  applyDiv152Decimal,
+  type Div152ResultDecimal,
+} from '../divisions/div152SmallBusinessConcessions';
 import {
   calculateEntityTaxPositionDecimal,
   type EntityTaxPositionDecimal,
@@ -502,6 +548,8 @@ export interface CrossCuttingTaxResultDecimal {
   psiByEntity?: Record<string, PsiClassificationResult>;
   /** Neo-G4 P2 — FTE/IEE overlay; reported dollar figures (FTDT/withholding), reuses the Float result type. */
   fteIeeByEntity?: Record<string, FteIeeClassificationResult>;
+  /** Neo-G4 P3 — Div 152 overlay; TRUE Decimal result (the engine has a Decimal sibling — loss-rule precedent). */
+  div152ByEntity?: Record<string, Div152ResultDecimal>;
   /** Phase 41f.4 deed-validation overlay — categorical (citations + UNCOMPUTED only); reuses Float result type. */
   trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
@@ -638,6 +686,17 @@ export function buildMasterTaxPositionDecimal(
     }
     modulesInvoked.push('fteIeeClassifier');
   }
+
+  // 3.8 Neo-G4 P3 (MON-099): Div 152 overlay — mirror of the Float wiring,
+  // using the engine's TRUE Decimal sibling (applyDiv152Decimal — the
+  // loss-rule precedent, unlike PSI/FTE-IEE which have no Decimal twin).
+  if (input.div152ByEntity) {
+    crossCutting.div152ByEntity = {};
+    for (const [entityId, d152Input] of Object.entries(input.div152ByEntity)) {
+      crossCutting.div152ByEntity[entityId] = applyDiv152Decimal(d152Input);
+    }
+    modulesInvoked.push('div152SmallBusinessConcessions');
+  }
   // 4. Aggregate household totals from entities — Decimal arithmetic.
   let assessableIncome = zero;
   let taxableIncome = zero;
@@ -736,6 +795,12 @@ export function buildMasterTaxPositionDecimal(
   }
   if (crossCutting.fteIeeByEntity) {
     for (const r of Object.values(crossCutting.fteIeeByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+  if (crossCutting.div152ByEntity) {
+    for (const r of Object.values(crossCutting.div152ByEntity)) {
       ingestCitations(r.citations);
       ingestUncomputed(r.uncomputed);
     }

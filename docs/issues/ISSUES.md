@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**98 total** · 94 open · 🔵 21 · 🟡 3 · 🟠 32 · 🟢 38 · ✅ 3
+**99 total** · 95 open · 🔵 21 · 🟡 4 · 🟠 32 · 🟢 38 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -105,6 +105,7 @@
 | MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
 | MON-097 | 🟠 FIXING | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 | MON-098 | 🟠 FIXING | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
+| MON-099 | 🟡 DIAGNOSED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | — | ✅ |
 
 ---
 
@@ -1809,4 +1810,22 @@ Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
 Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI but NOT classifyFteIeeDistributions; (b) only calc-audit consumed the engine; (c) capture PARTIAL — hasFamilyTrustElection + gross distributions exist, relationship/hasQuotedTfn/coveredByIee do not; (d) live entity route bypasses the orchestrator (reachability decision: DEFERRED, documented — routing a live money path is its own census-heavy change, Part 24 one-issue-one-PR). changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d); 47% FTDT/withholding move only when capture ships. Neo-sync: engine.tax.fteIee.classifyFteIeeDistributions removed from A6_ISLAND_ALLOWLIST (2→1, only applyDiv152 remains), feeds edge added, orchestrator anchors re-pinned 204→224.
+
+### MON-099 — Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+
+> **What was wrong:** Monitrax has a complete, tested engine for the ATO's small-business CGT concessions (the rules that can wipe out or halve the capital gain when a small business sells an active business asset — the 15-year exemption, 50% active-asset reduction, retirement exemption, and rollover), but the master tax orchestrator never actually called it — so a small-business owner's gain would be over-taxed with no concession applied.
+>
+> **What changed:** The Div 152 engine is now wired into the master tax orchestrator (both calculation twins) exactly like the PSI and FTE/IEE overlays — and unlike those two, this engine has a true high-precision Decimal sibling, which the Decimal twin now uses. This was the LAST unwired tax engine: the island list is now empty.
+>
+> **What you should see:** Nothing changes on screen yet — Monitrax does not capture any of the Div 152 facts (the gain, business asset values, turnover, holding period, retirement status), and the live tax pages don't route through this orchestrator. The new tests prove the wiring works and that leaving it out changes nothing.
+
+- **Root cause:** `lib/tax-engine/orchestrator/masterTaxPosition.ts:245`
+- **Neomatrix:** `engine.tax.div152.applyDiv152`, `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition`
+- **Downstream consumers (§19.4):** `lib/tax-engine/orchestrator/masterTaxPosition.ts (buildMasterTaxPosition + buildMasterTaxPositionDecimal — the wired step-3.8 overlay; Decimal twin uses the TRUE applyDiv152Decimal sibling, loss-rule precedent)`, `lib/calc-audit/engines/tax-divisions.ts + decimal-tax-engine-beneficiary-concessions.ts (only prior non-test consumers; shadow-parity fixtures)`, `CAPTURE GAP (census 2026-07-24): Div 152 inputs (gainAfterDiv115, MNAV, aggregatedTurnover, isActiveAsset, monthsHeld, retirement flag, elections) captured NOWHERE — no live surface can move until a capture feature ships`, `REACHABILITY GAP (deferred, documented in PR — same as MON-097/098): /api/tax/entity/[entityId] bypasses buildMasterTaxPosition; all three overlays stay test/tool-only until capture + reachability land`
+- **Holistic test (§19.4):** `tests/tax/mon099Div152Overlay.test.ts#Div 152 overlay wired into both twins: 15-year exemption, 50% AAR, retirement cap, aggregation UNCOMPUTED, absent-input byte-parity, Float===Decimal`
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is now EMPTY (Neo-G4 completion milestone recorded in graphlib.mjs). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI + FTE/IEE but NOT applyDiv152; (b) only calc-audit consumed the engine; (c) inputs 100% uncaptured; (d) reachability deferred + documented (rides the MON-098 decision). changesNumbers YES-CONDITIONAL: zero live movement today. Neo-sync: applyDiv152 removed from the allowlist (1→0 EMPTY), feeds edge added, orchestrator anchors re-pinned 224→245, PSI/FTE refs refreshed (:331/:673, :346/:685).
 

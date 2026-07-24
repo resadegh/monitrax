@@ -196,13 +196,15 @@ export function auditInvariants(graph) {
   // input.{div152,fteIee}ByEntity to buildMasterTaxPosition mirroring the
   // loss-rule overlay. Remove from this allowlist when wired.
   // 2026-07-24 (MON-097, Neo-G4 P1): classifyPsi REMOVED — wired via
-  // input.psiByEntity in both twins (masterTaxPosition.ts:310 / :625).
+  // input.psiByEntity in both twins (masterTaxPosition.ts:331 / :673).
   // 2026-07-24 (MON-098, Neo-G4 P2): classifyFteIeeDistributions REMOVED —
-  // wired via input.fteIeeByEntity in both twins (masterTaxPosition.ts:325 / :637).
-  // Div 152 (P3) is the last remaining queued overlay.
-  const A6_ISLAND_ALLOWLIST = {
-    'engine.tax.div152.applyDiv152': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:27-34), wiring never completed. Fix: input.div152ByEntity.',
-  };
+  // wired via input.fteIeeByEntity in both twins (masterTaxPosition.ts:346 / :685).
+  // 2026-07-24 (MON-099, Neo-G4 P3): applyDiv152 REMOVED — wired via
+  // input.div152ByEntity in both twins (masterTaxPosition.ts:361 / :696).
+  // THE ALLOWLIST IS NOW EMPTY (Neo-G4 complete): every built tax engine is
+  // wired into the live position. A future entry here needs the same
+  // reviewed-exception rigor — cite WHY the code is honestly disconnected.
+  const A6_ISLAND_ALLOWLIST = {};
   const adj = new Map();
   for (const n of graph.nodes) adj.set(n.id, new Set());
   for (const e of graph.edges) {
