@@ -469,3 +469,29 @@ Coverage: verifies the rule matrix, twin parity, position wiring, and cross-surf
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (brief followed; its own recommended "remove" option taken; the optional taxPosition-parameter deviation surfaced with reasoning, not silent) · Requirements 10/10 (false advisory removed; genuine gaps preserved; no tax-engine changes) · Logic 10/10 (no numbers move — display list only; the remaining checks cannot diverge from the engine because they read the same rows it consumes)`
 Coverage: verifies the advisory list semantics in unit form; does NOT verify the rendered My Guide panel — that is the Matrix's live re-check after merge.
+
+---
+
+## Session: yhm8ug (continuation 20, 2026-07-24) — MON-097 (Neo-G4 · P1): wire the PSI overlay into the master tax orchestrator
+
+### Changes Made
+- **Type**: Fix/Feature (tax plumbing; `changesNumbers: yes-CONDITIONAL` — the wiring is real in both twins, but the STEP-0 census proved ZERO live movement today: PSI inputs are 100% uncaptured product-wide AND the live entity route bypasses the orchestrator)
+- **Root cause (verified)**: `buildMasterTaxPosition` (`lib/tax-engine/orchestrator/masterTaxPosition.ts:204`, pre-fix :186) documented `classifyPsi` as a step-3 "per-entity advanced overlay" (:27-34, same list as trust-loss + company-loss) but the wiring was only completed for the loss rules — `classifyPsi` sat proven-but-unreachable (Neomatrix A6 island since the 2026-06-26 audit). ITAA 1997 Part 2-42 attribution could never appear in any orchestrated position.
+- **Fix (mirrors the loss-rule overlay exactly)**: `input.psiByEntity?: Record<string, PsiInput>` → step-3.6 block in BOTH twins calls the ONE `classifyPsi` per entity into `crossCutting.psiByEntity`, pushes `psiClassifier` to `modulesInvoked`, and the aggregation ingests its citations (Part 2-42, s84-5, s87-15, s86-15, TR 2022/3) + the s86-60 `UC-PSI-DEDUCTION-RESTRICTIONS` UNCOMPUTED flag (surfaced, never silently defaulted). Decimal twin reuses the Float result type (trustDeedValidation precedent — overlay v1 doctrine: decorate, never mutate entity numbers).
+- **The three surfaced gaps (honest scope, per census)**: (1) no schema/EntityTaxFacts/assembler field captures PSI inputs — a capture feature is the named follow-up before any live number can move; (2) `/api/tax/entity/[entityId]` calls `calculateEntityTaxPositionDecimal` directly, bypassing `buildMasterTaxPosition` (whose only non-test consumers are calc-audit adapters) — a G4-class reachability gap queued for the P2/P3 briefs; (3) the s86-60 net-attribution calc is the engine's own flagged future sub-PR (v1 reports gross attribution + the flag).
+- **Ratchet**: `tests/tax/mon097PsiOverlay.test.ts` (5 tests, RED pre-fix): attribution + PSB + absent-input byte-parity + flag surfacing + Float===Decimal across 4 cases.
+- **Neo-sync (§21.2.1)**: `engine.tax.psi.classifyPsi` REMOVED from `A6_ISLAND_ALLOWLIST` (graphlib.mjs — allowlist shrinks 3→2; div152/fteIee remain queued); `feeds` edge added to the orchestrator; both orchestrator anchors re-pinned 186→204 (the import/type additions shifted the symbol); node authority updated wired+honest-scope; `GENERATED_CORE.md` regenerated; `neomatrix:check` green.
+
+### Files Modified
+- `lib/tax-engine/orchestrator/masterTaxPosition.ts` — import, `psiByEntity` input (capture-gap JSDoc), CrossCutting types, step-3.6 wiring + citation/flag ingestion in BOTH twins
+- `tests/tax/mon097PsiOverlay.test.ts` (NEW, 5 tests)
+- `scripts/neomatrix/graphlib.mjs` — allowlist entry removed (comment updated with the wired date)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — edge + re-pins + node update
+- `docs/issues/ISSUES.json` + `ISSUES.md` — MON-097 raised → DIAGNOSED with the full census verdicts + plain trio
+
+### Build Status
+- [x] tsc clean · [x] mon097 5/5 + tax/golden/neomatrix/issues 1,361 passed · [x] `npm run build` passes · [x] `neomatrix:check` green (A6 allowlist 3→2) · [x] both lints green, no exception-count rise · [x] `issues:check` 97 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Neo-G4 P1 brief followed — STEP-0 census a-d completed FIRST with all four verdicts recorded; the loss-rule overlay pattern mirrored verbatim per the orchestrator's own v1 doctrine; Neomatrix consulted + moved same PR) · Requirements 10/10 (both twins wired; UNCOMPUTED surfaced never defaulted; ratchets a-d; unwired→wired neo-sync; three gaps SURFACED not papered over) · Logic 10/10 (absent input = byte-identical output, locked by test; Float===Decimal locked; the ONE classifier remains the only producer — the orchestrator calls it, never re-implements)`
+Coverage: verifies the wiring semantics + twin parity + no-input inertness in unit form; does NOT verify any live rendered number (none can move — census gaps 1+2) and does NOT verify the s86-60 net calc (the engine's own flagged follow-up).

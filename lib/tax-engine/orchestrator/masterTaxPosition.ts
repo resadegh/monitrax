@@ -83,6 +83,11 @@ import {
   validateTrustDistributionAgainstDeed,
   type TrustDeedValidationResult,
 } from '../divisions/trustDeedValidation';
+import {
+  classifyPsi,
+  type PsiInput,
+  type PsiClassificationResult,
+} from '../divisions/psiClassifier';
 import { renderBoundaryFootnote, type BoundaryFootnote } from '../boundaries';
 import type { AustralianState } from '../landTax/stateLandTax';
 import type { TrustDeedExtraction } from '@/lib/integrations/trust-deed/types';
@@ -127,6 +132,17 @@ export interface MasterTaxPositionInput {
    */
   companyLossByEntity?: Record<string, CompanyLossInput>;
   /**
+   * Neo-G4 P1 (MON-097) — per-entity PSI inputs (ITAA 1997 Part 2-42).
+   * Keyed by `entityId`. The classifier is the ONE producer of the PSI
+   * determination (§12.2.1); the overlay reports attribution + restricts
+   * per its citations/UNCOMPUTED flags. NOTE (STEP-0 census 2026-07-24):
+   * Monitrax does not yet CAPTURE these inputs anywhere (no schema fields,
+   * no assembler mapping) — until a capture feature ships, this input can
+   * only be exercised by tests/tools; absent input = overlay skipped =
+   * byte-identical output.
+   */
+  psiByEntity?: Record<string, PsiInput>;
+  /**
    * Phase 41f.4-extension — CONFIRMED trust-deed rules per entity.
    * Keyed by `entityId`. When provided alongside a trust entity's
    * `trustDistribution`, the orchestrator runs
@@ -155,6 +171,8 @@ export interface CrossCuttingTaxResult {
   /** Per-entity loss-rule overlays. */
   trustLossByEntity?: Record<string, TrustLossResult>;
   companyLossByEntity?: Record<string, CompanyLossResult>;
+  /** Neo-G4 P1 (MON-097) — per-entity PSI classification overlay. */
+  psiByEntity?: Record<string, PsiClassificationResult>;
   /** Phase 41f.4-extension — per-entity trust-deed validation overlays. */
   trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
@@ -261,6 +279,18 @@ export function buildMasterTaxPosition(
     if (ranAtLeastOnce) modulesInvoked.push('trustDeedValidation');
   }
 
+  // 3.6 Neo-G4 P1 (MON-097): PSI overlay — the previously-unwired step-3
+  // engine. Per-entity, exactly like the loss-rule overlays: run the ONE
+  // classifier, surface attribution + citations + UNCOMPUTED. The engine's
+  // own UC-PSI-DEDUCTION-RESTRICTIONS flag governs the s86-60 net calc
+  // (caller-computed in a future sub-PR — never silently defaulted here).
+  if (input.psiByEntity) {
+    crossCutting.psiByEntity = {};
+    for (const [entityId, psiInput] of Object.entries(input.psiByEntity)) {
+      crossCutting.psiByEntity[entityId] = classifyPsi(psiInput);
+    }
+    modulesInvoked.push('psiClassifier');
+  }
   // 4. Aggregate household totals from entities + citations + UNCOMPUTED.
   let assessableIncome = 0;
   let taxableIncome = 0;
@@ -348,6 +378,12 @@ export function buildMasterTaxPosition(
       ingestUncomputed(r.uncomputed);
     }
   }
+  if (crossCutting.psiByEntity) {
+    for (const r of Object.values(crossCutting.psiByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
 
   // 5. Boundary footer envelope.
   const boundary = renderBoundaryFootnote({
@@ -420,6 +456,9 @@ export interface CrossCuttingTaxResultDecimal {
   gst?: GstResultDecimal;
   trustLossByEntity?: Record<string, TrustLossResultDecimal>;
   companyLossByEntity?: Record<string, CompanyLossResultDecimal>;
+  /** Neo-G4 P1 — PSI overlay; categorical + one reported dollar figure,
+   *  reuses the Float result type (the trustDeedValidation precedent). */
+  psiByEntity?: Record<string, PsiClassificationResult>;
   /** Phase 41f.4 deed-validation overlay — categorical (citations + UNCOMPUTED only); reuses Float result type. */
   trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
@@ -533,6 +572,17 @@ export function buildMasterTaxPositionDecimal(
     if (ranAtLeastOnce) modulesInvoked.push('trustDeedValidation');
   }
 
+  // 3.6 Neo-G4 P1 (MON-097): PSI overlay — mirror of the Float wiring.
+  // The classifier is pure number math on plain inputs; its single dollar
+  // figure is reported (not folded into Decimal totals), so the Float
+  // result type is reused (the trustDeedValidation precedent).
+  if (input.psiByEntity) {
+    crossCutting.psiByEntity = {};
+    for (const [entityId, psiInput] of Object.entries(input.psiByEntity)) {
+      crossCutting.psiByEntity[entityId] = classifyPsi(psiInput);
+    }
+    modulesInvoked.push('psiClassifier');
+  }
   // 4. Aggregate household totals from entities — Decimal arithmetic.
   let assessableIncome = zero;
   let taxableIncome = zero;
@@ -619,6 +669,12 @@ export function buildMasterTaxPositionDecimal(
   }
   if (crossCutting.trustDeedValidationByEntity) {
     for (const r of Object.values(crossCutting.trustDeedValidationByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+  if (crossCutting.psiByEntity) {
+    for (const r of Object.values(crossCutting.psiByEntity)) {
       ingestCitations(r.citations);
       ingestUncomputed(r.uncomputed);
     }
