@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**99 total** · 95 open · 🔵 21 · 🟡 4 · 🟠 29 · 🟢 41 · ✅ 3
+**99 total** · 95 open · 🔵 21 · 🟡 3 · 🟠 30 · 🟢 41 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -105,7 +105,7 @@
 | MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
 | MON-097 | 🟢 VERIFIED | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 | MON-098 | 🟠 FIXING | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
-| MON-099 | 🟡 DIAGNOSED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | — | ✅ |
+| MON-099 | 🟠 FIXING | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
 
 ---
 
@@ -1813,7 +1813,7 @@ Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wi
 
 ### MON-099 — Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** Monitrax has a complete, tested engine for the ATO's small-business CGT concessions (the rules that can wipe out or halve the capital gain when a small business sells an active business asset — the 15-year exemption, 50% active-asset reduction, retirement exemption, and rollover), but the master tax orchestrator never actually called it — so a small-business owner's gain would be over-taxed with no concession applied.
 >
@@ -1824,6 +1824,7 @@ Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wi
 - **Root cause:** `lib/tax-engine/orchestrator/masterTaxPosition.ts:245`
 - **Neomatrix:** `engine.tax.div152.applyDiv152`, `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition`
 - **Downstream consumers (§19.4):** `lib/tax-engine/orchestrator/masterTaxPosition.ts (buildMasterTaxPosition + buildMasterTaxPositionDecimal — the wired step-3.8 overlay; Decimal twin uses the TRUE applyDiv152Decimal sibling, loss-rule precedent)`, `lib/calc-audit/engines/tax-divisions.ts + decimal-tax-engine-beneficiary-concessions.ts (only prior non-test consumers; shadow-parity fixtures)`, `CAPTURE GAP (census 2026-07-24): Div 152 inputs (gainAfterDiv115, MNAV, aggregatedTurnover, isActiveAsset, monthsHeld, retirement flag, elections) captured NOWHERE — no live surface can move until a capture feature ships`, `REACHABILITY GAP (deferred, documented in PR — same as MON-097/098): /api/tax/entity/[entityId] bypasses buildMasterTaxPosition; all three overlays stay test/tool-only until capture + reachability land`
+- **Fix PR(s):** #1503
 - **Holistic test (§19.4):** `tests/tax/mon099Div152Overlay.test.ts#Div 152 overlay wired into both twins: 15-year exemption, 50% AAR, retirement cap, aggregation UNCOMPUTED, absent-input byte-parity, Float===Decimal`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
