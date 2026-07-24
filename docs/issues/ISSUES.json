@@ -2935,6 +2935,37 @@
       "test": "tests/tax/mon097PsiOverlay.test.ts#PSI overlay wired into both twins: attribution, PSB, absent-input byte-parity, s86-60 UNCOMPUTED flag, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204."
+    },
+    {
+      "id": "MON-098",
+      "title": "FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-24",
+      "area": "tax",
+      "plain": {
+        "issue": "Monitrax has a complete, tested engine for the ATO's family-trust rules (the 47% Family Trust Distribution Tax on trust payouts to people outside the family group, and the 47% withholding when a beneficiary hasn't provided their TFN), but the master tax orchestrator never actually called it — so those taxes could never appear in any orchestrated tax position.",
+        "fix": "The FTE/IEE classifier is now wired into the master tax orchestrator (both the fast and high-precision calculation twins) exactly like the PSI and loss-rule overlays: pass the trust's distribution facts in, get each beneficiary's classification, the FTDT and withholding dollar amounts, ATO citations, and explicit 'needs professional confirmation' flags out.",
+        "check": "Nothing changes on screen yet — Monitrax captures the family-trust-election flag and distribution amounts, but not yet each beneficiary's family relationship or TFN status, and the live tax pages don't route through this orchestrator. This fix makes the engine reachable for the upcoming capture feature; the new tests prove the wiring works and that leaving it out changes nothing."
+      },
+      "rootCause": [
+        "lib/tax-engine/orchestrator/masterTaxPosition.ts:224"
+      ],
+      "semanticKeys": [
+        "engine.tax.fteIee.classifyFteIeeDistributions",
+        "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition"
+      ],
+      "downstreamConsumers": [
+        "lib/tax-engine/orchestrator/masterTaxPosition.ts (buildMasterTaxPosition + buildMasterTaxPositionDecimal — the wired step-3.7 overlay, crossCutting.fteIeeByEntity)",
+        "lib/calc-audit/engines/tax-divisions.ts (only prior non-test consumer; exercises the classifier via fixtures)",
+        "PARTIAL CAPTURE GAP (census 2026-07-24): hasFamilyTrustElection + gross distributions captured (DistributionResolution → entityTaxFactsAssembler); Sch 2F relationship / hasQuotedTfn / coveredByIee beneficiary facts uncaptured — no live surface can move until that capture ships",
+        "REACHABILITY GAP (deferred, documented in PR): /api/tax/entity/[entityId] calls calculateEntityTaxPositionDecimal directly, bypassing buildMasterTaxPosition — all three overlays stay test/tool-only until capture + reachability land"
+      ],
+      "fixPRs": [],
+      "test": "tests/tax/mon098FteIeeOverlay.test.ts#FTE/IEE overlay wired into both twins: FTDT 47%, TFN withholding 47%, IEE, control-test UNCOMPUTED, absent-input byte-parity, Float===Decimal",
+      "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
+      "notes": "Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI but NOT classifyFteIeeDistributions; (b) only calc-audit consumed the engine; (c) capture PARTIAL — hasFamilyTrustElection + gross distributions exist, relationship/hasQuotedTfn/coveredByIee do not; (d) live entity route bypasses the orchestrator (reachability decision: DEFERRED, documented — routing a live money path is its own census-heavy change, Part 24 one-issue-one-PR). changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d); 47% FTDT/withholding move only when capture ships. Neo-sync: engine.tax.fteIee.classifyFteIeeDistributions removed from A6_ISLAND_ALLOWLIST (2→1, only applyDiv152 remains), feeds edge added, orchestrator anchors re-pinned 204→224."
     }
   ]
 }

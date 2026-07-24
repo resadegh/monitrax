@@ -88,6 +88,11 @@ import {
   type PsiInput,
   type PsiClassificationResult,
 } from '../divisions/psiClassifier';
+import {
+  classifyFteIeeDistributions,
+  type FteIeeInput,
+  type FteIeeClassificationResult,
+} from '../divisions/fteIeeClassifier';
 import { renderBoundaryFootnote, type BoundaryFootnote } from '../boundaries';
 import type { AustralianState } from '../landTax/stateLandTax';
 import type { TrustDeedExtraction } from '@/lib/integrations/trust-deed/types';
@@ -143,6 +148,19 @@ export interface MasterTaxPositionInput {
    */
   psiByEntity?: Record<string, PsiInput>;
   /**
+   * Neo-G4 P2 (MON-098) — per-entity FTE/IEE distribution facts
+   * (ITAA 1936 Sch 2F). Keyed by `entityId` (the FTE-electing trust).
+   * The classifier is the ONE producer of the FTDT / TFN-withholding
+   * determination (§12.2.1). NOTE (STEP-0 census 2026-07-24): capture is
+   * PARTIAL — `hasFamilyTrustElection` + per-beneficiary gross
+   * distributions exist (DistributionResolution → entityTaxFactsAssembler),
+   * but the Sch 2F `relationship`, `hasQuotedTfn`, and `coveredByIee`
+   * beneficiary facts are not captured anywhere yet — until that capture
+   * ships, this input can only be exercised by tests/tools; absent input
+   * = overlay skipped = byte-identical output.
+   */
+  fteIeeByEntity?: Record<string, FteIeeInput>;
+  /**
    * Phase 41f.4-extension — CONFIRMED trust-deed rules per entity.
    * Keyed by `entityId`. When provided alongside a trust entity's
    * `trustDistribution`, the orchestrator runs
@@ -173,6 +191,8 @@ export interface CrossCuttingTaxResult {
   companyLossByEntity?: Record<string, CompanyLossResult>;
   /** Neo-G4 P1 (MON-097) — per-entity PSI classification overlay. */
   psiByEntity?: Record<string, PsiClassificationResult>;
+  /** Neo-G4 P2 (MON-098) — per-entity FTE/IEE (FTDT + TFN-withholding) overlay. */
+  fteIeeByEntity?: Record<string, FteIeeClassificationResult>;
   /** Phase 41f.4-extension — per-entity trust-deed validation overlays. */
   trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
@@ -291,6 +311,21 @@ export function buildMasterTaxPosition(
     }
     modulesInvoked.push('psiClassifier');
   }
+
+  // 3.7 Neo-G4 P2 (MON-098): FTE/IEE overlay — the second previously-unwired
+  // step-3 engine. Per-entity (the FTE-electing trust), exactly like PSI:
+  // run the ONE classifier, surface FTDT (47%, Sch 2F s271-15) + TFN
+  // withholding (47%, ITAA 1936 Pt VA) + citations + UNCOMPUTED. The rate
+  // lives in the engine (FAMILY_TRUST_DISTRIBUTION_TAX_RATE / per-input
+  // override) — never re-hard-coded here (§12.14). A naked default is NOT a
+  // classification: uncaptured facts arrive as UNCOMPUTED flags, never zeroed.
+  if (input.fteIeeByEntity) {
+    crossCutting.fteIeeByEntity = {};
+    for (const [entityId, fteInput] of Object.entries(input.fteIeeByEntity)) {
+      crossCutting.fteIeeByEntity[entityId] = classifyFteIeeDistributions(fteInput);
+    }
+    modulesInvoked.push('fteIeeClassifier');
+  }
   // 4. Aggregate household totals from entities + citations + UNCOMPUTED.
   let assessableIncome = 0;
   let taxableIncome = 0;
@@ -384,6 +419,12 @@ export function buildMasterTaxPosition(
       ingestUncomputed(r.uncomputed);
     }
   }
+  if (crossCutting.fteIeeByEntity) {
+    for (const r of Object.values(crossCutting.fteIeeByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
 
   // 5. Boundary footer envelope.
   const boundary = renderBoundaryFootnote({
@@ -459,6 +500,8 @@ export interface CrossCuttingTaxResultDecimal {
   /** Neo-G4 P1 — PSI overlay; categorical + one reported dollar figure,
    *  reuses the Float result type (the trustDeedValidation precedent). */
   psiByEntity?: Record<string, PsiClassificationResult>;
+  /** Neo-G4 P2 — FTE/IEE overlay; reported dollar figures (FTDT/withholding), reuses the Float result type. */
+  fteIeeByEntity?: Record<string, FteIeeClassificationResult>;
   /** Phase 41f.4 deed-validation overlay — categorical (citations + UNCOMPUTED only); reuses Float result type. */
   trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
@@ -583,6 +626,18 @@ export function buildMasterTaxPositionDecimal(
     }
     modulesInvoked.push('psiClassifier');
   }
+
+  // 3.7 Neo-G4 P2 (MON-098): FTE/IEE overlay — mirror of the Float wiring.
+  // The classifier is pure number math on plain inputs; its dollar figures
+  // (FTDT / TFN withholding) are reported, not folded into Decimal totals,
+  // so the Float result type is reused (the trustDeedValidation/PSI precedent).
+  if (input.fteIeeByEntity) {
+    crossCutting.fteIeeByEntity = {};
+    for (const [entityId, fteInput] of Object.entries(input.fteIeeByEntity)) {
+      crossCutting.fteIeeByEntity[entityId] = classifyFteIeeDistributions(fteInput);
+    }
+    modulesInvoked.push('fteIeeClassifier');
+  }
   // 4. Aggregate household totals from entities — Decimal arithmetic.
   let assessableIncome = zero;
   let taxableIncome = zero;
@@ -675,6 +730,12 @@ export function buildMasterTaxPositionDecimal(
   }
   if (crossCutting.psiByEntity) {
     for (const r of Object.values(crossCutting.psiByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+  if (crossCutting.fteIeeByEntity) {
+    for (const r of Object.values(crossCutting.fteIeeByEntity)) {
       ingestCitations(r.citations);
       ingestUncomputed(r.uncomputed);
     }
