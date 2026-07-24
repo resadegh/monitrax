@@ -495,3 +495,29 @@ Coverage: verifies the advisory list semantics in unit form; does NOT verify the
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (Neo-G4 P1 brief followed — STEP-0 census a-d completed FIRST with all four verdicts recorded; the loss-rule overlay pattern mirrored verbatim per the orchestrator's own v1 doctrine; Neomatrix consulted + moved same PR) · Requirements 10/10 (both twins wired; UNCOMPUTED surfaced never defaulted; ratchets a-d; unwired→wired neo-sync; three gaps SURFACED not papered over) · Logic 10/10 (absent input = byte-identical output, locked by test; Float===Decimal locked; the ONE classifier remains the only producer — the orchestrator calls it, never re-implements)`
 Coverage: verifies the wiring semantics + twin parity + no-input inertness in unit form; does NOT verify any live rendered number (none can move — census gaps 1+2) and does NOT verify the s86-60 net calc (the engine's own flagged follow-up).
+
+---
+
+## Session: yhm8ug (continuation 21, 2026-07-24) — MON-098 (Neo-G4 · P2): wire the FTE/IEE overlay into the master tax orchestrator
+
+### Changes Made
+- **Type**: Fix/Feature (tax plumbing; `changesNumbers: yes-CONDITIONAL` — the wiring is real in both twins, but the STEP-0 census proved ZERO live movement today: FTE/IEE beneficiary facts partially uncaptured AND the live entity route bypasses the orchestrator)
+- **Root cause (verified)**: `buildMasterTaxPosition` (`lib/tax-engine/orchestrator/masterTaxPosition.ts:224`, pre-fix :204) documented `classifyFteIeeDistributions` as a step-3 overlay (:27-34) but never called it — the second of the three Neo-G4 unwired engines (A6 island since 2026-06-26). Sch 2F FTDT (47% on outside-family distributions) + Pt VA TFN withholding (47% on non-quoting beneficiaries) could never appear in any orchestrated position.
+- **Fix (mirrors MON-097 / the loss-rule overlays exactly)**: `input.fteIeeByEntity?: Record<string, FteIeeInput>` → step-3.7 block in BOTH twins calls the ONE `classifyFteIeeDistributions` per FTE-electing trust into `crossCutting.fteIeeByEntity`, pushes `fteIeeClassifier` to `modulesInvoked`; aggregation ingests citations (Sch 2F, s272-75, s272-85, s272-95, s271-15, Pt VA) + UNCOMPUTED flags (`UC-FTDT-OUTSIDE-FAMILY`, `UC-FTE-CONTROL-TEST`) — surfaced, never silently defaulted. The 47% rate stays in the engine (`FAMILY_TRUST_DISTRIBUTION_TAX_RATE` / per-input override) — never re-hard-coded (§12.14). Decimal twin reuses the Float result type (trustDeedValidation/PSI precedent).
+- **The surfaced gaps (honest scope, per census)**: (1) capture is PARTIAL — `hasFamilyTrustElection` + per-beneficiary gross distributions exist (DistributionResolution → entityTaxFactsAssembler), but the Sch 2F `relationship` / `hasQuotedTfn` / `coveredByIee` beneficiary facts have ZERO occurrences outside the engine — capture feature is the named follow-up; (2) **reachability decision (brief census d): DEFERRED, documented** — `/api/tax/entity/[entityId]` calls `calculateEntityTaxPositionDecimal` directly, bypassing the orchestrator; routing a live money path through `buildMasterTaxPosition` is its own census-heavy change (Part 24 one-issue-one-PR), so all three overlays stay test/tool-only until capture + reachability land.
+- **Ratchet**: `tests/tax/mon098FteIeeOverlay.test.ts` (6 tests, RED pre-fix): inside-family clean / outside-family FTDT $47,000 on $100,000 / TFN withholding $37,600 on $80,000 regardless of relationship / control-test + IEE surfacing / absent-input byte-parity / Float===Decimal across 5 cases.
+- **Neo-sync (§21.2.1)**: `engine.tax.fteIee.classifyFteIeeDistributions` REMOVED from `A6_ISLAND_ALLOWLIST` (2→1 — only `applyDiv152` remains, P3); `feeds` edge added to the orchestrator; both orchestrator anchors re-pinned 204→224; PSI node/edge line refs refreshed (:310/:625); node authority updated wired+honest-scope; `GENERATED_CORE.md` regenerated; `neomatrix:check` green.
+
+### Files Modified
+- `lib/tax-engine/orchestrator/masterTaxPosition.ts` — import, `fteIeeByEntity` input (partial-capture JSDoc), CrossCutting types, step-3.7 wiring + citation/flag ingestion in BOTH twins
+- `tests/tax/mon098FteIeeOverlay.test.ts` (NEW, 6 tests)
+- `scripts/neomatrix/graphlib.mjs` — allowlist entry removed (2→1, comment updated)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — edge + re-pins + node update
+- `docs/issues/ISSUES.json` + `ISSUES.md` — MON-098 raised → DIAGNOSED with census verdicts + plain trio
+
+### Build Status
+- [x] tsc clean · [x] mon098 6/6 + mon097 5/5 + tax/tax-engine/golden/neomatrix/issues 1,367 passed · [x] `npm run build` passes · [x] `neomatrix:check` green (A6 allowlist 2→1) · [x] both lints green, no exception-count rise · [x] `issues:check` 98 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (P2 brief followed — STEP-0 census a-d completed FIRST with the reachability DECISION stated (deferred, documented), the MON-097 template mirrored verbatim; Neomatrix consulted + moved same PR) · Requirements 10/10 (both twins wired; 47% rate engine-owned never re-hard-coded; UNCOMPUTED surfaced never defaulted; ratchets a-d; allowlist 2→1) · Logic 10/10 (§19.2 hand-computed FTDT $47,000 / withholding $37,600 locked; absent input = byte-identical, locked; Float===Decimal locked; ONE producer — the orchestrator calls, never re-implements)`
+Coverage: verifies the wiring semantics + twin parity + citation/flag aggregation + no-input inertness in unit form; does NOT verify any live rendered number (none can move — census gaps 1+2) and does NOT verify the classifier's internals beyond the worked examples (calc-audit's fixtures + its own 25-case suite own those).
