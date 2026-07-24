@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**96 total** · 92 open · 🔵 21 · 🟡 3 · 🟠 32 · 🟢 36 · ✅ 3
+**97 total** · 93 open · 🔵 21 · 🟡 3 · 🟠 31 · 🟢 38 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -83,7 +83,7 @@
 | MON-074 | 🟠 FIXING | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | ##1459 | — |
 | MON-075 | 🟢 VERIFIED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟠 FIXING | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | ##1458, ##1461 | ✅ |
-| MON-077 | 🟠 FIXING | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | ##1494 | ✅ |
+| MON-077 | 🟢 VERIFIED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | ##1494 | ✅ |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟢 VERIFIED | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
 | MON-080 | 🟢 VERIFIED | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##1437 | ✅ |
@@ -94,7 +94,7 @@
 | MON-085 | 🟠 FIXING | 🟡 | yes | Expense near-duplicate detection is scoped by property/loan/asset - cross-scope duplicates never compared | ##1458 | ✅ |
 | MON-086 | 🟢 VERIFIED | 🔴 | yes | Managed-rental cashflow double-counts the agent fee (rent read NET, derived fee subtracted again) | ##1440 | ✅ |
 | MON-087 | 🟠 FIXING | 🟠 | no | Property-context Add Expense dialog crashes — Radix Select.Item empty value | ##1446 | ✅ |
-| MON-088 | 🟠 FIXING | 🟡 | yes | Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults | ##1491 | ✅ |
+| MON-088 | 🟢 VERIFIED | 🟡 | yes | Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults | ##1491 | ✅ |
 | MON-089 | 🟢 VERIFIED | 🟠 | yes | Actual Monthly inflated xN/(N-1): duplicated day-span average — income-route ARREARS + link-route copies omit the first payment's covered interval | ##1465 | ✅ |
 | MON-090 | 🟢 VERIFIED | 🟠 | no | Income/expense actuals not date-aware on screen: historical average masquerades as current monthly; this-month actual never displayed | ##1467 | ✅ |
 | MON-091 | 🟠 FIXING | 🟠 | yes | Rental/income links lock in a MONTHLY default: no frequency control in the link dialog + reuse paths never revisit cadence | ##1468 | ✅ |
@@ -103,6 +103,7 @@
 | MON-094 | 🟢 VERIFIED | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
 | MON-095 | 🟢 VERIFIED | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
 | MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
+| MON-097 | 🟠 FIXING | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 
 ---
 
@@ -1391,7 +1392,7 @@ DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-dupl
 
 ### MON-077 — 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cfo · opened 2026-07-15
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: cfo · opened 2026-07-15
 
 > **What was wrong:** On My Guide, the 'Potential Missed Deductions' panel still suggests you're missing loan-interest deductions for Thornland Lot 1, Thornland Lot 2 and Broadbeach — but since the MON-045 fix that interest is already claimed automatically in your tax position. The panel contradicts the deductions shown right above it. Your tax numbers are correct; only this advisory list is stale.
 >
@@ -1407,7 +1408,7 @@ DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-dupl
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/decisionSupport/taxIntegration.ts. Evidence/run: VR-009.
 
-[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct). FIX 2026-07-24 (routed to the Code session): removed the pre-MON-045 loan-interest heuristic from identifyMissedDeductions (taxIntegration.ts) — post-#1425 interest is auto-claimed into taxPosition.deductions.property with no expense row, so the raw-row check was a structural false positive; §12.2.1 class closed via the reconcile-against-canonical JSDoc rule (remaining items detect ABSENT rows/schedules, which the canonical position cannot see — same rows the engine consumes, no divergence path). changesNumbers: false.
+[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct). FIX 2026-07-24 (routed to the Code session): removed the pre-MON-045 loan-interest heuristic from identifyMissedDeductions (taxIntegration.ts) — post-#1425 interest is auto-claimed into taxPosition.deductions.property with no expense row, so the raw-row check was a structural false positive; §12.2.1 class closed via the reconcile-against-canonical JSDoc rule (remaining items detect ABSENT rows/schedules, which the canonical position cannot see — same rows the engine consumes, no divergence path). changesNumbers: false. VERIFIED at VR-028 (2026-07-24, live www.monitrax.com.au): loan-interest false positives ABSENT on My Guide; depreciation + work-related genuine gaps preserved; no contradiction with the $142,209 property deductions; zero number movement.
 
 ### MON-078 — Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone)
 
@@ -1601,7 +1602,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/E
 
 ### MON-088 — Family Medicare legs not wired: calculateMedicareLevy supports FAMILY/spouseIncome/dependants but the caller always passes SINGLE defaults
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-20
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-20
 
 > **What was wrong:** Australia has no joint family tax return — each person is taxed at individual rates — but FAMILY income does change the Medicare levy surcharge threshold ($202,000 combined for 2025-26 vs $101,000 single, +$1,500 per child after the first), the low-income Medicare levy reduction, and private-health-rebate tiers. Monitrax's Medicare calculator supports all of this but is always called as SINGLE with no spouse income or dependants, so a couple can be shown a Medicare levy surcharge they wouldn't actually pay (or vice versa).
 >
@@ -1616,7 +1617,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/E
 - **Holistic test (§19.4):** `tests/tax/mon088MedicareFamily.test.ts#rule matrix (a)-(h): family-threshold MLS on combined income, own-income base, all-or-nothing cover (the ATO correction to the brief's (c)), +$1,500/child after first, low-earner exception, blank never asserts cover, legacy default unchanged, levy family-reduction on FAMILY income; Float===Decimal; position wiring incl. income-tax-never-moves`
 - **Detail:** `Reza question 2026-07-20 (family tax position) + ATO MLS thresholds (ato.gov.au)`
 
-VERIFIED at source (2026-07-20): medicareLevyCalculator.ts accepts familyStatus ('SINGLE'|'FAMILY'), spouseIncome, dependentChildren, hasPrivateHealthInsurance (:28-32) and applies config.medicareThresholds.family (:70-71); the ONE caller (taxPositionCalculator.ts:295) passes only { taxableIncome } so every position is computed as SINGLE / no PHI / no dependants. LAW (ATO, cited in chat): no joint lodgment exists — marginal rates are always individual and spouse income never changes them; family/spouse income drives the MLS combined-income threshold ($202,000 family vs $101,000 single, 2025-26, +$1,500 per dependent child after the first; low-earner spouse exception <= $27,222), the Medicare levy family reduction, PHI rebate tiers, and spouse offsets. FIX SHAPE (awaits Reza queueing — changes tax numbers): wire familyStatus/spouseIncome/dependentChildren from HouseholdProfile (+ a hasPrivateHealthInsurance input Monitrax doesn't yet capture) into calculateMedicareLevy at both the household and perMember level — Part A (#1461) already exposes each member's income to the other, so combined MLS income is computable without new fetches. BUILD 2026-07-23 (Reza GO; family-income rule confirmed in chat): HouseholdMember.hasPrivateHospitalCover Boolean? (nullable = 'not sure', additive migration 20260723000000) + member-dialog tri-state control (Stitch 16e804559bf74af8b1c2b02d2e7f8b78, §18.8 9.2/10) + medicareContext threaded getUserTaxPosition -> calculateTaxPosition (Float+Decimal) -> calculateMedicareLevy; MLS family tiers config-driven (medicareSurchargeFamily {singleMultiplier: 2, dependentChildIncrease: 1500}); golden household re-pinned 30,724 -> 32,284 (SINGLE, no cover recorded -> 1.25% x 124,800 = 1,560 — the conservative default made visible).
+VERIFIED at source (2026-07-20): medicareLevyCalculator.ts accepts familyStatus ('SINGLE'|'FAMILY'), spouseIncome, dependentChildren, hasPrivateHealthInsurance (:28-32) and applies config.medicareThresholds.family (:70-71); the ONE caller (taxPositionCalculator.ts:295) passes only { taxableIncome } so every position is computed as SINGLE / no PHI / no dependants. LAW (ATO, cited in chat): no joint lodgment exists — marginal rates are always individual and spouse income never changes them; family/spouse income drives the MLS combined-income threshold ($202,000 family vs $101,000 single, 2025-26, +$1,500 per dependent child after the first; low-earner spouse exception <= $27,222), the Medicare levy family reduction, PHI rebate tiers, and spouse offsets. FIX SHAPE (awaits Reza queueing — changes tax numbers): wire familyStatus/spouseIncome/dependentChildren from HouseholdProfile (+ a hasPrivateHealthInsurance input Monitrax doesn't yet capture) into calculateMedicareLevy at both the household and perMember level — Part A (#1461) already exposes each member's income to the other, so combined MLS income is computable without new fetches. BUILD 2026-07-23 (Reza GO; family-income rule confirmed in chat): HouseholdMember.hasPrivateHospitalCover Boolean? (nullable = 'not sure', additive migration 20260723000000) + member-dialog tri-state control (Stitch 16e804559bf74af8b1c2b02d2e7f8b78, §18.8 9.2/10) + medicareContext threaded getUserTaxPosition -> calculateTaxPosition (Float+Decimal) -> calculateMedicareLevy; MLS family tiers config-driven (medicareSurchargeFamily {singleMultiplier: 2, dependentChildIncrease: 1500}); golden household re-pinned 30,724 -> 32,284 (SINGLE, no cover recorded -> 1.25% x 124,800 = 1,560 — the conservative default made visible). VERIFIED at VR-028 (2026-07-24; re-confirms VR-027): Medicare $3,509 (2.0% base, no surcharge — combined taxable $175,432 < $194k family base) converged CFO ≡ tax page ≡ /cashflow; tri-state cover capture persisted; zero movement.
 
 ### MON-089 — Actual Monthly inflated xN/(N-1): duplicated day-span average — income-route ARREARS + link-route copies omit the first payment's covered interval
 
@@ -1769,4 +1770,23 @@ Reza live review 2026-07-23 on /dashboard/housekeeping/duplicates + the Matrix c
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id]/page.tsx (rental stream row cadence chip). Display-only (changesNumbers: false) — monthlyRent/annualRent/tax untouched; the flag gained a `managed` boolean decided in the ONE producer (§12.2.1), page renders neutral copy for managed, amber only for DIRECT (MON-093 protection preserved). Reza live finding 2026-07-23; root cause verified at HEAD dea8eee. Root cause detail: rentCadenceSuspect compared declared vs detected frequency only, never consulting rentalMode (carried on the input rows at :48 and already used for the MANAGED gross-up) — so the chip fired by construction on every managed weekly/fortnightly lease whose agent disburses monthly. VERIFIED at VR-024 (2026-07-23, docs/verification/runs/VR-024.md): Broadbeach amber gone, neutral managed note present ('declared weekly · paid monthly by your agent'); DIRECT protection verified LIVE on Guildford (declared-Monthly/paid-weekly still warns); money guards identical to VR-020/022 ($2,947/$35,360/5.89%/$15,879/$14,921/$432 fee).
+
+### MON-097 — PSI classifier built but unwired: personal-services income never attributed in the live tax position
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+
+> **What was wrong:** Monitrax has a complete, tested engine for the ATO's Personal Services Income rules (the rules that stop contractors sheltering their own labour income inside a company or trust), but the master tax orchestrator never actually called it — so PSI attribution could never appear in any tax position.
+>
+> **What changed:** The PSI classifier is now wired into the master tax orchestrator (both the fast and high-precision calculation twins) exactly like the trust-loss and company-loss overlays: pass PSI facts in, get the classification, attribution amount, ATO citations, and an explicit 'deduction restrictions not yet computed' flag out.
+>
+> **What you should see:** Nothing changes on screen yet — Monitrax does not yet ask anyone for PSI details (no capture form or fields exist), and the live tax pages don't route through this orchestrator. This fix makes the engine reachable so the upcoming capture feature can light it up; the new tests prove the wiring works and that leaving PSI out changes nothing.
+
+- **Root cause:** `lib/tax-engine/orchestrator/masterTaxPosition.ts:204`
+- **Neomatrix:** `engine.tax.psi.classifyPsi`, `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition`
+- **Downstream consumers (§19.4):** `lib/tax-engine/orchestrator/masterTaxPosition.ts (buildMasterTaxPosition + buildMasterTaxPositionDecimal — the wired step-3.6 overlay, crossCutting.psiByEntity)`, `lib/calc-audit adapters (only non-test consumers of buildMasterTaxPosition; exercise the overlay via fixtures)`, `CAPTURE GAP (census 2026-07-24): no schema/EntityTaxFacts/assembler fields carry PSI inputs, so no live surface can move until a capture feature ships`, `REACHABILITY GAP: /api/tax/entity/[entityId] calls calculateEntityTaxPositionDecimal directly, bypassing buildMasterTaxPosition — G4-class gap queued for P2/P3`
+- **Fix PR(s):** #1497
+- **Holistic test (§19.4):** `tests/tax/mon097PsiOverlay.test.ts#PSI overlay wired into both twins: attribution, PSB, absent-input byte-parity, s86-60 UNCOMPUTED flag, Float===Decimal`
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204.
 

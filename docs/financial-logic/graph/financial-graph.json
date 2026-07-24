@@ -1019,7 +1019,7 @@
       "kind": "orchestrator",
       "label": "Master tax position",
       "file": "lib/tax-engine/orchestrator/masterTaxPosition.ts",
-      "line": 186,
+      "line": 204,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -4488,12 +4488,12 @@
       "semanticKey": null,
       "produces": "PsiClassificationResult — whether income is PSI and whether the taxpayer is a Personal Services Business (PSB) via the four tests.",
       "formula": "tests: 80%-one-client, results test, unrelated-clients (+ advertising), employment, business-premises; PSB if results test OR (≤80% + another test) OR a PSB determination.",
-      "authority": "ITAA 1997 Part 2-42 (PSI), s84-5, s87-15 (PSB); TR 2022/3 ⚠ MISS (audited 2026-06-26): designed as a step-3 per-entity overlay in masterTaxPosition (see :24-39 \"advanced overlays — Div 152 SBC, PSI, FTE/IEE\") but the overlay wiring was only completed for trust-loss + company-loss. 0 production callers — NOT dead code, a wiring gap. Fix: add input.psiByEntity to buildMasterTaxPosition mirroring the loss-rule overlay.",
+      "authority": "ITAA 1997 Part 2-42 (PSI), s84-5, s87-15 (PSB); TR 2022/3. WIRED 2026-07-24 (MON-097, Neo-G4 P1): step-3 overlay invoked by buildMasterTaxPosition via input.psiByEntity (Float masterTaxPosition.ts:290 / Decimal :582), mirroring the loss-rule overlays. Honest scope: PSI inputs are not yet CAPTURED product-wide (no schema/assembler fields), so no live number moves until a capture feature ships; the s86-60 deduction-restriction leg surfaces as UC-PSI-DEDUCTION-RESTRICTIONS (never silently defaulted).",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/psiClassifier.ts:141",
+      "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/psiClassifier.ts:141 + tests/tax/mon097PsiOverlay.test.ts",
       "workedExample": null,
-      "verifiedDate": "2026-06-26",
+      "verifiedDate": "2026-07-24",
       "status": "documented"
     },
     {
@@ -4564,7 +4564,7 @@
       "kind": "orchestrator",
       "label": "Master tax position (per-entity + cross-cutting)",
       "file": "lib/tax-engine/orchestrator/masterTaxPosition.ts",
-      "line": 186,
+      "line": 204,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -9808,6 +9808,14 @@
       "source": "verified",
       "evidence": "Part 2 converges the pre-guardrail duplicates toward the one-row invariant — only via user-confirmed, per-group merges (§12.11)",
       "verifiedDate": "2026-07-19"
+    },
+    {
+      "from": "engine.tax.psi.classifyPsi",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:290 — crossCutting.psiByEntity[entityId] = classifyPsi(psiInput) (Decimal twin :582; MON-097)",
+      "verifiedDate": "2026-07-24"
     }
   ]
 }

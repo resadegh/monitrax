@@ -188,17 +188,18 @@ export function auditInvariants(graph) {
   // genuinely disconnected in the app — connecting it in the graph would be a
   // lie. Each entry must cite WHY. Remove an entry the moment its engine is
   // wired into a production flow. (Reza 2026-06-26: "are they really connected
-  // in the app or only the graph?" — these 3 are honestly NOT, so the graph
+  // in the app or only the graph?" — these were honestly NOT, so the graph
   // shows them as islands rather than faking a data-flow.)
-  // Audited 2026-06-26: all 3 are a MISS, not dead code. masterTaxPosition.ts
-  // :24-39 designs them as step-3 "per-entity advanced overlays" (same list as
-  // trust-loss + company-loss, which WERE wired); the overlay wiring was only
-  // completed for 2 of 5. Fix = add input.{div152,psi,fteIee}ByEntity to
-  // buildMasterTaxPosition mirroring the loss-rule overlay. Remove from this
-  // allowlist when wired.
+  // Audited 2026-06-26: all entries are a MISS, not dead code. masterTaxPosition.ts
+  // designs them as step-3 "per-entity advanced overlays" (same list as
+  // trust-loss + company-loss, which WERE wired). Fix = add
+  // input.{div152,fteIee}ByEntity to buildMasterTaxPosition mirroring the
+  // loss-rule overlay. Remove from this allowlist when wired.
+  // 2026-07-24 (MON-097, Neo-G4 P1): classifyPsi REMOVED — wired via
+  // input.psiByEntity in both twins (masterTaxPosition.ts:290 / :582).
+  // Div 152 (P3) and FTE/IEE (P2) remain queued.
   const A6_ISLAND_ALLOWLIST = {
-    'engine.tax.psi.classifyPsi': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:24-39), wiring never completed. Fix: input.psiByEntity.',
-    'engine.tax.div152.applyDiv152': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:24-39), wiring never completed. Fix: input.div152ByEntity.',
+    'engine.tax.div152.applyDiv152': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:27-34), wiring never completed. Fix: input.div152ByEntity.',
     'engine.tax.fteIee.classifyFteIeeDistributions': 'MISS (not dead code): designed as a step-3 overlay; trust path captures hasFamilyTrustElection but never calls this engine. Fix: input.fteIeeByEntity.',
   };
   const adj = new Map();
