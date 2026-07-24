@@ -550,3 +550,29 @@ Coverage: verifies wiring semantics + twin parity + flag aggregation + inertness
 
 ### Push note
 Built while PR #1499 (MON-098) was still open on the same branch — commit held locally and pushed AFTER #1499 merged (Part 24 one-issue-one-PR; the branch hosts one open PR at a time).
+
+---
+
+## Session: yhm8ug (continuation 23, 2026-07-25) — MON-100 (capture Stage 0): the entity tax route goes THROUGH the orchestrator — the Neo-G4 reachability unlock
+
+### Changes Made
+- **Type**: Fix/Feature (tax plumbing; `changesNumbers: yes-CONDITIONAL` — parity by construction today, overlays reach the live path when capture ships)
+- **Root cause (verified)**: `/api/tax/entity/[entityId]` (GET :84 / POST :488 pre-fix) called `calculateEntityTaxPositionDecimal` directly, bypassing `buildMasterTaxPosition` — the reachability gap documented in MON-097/098/099: even captured overlay inputs could never reach the wired step-3 overlays on the live route.
+- **Fix**: both handlers now build via `buildMasterTaxPositionDecimal({ userId, fy, entities: [facts] })` and take `entityPosition = master.entities[0]`. **Parity by construction**: the orchestrator maps the IDENTICAL `calculateEntityTaxPositionDecimal` over `input.entities`, so the response is byte-identical today (locked by test). Additive `crossCutting` passthrough in the response only when overlay keys exist (none until capture) — the JSON contract is unchanged for all current consumers. Per-entity boundary computation preserved verbatim.
+- **Census (direct-caller sweep)**: exactly two direct consumers outside the orchestrator existed — this route (both handlers, now rerouted) and `lib/services/wealthGraphService.ts:489` (**reviewed exception, status-only**: renders `uncomputed.length` as the Money Flow canvas badge, never a tax dollar — kept, documented, locked in the topology test).
+- **Ratchet**: `tests/tax/mon100EntityRouteParity.test.ts` (6 tests): reroute parity across 3 facts shapes (personal income/expense, discretionary-trust distribution, CGT event), empty-crossCutting response invariance, and the **class lock** — no file under `app/` may import `entityTaxRouter` directly again.
+- **Neo-sync (§21.2.1)**: both orchestrator node authorities annotated LIVE-REACHABLE with the MON-100 note + the reviewed exception; anchors untouched (masterTaxPosition.ts unmodified); `GENERATED_CORE.md` regenerated; `neomatrix:check` green. Route-kind nodes don't yet exist in the graph (zero instances) — inventing that pattern is deferred, stated not silent.
+- **Process**: FIRST PR on the per-issue-branch pattern (`claude/mon-100-entity-tax-reachability-yhm8ug` cut from main `6b2ded9c`) — kills the routine PR-out-of-date cycle Reza flagged.
+
+### Files Modified
+- `app/api/tax/entity/[entityId]/route.ts` — orchestrator import, both handlers rerouted, header JSDoc, additive crossCutting passthrough
+- `tests/tax/mon100EntityRouteParity.test.ts` (NEW, 6 tests)
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — orchestrator LIVE-REACHABLE annotation
+- `docs/issues/ISSUES.json` + `ISSUES.md` — MON-100 raised → DIAGNOSED (census + plain trio)
+
+### Build Status
+- [x] tsc clean · [x] mon100 6/6 + tax/tax-engine/golden 1,230 passed (81 files) + neomatrix/issues green · [x] `npm run build` passes · [x] `neomatrix:check` green · [x] both lints green, no exception-count rise · [x] `issues:check` 100 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (Stage 0 executed FIRST per the brief's own ordering — "the true unlock; capture without it is still inert"; the brief's route-vs-adapter fork resolved as ROUTE-THROUGH with the wealthGraph status-only exception documented, stated not silent) · Requirements 10/10 (single path through the ONE orchestrator; Ring-1 class lock shipped; safe default preserved — response byte-identical without overlay inputs) · Logic 10/10 (parity is by CONSTRUCTION — same function, same facts — and additionally locked by deep-equality tests across 3 shapes; the crossCutting passthrough is additive-only)`
+Coverage: verifies reroute parity, response invariance without overlays, and the import topology; does NOT verify the rendered page (no pixel can change — parity) and does NOT make any overlay live (capture Stages 1-3 do that).

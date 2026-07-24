@@ -3001,6 +3001,36 @@
       "test": "tests/tax/mon099Div152Overlay.test.ts#Div 152 overlay wired into both twins: 15-year exemption, 50% AAR, retirement cap, aggregation UNCOMPUTED, absent-input byte-parity, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is now EMPTY (Neo-G4 completion milestone recorded in graphlib.mjs). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI + FTE/IEE but NOT applyDiv152; (b) only calc-audit consumed the engine; (c) inputs 100% uncaptured; (d) reachability deferred + documented (rides the MON-098 decision). changesNumbers YES-CONDITIONAL: zero live movement today. Neo-sync: applyDiv152 removed from the allowlist (1→0 EMPTY), feeds edge added, orchestrator anchors re-pinned 224→245, PSI/FTE refs refreshed (:331/:673, :346/:685)."
+    },
+    {
+      "id": "MON-100",
+      "title": "Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-24",
+      "area": "tax",
+      "plain": {
+        "issue": "The per-entity tax page asked the tax engine directly for its answer, skipping the master orchestrator where the three newly-wired overlay rules (contractor PSI, family-trust FTDT/withholding, small-business CGT concessions) live — so even after those rules' inputs get captured, they could never reach the page.",
+        "fix": "The entity tax route now goes through the master orchestrator, which runs the exact same engine plus the overlay rules. Because the orchestrator calls the identical engine on identical inputs, today's numbers are provably unchanged — locked by a parity test — and an import-topology test stops any future route from bypassing the orchestrator again.",
+        "check": "Nothing changes on screen: every entity tax figure is byte-identical to before (proven by the parity lock). What changed is the plumbing — when the capture stages ship their inputs, the overlay results will appear on this same page automatically."
+      },
+      "rootCause": [
+        "app/api/tax/entity/[entityId]/route.ts:84"
+      ],
+      "semanticKeys": [
+        "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+        "engine.entityTaxRouter.calculateEntityTaxPosition"
+      ],
+      "downstreamConsumers": [
+        "app/api/tax/entity/[entityId]/route.ts (GET + POST — both handlers now build via buildMasterTaxPositionDecimal({entities:[facts]}); entityPosition = master.entities[0], provably identical; additive crossCutting passthrough absent until capture ships)",
+        "lib/services/wealthGraphService.ts:489 (REVIEWED EXCEPTION — status-only: renders uncomputed.length as a canvas badge, never a tax dollar; locked in the topology test allowlist)",
+        "lib/calc-audit adapters + tests (unchanged direct consumers — the proof harness)"
+      ],
+      "fixPRs": [],
+      "test": "tests/tax/mon100EntityRouteParity.test.ts#reroute parity (orchestrator entities[0] === direct engine, 3 facts shapes) + empty-crossCutting response invariance + app/ import-topology class lock",
+      "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
+      "notes": "Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug)."
     }
   ]
 }

@@ -2,11 +2,14 @@
  * GET /api/tax/entity/[entityId] — per-entity tax position.
  *
  * Phase 41e.0 slice D — per `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md`
- * §6.8. Dispatches the entity through `calculateEntityTaxPosition()`
- * (the slice-D router skeleton). For PERSONAL_NAME / SOLE_TRADER
- * entities, returns full Phase 20 tax position. For COMPANY / TRUST /
- * SMSF / PARTNERSHIP entities, returns an UNCOMPUTED-flagged response
- * documenting which sub-PR will produce the real number.
+ * §6.8. MON-100 (capture Stage 0): dispatches the entity THROUGH
+ * `buildMasterTaxPositionDecimal()` — the ONE orchestrator — which maps
+ * the same `calculateEntityTaxPositionDecimal()` over the entity, so the
+ * wired step-3 overlays (PSI / FTE-IEE / Div 152) sit on the live path.
+ * For PERSONAL_NAME / SOLE_TRADER entities, returns full Phase 20 tax
+ * position. For COMPANY / TRUST / SMSF / PARTNERSHIP entities, returns
+ * an UNCOMPUTED-flagged response documenting which sub-PR will produce
+ * the real number.
  *
  * Permission: `tax_data.read`. Caller must own the entity (the service
  * layer's `listEntitiesForUser` + per-userId scoping enforces this).
@@ -28,7 +31,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
-import { calculateEntityTaxPositionDecimal } from '@/lib/tax-engine/entity/entityTaxRouter';
+import { buildMasterTaxPositionDecimal } from '@/lib/tax-engine/orchestrator/masterTaxPosition';
 import { renderBoundaryFootnote } from '@/lib/tax-engine/boundaries';
 import {
   getTaxYearConfig,
@@ -81,7 +84,23 @@ export const GET = withPermission<RouteContext>(
       // end; we serialize Decimal → number at the JSON boundary so the
       // public response shape is byte-compatible with the pre-cutover
       // Float response.
-      const entityPosition = calculateEntityTaxPositionDecimal(facts);
+      //
+      // MON-100 (capture Stage 0 — reachability): the route now goes
+      // THROUGH the master orchestrator instead of calling the entity
+      // engine directly, so the wired step-3 overlays (PSI / FTE-IEE /
+      // Div 152, MON-097/098/099) sit on the live path. The orchestrator
+      // maps the SAME calculateEntityTaxPositionDecimal over
+      // input.entities, so entities[0] is byte-identical to the previous
+      // direct call (locked by tests/tax/mon100EntityRouteParity.test.ts).
+      // Overlay inputs arrive from the assembler in the capture stages;
+      // until then crossCutting carries no overlay keys and the response
+      // is unchanged.
+      const master = buildMasterTaxPositionDecimal({
+        userId: auth.userId,
+        fy,
+        entities: [facts],
+      });
+      const entityPosition = master.entities[0];
 
       const boundary = renderBoundaryFootnote({
         citations: entityPosition.citations,
@@ -91,7 +110,14 @@ export const GET = withPermission<RouteContext>(
 
       return NextResponse.json({
         success: true,
-        data: serializeDecimalsForJson({ entityPosition, boundary }),
+        data: serializeDecimalsForJson({
+          entityPosition,
+          boundary,
+          // Additive: per-entity overlay results (absent until capture ships).
+          ...(master.crossCutting && Object.keys(master.crossCutting).length > 0
+            ? { crossCutting: master.crossCutting }
+            : {}),
+        }),
       });
     } catch (error) {
       console.error('Per-entity tax position error:', error);
@@ -484,8 +510,14 @@ export const POST = withPermission<RouteContext>(
         smsfIncomeTax,
       };
 
-      // Q-DEC PR 3.B — Decimal cutover (see GET handler note).
-      const entityPosition = calculateEntityTaxPositionDecimal(facts);
+      // Q-DEC PR 3.B — Decimal cutover; MON-100 — routed through the
+      // master orchestrator (see GET handler note).
+      const master = buildMasterTaxPositionDecimal({
+        userId: auth.userId,
+        fy,
+        entities: [facts],
+      });
+      const entityPosition = master.entities[0];
       const boundary = renderBoundaryFootnote({
         citations: entityPosition.citations,
         uncomputed: entityPosition.uncomputed,
@@ -494,7 +526,13 @@ export const POST = withPermission<RouteContext>(
 
       return NextResponse.json({
         success: true,
-        data: serializeDecimalsForJson({ entityPosition, boundary }),
+        data: serializeDecimalsForJson({
+          entityPosition,
+          boundary,
+          ...(master.crossCutting && Object.keys(master.crossCutting).length > 0
+            ? { crossCutting: master.crossCutting }
+            : {}),
+        }),
       });
     } catch (error) {
       console.error('Per-entity tax POST error:', error);
