@@ -196,11 +196,12 @@ export function auditInvariants(graph) {
   // input.{div152,fteIee}ByEntity to buildMasterTaxPosition mirroring the
   // loss-rule overlay. Remove from this allowlist when wired.
   // 2026-07-24 (MON-097, Neo-G4 P1): classifyPsi REMOVED — wired via
-  // input.psiByEntity in both twins (masterTaxPosition.ts:290 / :582).
-  // Div 152 (P3) and FTE/IEE (P2) remain queued.
+  // input.psiByEntity in both twins (masterTaxPosition.ts:310 / :625).
+  // 2026-07-24 (MON-098, Neo-G4 P2): classifyFteIeeDistributions REMOVED —
+  // wired via input.fteIeeByEntity in both twins (masterTaxPosition.ts:325 / :637).
+  // Div 152 (P3) is the last remaining queued overlay.
   const A6_ISLAND_ALLOWLIST = {
     'engine.tax.div152.applyDiv152': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:27-34), wiring never completed. Fix: input.div152ByEntity.',
-    'engine.tax.fteIee.classifyFteIeeDistributions': 'MISS (not dead code): designed as a step-3 overlay; trust path captures hasFamilyTrustElection but never calls this engine. Fix: input.fteIeeByEntity.',
   };
   const adj = new Map();
   for (const n of graph.nodes) adj.set(n.id, new Set());
