@@ -3,13 +3,13 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**99 total** · 95 open · 🔵 21 · 🟡 4 · 🟠 32 · 🟢 38 · ✅ 3
+**99 total** · 95 open · 🔵 21 · 🟡 4 · 🟠 29 · 🟢 41 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
 | MON-001 | 🟠 FIXING | 🔴 | yes | Fortnightly rent stored/treated as MONTHLY (rent ~54% off) | ##1430 (wall Part 2: C1 evidence cadence + D2 detector) | ✅ |
 | MON-002 | 🟠 FIXING | 🟠 | yes | Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift | #1336 | ✅ |
-| MON-003 | 🟠 FIXING | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
+| MON-003 | 🟢 VERIFIED | 🟠 | yes | DEPRECIATION / YR always $0 (reads a field absent from the model) | #1352 | ✅ |
 | MON-004 | ✅ CLOSED | 🟡 | no | Loan repayment missing from the property Cashflow rhythm | #1333 | n/a |
 | MON-005 | 🟢 VERIFIED | 🟡 | no | Expense tile -> global page; no per-property summary card / drill-down | #1358 | ✅ |
 | MON-006 | 🟡 DIAGNOSED | 🟢 | yes | Cashflow cash-basis vs tax-basis conflation (full P&I vs interest-only) | — | — |
@@ -32,7 +32,7 @@
 | MON-023 | 🟠 FIXING | 🟠 | yes | One-off expenses shown as $X/mo (isRecurring ignored) + reconcile duplicates expense records | #1340 | ✅ |
 | MON-024 | 🟠 FIXING | 🟠 | yes | "High Discretionary Spending" showed >100% (e.g. 906%) — discretionary/essential on a different base than the recurring total | #1341 | ✅ |
 | MON-025 | 🟠 FIXING | 🟠 | yes | Expense frequency defaults MONTHLY (never detected from dates); AI categorisation sets no recurring/frequency; no user frequency confirm; fuzzy-dedup missing | #1345 | ✅ |
-| MON-026 | 🟠 FIXING | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
+| MON-026 | 🟢 VERIFIED | 🔴 | yes | Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated | #1352 | ✅ |
 | MON-027 | 🟠 FIXING | 🟡 | yes | CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers | #1355 | ✅ |
 | MON-028 | 🟢 VERIFIED | 🟠 | yes | Property DETAIL page shows DECLARED cashflow/yield, not actuals — /api/properties/[id] drops linkedTransactions (drifts from list + Home) | #1359 | ✅ |
 | MON-029 | 🟢 VERIFIED | 🟠 | yes | Savings rate has THREE contradictory producers (75.4% CFO / −30.5% Home / 0.0% Home insight) | #1359 | ✅ |
@@ -103,7 +103,7 @@
 | MON-094 | 🟢 VERIFIED | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
 | MON-095 | 🟢 VERIFIED | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
 | MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
-| MON-097 | 🟠 FIXING | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
+| MON-097 | 🟢 VERIFIED | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 | MON-098 | 🟠 FIXING | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟡 DIAGNOSED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | — | ✅ |
 
@@ -151,7 +151,7 @@ Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-
 
 ### MON-003 — DEPRECIATION / YR always $0 (reads a field absent from the model)
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-07-03
 
 > **What was wrong:** The property's Depreciation per year always showed $0.
 >
@@ -166,7 +166,7 @@ Fix shipped: extracted ONE engine lib/calculations/propertyCashflow.ts (actuals-
 - **Holistic test (§19.4):** `tests/tax/depreciationRate.test.ts`
 - **Detail:** `docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5`
 
-computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness. FIX SHIPPED 2026-07-10 (with MON-026): computeAnnualDepreciation (properties/[id]/page.tsx:157) now sums calculateDepreciationAnnual(schedule).annualDepreciation (was Σ d.annualClaim — a phantom field the API never returns → always $0). The API already returns the raw schedules (cost/rate/method); the client type updated to the real fields. Same ONE engine as the tax paths (MON-026). Test tests/tax/depreciationRate.test.ts. §20.4 10/10.
+computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness. FIX SHIPPED 2026-07-10 (with MON-026): computeAnnualDepreciation (properties/[id]/page.tsx:157) now sums calculateDepreciationAnnual(schedule).annualDepreciation (was Σ d.annualClaim — a phantom field the API never returns → always $0). The API already returns the raw schedules (cost/rate/method); the client type updated to the real fields. Same ONE engine as the tax paths (MON-026). Test tests/tax/depreciationRate.test.ts. §20.4 10/10. VERIFIED at VR-029 (2026-07-24, live): Depreciation/yr computes from real QS schedules (Thornland Lot 1 $12,799/yr, was $0); WDV tracked ($496,597 remaining, 38.8 yrs); property cashflow unchanged (non-cash).
 
 ### MON-004 — Loan repayment missing from the property Cashflow rhythm
 
@@ -580,7 +580,7 @@ Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/rou
 
 ### MON-026 — Depreciation deduction 100× too high — cost×rate omits /100 (rate is a PERCENTAGE) → tax understated
 
-**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-10
+**🟢 VERIFIED** · 🔴 critical · changes numbers: **yes** · area: tax · opened 2026-07-10
 
 > **What was wrong:** Your property depreciation tax deduction was calculated 100× too high — the code multiplied cost by the rate as if 2.5% meant 2.5, so a $100,000 asset at 2.5% claimed $250,000/yr instead of $2,500. That understates your taxable income and the tax owed.
 >
@@ -595,7 +595,7 @@ Verified (agent map 2026-07-08): frequency = body.frequency||'MONTHLY' (link/rou
 - **Holistic test (§19.4):** `tests/tax/depreciationRate.test.ts`
 - **Detail:** `found during MON-003 investigation 2026-07-10`
 
-VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified.
+VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified. VERIFIED at VR-029 (2026-07-24, live): $30,006 of schedules moved deductions $142,319→$172,325, taxable −$30,006, net tax −$11,702, Medicare −$600 — correct magnitude (not 100×), converged tax ≡ /cashflow.
 
 ### MON-027 — CFE input builder (buildCFEInput) copy-pasted in two routes and DRIFTED — stress-test forecasts on PRE-tax income + includes transfers
 
@@ -1775,7 +1775,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 
 ### MON-097 — PSI classifier built but unwired: personal-services income never attributed in the live tax position
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** Monitrax has a complete, tested engine for the ATO's Personal Services Income rules (the rules that stop contractors sheltering their own labour income inside a company or trust), but the master tax orchestrator never actually called it — so PSI attribution could never appear in any tax position.
 >
@@ -1790,7 +1790,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 - **Holistic test (§19.4):** `tests/tax/mon097PsiOverlay.test.ts#PSI overlay wired into both twins: attribution, PSB, absent-input byte-parity, s86-60 UNCOMPUTED flag, Float===Decimal`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204.
+Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204. VERIFIED at VR-029 (2026-07-24): A graph-gap closed (allowlist 3→2, feeds edge, both twins source-verified) + B CI structure (5-test ratchet) + C live inertness (tax cluster moved by EXACTLY the depreciation delta; no PSI line/flag anywhere — as the census predicted). Matrix note: the handout C baseline was the stale pre-depreciation VR-028 one — reframed by the Matrix; future inertness baselines must be the post-depreciation VR-029 numbers.
 
 ### MON-098 — FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied
 

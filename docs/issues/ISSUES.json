@@ -73,7 +73,7 @@
     {
       "id": "MON-003",
       "title": "DEPRECIATION / YR always $0 (reads a field absent from the model)",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-03",
@@ -99,7 +99,7 @@
       ],
       "test": "tests/tax/depreciationRate.test.ts",
       "tracker": "docs/audits/PROPERTY_CASHFLOW_ISSUES_2026-07-03.md#p-5",
-      "notes": "computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness. FIX SHIPPED 2026-07-10 (with MON-026): computeAnnualDepreciation (properties/[id]/page.tsx:157) now sums calculateDepreciationAnnual(schedule).annualDepreciation (was Σ d.annualClaim — a phantom field the API never returns → always $0). The API already returns the raw schedules (cost/rate/method); the client type updated to the real fields. Same ONE engine as the tax paths (MON-026). Test tests/tax/depreciationRate.test.ts. §20.4 10/10.",
+      "notes": "computeAnnualDepreciation sums d.annualClaim, not a column on DepreciationSchedule (cost/rate/method are). Touches a per-asset tax position -> §12.14 reform-awareness. FIX SHIPPED 2026-07-10 (with MON-026): computeAnnualDepreciation (properties/[id]/page.tsx:157) now sums calculateDepreciationAnnual(schedule).annualDepreciation (was Σ d.annualClaim — a phantom field the API never returns → always $0). The API already returns the raw schedules (cost/rate/method); the client type updated to the real fields. Same ONE engine as the tax paths (MON-026). Test tests/tax/depreciationRate.test.ts. §20.4 10/10. VERIFIED at VR-029 (2026-07-24, live): Depreciation/yr computes from real QS schedules (Thornland Lot 1 $12,799/yr, was $0); WDV tracked ($496,597 remaining, 38.8 yrs); property cashflow unchanged (non-cash).",
       "holisticTests": [
         "tests/tax/depreciationRate.test.ts"
       ]
@@ -820,7 +820,7 @@
     },
     {
       "id": "MON-026",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-10",
@@ -851,7 +851,7 @@
       ],
       "test": "tests/tax/depreciationRate.test.ts",
       "tracker": "found during MON-003 investigation 2026-07-10",
-      "notes": "VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified.",
+      "notes": "VERIFIED 2026-07-10 (§19.2, all traced to source): DepreciationSchedule.rate is a PERCENTAGE — create validator app/api/properties/[id]/depreciation/route.ts:14 z.number().max(100,'Rate cannot exceed 100%'); /api/calculate/depreciation:84 rate*100 // Convert to percentage; schema comment 'rate Float // 2.5% for Div43'; canonical lib/depreciation/index.ts:89 const rate = schedule.rate/100. But userTaxPosition.ts + tax/position/route.ts computed cost×rate with NO /100 (the tax/position comment even wrongly claimed 'rate is stored as decimal' — the §19.2 don't-trust-the-comment trap) → 100× too high depreciation deduction → taxable income + net tax understated in BOTH the /cashflow+MyGuide shared source AND /api/tax/position. Pre-existing (carried into getUserTaxPosition verbatim during MON-020). FIX (Reza directive 2026-07-10 'fix both now, unified'): route ALL depreciation through calculateDepreciationAnnual (the ONE engine — /100 + method-aware Div40/Div43) in userTaxPosition.ts, tax/position/route.ts, the property page (MON-003), and lib/testing/exporter.ts (2 sites). §19.2 worked example: cost 100k @ 2.5% prime-cost → 2,500 (not 250,000). Neomatrix: modelled engine.depreciation.calculateDepreciationAnnual + edge → calculateTaxPosition (A3 converges: both taxPayable numbers now include depreciation) + number.propertyDepreciation. Test tests/tax/depreciationRate.test.ts (% worked example + DV + all-surfaces-one-engine lock). §12.14: depreciation method isn't among the 8 reform measures; routes to the existing engine, no new reform math. §20.4 10/10. Local tsc/vitest unavailable → CI-verified. VERIFIED at VR-029 (2026-07-24, live): $30,006 of schedules moved deductions $142,319→$172,325, taxable −$30,006, net tax −$11,702, Medicare −$600 — correct magnitude (not 100×), converged tax ≡ /cashflow.",
       "holisticTests": [
         "tests/tax/depreciationRate.test.ts"
       ]
@@ -2906,7 +2906,7 @@
     {
       "id": "MON-097",
       "title": "PSI classifier built but unwired: personal-services income never attributed in the live tax position",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-24",
@@ -2934,7 +2934,7 @@
       ],
       "test": "tests/tax/mon097PsiOverlay.test.ts#PSI overlay wired into both twins: attribution, PSB, absent-input byte-parity, s86-60 UNCOMPUTED flag, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
-      "notes": "Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204."
+      "notes": "Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204. VERIFIED at VR-029 (2026-07-24): A graph-gap closed (allowlist 3→2, feeds edge, both twins source-verified) + B CI structure (5-test ratchet) + C live inertness (tax cluster moved by EXACTLY the depreciation delta; no PSI line/flag anywhere — as the census predicted). Matrix note: the handout C baseline was the stale pre-depreciation VR-028 one — reframed by the Matrix; future inertness baselines must be the post-depreciation VR-029 numbers."
     },
     {
       "id": "MON-098",
