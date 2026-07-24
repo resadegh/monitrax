@@ -2238,17 +2238,21 @@
       "opened": "2026-07-15",
       "area": "cfo",
       "plain": {
-        "issue": "On My Guide, the 'Potential Missed Deductions' panel still suggests you're missing loan-interest deductions for Thornland Lot 1, Thornland Lot 2 and Broadbeach — but since the MON-045 fix that interest is already claimed automatically in your tax position. The panel contradicts the deductions shown right above it. Your tax numbers are correct; only this advisory list is stale."
+        "issue": "On My Guide, the 'Potential Missed Deductions' panel still suggests you're missing loan-interest deductions for Thornland Lot 1, Thornland Lot 2 and Broadbeach — but since the MON-045 fix that interest is already claimed automatically in your tax position. The panel contradicts the deductions shown right above it. Your tax numbers are correct; only this advisory list is stale.",
+        "fix": "My Guide's 'Potential Missed Deductions' no longer tells you loan interest is missed for your investment properties — since the MON-045 fix, Monitrax claims that interest automatically from the loans themselves, so the reminder was a false alarm contradicting the deductions shown right above it. The genuine reminders (a depreciation schedule where none exists, work-related expenses) stay.",
+        "check": "Open My Guide: 'Potential Missed Deductions' no longer lists 'Loan interest for Thornland Lot 1 / Thornland Lot 2 / Broadbeach'. Depreciation suggestions still appear for any property without a schedule. All tax numbers are unchanged."
       },
       "rootCause": [
         "lib/cfo/decisionSupport/taxIntegration.ts:369"
       ],
       "semanticKeys": [],
-      "downstreamConsumers": [],
+      "downstreamConsumers": [
+        "My Guide / CFO 'Potential Missed Deductions' panel (calculateCFOTaxInsights -> potentialMissedDeductions) — the ONLY consumer of identifyMissedDeductions (grep-verified 2026-07-24)"
+      ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/cfo/mon077MissedDeductions.test.ts#loan-bearing investment property with NO logged INTEREST row does NOT produce 'Loan interest for X' (RED pre-fix); depreciation + work-related genuine gaps still surface; all-clear case empty",
       "tracker": "neoaudit-run:VR-009",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/decisionSupport/taxIntegration.ts. Evidence/run: VR-009.\n\n[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct)."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/decisionSupport/taxIntegration.ts. Evidence/run: VR-009.\n\n[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct). FIX 2026-07-24 (routed to the Code session): removed the pre-MON-045 loan-interest heuristic from identifyMissedDeductions (taxIntegration.ts) — post-#1425 interest is auto-claimed into taxPosition.deductions.property with no expense row, so the raw-row check was a structural false positive; §12.2.1 class closed via the reconcile-against-canonical JSDoc rule (remaining items detect ABSENT rows/schedules, which the canonical position cannot see — same rows the engine consumes, no divergence path). changesNumbers: false."
     },
     {
       "id": "MON-078",

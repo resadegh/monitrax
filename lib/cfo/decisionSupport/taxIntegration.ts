@@ -346,7 +346,19 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
   return risks;
 }
 
-function identifyMissedDeductions(
+/**
+ * MON-077: the advisory reconciles against the CANONICAL tax position —
+ * never a raw-row re-derivation (§12.2.1). The pre-MON-045 "loan interest
+ * for X" heuristic assumed interest only enters the position via a logged
+ * INTEREST expense row; since MON-045 (#1425) property loan interest is
+ * AUTO-CLAIMED into `taxPosition.deductions.property` straight from the
+ * loans, so it is structurally never missable — the suggestion was a false
+ * positive for every loan-bearing investment property, contradicting the
+ * deductions shown right above the panel. Removed. The remaining items are
+ * the GENUINE gaps the canonical position cannot fill on its own:
+ * depreciation (needs a schedule) and work-related expenses (need rows).
+ */
+export function identifyMissedDeductions(
   expenses: any[],
   properties: any[],
   depreciations: any[]
@@ -363,18 +375,9 @@ function identifyMissedDeductions(
     missed.push('Work-related expenses (home office, uniforms, tools)');
   }
 
-  // Check for investment property without interest deduction
+  // Check for depreciation — genuinely not auto-claimed without a schedule
+  // (the tax page itself recommends obtaining one).
   const investmentProperties = properties.filter((p: any) => p.type === 'INVESTMENT');
-  for (const prop of investmentProperties) {
-    const hasInterestDeduction = expenses.some(
-      (e: any) => e.propertyId === prop.id && e.category === 'INTEREST'
-    );
-    if (!hasInterestDeduction && prop.loans?.length > 0) {
-      missed.push(`Loan interest for ${prop.name}`);
-    }
-  }
-
-  // Check for depreciation
   const propertiesWithDepreciation = new Set(depreciations.map((d: any) => d.propertyId));
   for (const prop of investmentProperties) {
     if (!propertiesWithDepreciation.has(prop.id)) {

@@ -451,3 +451,21 @@ Coverage: verifies the validator/applier semantics + topology in unit form; does
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (brief followed with TWO surfaced deviations — the ATO all-or-nothing cover rule replacing example (c), Reza-confirmed in chat; Boolean? replacing @default(false), presented + GO'd; Neomatrix consulted + updated same PR) · Requirements 10/10 (capture + feed both built, config-driven, both engine paths, per-member, form control designed ≥9/10 first) · Logic 10/10 (§19.2 worked examples (a)-(h) hand-computed; Float===Decimal; income tax provably unmoved; conservative direction verified — a blank can only overstate, never hide, a surcharge)`
 Coverage: verifies the rule matrix, twin parity, position wiring, and cross-surface plumbing on the golden household; does NOT verify live rendered numbers or the member-dialog UX in a browser — that is Reza's cover entry + the Matrix's Ring-3 after merge.
+
+---
+
+## Session: yhm8ug (continuation 19, 2026-07-24) — MON-077: stale "Potential Missed Deductions" nudge (My Guide)
+
+### Changes Made
+- **Type**: Fix (advisory-only; `changesNumbers: no` — tax position/deductions/refund/Medicare untouched, VR-009 confirmed the math)
+- **Root cause (verified)**: `identifyMissedDeductions` (`lib/cfo/decisionSupport/taxIntegration.ts:369-374` pre-fix) checked raw expense rows for an INTEREST entry per investment property — the pre-MON-045 world. Post-#1425 property loan interest is AUTO-CLAIMED into `taxPosition.deductions.property` from the loans (no expense row), so the panel false-positively listed "Loan interest for Thornland Lot 1 / Lot 2 / Broadbeach" directly under a deductions figure that already included it (§12.2.1-class un-reconciled advisory producer).
+- **Solution (per the Matrix brief's own honest option)**: removed the loan-interest branch (auto-claimed interest is structurally never missable via this path); kept the GENUINE gaps (depreciation without a schedule, work-related without rows); class closed via the reconcile-against-canonical JSDoc rule on the function. Deviation-lite surfaced: did NOT thread `taxPosition` in as a parameter — the remaining checks detect ABSENT rows/schedules (which the canonical position cannot see) and read the same rows the engine consumes, so a parameter would be unused gold-plating (§0.3).
+- **Ratchet**: `tests/cfo/mon077MissedDeductions.test.ts` (3 tests; the loan-interest case is RED on pre-fix code); `identifyMissedDeductions` exported for testability.
+- **Routing note**: brief addressed Opus 4.8; executed on Fable 5 per the established session routing.
+
+### Build Status
+- [x] tsc clean · [x] tests/cfo 278 passed (incl. the new 3) · [x] `npm run build` passes · [x] `neomatrix:check` green (the modelled `calculateUnrealisedCGT:189` anchor unmoved — edits were below it) · [x] both lints green
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (brief followed; its own recommended "remove" option taken; the optional taxPosition-parameter deviation surfaced with reasoning, not silent) · Requirements 10/10 (false advisory removed; genuine gaps preserved; no tax-engine changes) · Logic 10/10 (no numbers move — display list only; the remaining checks cannot diverge from the engine because they read the same rows it consumes)`
+Coverage: verifies the advisory list semantics in unit form; does NOT verify the rendered My Guide panel — that is the Matrix's live re-check after merge.
