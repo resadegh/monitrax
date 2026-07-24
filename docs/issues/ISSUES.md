@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**96 total** · 92 open · 🔵 21 · 🟡 4 · 🟠 31 · 🟢 36 · ✅ 3
+**96 total** · 92 open · 🔵 21 · 🟡 3 · 🟠 32 · 🟢 36 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -83,7 +83,7 @@
 | MON-074 | 🟠 FIXING | 🟡 | yes | Probable duplicate income rows (Ingeus x3, Cienna PM Trust x3) inflating the 'Other' income group | ##1459 | — |
 | MON-075 | 🟢 VERIFIED | 🟡 | no | Source-aware one-off guardrail: standing NeoAudit detector for recurring rows evidenced by a single $0-actuals transaction | ##1431 (wall Part 3: D1 detector) | ✅ |
 | MON-076 | 🟠 FIXING | 🟠 | yes | Duplicate/fragmented income rows inflate declared gross (Ingeus salary ×3, Cienna rent ×3, Hipcamp ×2) | ##1458, ##1461 | ✅ |
-| MON-077 | 🟡 DIAGNOSED | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | — | n/a |
+| MON-077 | 🟠 FIXING | 🟡 | no | 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it | ##1494 | ✅ |
 | MON-078 | 🟠 FIXING | 🟠 | no | Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone) | ##1429 (keystone: classifier + R1 source-lock) | ✅ |
 | MON-079 | 🟢 VERIFIED | 🟠 | yes | Managed rental income + agent-cost reconciliation (Phase 59) | ##1434 | ✅ |
 | MON-080 | 🟢 VERIFIED | 🔴 | yes | Phase 59 managed-rental deduction never captured on real data (D0 fresh-link N=1 · D1 order-dependency · D2 gross-integrity) | ##1437 | ✅ |
@@ -1391,17 +1391,23 @@ DECISION FORK FOR REZA (before any fix code — changesNumbers): for a true-dupl
 
 ### MON-077 — 'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: cfo · opened 2026-07-15
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: cfo · opened 2026-07-15
 
 > **What was wrong:** On My Guide, the 'Potential Missed Deductions' panel still suggests you're missing loan-interest deductions for Thornland Lot 1, Thornland Lot 2 and Broadbeach — but since the MON-045 fix that interest is already claimed automatically in your tax position. The panel contradicts the deductions shown right above it. Your tax numbers are correct; only this advisory list is stale.
 >
+> **What changed:** My Guide's 'Potential Missed Deductions' no longer tells you loan interest is missed for your investment properties — since the MON-045 fix, Monitrax claims that interest automatically from the loans themselves, so the reminder was a false alarm contradicting the deductions shown right above it. The genuine reminders (a depreciation schedule where none exists, work-related expenses) stay.
+>
+> **What you should see:** Open My Guide: 'Potential Missed Deductions' no longer lists 'Loan interest for Thornland Lot 1 / Thornland Lot 2 / Broadbeach'. Depreciation suggestions still appear for any property without a schedule. All tax numbers are unchanged.
+
 - **Root cause:** `lib/cfo/decisionSupport/taxIntegration.ts:369`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Downstream consumers (§19.4):** `My Guide / CFO 'Potential Missed Deductions' panel (calculateCFOTaxInsights -> potentialMissedDeductions) — the ONLY consumer of identifyMissedDeductions (grep-verified 2026-07-24)`
+- **Fix PR(s):** ##1494
+- **Holistic test (§19.4):** `tests/cfo/mon077MissedDeductions.test.ts#loan-bearing investment property with NO logged INTEREST row does NOT produce 'Loan interest for X' (RED pre-fix); depreciation + work-related genuine gaps still surface; all-clear case empty`
 - **Detail:** `neoaudit-run:VR-009`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/decisionSupport/taxIntegration.ts. Evidence/run: VR-009.
 
-[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct).
+[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct). FIX 2026-07-24 (routed to the Code session): removed the pre-MON-045 loan-interest heuristic from identifyMissedDeductions (taxIntegration.ts) — post-#1425 interest is auto-claimed into taxPosition.deductions.property with no expense row, so the raw-row check was a structural false positive; §12.2.1 class closed via the reconcile-against-canonical JSDoc rule (remaining items detect ABSENT rows/schedules, which the canonical position cannot see — same rows the engine consumes, no divergence path). changesNumbers: false.
 
 ### MON-078 — Canonical intake classifier + build-gate intake source-lock (the intake-integrity keystone)
 

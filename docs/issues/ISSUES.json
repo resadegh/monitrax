@@ -2232,7 +2232,7 @@
     {
       "id": "MON-077",
       "title": "'Potential Missed Deductions' (My Guide) still lists the three investment loans' interest as missed though MON-045 now auto-claims it",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-15",
@@ -2249,7 +2249,9 @@
       "downstreamConsumers": [
         "My Guide / CFO 'Potential Missed Deductions' panel (calculateCFOTaxInsights -> potentialMissedDeductions) — the ONLY consumer of identifyMissedDeductions (grep-verified 2026-07-24)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1494"
+      ],
       "test": "tests/cfo/mon077MissedDeductions.test.ts#loan-bearing investment property with NO logged INTEREST row does NOT produce 'Loan interest for X' (RED pre-fix); depreciation + work-related genuine gaps still surface; all-clear case empty",
       "tracker": "neoaudit-run:VR-009",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/cfo/decisionSupport/taxIntegration.ts. Evidence/run: VR-009.\n\n[DIAGNOSIS, 2026-07-15 — §19.2 verified] identifyMissedDeductions (taxIntegration.ts:349) flags 'Loan interest for <property>' when NO expense row with category==='INTEREST' exists for the property (:369-372) — a raw-row heuristic written before MON-045. Post-#1425 the interest is AUTO-CLAIMED into taxPosition.deductions.property from the loans themselves, so the heuristic's premise (interest only enters via logged expense rows) is stale — a §12.2.1-class un-reconciled advisory producer. Fix shape: reconcile against the canonical position (the property's loans are auto-derived → interest is NOT missable; only suggest depreciation/work-related items the position actually lacks). Advisory-only: tax numbers unaffected (changesNumbers false; VR-009 confirmed the math is correct). FIX 2026-07-24 (routed to the Code session): removed the pre-MON-045 loan-interest heuristic from identifyMissedDeductions (taxIntegration.ts) — post-#1425 interest is auto-claimed into taxPosition.deductions.property with no expense row, so the raw-row check was a structural false positive; §12.2.1 class closed via the reconcile-against-canonical JSDoc rule (remaining items detect ABSENT rows/schedules, which the canonical position cannot see — same rows the engine consumes, no divergence path). changesNumbers: false."
