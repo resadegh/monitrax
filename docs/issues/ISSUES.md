@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**98 total** · 94 open · 🔵 21 · 🟡 4 · 🟠 31 · 🟢 38 · ✅ 3
+**98 total** · 94 open · 🔵 21 · 🟡 3 · 🟠 32 · 🟢 38 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -104,7 +104,7 @@
 | MON-095 | 🟢 VERIFIED | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
 | MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
 | MON-097 | 🟠 FIXING | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
-| MON-098 | 🟡 DIAGNOSED | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | — | ✅ |
+| MON-098 | 🟠 FIXING | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 
 ---
 
@@ -1793,7 +1793,7 @@ Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-
 
 ### MON-098 — FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** Monitrax has a complete, tested engine for the ATO's family-trust rules (the 47% Family Trust Distribution Tax on trust payouts to people outside the family group, and the 47% withholding when a beneficiary hasn't provided their TFN), but the master tax orchestrator never actually called it — so those taxes could never appear in any orchestrated tax position.
 >
@@ -1804,6 +1804,7 @@ Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-
 - **Root cause:** `lib/tax-engine/orchestrator/masterTaxPosition.ts:224`
 - **Neomatrix:** `engine.tax.fteIee.classifyFteIeeDistributions`, `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition`
 - **Downstream consumers (§19.4):** `lib/tax-engine/orchestrator/masterTaxPosition.ts (buildMasterTaxPosition + buildMasterTaxPositionDecimal — the wired step-3.7 overlay, crossCutting.fteIeeByEntity)`, `lib/calc-audit/engines/tax-divisions.ts (only prior non-test consumer; exercises the classifier via fixtures)`, `PARTIAL CAPTURE GAP (census 2026-07-24): hasFamilyTrustElection + gross distributions captured (DistributionResolution → entityTaxFactsAssembler); Sch 2F relationship / hasQuotedTfn / coveredByIee beneficiary facts uncaptured — no live surface can move until that capture ships`, `REACHABILITY GAP (deferred, documented in PR): /api/tax/entity/[entityId] calls calculateEntityTaxPositionDecimal directly, bypassing buildMasterTaxPosition — all three overlays stay test/tool-only until capture + reachability land`
+- **Fix PR(s):** #1499
 - **Holistic test (§19.4):** `tests/tax/mon098FteIeeOverlay.test.ts#FTE/IEE overlay wired into both twins: FTDT 47%, TFN withholding 47%, IEE, control-test UNCOMPUTED, absent-input byte-parity, Float===Decimal`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 

@@ -2939,7 +2939,7 @@
     {
       "id": "MON-098",
       "title": "FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-24",
@@ -2962,7 +2962,9 @@
         "PARTIAL CAPTURE GAP (census 2026-07-24): hasFamilyTrustElection + gross distributions captured (DistributionResolution → entityTaxFactsAssembler); Sch 2F relationship / hasQuotedTfn / coveredByIee beneficiary facts uncaptured — no live surface can move until that capture ships",
         "REACHABILITY GAP (deferred, documented in PR): /api/tax/entity/[entityId] calls calculateEntityTaxPositionDecimal directly, bypassing buildMasterTaxPosition — all three overlays stay test/tool-only until capture + reachability land"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1499
+      ],
       "test": "tests/tax/mon098FteIeeOverlay.test.ts#FTE/IEE overlay wired into both twins: FTDT 47%, TFN withholding 47%, IEE, control-test UNCOMPUTED, absent-input byte-parity, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI but NOT classifyFteIeeDistributions; (b) only calc-audit consumed the engine; (c) capture PARTIAL — hasFamilyTrustElection + gross distributions exist, relationship/hasQuotedTfn/coveredByIee do not; (d) live entity route bypasses the orchestrator (reachability decision: DEFERRED, documented — routing a live money path is its own census-heavy change, Part 24 one-issue-one-PR). changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d); 47% FTDT/withholding move only when capture ships. Neo-sync: engine.tax.fteIee.classifyFteIeeDistributions removed from A6_ISLAND_ALLOWLIST (2→1, only applyDiv152 remains), feeds edge added, orchestrator anchors re-pinned 204→224."
