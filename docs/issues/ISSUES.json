@@ -2906,7 +2906,7 @@
     {
       "id": "MON-097",
       "title": "PSI classifier built but unwired: personal-services income never attributed in the live tax position",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-24",
@@ -2929,7 +2929,9 @@
         "CAPTURE GAP (census 2026-07-24): no schema/EntityTaxFacts/assembler fields carry PSI inputs, so no live surface can move until a capture feature ships",
         "REACHABILITY GAP: /api/tax/entity/[entityId] calls calculateEntityTaxPositionDecimal directly, bypassing buildMasterTaxPosition — G4-class gap queued for P2/P3"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1497
+      ],
       "test": "tests/tax/mon097PsiOverlay.test.ts#PSI overlay wired into both twins: attribution, PSB, absent-input byte-parity, s86-60 UNCOMPUTED flag, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Neo-G4 P1. Census verdicts (2026-07-24): (a) step 3 documented the overlay (:27-34) but never called classifyPsi; (b) only calc-audit consumed the engine; (c) PSI inputs 100% uncaptured product-wide; (d) live entity route bypasses the orchestrator. changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d), numbers move only when capture ships. Neo-sync: engine.tax.psi.classifyPsi removed from A6_ISLAND_ALLOWLIST, feeds edge added, orchestrator anchors re-pinned 186→204."

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**97 total** · 93 open · 🔵 21 · 🟡 4 · 🟠 32 · 🟢 36 · ✅ 3
+**97 total** · 93 open · 🔵 21 · 🟡 3 · 🟠 33 · 🟢 36 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -103,7 +103,7 @@
 | MON-094 | 🟢 VERIFIED | 🟠 | yes | Tax 'Other Income' counts non-assessable ATO refunds (~$10,050 of $10,300) into the taxable gross - OTHER type defaults to taxable-for-safety | ##1475, ##1479 | ✅ |
 | MON-095 | 🟢 VERIFIED | 🟠 | no | Duplicate-detection false positive: normalizeMerchant strips policy numbers + exact path has no amount check - two DIFFERENT AIA policies offered as a merge (deleting a real policy) | ##1481 | ✅ |
 | MON-096 | 🟢 VERIFIED | 🟡 | no | MON-093 cadence chip false-fires on MANAGED rentals (declared weekly vs agent monthly disbursement is normal) | ##1484 | ✅ |
-| MON-097 | 🟡 DIAGNOSED | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | — | ✅ |
+| MON-097 | 🟠 FIXING | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 
 ---
 
@@ -1773,7 +1773,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 
 ### MON-097 — PSI classifier built but unwired: personal-services income never attributed in the live tax position
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** Monitrax has a complete, tested engine for the ATO's Personal Services Income rules (the rules that stop contractors sheltering their own labour income inside a company or trust), but the master tax orchestrator never actually called it — so PSI attribution could never appear in any tax position.
 >
@@ -1784,6 +1784,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 - **Root cause:** `lib/tax-engine/orchestrator/masterTaxPosition.ts:204`
 - **Neomatrix:** `engine.tax.psi.classifyPsi`, `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition`
 - **Downstream consumers (§19.4):** `lib/tax-engine/orchestrator/masterTaxPosition.ts (buildMasterTaxPosition + buildMasterTaxPositionDecimal — the wired step-3.6 overlay, crossCutting.psiByEntity)`, `lib/calc-audit adapters (only non-test consumers of buildMasterTaxPosition; exercise the overlay via fixtures)`, `CAPTURE GAP (census 2026-07-24): no schema/EntityTaxFacts/assembler fields carry PSI inputs, so no live surface can move until a capture feature ships`, `REACHABILITY GAP: /api/tax/entity/[entityId] calls calculateEntityTaxPositionDecimal directly, bypassing buildMasterTaxPosition — G4-class gap queued for P2/P3`
+- **Fix PR(s):** #1497
 - **Holistic test (§19.4):** `tests/tax/mon097PsiOverlay.test.ts#PSI overlay wired into both twins: attribution, PSB, absent-input byte-parity, s86-60 UNCOMPUTED flag, Float===Decimal`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
