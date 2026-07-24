@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**100 total** · 96 open · 🔵 21 · 🟡 4 · 🟠 20 · 🟢 51 · ✅ 3
+**100 total** · 96 open · 🔵 21 · 🟡 3 · 🟠 21 · 🟢 51 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -106,7 +106,7 @@
 | MON-097 | 🟢 VERIFIED | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 | MON-098 | 🟠 FIXING | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟠 FIXING | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
-| MON-100 | 🟡 DIAGNOSED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | — | ✅ |
+| MON-100 | 🟠 FIXING | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
 
 ---
 
@@ -1833,7 +1833,7 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 
 ### MON-100 — Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** The per-entity tax page asked the tax engine directly for its answer, skipping the master orchestrator where the three newly-wired overlay rules (contractor PSI, family-trust FTDT/withholding, small-business CGT concessions) live — so even after those rules' inputs get captured, they could never reach the page.
 >
@@ -1844,6 +1844,7 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 - **Root cause:** `app/api/tax/entity/[entityId]/route.ts:84`
 - **Neomatrix:** `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition`, `engine.entityTaxRouter.calculateEntityTaxPosition`
 - **Downstream consumers (§19.4):** `app/api/tax/entity/[entityId]/route.ts (GET + POST — both handlers now build via buildMasterTaxPositionDecimal({entities:[facts]}); entityPosition = master.entities[0], provably identical; additive crossCutting passthrough absent until capture ships)`, `lib/services/wealthGraphService.ts:489 (REVIEWED EXCEPTION — status-only: renders uncomputed.length as a canvas badge, never a tax dollar; locked in the topology test allowlist)`, `lib/calc-audit adapters + tests (unchanged direct consumers — the proof harness)`
+- **Fix PR(s):** #1506
 - **Holistic test (§19.4):** `tests/tax/mon100EntityRouteParity.test.ts#reroute parity (orchestrator entities[0] === direct engine, 3 facts shapes) + empty-crossCutting response invariance + app/ import-topology class lock`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
