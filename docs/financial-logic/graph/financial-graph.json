@@ -1019,7 +1019,7 @@
       "kind": "orchestrator",
       "label": "Master tax position",
       "file": "lib/tax-engine/orchestrator/masterTaxPosition.ts",
-      "line": 204,
+      "line": 224,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -4467,12 +4467,12 @@
       "semanticKey": null,
       "produces": "FteIeeClassificationResult — per-beneficiary: inside/outside family group, Family Trust Distribution Tax payable by trustee, and TFN withholding.",
       "formula": "if FTE in force: distributions outside the family group → FTDT at 47%; TFN withholding (47%) where beneficiary did not quote a TFN.",
-      "authority": "ITAA 1936 Sch 2F s272-75 (FTE), s272-95 (family group); Pt VA TFN withholding; Family Trust Distribution Tax ⚠ MISS (audited 2026-06-26): designed as a step-3 overlay (masterTaxPosition:24-39); the trust path captures hasFamilyTrustElection (entityTaxRouter:387) but never calls this FTDT/TFN engine. 0 production callers — NOT dead code, a wiring gap. Fix: add input.fteIeeByEntity to buildMasterTaxPosition.",
+      "authority": "ITAA 1936 Sch 2F (s272-75 FTE, s272-85 IEE, s272-95 family group, s271-15 FTDT 47%), Pt VA TFN withholding 47%; PCG 2022/2. WIRED 2026-07-24 (MON-098, Neo-G4 P2): step-3 overlay invoked by buildMasterTaxPosition via input.fteIeeByEntity (Float masterTaxPosition.ts:325 / Decimal :637), mirroring the PSI/loss-rule overlays. Honest scope: capture is PARTIAL — hasFamilyTrustElection + gross distributions exist (DistributionResolution → entityTaxFactsAssembler), but the Sch 2F relationship / hasQuotedTfn / coveredByIee beneficiary facts are uncaptured, so no live number moves until that capture ships; fact-dependent classifications surface as UNCOMPUTED (UC-FTDT-OUTSIDE-FAMILY, UC-FTE-CONTROL-TEST), never silently defaulted.",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/fteIeeClassifier.ts:166",
+      "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/fteIeeClassifier.ts:166 + tests/tax/mon098FteIeeOverlay.test.ts",
       "workedExample": null,
-      "verifiedDate": "2026-06-26",
+      "verifiedDate": "2026-07-24",
       "status": "documented"
     },
     {
@@ -4488,7 +4488,7 @@
       "semanticKey": null,
       "produces": "PsiClassificationResult — whether income is PSI and whether the taxpayer is a Personal Services Business (PSB) via the four tests.",
       "formula": "tests: 80%-one-client, results test, unrelated-clients (+ advertising), employment, business-premises; PSB if results test OR (≤80% + another test) OR a PSB determination.",
-      "authority": "ITAA 1997 Part 2-42 (PSI), s84-5, s87-15 (PSB); TR 2022/3. WIRED 2026-07-24 (MON-097, Neo-G4 P1): step-3 overlay invoked by buildMasterTaxPosition via input.psiByEntity (Float masterTaxPosition.ts:290 / Decimal :582), mirroring the loss-rule overlays. Honest scope: PSI inputs are not yet CAPTURED product-wide (no schema/assembler fields), so no live number moves until a capture feature ships; the s86-60 deduction-restriction leg surfaces as UC-PSI-DEDUCTION-RESTRICTIONS (never silently defaulted).",
+      "authority": "ITAA 1997 Part 2-42 (PSI), s84-5, s87-15 (PSB); TR 2022/3. WIRED 2026-07-24 (MON-097, Neo-G4 P1): step-3 overlay invoked by buildMasterTaxPosition via input.psiByEntity (Float masterTaxPosition.ts:310 / Decimal :625), mirroring the loss-rule overlays. Honest scope: PSI inputs are not yet CAPTURED product-wide (no schema/assembler fields), so no live number moves until a capture feature ships; the s86-60 deduction-restriction leg surfaces as UC-PSI-DEDUCTION-RESTRICTIONS (never silently defaulted).",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/psiClassifier.ts:141 + tests/tax/mon097PsiOverlay.test.ts",
@@ -4564,7 +4564,7 @@
       "kind": "orchestrator",
       "label": "Master tax position (per-entity + cross-cutting)",
       "file": "lib/tax-engine/orchestrator/masterTaxPosition.ts",
-      "line": 204,
+      "line": 224,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -9814,7 +9814,15 @@
       "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
       "type": "feeds",
       "source": "verified",
-      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:290 — crossCutting.psiByEntity[entityId] = classifyPsi(psiInput) (Decimal twin :582; MON-097)",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:310 — crossCutting.psiByEntity[entityId] = classifyPsi(psiInput) (Decimal twin :625; MON-097)",
+      "verifiedDate": "2026-07-24"
+    },
+    {
+      "from": "engine.tax.fteIee.classifyFteIeeDistributions",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:325 — crossCutting.fteIeeByEntity[entityId] = classifyFteIeeDistributions(fteInput) (Decimal twin :637; MON-098)",
       "verifiedDate": "2026-07-24"
     }
   ]
