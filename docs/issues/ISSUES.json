@@ -3037,7 +3037,7 @@
     {
       "id": "MON-101",
       "title": "FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-26",
@@ -3062,7 +3062,9 @@
         "app/api/tax/entity/[entityId]/route.ts GET (feeds fteIeeByEntity into the Stage-0 orchestrator path)",
         "components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog — election toggle + per-beneficiary controls, Stitch f395b67e…, 9.2/10 Reza-approved)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1509
+      ],
       "test": "tests/tax/mon101FteIeeCapture.test.ts#all-or-nothing gate (election off / missing relationship / Not-sure TFN → null) + end-to-end FTDT $18,800 worked example through both twins + gate-closed byte-parity",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: the 9.2/10 design, the three nullable columns, and the all-or-nothing rule. changesNumbers YES-CONDITIONAL: fires only on a trust with the election ON + complete facts + an outside-family/no-TFN distribution; every other user byte-identical (locked). distributionAmount = share × trustNetIncome — the same s95 base as the Div 6 allocation (one basis). Neo-sync: buildFteIeeInput modelled + feeds edge; div7a anchor re-pinned 79→80."

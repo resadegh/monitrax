@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**101 total** · 97 open · 🔵 21 · 🟡 4 · 🟠 19 · 🟢 53 · ✅ 3
+**101 total** · 97 open · 🔵 21 · 🟡 3 · 🟠 20 · 🟢 53 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -107,7 +107,7 @@
 | MON-098 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
 | MON-100 | 🟠 FIXING | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
-| MON-101 | 🟡 DIAGNOSED | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | — | ✅ |
+| MON-101 | 🟠 FIXING | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
 
 ---
 
@@ -1853,7 +1853,7 @@ Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct en
 
 ### MON-101 — FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-26
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-26
 
 > **What was wrong:** Monitrax could not apply the family-trust tax rules to real data because it never asked the three questions the rules turn on: each beneficiary's position in the family group, whether they've provided their TFN, and whether an interposed-entity election covers them.
 >
@@ -1864,6 +1864,7 @@ Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct en
 - **Root cause:** `lib/services/entityTaxFactsAssembler.ts:118`
 - **Neomatrix:** `engine.services.entityTaxFactsAssembler.buildFteIeeInput`, `engine.tax.fteIee.classifyFteIeeDistributions`
 - **Downstream consumers (§19.4):** `prisma DistributionAllocation (+relationship/hasQuotedTfn/coveredByIee, nullable — migration 20260726000000)`, `lib/services/distributionResolutionService.ts (accepts + persists + returns the facts)`, `app/api/tax/distribution-resolutions/route.ts POST (validated acceptance; unknown values → null)`, `lib/services/entityTaxFactsAssembler.ts (buildFteIeeInput — the ONE producer with the all-or-nothing gate; assembleFteIeeInput reads the SAME operative resolution as the trust-distribution feed)`, `app/api/tax/entity/[entityId]/route.ts GET (feeds fteIeeByEntity into the Stage-0 orchestrator path)`, `components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog — election toggle + per-beneficiary controls, Stitch f395b67e…, 9.2/10 Reza-approved)`
+- **Fix PR(s):** #1509
 - **Holistic test (§19.4):** `tests/tax/mon101FteIeeCapture.test.ts#all-or-nothing gate (election off / missing relationship / Not-sure TFN → null) + end-to-end FTDT $18,800 worked example through both twins + gate-closed byte-parity`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
