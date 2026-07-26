@@ -39,6 +39,7 @@
 
 import { prisma } from '@/lib/db';
 import type { EntityTaxFacts, FYReference, UncomputedFlag } from '@/lib/tax-engine/types';
+import type { FteIeeInput } from '@/lib/tax-engine/divisions/fteIeeClassifier';
 import {
   listDistributionResolutions,
   type DistributionResolutionSummary,
@@ -96,6 +97,76 @@ export function buildDiv7aLoansFromBenefits(
       hasComplianceAgreement: b.hasComplianceAgreement,
       isSubTrustUpe: b.isSubTrustUpe,
     }));
+}
+
+/**
+ * MON-101 (capture Stage 1) — map an operative resolution's allocations to
+ * the FTE/IEE classifier's input. THE all-or-nothing safe-default gate
+ * (Reza GO 2026-07-26):
+ *
+ *   - returns null unless the trust's family-trust election is ON;
+ *   - returns null unless EVERY allocated beneficiary has `relationship`
+ *     AND `hasQuotedTfn` explicitly set (null = never-asked — neither
+ *     direction of defaulting `hasQuotedTfn` is safe: null→false would
+ *     FABRICATE a 47% Pt VA withholding, null→true would suppress a real
+ *     one; a naked default is not a classification).
+ *
+ * `distributionAmount` = presentlyEntitledShare × trustNetIncome — the same
+ * s95 net-income base the Div 6 trustDistribution allocation uses (one
+ * basis, §12.2.1). Pure; exported for unit testing.
+ */
+export function buildFteIeeInput(
+  resolution: DistributionResolutionSummary,
+  nameById: ReadonlyMap<string, string>,
+): FteIeeInput | null {
+  if (!resolution.hasFamilyTrustElection) return null;
+  if (resolution.allocations.length === 0) return null;
+  const complete = resolution.allocations.every(
+    (a) => a.relationship !== null && a.hasQuotedTfn !== null,
+  );
+  if (!complete) return null;
+  return {
+    hasFamilyTrustElection: true,
+    beneficiaries: resolution.allocations.map((a) => ({
+      beneficiaryId: a.beneficiaryEntityId,
+      beneficiaryName: nameById.get(a.beneficiaryEntityId) ?? a.beneficiaryEntityId,
+      distributionAmount: a.presentlyEntitledShare * resolution.trustNetIncome,
+      relationship: a.relationship as NonNullable<typeof a.relationship>,
+      hasQuotedTfn: a.hasQuotedTfn as boolean,
+      ...(a.coveredByIee !== null ? { coveredByIee: a.coveredByIee } : {}),
+    })),
+  };
+}
+
+/**
+ * MON-101 — the ONE producer of the orchestrator's `fteIeeByEntity` input
+ * for an entity (§12.2.1). Reads the SAME operative resolution the
+ * trust-distribution feed uses (one source), applies the all-or-nothing
+ * gate above. Returns null (overlay inert) for: non-trust entities, no
+ * operative resolution, election off, or incomplete beneficiary facts.
+ */
+export async function assembleFteIeeInput(
+  userId: string,
+  entityId: string,
+  fy: FYReference,
+): Promise<FteIeeInput | null> {
+  const entity = await prisma.legalEntity.findFirst({
+    where: { id: entityId, userId },
+    select: { type: true },
+  });
+  if (!entity || !TRUST_DISTRIBUTION_TYPES.has(entity.type)) return null;
+  const resolutions = await listDistributionResolutions(userId, {
+    trustEntityId: entityId,
+    financialYear: fy.financialYear,
+  });
+  const operative = pickOperativeResolution(resolutions);
+  if (!operative) return null;
+  const beneficiaryIds = [...new Set(operative.allocations.map((a) => a.beneficiaryEntityId))];
+  const beneficiaries = await prisma.legalEntity.findMany({
+    where: { id: { in: beneficiaryIds }, userId },
+    select: { id: true, name: true },
+  });
+  return buildFteIeeInput(operative, new Map(beneficiaries.map((b) => [b.id, b.name])));
 }
 
 /**

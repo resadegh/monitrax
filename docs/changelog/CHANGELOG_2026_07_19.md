@@ -576,3 +576,33 @@ Built while PR #1499 (MON-098) was still open on the same branch — commit held
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (Stage 0 executed FIRST per the brief's own ordering — "the true unlock; capture without it is still inert"; the brief's route-vs-adapter fork resolved as ROUTE-THROUGH with the wealthGraph status-only exception documented, stated not silent) · Requirements 10/10 (single path through the ONE orchestrator; Ring-1 class lock shipped; safe default preserved — response byte-identical without overlay inputs) · Logic 10/10 (parity is by CONSTRUCTION — same function, same facts — and additionally locked by deep-equality tests across 3 shapes; the crossCutting passthrough is additive-only)`
 Coverage: verifies reroute parity, response invariance without overlays, and the import topology; does NOT verify the rendered page (no pixel can change — parity) and does NOT make any overlay live (capture Stages 1-3 do that).
+
+---
+
+## Session: yhm8ug (continuation 24, 2026-07-26) — MON-101 (capture Stage 1): FTE/IEE beneficiary facts captured — the first overlay made live-capable
+
+### Changes Made
+- **Type**: Feature (schema + assembler + Stitch-first UI; `changesNumbers: yes-CONDITIONAL` — fires ONLY on a trust with the election ON + complete beneficiary facts + a triggering distribution; everyone else byte-identical, locked)
+- **Reza GO (2026-07-26)** on the three presented items: the Stitch design (screen `f395b67e4d24476e9ae4d6c7fa8b200b`, §18.8 **9.2/10**, v1 7.5 → v2 9.2: red→amber, invented brand eyebrow + fabricated legal footer removed, controls made real), the three nullable schema columns, and the **all-or-nothing safe default**.
+- **Schema (§12.12, Reza's migration click)**: `FamilyGroupRelationship` enum (mirrors the engine) + `DistributionAllocation.relationship?/hasQuotedTfn?/coveredByIee?` — additive nullable; migration `20260726000000_mon101_fteiee_beneficiary_facts` (CREATE TYPE + 3 ADD COLUMN, no row touched).
+- **The load-bearing rule**: neither direction of defaulting `hasQuotedTfn` is safe (null→false FABRICATES a 47% withholding; null→true suppresses one) → `buildFteIeeInput` (the ONE producer, `entityTaxFactsAssembler.ts:118`) returns null unless the election is ON AND every allocated beneficiary has `relationship` + `hasQuotedTfn` explicitly set. `distributionAmount = share × trustNetIncome` — the same s95 base as the Div 6 allocation. `assembleFteIeeInput` reads the SAME operative resolution as the trust-distribution feed (one source).
+- **Flow**: dialog → POST `/api/tax/distribution-resolutions` (validated; unknown → null) → service persists → assembler gates → entity route GET feeds `fteIeeByEntity` into the Stage-0 orchestrator path → the MON-098 overlay fires with citations + flags.
+- **UI (per the approved design)**: election Yes/No pill + consequence note; per-beneficiary card (when ON): relationship select (warm labels), TFN Yes/No/Not-sure tri-state, conditional IEE tri-state on OUTSIDE_FAMILY with the amber FTDT consequence panel; "Not sure = rules stay off" note; honesty footer. Stitch artefacts committed: `.stitch/designs/capture-stage1/record-split-fteiee-dialog.{html,png}`; screen ID in the component JSDoc.
+- **Ratchet**: `tests/tax/mon101FteIeeCapture.test.ts` (6 tests): gate closed on election-off / missing-relationship / Not-sure-TFN; complete facts → correct input; §19.2 worked example **FTDT $18,800 = 0.47 × (40% × $100,000)** end-to-end through BOTH twins with s271-15 cited; gate-closed byte-parity.
+- **Neo-sync (§21.2.1)**: `buildFteIeeInput` modelled (node + feeds edge to the classifier with the route evidence); `buildDiv7aLoansFromBenefits` anchor re-pinned 79→80 (import shift); `GENERATED_CORE.md` regenerated; `neomatrix:check` green.
+
+### Files Modified
+- `prisma/schema.prisma` + `prisma/migrations/20260726000000_mon101_fteiee_beneficiary_facts/`
+- `lib/services/distributionResolutionService.ts` — input + create + summary carry the facts
+- `app/api/tax/distribution-resolutions/route.ts` — validated acceptance
+- `lib/services/entityTaxFactsAssembler.ts` — `buildFteIeeInput` + `assembleFteIeeInput` (the ONE producer)
+- `app/api/tax/entity/[entityId]/route.ts` — GET feeds `fteIeeByEntity`
+- `components/wealth-explorer/TrustDistributionsSection.tsx` — the approved dialog controls + JSDoc Stitch ref
+- `tests/tax/mon101FteIeeCapture.test.ts` (NEW, 6) · `.stitch/designs/capture-stage1/*` · graph + registry + docs
+
+### Build Status
+- [x] tsc clean · [x] mon101 6/6 + tax/tax-engine/golden/neomatrix/issues/intake 1,457 passed (95 files) · [x] `npm run build` passes · [x] `neomatrix:check` green · [x] both lints green · [x] `issues:check` 101 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (built to the approved Stitch design + the capture brief's Stage-1 spec; §18.2.1 Stitch-first honoured — design approved BEFORE build; §12.12 migration in-PR for Reza's click) · Requirements 10/10 (schema + service + API + assembler + route feed + UI, all through the ONE producer; safe default exactly as approved) · Logic 10/10 (§19.2 hand-computed FTDT $18,800 locked end-to-end both twins; the all-or-nothing gate proven in all three failure directions; same-s95-base documented; gate-closed = byte-identical, locked)`
+Coverage: verifies the gate, the mapping, and the orchestrator flow from a built input; does NOT verify the Prisma read path of `assembleFteIeeInput` (Ring-3 on a seeded trust owns that) and does NOT verify the rendered dialog (Reza's eyeball + Ring-3).

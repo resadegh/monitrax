@@ -108,12 +108,25 @@ export const POST = withPermission('tax_data.write', async (request: NextRequest
           { status: 400 },
         );
       }
+      // MON-101 — FTE/IEE beneficiary facts. Only the four known enum
+      // values are accepted; anything else (incl. absent) stays null =
+      // never-asked. Booleans accepted as-is; null/absent = "Not sure".
+      const relationship =
+        raw.relationship === 'TEST_INDIVIDUAL' ||
+        raw.relationship === 'FAMILY_MEMBER' ||
+        raw.relationship === 'CONTROLLED_ENTITY' ||
+        raw.relationship === 'OUTSIDE_FAMILY'
+          ? raw.relationship
+          : null;
       allocations.push({
         beneficiaryEntityId: raw.beneficiaryEntityId,
         presentlyEntitledShare: raw.presentlyEntitledShare,
         streamedFrankedDividends: num(raw.streamedFrankedDividends),
         streamedCapitalGains: num(raw.streamedCapitalGains),
         notes: typeof raw.notes === 'string' ? raw.notes : null,
+        relationship,
+        hasQuotedTfn: typeof raw.hasQuotedTfn === 'boolean' ? raw.hasQuotedTfn : null,
+        coveredByIee: typeof raw.coveredByIee === 'boolean' ? raw.coveredByIee : null,
       });
     }
 

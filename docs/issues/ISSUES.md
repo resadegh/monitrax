@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**100 total** · 96 open · 🔵 21 · 🟡 3 · 🟠 19 · 🟢 53 · ✅ 3
+**101 total** · 97 open · 🔵 21 · 🟡 3 · 🟠 19 · 🟢 54 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -106,7 +106,8 @@
 | MON-097 | 🟢 VERIFIED | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 | MON-098 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
-| MON-100 | 🟠 FIXING | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
+| MON-100 | 🟢 VERIFIED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
+| MON-101 | 🟠 FIXING | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
 
 ---
 
@@ -1833,7 +1834,7 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 
 ### MON-100 — Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** The per-entity tax page asked the tax engine directly for its answer, skipping the master orchestrator where the three newly-wired overlay rules (contractor PSI, family-trust FTDT/withholding, small-business CGT concessions) live — so even after those rules' inputs get captured, they could never reach the page.
 >
@@ -1848,5 +1849,24 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 - **Holistic test (§19.4):** `tests/tax/mon100EntityRouteParity.test.ts#reroute parity (orchestrator entities[0] === direct engine, 3 facts shapes) + empty-crossCutting response invariance + app/ import-topology class lock`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug).
+Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug). VERIFIED at VR-033 (2026-07-26, live + source @ 4284ee77): reachability plumbing inert — every entity figure byte-identical, no crossCutting key in the response, route imports the orchestrator, parity/topology suite green on main. Read-only run, no data changed.
+
+### MON-101 — FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data
+
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-26
+
+> **What was wrong:** Monitrax could not apply the family-trust tax rules to real data because it never asked the three questions the rules turn on: each beneficiary's position in the family group, whether they've provided their TFN, and whether an interposed-entity election covers them.
+>
+> **What changed:** The 'Record this year's split' dialog now captures those three facts (behind a family-trust-election toggle, per the approved design), they're stored on each beneficiary allocation, and one assembler feeds them into the wired FTE/IEE rule — with an all-or-nothing safety gate: the 47% rules only compute once every beneficiary's answers are complete, so a blank can never invent a tax.
+>
+> **What you should see:** On a family trust with the election on and complete beneficiary details, an outside-family distribution now shows the 47% Family Trust Distribution Tax (with its law citation) on the entity tax view; leave any answer as 'Not sure' and nothing changes — today's numbers stay identical.
+
+- **Root cause:** `lib/services/entityTaxFactsAssembler.ts:118`
+- **Neomatrix:** `engine.services.entityTaxFactsAssembler.buildFteIeeInput`, `engine.tax.fteIee.classifyFteIeeDistributions`
+- **Downstream consumers (§19.4):** `prisma DistributionAllocation (+relationship/hasQuotedTfn/coveredByIee, nullable — migration 20260726000000)`, `lib/services/distributionResolutionService.ts (accepts + persists + returns the facts)`, `app/api/tax/distribution-resolutions/route.ts POST (validated acceptance; unknown values → null)`, `lib/services/entityTaxFactsAssembler.ts (buildFteIeeInput — the ONE producer with the all-or-nothing gate; assembleFteIeeInput reads the SAME operative resolution as the trust-distribution feed)`, `app/api/tax/entity/[entityId]/route.ts GET (feeds fteIeeByEntity into the Stage-0 orchestrator path)`, `components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog — election toggle + per-beneficiary controls, Stitch f395b67e…, 9.2/10 Reza-approved)`
+- **Fix PR(s):** #1509
+- **Holistic test (§19.4):** `tests/tax/mon101FteIeeCapture.test.ts#all-or-nothing gate (election off / missing relationship / Not-sure TFN → null) + end-to-end FTDT $18,800 worked example through both twins + gate-closed byte-parity`
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: the 9.2/10 design, the three nullable columns, and the all-or-nothing rule. changesNumbers YES-CONDITIONAL: fires only on a trust with the election ON + complete facts + an outside-family/no-TFN distribution; every other user byte-identical (locked). distributionAmount = share × trustNetIncome — the same s95 base as the Div 6 allocation (one basis). Neo-sync: buildFteIeeInput modelled + feeds edge; div7a anchor re-pinned 79→80.
 
