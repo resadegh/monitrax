@@ -2939,7 +2939,7 @@
     {
       "id": "MON-098",
       "title": "FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-24",
@@ -2967,12 +2967,12 @@
       ],
       "test": "tests/tax/mon098FteIeeOverlay.test.ts#FTE/IEE overlay wired into both twins: FTDT 47%, TFN withholding 47%, IEE, control-test UNCOMPUTED, absent-input byte-parity, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
-      "notes": "Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI but NOT classifyFteIeeDistributions; (b) only calc-audit consumed the engine; (c) capture PARTIAL — hasFamilyTrustElection + gross distributions exist, relationship/hasQuotedTfn/coveredByIee do not; (d) live entity route bypasses the orchestrator (reachability decision: DEFERRED, documented — routing a live money path is its own census-heavy change, Part 24 one-issue-one-PR). changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d); 47% FTDT/withholding move only when capture ships. Neo-sync: engine.tax.fteIee.classifyFteIeeDistributions removed from A6_ISLAND_ALLOWLIST (2→1, only applyDiv152 remains), feeds edge added, orchestrator anchors re-pinned 204→224."
+      "notes": "Neo-G4 P2 (mirror of MON-097 #1497). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI but NOT classifyFteIeeDistributions; (b) only calc-audit consumed the engine; (c) capture PARTIAL — hasFamilyTrustElection + gross distributions exist, relationship/hasQuotedTfn/coveredByIee do not; (d) live entity route bypasses the orchestrator (reachability decision: DEFERRED, documented — routing a live money path is its own census-heavy change, Part 24 one-issue-one-PR). changesNumbers is YES-CONDITIONAL: zero live movement today (gaps c+d); 47% FTDT/withholding move only when capture ships. Neo-sync: engine.tax.fteIee.classifyFteIeeDistributions removed from A6_ISLAND_ALLOWLIST (2→1, only applyDiv152 remains), feeds edge added, orchestrator anchors re-pinned 204→224. VERIFIED at VR-032 (2026-07-26, combined Neo-G4 run): allowlist empty confirmed, feeds edges + WIRED notes source-verified, 6-test ratchet green on main, live inertness held (no FTDT/TFN-withholding line; cluster moved only by explainable data)."
     },
     {
       "id": "MON-099",
       "title": "Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-24",
@@ -3000,7 +3000,7 @@
       ],
       "test": "tests/tax/mon099Div152Overlay.test.ts#Div 152 overlay wired into both twins: 15-year exemption, 50% AAR, retirement cap, aggregation UNCOMPUTED, absent-input byte-parity, Float===Decimal",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
-      "notes": "Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is now EMPTY (Neo-G4 completion milestone recorded in graphlib.mjs). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI + FTE/IEE but NOT applyDiv152; (b) only calc-audit consumed the engine; (c) inputs 100% uncaptured; (d) reachability deferred + documented (rides the MON-098 decision). changesNumbers YES-CONDITIONAL: zero live movement today. Neo-sync: applyDiv152 removed from the allowlist (1→0 EMPTY), feeds edge added, orchestrator anchors re-pinned 224→245, PSI/FTE refs refreshed (:331/:673, :346/:685)."
+      "notes": "Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is now EMPTY (Neo-G4 completion milestone recorded in graphlib.mjs). Census verdicts (2026-07-24): (a) step 3 wires loss-rules + trust-deed + PSI + FTE/IEE but NOT applyDiv152; (b) only calc-audit consumed the engine; (c) inputs 100% uncaptured; (d) reachability deferred + documented (rides the MON-098 decision). changesNumbers YES-CONDITIONAL: zero live movement today. Neo-sync: applyDiv152 removed from the allowlist (1→0 EMPTY), feeds edge added, orchestrator anchors re-pinned 224→245, PSI/FTE refs refreshed (:331/:673, :346/:685). VERIFIED at VR-032 (2026-07-26, combined Neo-G4 run): Div 152 wired both twins with the true Decimal sibling, A6 island list emptied (Neo-G4 COMPLETE), 7-test ratchet green, live inertness held (no Div 152 concession line anywhere)."
     },
     {
       "id": "MON-100",
