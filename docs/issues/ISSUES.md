@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**101 total** · 97 open · 🔵 21 · 🟡 3 · 🟠 20 · 🟢 53 · ✅ 3
+**101 total** · 97 open · 🔵 21 · 🟡 3 · 🟠 19 · 🟢 54 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -106,7 +106,7 @@
 | MON-097 | 🟢 VERIFIED | 🟠 | yes | PSI classifier built but unwired: personal-services income never attributed in the live tax position | #1497 | ✅ |
 | MON-098 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
-| MON-100 | 🟠 FIXING | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
+| MON-100 | 🟢 VERIFIED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
 | MON-101 | 🟠 FIXING | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
 
 ---
@@ -1834,7 +1834,7 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 
 ### MON-100 — Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-24
 
 > **What was wrong:** The per-entity tax page asked the tax engine directly for its answer, skipping the master orchestrator where the three newly-wired overlay rules (contractor PSI, family-trust FTDT/withholding, small-business CGT concessions) live — so even after those rules' inputs get captured, they could never reach the page.
 >
@@ -1849,7 +1849,7 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 - **Holistic test (§19.4):** `tests/tax/mon100EntityRouteParity.test.ts#reroute parity (orchestrator entities[0] === direct engine, 3 facts shapes) + empty-crossCutting response invariance + app/ import-topology class lock`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug).
+Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug). VERIFIED at VR-033 (2026-07-26, live + source @ 4284ee77): reachability plumbing inert — every entity figure byte-identical, no crossCutting key in the response, route imports the orchestrator, parity/topology suite green on main. Read-only run, no data changed.
 
 ### MON-101 — FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data
 

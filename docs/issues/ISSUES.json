@@ -3005,7 +3005,7 @@
     {
       "id": "MON-100",
       "title": "Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-24",
@@ -3032,7 +3032,7 @@
       ],
       "test": "tests/tax/mon100EntityRouteParity.test.ts#reroute parity (orchestrator entities[0] === direct engine, 3 facts shapes) + empty-crossCutting response invariance + app/ import-topology class lock",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
-      "notes": "Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug)."
+      "notes": "Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug). VERIFIED at VR-033 (2026-07-26, live + source @ 4284ee77): reachability plumbing inert — every entity figure byte-identical, no crossCutting key in the response, route imports the orchestrator, parity/topology suite green on main. Read-only run, no data changed."
     },
     {
       "id": "MON-101",
