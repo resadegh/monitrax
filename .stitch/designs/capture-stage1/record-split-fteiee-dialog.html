@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Record Year's Split</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#003111",
+                    "on-secondary-fixed-variant": "#005227",
+                    "on-surface-variant": "#bdcaba",
+                    "primary": "#62df7d",
+                    "error": "#ffb4ab",
+                    "on-primary-fixed": "#002109",
+                    "outline": "#879485",
+                    "on-primary": "#003914",
+                    "on-tertiary-container": "#5a0022",
+                    "on-background": "#dde5d9",
+                    "on-secondary-fixed": "#00210c",
+                    "on-primary-fixed-variant": "#005320",
+                    "outline-variant": "#3e4a3d",
+                    "on-error-container": "#ffdad6",
+                    "primary-fixed-dim": "#62df7d",
+                    "surface-container": "#1b211a",
+                    "secondary-fixed-dim": "#4de082",
+                    "on-error": "#690005",
+                    "tertiary-fixed": "#ffd9de",
+                    "surface-bright": "#343b33",
+                    "surface-container-highest": "#30372f",
+                    "on-tertiary": "#660027",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "on-tertiary-fixed": "#3f0016",
+                    "inverse-on-surface": "#2b322b",
+                    "tertiary-container": "#ec6284",
+                    "on-secondary": "#003919",
+                    "primary-fixed": "#7ffc97",
+                    "background": "#0e150f",
+                    "error-container": "#93000a",
+                    "tertiary": "#ffb2bf",
+                    "surface-dim": "#0e150f",
+                    "on-secondary-container": "#003e1c",
+                    "surface-variant": "#30372f",
+                    "surface-container-high": "#252c24",
+                    "secondary-container": "#00b55d",
+                    "secondary": "#4de082",
+                    "surface-container-lowest": "#09100a",
+                    "surface-tint": "#62df7d",
+                    "surface-container-low": "#171d16",
+                    "primary-container": "#1ca64d",
+                    "inverse-surface": "#dde5d9",
+                    "surface": "#0e150f",
+                    "secondary-fixed": "#6dfe9c",
+                    "on-surface": "#dde5d9",
+                    "inverse-primary": "#006e2d",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "trust-indigo": "#4f46e5",
+                    "trust-amber": "#f59e0b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "container-max": "1440px",
+                    "margin-mobile": "20px",
+                    "margin-desktop": "64px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "sans": ["Inter", "sans-serif"],
+                    "body-lg": ["Inter"],
+                    "display-hero": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-hero-mobile": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #05050A;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-modal {
+            background: rgba(13, 18, 32, 0.97);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+        .beneficiary-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .segmented-pill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .indigo-gradient {
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+        }
+        .material-symbols-outlined {
+            font-size: 18px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+<!-- Modal Container -->
+<div class="glass-modal w-full max-w-[480px] rounded-[16px] overflow-hidden flex flex-col relative">
+<!-- Header -->
+<header class="px-6 pt-6 pb-2 border-b border-white/5">
+<h1 class="text-[15px] font-semibold text-white">Record this year's split</h1>
+<p class="text-[11px] text-white/50 mt-1">The trustee's distribution resolution — who is presently entitled to what share.</p>
+</header>
+<!-- Content Area -->
+<div class="p-6 space-y-5">
+<!-- Row 1: Financial Details -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="text-[11px] text-white/50 block">Financial year</label>
+<div class="bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-[13px] text-white">2025-26</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] text-white/50 block">Net income (estimate is fine)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-[13px]">$</span>
+<input class="w-full bg-white/5 border border-white/12 rounded-lg pl-6 pr-3 py-2 text-[13px] text-white focus:outline-none focus:border-trust-indigo tabular-nums" type="text" value="100,000"/>
+</div>
+</div>
+</div>
+<!-- Row 2: Family Trust Election -->
+<div class="space-y-2">
+<div class="flex items-center justify-between">
+<label class="text-[11px] text-white/50">Family trust election in force?</label>
+<div class="segmented-pill flex p-0.5 rounded-full">
+<button class="px-4 py-1 rounded-full text-[11px] font-medium bg-trust-indigo text-white transition-all">Yes</button>
+<button class="px-4 py-1 rounded-full text-[11px] font-medium text-white/40 hover:text-white transition-all">No</button>
+</div>
+</div>
+<p class="text-[10px] leading-relaxed text-white/40">
+                    A family trust election locks distributions to the family group — outside distributions attract 47% trust tax.
+                </p>
+</div>
+<!-- Beneficiary List Section -->
+<div class="space-y-3">
+<label class="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Beneficiary Allocations</label>
+<!-- Beneficiary A: Reza Sadegh -->
+<div class="beneficiary-card p-4 rounded-lg space-y-3"><div class="flex justify-between items-start"><div class="space-y-3"><div><div class="text-[13px] font-medium text-white">Reza Sadegh</div></div><div class="space-y-1"><label class="text-[10px] text-white/50 block">Who are they to the family?</label><div class="relative flex items-center"><select class="appearance-none w-full bg-white/5 border border-white/12 rounded-lg pl-3 pr-8 py-1 text-[12px] text-white focus:outline-none focus:border-trust-indigo"><option>The test individual</option></select><span class="material-symbols-outlined absolute right-2 pointer-events-none text-white/40 !text-[14px]">expand_more</span></div></div><div class="space-y-1"><label class="text-[10px] text-white/50 block">TFN provided?</label><span class="flex items-center w-fit gap-1 bg-trust-indigo/10 text-trust-indigo text-[10px] px-2 py-0.5 rounded-full font-medium border border-trust-indigo/20"><span class="material-symbols-outlined !text-[12px]">check_circle</span> TFN: Yes</span></div></div><div class="text-right space-y-1"><div class="relative inline-block"><input class="w-16 bg-white/5 border border-white/12 rounded-lg px-2 py-1 text-[15px] font-bold text-white text-right focus:outline-none focus:border-trust-indigo tabular-nums" type="text" value="60"/><span class="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[13px]">%</span></div><div class="text-[10px] text-white/30 tabular-nums">$60,000.00</div></div></div></div>
+<!-- Beneficiary B: Newsha Sadegh -->
+<div class="beneficiary-card p-4 rounded-lg space-y-3"><div class="flex justify-between items-start"><div class="space-y-3"><div><div class="text-[13px] font-medium text-white">Newsha Sadegh</div></div><div class="space-y-1"><label class="text-[10px] text-white/50 block">Who are they to the family?</label><div class="relative flex items-center"><select class="appearance-none w-full bg-white/5 border border-white/12 rounded-lg pl-3 pr-8 py-1 text-[12px] text-white focus:outline-none focus:border-trust-indigo"><option>Family member</option></select><span class="material-symbols-outlined absolute right-2 pointer-events-none text-white/40 !text-[14px]">expand_more</span></div></div><div class="space-y-1"><label class="text-[10px] text-white/50 block">TFN provided?</label><span class="bg-white/10 text-white/50 text-[10px] px-2 py-0.5 rounded-full font-medium border border-white/10">TFN: Not sure</span></div></div><div class="text-right space-y-1"><div class="relative inline-block"><input class="w-16 bg-white/5 border border-white/12 rounded-lg px-2 py-1 text-[15px] font-bold text-white text-right focus:outline-none focus:border-trust-indigo tabular-nums" type="text" value="40"/><span class="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[13px]">%</span></div><div class="text-[10px] text-white/30 tabular-nums">$40,000.00</div></div></div><div class="bg-trust-amber/5 border border-trust-amber/20 p-2 rounded flex gap-2"><span class="material-symbols-outlined text-trust-amber !text-[14px] mt-0.5">info</span><p class="text-[11px] text-trust-amber leading-tight">Not sure = these rules stay off for this beneficiary until confirmed.</p></div></div>
+<!-- Beneficiary C: Opal Investments Pty Ltd -->
+<div class="beneficiary-card p-3 rounded-lg border-dashed opacity-80"><div class="flex justify-between items-start mb-3"><div class="space-y-3"><div><div class="text-[13px] font-medium text-white/60">Opal Investments Pty Ltd</div></div><div class="space-y-1"><label class="text-[10px] text-white/50 block">Who are they to the family?</label><div class="relative flex items-center"><select class="appearance-none w-full bg-white/5 border border-white/12 rounded-lg pl-3 pr-8 py-1 text-[12px] text-white/60 focus:outline-none focus:border-trust-indigo"><option>Outside the family group</option></select><span class="material-symbols-outlined absolute right-2 pointer-events-none text-white/40 !text-[14px]">expand_more</span></div></div></div><div class="text-right space-y-1"><div class="relative inline-block"><input class="w-16 bg-white/5 border border-white/12 rounded-lg px-2 py-1 text-[15px] font-bold text-white/40 text-right focus:outline-none focus:border-trust-indigo tabular-nums" type="text" value="0"/><span class="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[13px]">%</span></div><div class="text-[10px] text-white/30 tabular-nums">$0.00</div></div></div><div class="space-y-1 mb-3"><label class="text-[10px] text-white/50 block">Covered by an interposed-entity election?</label><div class="segmented-pill flex p-0.5 rounded-full w-fit"><button class="px-3 py-0.5 rounded-full text-[10px] font-medium text-white/40">Yes</button><button class="px-3 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white">No</button><button class="px-3 py-0.5 rounded-full text-[10px] font-medium text-white/40">Not sure</button></div></div><div class="bg-trust-amber/10 border border-trust-amber/25 p-2 rounded flex gap-2"><span class="material-symbols-outlined text-trust-amber !text-[14px] mt-0.5">warning</span><p class="text-[11px] text-trust-amber leading-tight">47% Family Trust Distribution Tax applies to anything distributed to this beneficiary.</p></div></div>
+</div>
+<!-- Footer Meta -->
+<div class="pt-2 flex flex-col gap-3">
+<div class="flex items-center justify-between text-[11px]">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined !text-[16px]">check_circle</span>
+<span>Shares total 100%</span>
+</div>
+<div class="flex items-center gap-2">
+<input checked="" class="w-3.5 h-3.5 rounded bg-white/5 border-white/20 text-trust-indigo focus:ring-0" id="signed" type="checkbox"/>
+<label class="text-white/60" for="signed">Resolution signed before 30 June</label>
+</div>
+</div>
+<button class="w-full indigo-gradient text-white py-3 rounded-xl font-semibold text-[14px] hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-trust-indigo/20">
+                    Record split
+                </button>
+<button class="w-full text-white/40 py-1 text-[13px] hover:text-white transition-colors">
+                    Cancel
+                </button>
+</div>
+</div>
+<!-- Compliance Footer -->
+<footer class="px-6 py-4 bg-black/20 border-t border-white/5 text-center">
+<p class="text-[10px] text-white/40 leading-relaxed max-w-[380px] mx-auto">Beneficiary tax details are optional — the 47% rules only compute once a beneficiary's details are complete. Nothing is assumed.</p>
+</footer>
+</div>
+<!-- Background Decorative Elements (Subtle Glows) -->
+<div class="fixed top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-trust-indigo/10 rounded-full blur-[120px] pointer-events-none"></div>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('.beneficiary-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                card.style.background = 'rgba(255, 255, 255, 0.07)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                card.style.background = 'rgba(255, 255, 255, 0.05)';
+            });
+        });
+
+        // Toggle logic for segmented pill
+        const pillButtons = document.querySelectorAll('.segmented-pill button');
+        pillButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                pillButtons.forEach(b => {
+                    b.classList.remove('bg-trust-indigo', 'text-white');
+                    b.classList.add('text-white/40');
+                });
+                btn.classList.add('bg-trust-indigo', 'text-white');
+                btn.classList.remove('text-white/40');
+            });
+        });
+    </script>
+</body></html>

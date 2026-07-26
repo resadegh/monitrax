@@ -2,6 +2,12 @@
  * TrustDistributionsSection — Stage D capture: the trustee's yearly
  * distribution resolution ("who is presently entitled to what share").
  *
+ * MON-101 (capture Stage 1, 2026-07-26): the Record-split dialog also
+ * captures the FTE/IEE beneficiary facts (Sch 2F relationship, TFN
+ * status, IEE coverage) behind a family-trust-election toggle. Stitch
+ * design: project 1859462351962811110, screen
+ * f395b67e4d24476e9ae4d6c7fa8b200b (§18.8 9.2/10, Reza-approved).
+ *
  * Reza spot-check (2026-06-13): *"I can't see any selection to nominate
  * myself and Newsha as beneficiary with the ownership share percentage."*
  * The financial-adviser answer: in a DISCRETIONARY family trust,
@@ -222,6 +228,16 @@ function RecordSplitDialog({
     ),
   );
   const [signed, setSigned] = useState(false);
+  // MON-101 (capture Stage 1) — FTE/IEE facts, per the approved Stitch
+  // design (screen f395b67e4d24476e9ae4d6c7fa8b200b, §18.8 9.2/10).
+  // null = "Not sure" / never-asked; a null NEVER fabricates a
+  // classification — the 47% rules only compute once every beneficiary's
+  // relationship + TFN answer is explicitly set (all-or-nothing gate in
+  // assembleFteIeeInput).
+  const [fteElection, setFteElection] = useState(false);
+  const [relationships, setRelationships] = useState<Record<string, string>>({});
+  const [tfnStates, setTfnStates] = useState<Record<string, boolean | null>>({});
+  const [ieeStates, setIeeStates] = useState<Record<string, boolean | null>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -242,11 +258,21 @@ function RecordSplitDialog({
           financialYear: fy,
           trustNetIncome: Number(netIncome) || 0,
           resolutionDate: signed ? new Date().toISOString() : null,
+          hasFamilyTrustElection: fteElection,
           allocations: beneficiaries
             .filter(b => (Number(shares[b.id]) || 0) > 0)
             .map(b => ({
               beneficiaryEntityId: b.id,
               presentlyEntitledShare: (Number(shares[b.id]) || 0) / 100,
+              // MON-101 — only sent when the election is on; null = "Not sure".
+              ...(fteElection
+                ? {
+                    relationship: relationships[b.id] || null,
+                    hasQuotedTfn: tfnStates[b.id] ?? null,
+                    coveredByIee:
+                      relationships[b.id] === 'OUTSIDE_FAMILY' ? (ieeStates[b.id] ?? null) : null,
+                  }
+                : {}),
             })),
         }),
       });
@@ -319,20 +345,142 @@ function RecordSplitDialog({
           </div>
         </div>
 
+        {/* MON-101 — family-trust-election gate (Stitch f395b67e…, approved 2026-07-26) */}
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[12px] text-white/85">Family trust election in force?</span>
+            <span className="flex flex-shrink-0 overflow-hidden rounded-full" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+              {([true, false] as const).map(v => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  onClick={() => setFteElection(v)}
+                  className={`px-3 py-1 text-[11px] font-medium transition ${
+                    fteElection === v ? 'bg-indigo-500 text-white' : 'bg-white/5 text-white/60 hover:text-white/85'
+                  }`}
+                >
+                  {v ? 'Yes' : 'No'}
+                </button>
+              ))}
+            </span>
+          </div>
+          {fteElection && (
+            <p className="mt-1 text-[11px] leading-relaxed text-white/40">
+              A family trust election locks distributions to the family group — outside
+              distributions attract 47% trust tax.
+            </p>
+          )}
+        </div>
+
         <div className="space-y-1.5">
           {beneficiaries.map(b => (
-            <div key={b.id} className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-[12px] text-white/85">{b.name}</span>
-              <span className="flex flex-shrink-0 items-center gap-1">
-                <input
-                  value={shares[b.id] ?? ''}
-                  onChange={e => setShares({ ...shares, [b.id]: e.target.value })}
-                  inputMode="decimal"
-                  className="w-16 rounded-lg bg-white/5 px-2 py-1.5 text-right text-[13px] tabular-nums text-white outline-none"
-                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}
-                />
-                <span className="text-[12px] text-white/50">%</span>
-              </span>
+            <div
+              key={b.id}
+              className={fteElection ? 'space-y-2 rounded-xl p-2.5' : 'flex items-center justify-between gap-3'}
+              style={fteElection ? { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' } : undefined}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate text-[12px] text-white/85">{b.name}</span>
+                <span className="flex flex-shrink-0 items-center gap-1">
+                  <input
+                    value={shares[b.id] ?? ''}
+                    onChange={e => setShares({ ...shares, [b.id]: e.target.value })}
+                    inputMode="decimal"
+                    className="w-16 rounded-lg bg-white/5 px-2 py-1.5 text-right text-[13px] tabular-nums text-white outline-none"
+                    style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+                  />
+                  <span className="text-[12px] text-white/50">%</span>
+                </span>
+              </div>
+              {fteElection && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <div className="mb-1 text-[10px] font-medium text-white/50">Who are they to the family?</div>
+                      <select
+                        value={relationships[b.id] ?? ''}
+                        onChange={e => setRelationships({ ...relationships, [b.id]: e.target.value })}
+                        className="w-full rounded-lg bg-white/5 px-2 py-1.5 text-[12px] text-white outline-none"
+                        style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+                      >
+                        <option value="" className="bg-[#0d1220]">Not set</option>
+                        <option value="TEST_INDIVIDUAL" className="bg-[#0d1220]">The test individual</option>
+                        <option value="FAMILY_MEMBER" className="bg-[#0d1220]">Family member</option>
+                        <option value="CONTROLLED_ENTITY" className="bg-[#0d1220]">An entity the family controls</option>
+                        <option value="OUTSIDE_FAMILY" className="bg-[#0d1220]">Outside the family group</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div className="mb-1 text-[10px] font-medium text-white/50">TFN provided?</div>
+                      <span className="flex overflow-hidden rounded-full" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+                        {([
+                          [true, 'Yes'],
+                          [false, 'No'],
+                          [null, 'Not sure'],
+                        ] as const).map(([v, label]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setTfnStates({ ...tfnStates, [b.id]: v })}
+                            className={`flex-1 px-2 py-1.5 text-[11px] font-medium transition ${
+                              (tfnStates[b.id] ?? null) === v
+                                ? v === null
+                                  ? 'bg-white/15 text-white'
+                                  : 'bg-indigo-500 text-white'
+                                : 'bg-white/5 text-white/60 hover:text-white/85'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </span>
+                    </div>
+                  </div>
+                  {(tfnStates[b.id] ?? null) === null && (
+                    <p className="text-[11px] text-amber-300/80">
+                      Not sure = these rules stay off for this beneficiary until confirmed.
+                    </p>
+                  )}
+                  {(tfnStates[b.id] ?? null) === false && (
+                    <p className="text-[11px] text-amber-300/80">
+                      47% withholding applies until a TFN is provided.
+                    </p>
+                  )}
+                  {relationships[b.id] === 'OUTSIDE_FAMILY' && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-medium text-white/50">Covered by an interposed-entity election?</div>
+                      <span className="flex w-fit overflow-hidden rounded-full" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+                        {([
+                          [true, 'Yes'],
+                          [false, 'No'],
+                          [null, 'Not sure'],
+                        ] as const).map(([v, label]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setIeeStates({ ...ieeStates, [b.id]: v })}
+                            className={`px-3 py-1.5 text-[11px] font-medium transition ${
+                              (ieeStates[b.id] ?? null) === v
+                                ? v === null
+                                  ? 'bg-white/15 text-white'
+                                  : 'bg-indigo-500 text-white'
+                                : 'bg-white/5 text-white/60 hover:text-white/85'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </span>
+                      {ieeStates[b.id] !== true && (
+                        <p className="mt-1.5 flex items-start gap-1.5 rounded-lg p-2 text-[11px] leading-relaxed text-amber-300/90" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}>
+                          <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 flex-shrink-0" />
+                          47% Family Trust Distribution Tax applies to anything distributed to this beneficiary.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           <div className={`flex items-center gap-1.5 text-[11px] ${sums ? 'text-emerald-300/90' : 'text-amber-300/90'}`}>
@@ -355,6 +503,13 @@ function RecordSplitDialog({
             className="mt-1 h-4 w-4 flex-shrink-0 accent-emerald-500"
           />
         </label>
+
+        {fteElection && (
+          <p className="text-[10px] leading-relaxed text-white/40">
+            Beneficiary tax details are optional — the 47% rules only compute once a
+            beneficiary&rsquo;s details are complete. Nothing is assumed.
+          </p>
+        )}
 
         {error && <div className="text-[11px] text-rose-300/90">{error}</div>}
 

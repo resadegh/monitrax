@@ -49,6 +49,11 @@ export interface DistributionAllocationInput {
   streamedFrankedDividends?: number | null;
   streamedCapitalGains?: number | null;
   notes?: string | null;
+  // MON-101 — FTE/IEE beneficiary facts (Sch 2F). null/undefined = never-asked;
+  // a null can never fabricate a classification (all-or-nothing assembler gate).
+  relationship?: 'TEST_INDIVIDUAL' | 'FAMILY_MEMBER' | 'CONTROLLED_ENTITY' | 'OUTSIDE_FAMILY' | null;
+  hasQuotedTfn?: boolean | null;
+  coveredByIee?: boolean | null;
 }
 
 export interface CreateDistributionResolutionInput {
@@ -165,6 +170,9 @@ export async function createDistributionResolution(
             streamedFrankedDividends: a.streamedFrankedDividends ?? null,
             streamedCapitalGains: a.streamedCapitalGains ?? null,
             notes: a.notes ?? null,
+            relationship: a.relationship ?? null,
+            hasQuotedTfn: a.hasQuotedTfn ?? null,
+            coveredByIee: a.coveredByIee ?? null,
           })),
         },
       },
@@ -267,6 +275,10 @@ export interface DistributionResolutionSummary {
     presentlyEntitledShare: number;
     streamedFrankedDividends: number | null;
     streamedCapitalGains: number | null;
+    // MON-101 — FTE/IEE beneficiary facts; null = never-asked.
+    relationship: 'TEST_INDIVIDUAL' | 'FAMILY_MEMBER' | 'CONTROLLED_ENTITY' | 'OUTSIDE_FAMILY' | null;
+    hasQuotedTfn: boolean | null;
+    coveredByIee: boolean | null;
   }[];
 }
 
@@ -302,6 +314,9 @@ export async function listDistributionResolutions(
           presentlyEntitledShare: true,
           streamedFrankedDividends: true,
           streamedCapitalGains: true,
+          relationship: true,
+          hasQuotedTfn: true,
+          coveredByIee: true,
         },
       },
     },
@@ -326,6 +341,9 @@ export async function listDistributionResolutions(
         a.streamedFrankedDividends === null ? null : Number(a.streamedFrankedDividends),
       streamedCapitalGains:
         a.streamedCapitalGains === null ? null : Number(a.streamedCapitalGains),
+      relationship: a.relationship,
+      hasQuotedTfn: a.hasQuotedTfn,
+      coveredByIee: a.coveredByIee,
     })),
   }));
 }

@@ -5089,7 +5089,7 @@
       "kind": "engine",
       "label": "Entity tax-facts: Div 7A loans",
       "file": "lib/services/entityTaxFactsAssembler.ts",
-      "line": 79,
+      "line": 80,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -6451,6 +6451,34 @@
       "verifiedBy": "tests/intake/duplicateMerge.test.ts",
       "workedExample": "Ingeus ×3 → one group, survivor the declared original, effect −(5,547×12); battery ×3 → scoped HOME row survives; QBE A vs B / Cienna Lot1 vs Lot2 → never grouped",
       "verifiedDate": "2026-07-19",
+      "status": "documented"
+    },
+    {
+      "id": "engine.services.entityTaxFactsAssembler.buildFteIeeInput",
+      "kind": "engine",
+      "label": "FTE/IEE input assembler (the all-or-nothing capture gate)",
+      "file": "lib/services/entityTaxFactsAssembler.ts",
+      "line": 118,
+      "layer": "service",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "FteIeeInput | null — maps an operative DistributionResolution's allocations (MON-101 captured facts: Sch 2F relationship, hasQuotedTfn, coveredByIee) to the classifier's input. Null unless the family-trust election is ON and EVERY allocated beneficiary has relationship + hasQuotedTfn explicitly set (the all-or-nothing safe default, Reza GO 2026-07-26 — a null never fabricates a 47% classification). distributionAmount = presentlyEntitledShare × trustNetIncome (the same s95 base as the Div 6 allocation).",
+      "formula": "gate: hasFamilyTrustElection && every(relationship != null && hasQuotedTfn != null); distributionAmount = share × trustNetIncome",
+      "authority": "ITAA 1936 Sch 2F (facts feed engine.tax.fteIee.classifyFteIeeDistributions — the law lives in the classifier, the assembler performs NO tax arithmetic). Wired to the live route via assembleFteIeeInput (:148) → /api/tax/entity/[entityId] GET → buildMasterTaxPositionDecimal input.fteIeeByEntity.",
+      "inputs": [
+        "DistributionAllocation.relationship (enum, null=never-asked)",
+        "DistributionAllocation.hasQuotedTfn (bool?, null=Not sure)",
+        "DistributionAllocation.coveredByIee (bool?)",
+        "DistributionResolution.hasFamilyTrustElection",
+        "presentlyEntitledShare (0..1)",
+        "trustNetIncome (AUD/year)"
+      ],
+      "astHash": null,
+      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:118 + tests/tax/mon101FteIeeCapture.test.ts",
+      "workedExample": "election ON; outside-family 40% of $100,000 without IEE → FTDT 0.47 × 40,000 = $18,800 (locked in the ratchet)",
+      "verifiedDate": "2026-07-26",
       "status": "documented"
     }
   ],
@@ -9832,6 +9860,14 @@
       "source": "verified",
       "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:361 — crossCutting.div152ByEntity[entityId] = applyDiv152(d152Input) (Decimal twin applyDiv152Decimal :696; MON-099 — the last Neo-G4 overlay, A6 islands now empty)",
       "verifiedDate": "2026-07-24"
+    },
+    {
+      "from": "engine.services.entityTaxFactsAssembler.buildFteIeeInput",
+      "to": "engine.tax.fteIee.classifyFteIeeDistributions",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "app/api/tax/entity/[entityId]/route.ts:101 — assembleFteIeeInput → fteIeeByEntity → buildMasterTaxPositionDecimal step 3.7 → classifyFteIeeDistributions (MON-101)",
+      "verifiedDate": "2026-07-26"
     }
   ]
 }

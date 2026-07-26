@@ -3037,21 +3037,35 @@
     {
       "id": "MON-101",
       "title": "FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data",
-      "status": "OPEN",
+      "status": "DIAGNOSED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-26",
       "area": "tax",
       "plain": {
-        "issue": "A verification check found a mismatch on prisma DistributionAllocation + components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog) + lib/services/entityTaxFactsAssembler.ts."
+        "issue": "Monitrax could not apply the family-trust tax rules to real data because it never asked the three questions the rules turn on: each beneficiary's position in the family group, whether they've provided their TFN, and whether an interposed-entity election covers them.",
+        "fix": "The 'Record this year's split' dialog now captures those three facts (behind a family-trust-election toggle, per the approved design), they're stored on each beneficiary allocation, and one assembler feeds them into the wired FTE/IEE rule — with an all-or-nothing safety gate: the 47% rules only compute once every beneficiary's answers are complete, so a blank can never invent a tax.",
+        "check": "On a family trust with the election on and complete beneficiary details, an outside-family distribution now shows the 47% Family Trust Distribution Tax (with its law citation) on the entity tax view; leave any answer as 'Not sure' and nothing changes — today's numbers stay identical."
       },
-      "rootCause": [],
-      "semanticKeys": [],
-      "downstreamConsumers": [],
+      "rootCause": [
+        "lib/services/entityTaxFactsAssembler.ts:118"
+      ],
+      "semanticKeys": [
+        "engine.services.entityTaxFactsAssembler.buildFteIeeInput",
+        "engine.tax.fteIee.classifyFteIeeDistributions"
+      ],
+      "downstreamConsumers": [
+        "prisma DistributionAllocation (+relationship/hasQuotedTfn/coveredByIee, nullable — migration 20260726000000)",
+        "lib/services/distributionResolutionService.ts (accepts + persists + returns the facts)",
+        "app/api/tax/distribution-resolutions/route.ts POST (validated acceptance; unknown values → null)",
+        "lib/services/entityTaxFactsAssembler.ts (buildFteIeeInput — the ONE producer with the all-or-nothing gate; assembleFteIeeInput reads the SAME operative resolution as the trust-distribution feed)",
+        "app/api/tax/entity/[entityId]/route.ts GET (feeds fteIeeByEntity into the Stage-0 orchestrator path)",
+        "components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog — election toggle + per-beneficiary controls, Stitch f395b67e…, 9.2/10 Reza-approved)"
+      ],
       "fixPRs": [],
-      "test": null,
+      "test": "tests/tax/mon101FteIeeCapture.test.ts#all-or-nothing gate (election off / missing relationship / Not-sure TFN → null) + end-to-end FTDT $18,800 worked example through both twins + gate-closed byte-parity",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma DistributionAllocation + components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog) + lib/services/entityTaxFactsAssembler.ts."
+      "notes": "Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: the 9.2/10 design, the three nullable columns, and the all-or-nothing rule. changesNumbers YES-CONDITIONAL: fires only on a trust with the election ON + complete facts + an outside-family/no-TFN distribution; every other user byte-identical (locked). distributionAmount = share × trustNetIncome — the same s95 base as the Div 6 allocation (one basis). Neo-sync: buildFteIeeInput modelled + feeds edge; div7a anchor re-pinned 79→80."
     }
   ]
 }

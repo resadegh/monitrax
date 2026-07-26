@@ -37,7 +37,7 @@ import {
   getTaxYearConfig,
   getCurrentTaxYearConfig,
 } from '@/lib/tax-engine/config/taxYearConfig';
-import { assembleEntityTaxFacts } from '@/lib/services/entityTaxFactsAssembler';
+import { assembleEntityTaxFacts, assembleFteIeeInput } from '@/lib/services/entityTaxFactsAssembler';
 import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   EntityTaxFacts,
@@ -95,10 +95,16 @@ export const GET = withPermission<RouteContext>(
       // Overlay inputs arrive from the assembler in the capture stages;
       // until then crossCutting carries no overlay keys and the response
       // is unchanged.
+      // MON-101 (capture Stage 1): feed the FTE/IEE overlay from the ONE
+      // assembler producer. Null (no election / incomplete beneficiary
+      // facts / not a trust) = overlay skipped = byte-identical response.
+      const fteInput = await assembleFteIeeInput(auth.userId, entityId, fy);
+
       const master = buildMasterTaxPositionDecimal({
         userId: auth.userId,
         fy,
         entities: [facts],
+        ...(fteInput ? { fteIeeByEntity: { [entityId]: fteInput } } : {}),
       });
       const entityPosition = master.entities[0];
 

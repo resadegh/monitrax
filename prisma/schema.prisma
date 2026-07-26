@@ -1083,13 +1083,21 @@ model DistributionResolution {
 
 // One beneficiary's slice of a `DistributionResolution`.
 model DistributionAllocation {
-  id                       String   @id @default(uuid())
+  id                       String                   @id @default(uuid())
   resolutionId             String
   beneficiaryEntityId      String // a BENEFICIARY_OF / UNITHOLDER_OF entity (service-validated)
-  presentlyEntitledShare   Decimal  @db.Decimal(9, 6) // fraction of distributable income (0..1)
-  streamedFrankedDividends Decimal? @db.Decimal(19, 4) // Subdiv 207-B specific entitlement
-  streamedCapitalGains     Decimal? @db.Decimal(19, 4) // Subdiv 115-C specific entitlement
+  presentlyEntitledShare   Decimal                  @db.Decimal(9, 6) // fraction of distributable income (0..1)
+  streamedFrankedDividends Decimal?                 @db.Decimal(19, 4) // Subdiv 207-B specific entitlement
+  streamedCapitalGains     Decimal?                 @db.Decimal(19, 4) // Subdiv 115-C specific entitlement
   notes                    String?
+  // MON-101 (capture Stage 1) — FTE/IEE beneficiary facts (ITAA 1936 Sch 2F).
+  // All nullable: null = never-asked. A null NEVER fabricates a classification —
+  // the assembler builds FteIeeInput only when the trust's election is on AND
+  // every allocated beneficiary has relationship + hasQuotedTfn explicitly set
+  // (the all-or-nothing safe default, Reza GO 2026-07-26).
+  relationship             FamilyGroupRelationship? // s272-95 family-group position
+  hasQuotedTfn             Boolean? // null = "Not sure" — 47% Pt VA withholding NOT computed
+  coveredByIee             Boolean? // s272-85; only meaningful when OUTSIDE_FAMILY
 
   resolution DistributionResolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
 
@@ -7090,6 +7098,16 @@ enum SubscriptionStatus {
   INCOMPLETE_EXPIRED
   UNPAID
   PAUSED
+}
+
+// MON-101 (capture Stage 1) — the beneficiary's position in the Sch 2F s272-95
+// family group, relative to the trust's test individual. Mirrors the engine's
+// FamilyGroupRelationship (lib/tax-engine/divisions/fteIeeClassifier.ts:64).
+enum FamilyGroupRelationship {
+  TEST_INDIVIDUAL
+  FAMILY_MEMBER
+  CONTROLLED_ENTITY
+  OUTSIDE_FAMILY
 }
 
 enum BillingPlanTier {
