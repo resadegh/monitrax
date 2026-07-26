@@ -1027,12 +1027,12 @@
       "semanticKey": null,
       "produces": "Household-wide MasterTaxPositionV2: per-entity dispatch + cross-cutting (land tax/stamp duty/GST) + loss overlays + citations + boundary footer.",
       "formula": "1) per-entity calculateEntityTaxPosition; 2) cross-cutting modules; 3) loss overlays; 4) aggregate + UNCOMPUTED; 5) boundary footer.",
-      "authority": "CLAUDE.md §6.1 (tax SSOT) + ITAA 1997",
+      "authority": "CLAUDE.md §6.1 (tax SSOT) + ITAA 1997 LIVE-REACHABLE 2026-07-25 (MON-100, capture Stage 0): /api/tax/entity/[entityId] (GET+POST) now routes THROUGH buildMasterTaxPositionDecimal (entities:[facts]) instead of calling the entity engine directly — the wired step-3 overlays sit on the live path; parity + import-topology locked by tests/tax/mon100EntityRouteParity.test.ts. Reviewed direct-call exception: lib/services/wealthGraphService.ts (status-only badge, never a tax dollar).",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "lib/tax-engine/orchestrator/masterTaxPosition.ts:186 (read this session)",
       "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedDate": "2026-07-25",
       "status": "documented"
     },
     {
@@ -4572,12 +4572,12 @@
       "semanticKey": null,
       "produces": "MasterTaxPositionV2 — per-entity tax positions (dispatched via entityTaxRouter) + cross-cutting modules (land tax, stamp duty).",
       "formula": "for each entity → calculateEntityTaxPosition(facts); then cross-cutting: land tax (cross-state), stamp duty per transaction; compose into MasterTaxPositionV2.",
-      "authority": "ITAA 1997/1936 — composition of the per-entity tax engines + state cross-cutting taxes.",
+      "authority": "ITAA 1997/1936 — composition of the per-entity tax engines + state cross-cutting taxes. LIVE-REACHABLE 2026-07-25 (MON-100, capture Stage 0): /api/tax/entity/[entityId] (GET+POST) now routes THROUGH buildMasterTaxPositionDecimal (entities:[facts]) instead of calling the entity engine directly — the wired step-3 overlays sit on the live path; parity + import-topology locked by tests/tax/mon100EntityRouteParity.test.ts. Reviewed direct-call exception: lib/services/wealthGraphService.ts (status-only badge, never a tax dollar).",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit engine tax.masterTaxPosition (proven, Float/Decimal shadow) + lib/tax-engine/orchestrator/masterTaxPosition.ts:186",
       "workedExample": null,
-      "verifiedDate": "2026-06-26",
+      "verifiedDate": "2026-07-25",
       "status": "documented"
     },
     {
