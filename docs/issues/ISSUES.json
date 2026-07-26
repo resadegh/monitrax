@@ -3033,6 +3033,25 @@
       "test": "tests/tax/mon100EntityRouteParity.test.ts#reroute parity (orchestrator entities[0] === direct engine, 3 facts shapes) + empty-crossCutting response invariance + app/ import-topology class lock",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug)."
+    },
+    {
+      "id": "MON-101",
+      "title": "FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-26",
+      "area": "tax",
+      "plain": {
+        "issue": "A verification check found a mismatch on prisma DistributionAllocation + components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog) + lib/services/entityTaxFactsAssembler.ts."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma DistributionAllocation + components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog) + lib/services/entityTaxFactsAssembler.ts."
     }
   ]
 }

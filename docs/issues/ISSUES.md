@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**100 total** · 96 open · 🔵 21 · 🟡 3 · 🟠 19 · 🟢 53 · ✅ 3
+**101 total** · 97 open · 🔵 22 · 🟡 3 · 🟠 19 · 🟢 53 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -107,6 +107,7 @@
 | MON-098 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
 | MON-100 | 🟠 FIXING | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
+| MON-101 | 🔵 OPEN | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | — | — |
 
 ---
 
@@ -1849,4 +1850,15 @@ Neo-G4 P3 — the LAST of the three unwired overlays; the A6_ISLAND_ALLOWLIST is
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
 Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct engine callers outside the orchestrator were exactly (1) this route's two handlers and (2) wealthGraphService (status-only, reviewed exception). changesNumbers YES-CONDITIONAL: zero movement today (parity by construction — the orchestrator maps the SAME calculateEntityTaxPositionDecimal); numbers move only when capture Stages 1-3 feed overlay inputs. First PR on the per-issue-branch pattern (claude/mon-100-entity-tax-reachability-yhm8ug).
+
+### MON-101 — FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-26
+
+> **What was wrong:** A verification check found a mismatch on prisma DistributionAllocation + components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog) + lib/services/entityTaxFactsAssembler.ts.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma DistributionAllocation + components/wealth-explorer/TrustDistributionsSection.tsx (Record-split dialog) + lib/services/entityTaxFactsAssembler.ts.
 
