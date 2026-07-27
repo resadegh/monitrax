@@ -3123,6 +3123,41 @@
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: the 9.2/10 design, the three nullable columns, and the all-or-nothing rule. changesNumbers YES-CONDITIONAL: fires only on a trust with the election ON + complete facts + an outside-family/no-TFN distribution; every other user byte-identical (locked). distributionAmount = share × trustNetIncome — the same s95 base as the Div 6 allocation (one basis). Neo-sync: buildFteIeeInput modelled + feeds edge; div7a anchor re-pinned 79→80. VERIFIED at VR-034 (2026-07-26, #1510): fire path + all-or-nothing capture gate proven at source/CI (FTDT $18,800 worked example both twins); live INERT on Reza’s data — honest scope: live-fire on a seeded FTE trust not run (no such trust exists; the fire path is the CI golden). CLOSED 2026-07-27 per VR-034 — ratchet/holistic test in CI (tests/tax/mon101FteIeeCapture.test.ts), Neomatrix moved with the fix (#1509); no reopener — Stage 2 (PSI questionnaire) is separate new work (VERIFIED→CLOSED promotion pass).",
       "closed": "2026-07-27"
+    },
+    {
+      "id": "MON-102",
+      "title": "PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data",
+      "status": "FIXING",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-27",
+      "area": "tax",
+      "plain": {
+        "issue": "Monitrax could not apply the personal services income rules to real data because it never asked the questions the rules turn on: how much PSI the structure earned, how much came from its largest client, how many unrelated clients it served, and whether any of the ATO's personal-services-business tests are met.",
+        "fix": "The entity tax page now shows a PSI self-assessment card for companies, sole traders, partnerships and trusts: three income numbers plus five Yes/No/Not-sure test questions. The answers persist per financial year and one assembler feeds them into the wired PSI rule — with two safety defaults: the rule stays off until all three numbers are entered, and an unanswered test counts as not-established (which can only be conservative, never hide tax).",
+        "check": "On a company earning $150,000 of PSI with 90% from one client and no tests established, the entity tax view now shows '$150,000 attributed to the individual' with the law citation (s86-15). Leave any of the three numbers blank and nothing computes — today's numbers stay identical. Your own data has no PSI assessment saved, so nothing moves until you fill the card in."
+      },
+      "rootCause": [
+        "lib/services/entityTaxFactsAssembler.ts:184"
+      ],
+      "semanticKeys": [
+        "engine.services.entityTaxFactsAssembler.buildPsiInput",
+        "engine.tax.psi.classifyPsi"
+      ],
+      "downstreamConsumers": [
+        "prisma PsiAssessment (new model, all fact columns nullable — migration 20260727000000; + AuditAction.PSI_ASSESSMENT_SAVED)",
+        "app/api/tax/entity/[entityId]/psi-assessment/route.ts GET/PUT (ownership-guarded persistence; null-preserving coercions — null = never-asked, never defaulted)",
+        "lib/services/entityTaxFactsAssembler.ts (buildPsiInput — the ONE producer with the numerics all-or-nothing gate; null test booleans → absent keys = not-established; assemblePsiInput reads the persisted row)",
+        "app/api/tax/entity/[entityId]/route.ts GET (feeds psiByEntity into the Stage-0 orchestrator path alongside fteIeeByEntity)",
+        "app/dashboard/entities/[id]/tax/page.tsx (PSI types now render the assessment card instead of the \"isn't an SMSF\" dead-end; live result parsed from crossCutting.psiByEntity)",
+        "components/tax/PsiAssessmentCard.tsx (questionnaire card — Stitch 73a1f751…, 9.1/10 Reza-approved; renders the LIVE overlay result, never re-derives)"
+      ],
+      "fixPRs": [
+        1516
+      ],
+      "test": "tests/tax/mon102PsiCapture.test.ts#numerics all-or-nothing gate (each numeric null → null) + null booleans → absent keys (not-established) + end-to-end $150,000 attribution worked example through both twins + PSB-determination direction + gate-closed byte-parity",
+      "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
+      "notes": "Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-27 on: the 9.1/10 design, the PsiAssessment schema, and both doctrines (numerics all-or-nothing; unanswered tests = not-established). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all three numerics; every other user byte-identical (locked). The not-established doctrine is asymmetric-safe: an unanswered PSB test can only move toward MORE attribution (the ATO posture — a PSB test must be positively demonstrable), stated in-UI by an amber note. Neo-sync: buildPsiInput modelled + feeds edge to classifyPsi; assembler anchors re-pinned (div7a 80→81, buildFteIeeInput 118→119 — the PsiInput import shift)."
     }
   ]
 }

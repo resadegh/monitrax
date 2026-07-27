@@ -606,3 +606,33 @@ Coverage: verifies reroute parity, response invariance without overlays, and the
 ### Gate (§20.6)
 `Gate (§20.6): Document 10/10 (built to the approved Stitch design + the capture brief's Stage-1 spec; §18.2.1 Stitch-first honoured — design approved BEFORE build; §12.12 migration in-PR for Reza's click) · Requirements 10/10 (schema + service + API + assembler + route feed + UI, all through the ONE producer; safe default exactly as approved) · Logic 10/10 (§19.2 hand-computed FTDT $18,800 locked end-to-end both twins; the all-or-nothing gate proven in all three failure directions; same-s95-base documented; gate-closed = byte-identical, locked)`
 Coverage: verifies the gate, the mapping, and the orchestrator flow from a built input; does NOT verify the Prisma read path of `assembleFteIeeInput` (Ring-3 on a seeded trust owns that) and does NOT verify the rendered dialog (Reza's eyeball + Ring-3).
+
+---
+
+## Session: yhm8ug (continuation 25, 2026-07-27) — MON-102 (capture Stage 2): PSI questionnaire — the second overlay made live-capable
+
+### Changes Made
+- **Type**: Feature (schema + assembler + Stitch-first UI; `changesNumbers: yes-CONDITIONAL` — fires ONLY once an entity has a saved PSI assessment with all three numerics; everyone else byte-identical, locked)
+- **Reza GO (2026-07-27)** on the three presented items: the Stitch design (screen `73a1f75151a24eadb9dd179cd307d533`, §18.8 **9.1/10**), the `PsiAssessment` schema, and **both doctrines** (numerics all-or-nothing; unanswered tests = not-established).
+- **Schema (§12.12, Reza's migration click)**: `PsiAssessment` model — 3 nullable numerics (`totalPsiIncome`, `incomeFromLargestClient` Decimal(19,4); `unrelatedClientCount` Int) + 5 nullable test Booleans, `@@unique([entityId, financialYear])`; + `AuditAction.PSI_ASSESSMENT_SAVED`. Migration `20260727000000_mon102_psi_assessment` (CREATE TABLE + ADD VALUE — additive only, no existing row touched).
+- **The two load-bearing doctrines**: (1) `buildPsiInput` (the ONE producer, `entityTaxFactsAssembler.ts:184`) returns null unless ALL THREE numerics are set — a partial questionnaire never produces a partial number. (2) A null test boolean maps to an ABSENT key = not-established — the engine's own contract and the ATO posture (a PSB test must be positively demonstrable); asymmetric-safe (can only move toward MORE attribution, never hide one), stated in-UI by the amber note.
+- **Flow**: card → PUT `/api/tax/entity/[id]/psi-assessment` (null-preserving coercions — null = never-asked, NEVER defaulted; audit `PSI_ASSESSMENT_SAVED`, §13.3-sanitized) → `assemblePsiInput` gates → entity route GET feeds `psiByEntity` into the Stage-0 orchestrator path (Promise.all with the FTE feed) → the MON-097 overlay fires with s86-15/s86-60 cited.
+- **UI (per the approved design)**: `PsiAssessmentCard` on the entity tax page for PSI types (COMPANY / SOLE_TRADER / PARTNERSHIP / DISCRETIONARY_TRUST / UNIT_TRUST) — replacing the "isn't an SMSF" dead-end. Three numerics with the live ≥80% one-client amber helper, five Yes/No/Not-sure tri-state test rows, the doctrine note, and the LIVE result strip reading `crossCutting.psiByEntity[entityId]` (never re-derived client-side). Stitch artefacts committed: `.stitch/designs/capture-stage2/psi-assessment-card.{html,png}`; screen ID in the component JSDoc.
+- **Ratchet**: `tests/tax/mon102PsiCapture.test.ts` (8 tests): the numerics gate in all three directions; null booleans → absent keys (never false-by-write); answered true AND false pass through verbatim; §19.2 worked example **$150,000 attributed** ($135k/90% one-client → 80% test FAILS → not PSB → s86-15) end-to-end through BOTH twins with the s86-60 flag; PSB-determination direction ($0 attributed, s87-60); gate-closed byte-parity.
+- **Neo-sync (§21.2.1)**: `buildPsiInput` modelled (node + feeds edge to `engine.tax.psi.classifyPsi` with the route evidence); assembler anchors re-pinned (div7a 80→81, buildFteIeeInput 118→119 — the `PsiInput` import shift); new psi-assessment route allowlisted for Layer-0 (graphify CLI offline — recorded limitation, self-prunes) + stale `intake-duplicates` entry pruned; `GENERATED_CORE.md` regenerated; `neomatrix:check` green.
+
+### Files Modified
+- `prisma/schema.prisma` + `prisma/migrations/20260727000000_mon102_psi_assessment/`
+- `app/api/tax/entity/[entityId]/psi-assessment/route.ts` (NEW) — GET/PUT persistence
+- `lib/services/entityTaxFactsAssembler.ts` — `buildPsiInput` + `assemblePsiInput` (the ONE producer)
+- `app/api/tax/entity/[entityId]/route.ts` — GET feeds `psiByEntity` (Promise.all with FTE)
+- `app/dashboard/entities/[id]/tax/page.tsx` — PSI-type gating + card render + crossCutting parse
+- `components/tax/PsiAssessmentCard.tsx` (NEW) — the approved questionnaire card + JSDoc Stitch ref
+- `tests/tax/mon102PsiCapture.test.ts` (NEW, 8) · `.stitch/designs/capture-stage2/*` · graph + coverage-allowlist + registry + docs
+
+### Build Status
+- [x] tsc clean · [x] mon102 8/8 + tax/tax-engine/golden/neomatrix/issues/intake 1,465 passed (96 files) · [x] `npm run build` passes · [x] `neomatrix:check` green · [x] both lints green · [x] `issues:check` 102 valid
+
+### Gate (§20.6)
+`Gate (§20.6): Document 10/10 (built to the approved Stitch design + the capture brief's Stage-2 spec; §18.2.1 Stitch-first honoured — design approved BEFORE build; §12.12 migration in-PR for Reza's click) · Requirements 10/10 (schema + API + assembler + route feed + UI, all through the ONE producer; both doctrines exactly as approved) · Logic 10/10 (§19.2 hand-computed $150,000 attribution locked end-to-end both twins; the numerics gate proven in all three directions; null→absent proven key-by-key; gate-closed = byte-identical, locked)`
+Coverage: verifies the gate, the mapping, and the orchestrator flow from a built input; does NOT verify the Prisma read path of `assemblePsiInput` (Ring-3 on a seeded PSI entity owns that) and does NOT verify the rendered card (Reza's eyeball + Ring-3).

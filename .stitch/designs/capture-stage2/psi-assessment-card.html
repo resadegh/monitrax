@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Wealth OS | PSI Assessment</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+        .top-accent-strip {
+            height: 3px;
+            width: 100%;
+            background: linear-gradient(90deg, #6366F1 0%, #8B5CF6 100%);
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
+        }
+        .shadow-layered {
+            box-shadow: 
+                0 1px 2px rgba(11, 18, 32, 0.04),
+                0 4px 12px rgba(11, 18, 32, 0.03),
+                0 12px 24px rgba(11, 18, 32, 0.02);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-ivory": "#FAFAF7",
+                        "primary": "#006b2c",
+                        "on-surface": "#171d16",
+                        "on-surface-variant": "#3e4a3d",
+                        "outline-variant": "#bdcaba",
+                        "trail-indigo": "#6366F1",
+                        "trail-violet": "#8B5CF6",
+                        "trail-amber": "#F59E0B",
+                        "outline-slate": "#94A3B8"
+                    },
+                    borderRadius: {
+                        "22px": "22px",
+                        "14px": "14px",
+                        "12px": "12px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "eyebrow": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory font-body-md text-on-surface min-h-screen">
+<!-- Desktop Side Navigation (Shared Component) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant h-full w-64 hidden md:flex">
+<div class="p-6 flex flex-col gap-1">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="text-xs text-on-surface-variant tracking-widest uppercase">Wealth OS</p>
+</div>
+<nav class="flex-1 mt-4">
+<div class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="home">home</span>
+<span class="font-label-md">Home</span>
+</div>
+<div class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="account_balance">account_balance</span>
+<span class="font-label-md">My Accounts</span>
+</div>
+<!-- Additional tabs from JSON logic mapping -->
+<div class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-md">My Budget</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-label-md">My Safety Net</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="trending_up">trending_up</span>
+<span class="font-label-md">My Wealth</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="map">map</span>
+<span class="font-label-md">My Guide</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3" data-icon="analytics">analytics</span>
+<span class="font-label-md">Reports</span>
+</div>
+</nav>
+<div class="p-4 mt-auto">
+<button class="w-full py-2 px-4 bg-primary text-white rounded-lg font-medium text-sm">Update Plan</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="md:ml-64 pt-20 pb-12 px-6 flex justify-center items-start">
+<!-- Top Navigation Bar (Shared Component - Web) -->
+<header class="fixed top-0 right-0 left-0 md:left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<span class="text-on-surface-variant text-sm font-medium">Search accounts or tax records...</span>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer" data-icon="settings">settings</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant border border-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a middle-aged Australian man with a friendly expression, wearing a high-quality navy wool blazer over a crisp white linen shirt. The lighting is soft and natural, suggesting a high-end corporate lifestyle. The background is a blurred, bright office with light-colored timber accents and large windows, reflecting the warm ivory and emerald tones of the Monitrax brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7pzpAg5gAU3k1H--INOPVhc662vPLSBBnUDPJdFrGcZ5JnFPItCHmnGuJ7wkVeR0b2tDIuZIzGnqVjuENMxmUBd-75wFEW7YzTv-9dWTsDkLeeWgx0Jle2TeO4ef6OrWEGZHaWLLXBsJrHLI3a8b4QvrlTOeAr7tDGlEw1udAfcomPKTo7-FZNbPDfXLOg_MahIyU5Lrn09e73qhouEucuFxDUXqDwN3JKyvoCsdgQa2oER9hFcxdXlJFAcGotgmAlazDcL5J1W8"/>
+</div>
+</div>
+</header>
+<!-- PSI Assessment Card -->
+<div class="w-full max-w-[640px] relative mt-8">
+<div class="top-accent-strip"></div>
+<div class="glass-card shadow-layered border border-slate-200 rounded-b-22px p-8 flex flex-col gap-8">
+<!-- Card Header -->
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-[10px] tracking-[0.18em] gradient-text font-bold uppercase">
+                            Personal Services Income · FY 2025-26
+                        </span>
+<h2 class="text-headline-sm font-headline-sm text-on-surface mt-2">Personal services income</h2>
+</div>
+<div class="w-[44px] h-[44px] rounded-14px gradient-bg flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" data-icon="work" style="font-variation-settings: 'FILL' 1;">work</span>
+</div>
+</div>
+<!-- Intro Helper -->
+<p class="text-[12px] leading-relaxed text-slate-500 max-w-[500px]">
+                    If this entity's income comes mainly from one person's skills or effort, the ATO's personal services rules may attribute it to that person. Answer what you know — nothing is assumed.
+                </p>
+<!-- Section 1: The Numbers -->
+<div class="grid grid-cols-3 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total PSI income</label>
+<div class="bg-white/50 border border-slate-200 rounded-lg px-3 py-2 flex items-center">
+<span class="text-[14px] font-semibold tabular-nums text-on-surface">$150,000</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Largest client</label>
+<div class="bg-white/50 border border-slate-200 rounded-lg px-3 py-2 flex items-center">
+<span class="text-[14px] font-semibold tabular-nums text-on-surface">$135,000</span>
+</div>
+<span class="text-[11px] text-trail-amber leading-tight">90% of total — the 80% one-client test applies</span>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Unrelated clients</label>
+<div class="bg-white/50 border border-slate-200 rounded-lg px-3 py-2 flex items-center">
+<span class="text-[14px] font-semibold tabular-nums text-on-surface">1</span>
+</div>
+</div>
+</div>
+<!-- Section 2: The ATO's Tests -->
+<div class="flex flex-col gap-0 border-t border-slate-100 pt-4">
+<!-- Row 1 -->
+<div class="flex items-center justify-between py-3 border-b border-slate-50">
+<div class="flex flex-col">
+<span class="text-[13px] text-on-surface font-medium">Paid for results, providing your own tools, liable to fix defects?</span>
+<span class="text-[11px] text-slate-400">the results test</span>
+</div>
+<div class="flex bg-slate-100 rounded-full p-1 gap-1">
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all">Yes</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all">No</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full bg-white text-slate-700 shadow-sm font-medium">Not sure</button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between py-4 border-b border-slate-50">
+<span class="text-[13px] text-on-surface font-medium">Did unrelated clients come from public advertising or tenders?</span>
+<div class="flex bg-slate-100 rounded-full p-1 gap-1">
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white">Yes</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full bg-white text-slate-700 shadow-sm font-medium">No</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white">Not sure</button>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center justify-between py-4 border-b border-slate-50">
+<span class="text-[13px] text-on-surface font-medium">Do you employ or contract others to do the principal work?</span>
+<div class="flex bg-slate-100 rounded-full p-1 gap-1">
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all">Yes</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all">No</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full bg-white text-slate-700 shadow-sm font-medium">Not sure</button>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="flex items-center justify-between py-4 border-b border-slate-50">
+<span class="text-[13px] text-on-surface font-medium">Separate business premises from your home and clients?</span>
+<div class="flex bg-slate-100 rounded-full p-1 gap-1">
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all">Yes</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full bg-white text-slate-700 shadow-sm font-medium">No</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all">Not sure</button>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="flex items-center justify-between py-4">
+<span class="text-[13px] text-slate-400 font-medium">Do you hold an ATO personal services business determination?</span>
+<div class="flex bg-slate-100 rounded-full p-1 gap-1 opacity-70">
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white">Yes</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full bg-white text-slate-700 shadow-sm font-medium">No</button>
+<button class="px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white">Not sure</button>
+</div>
+</div>
+</div>
+<!-- Amber Note -->
+<div class="bg-trail-amber/10 border border-trail-amber/25 rounded-lg p-4 flex gap-3">
+<span class="material-symbols-outlined text-trail-amber" data-icon="info" style="font-size: 16px;">info</span>
+<p class="text-[11px] text-trail-amber font-medium leading-normal">
+                        Unanswered tests count as not established — the ATO requires a test to be positively met before it changes the outcome.
+                    </p>
+</div>
+<!-- Result Strip -->
+<div class="flex flex-col gap-2">
+<div class="bg-indigo-50/50 backdrop-blur-sm border border-indigo-100 rounded-12px p-5 flex items-center justify-between">
+<div class="flex flex-col gap-0.5">
+<span class="text-[10px] font-bold text-indigo-400 tracking-[0.1em] uppercase">Current Assessment</span>
+<span class="text-[13px] text-indigo-900 font-semibold">Personal services income — attributed to the individual</span>
+<span class="text-[9px] text-indigo-400 font-medium font-mono">ITAA 1997 Part 2-42 · s86-15</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[20px] font-bold text-indigo-900 tabular-nums">$150,000</span>
+<span class="text-[10px] font-medium text-indigo-400 uppercase tracking-widest">attributed</span>
+</div>
+</div>
+<p class="text-[11px] text-slate-400 italic px-1">
+                        Deduction restrictions (s86-60) are flagged for your accountant — not yet calculated.
+                    </p>
+</div>
+<!-- Footer -->
+<div class="flex items-center justify-end gap-4 pt-4">
+<button class="text-[13px] font-semibold text-slate-400 hover:text-slate-600 transition-colors">Clear</button>
+<button class="gradient-bg text-white px-6 py-2.5 rounded-14px text-[13px] font-semibold shadow-md hover:opacity-90 active:scale-95 transition-all">
+                        Save assessment
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Shared Component - Mobile) -->
+<nav class="fixed bottom-0 left-0 right-0 h-16 bg-surface-ivory/90 backdrop-blur-md flex items-center justify-around z-40 md:hidden border-t border-outline-variant">
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" data-icon="account_balance" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<span class="text-[10px] font-bold">Accounts</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="text-[10px] font-medium">Wealth</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-[10px] font-medium">Reports</span>
+</div>
+</nav>
+<script>
+        // Simple interactivity for segmented controls
+        document.querySelectorAll('.flex.bg-slate-100 button').forEach(button => {
+            button.addEventListener('click', function() {
+                const parent = this.parentElement;
+                parent.querySelectorAll('button').forEach(btn => {
+                    btn.className = "px-3 py-0.5 text-[11px] rounded-full text-slate-500 hover:bg-white transition-all";
+                });
+                this.className = "px-3 py-0.5 text-[11px] rounded-full bg-white text-slate-700 shadow-sm font-medium";
+            });
+        });
+    </script>
+</body></html>
