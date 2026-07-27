@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**102 total** · 98 open · 🔵 22 · 🟡 3 · 🟠 19 · 🟢 54 · ✅ 3
+**102 total** · 98 open · 🔵 22 · 🟡 3 · 🟠 18 · 🟢 55 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -107,7 +107,7 @@
 | MON-098 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE classifier built but unwired: family-trust-election distributions never attributed in the live tax position — outside-family FTDT (47%) + non-TFN withholding (47%) not applied | #1499 | ✅ |
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
 | MON-100 | 🟢 VERIFIED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
-| MON-101 | 🟠 FIXING | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
+| MON-101 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
 | MON-102 | 🔵 OPEN | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | — | — |
 
 ---
@@ -1854,7 +1854,7 @@ Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct en
 
 ### MON-101 — FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-26
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-26
 
 > **What was wrong:** Monitrax could not apply the family-trust tax rules to real data because it never asked the three questions the rules turn on: each beneficiary's position in the family group, whether they've provided their TFN, and whether an interposed-entity election covers them.
 >
@@ -1869,7 +1869,7 @@ Capture feature Stage 0 (the Neo-G4 unlock, brief 2026-07-25). Census: direct en
 - **Holistic test (§19.4):** `tests/tax/mon101FteIeeCapture.test.ts#all-or-nothing gate (election off / missing relationship / Not-sure TFN → null) + end-to-end FTDT $18,800 worked example through both twins + gate-closed byte-parity`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: the 9.2/10 design, the three nullable columns, and the all-or-nothing rule. changesNumbers YES-CONDITIONAL: fires only on a trust with the election ON + complete facts + an outside-family/no-TFN distribution; every other user byte-identical (locked). distributionAmount = share × trustNetIncome — the same s95 base as the Div 6 allocation (one basis). Neo-sync: buildFteIeeInput modelled + feeds edge; div7a anchor re-pinned 79→80.
+Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: the 9.2/10 design, the three nullable columns, and the all-or-nothing rule. changesNumbers YES-CONDITIONAL: fires only on a trust with the election ON + complete facts + an outside-family/no-TFN distribution; every other user byte-identical (locked). distributionAmount = share × trustNetIncome — the same s95 base as the Div 6 allocation (one basis). Neo-sync: buildFteIeeInput modelled + feeds edge; div7a anchor re-pinned 79→80. VERIFIED at VR-034 (2026-07-27, source + live @ 9901d827): capture live end-to-end, migration applied to prod, the all-or-nothing gate confirmed as the control, Reza byte-identical; fire path proven by the CI golden.
 
 ### MON-102 — PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data
 

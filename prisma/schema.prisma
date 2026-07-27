@@ -7100,6 +7100,34 @@ enum SubscriptionStatus {
   PAUSED
 }
 
+// MON-102 (capture Stage 2) — per-entity per-FY PSI self-assessment facts
+// (ITAA 1997 Part 2-42). ALL fields nullable: null = never-asked. The
+// assembler builds PsiInput ONLY when the three numerics are set (the
+// all-or-nothing numerics gate); unanswered test booleans pass through as
+// not-established — the engine's own contract and the ATO's posture (a PSB
+// test must be positively demonstrable), which can only move the result
+// toward MORE attribution (a warning), never hide one. Reza GO 2026-07-27.
+model PsiAssessment {
+  id                                String   @id @default(uuid())
+  userId                            String
+  entityId                          String // LegalEntity (plain FK — service-validated)
+  financialYear                     String // "2025-26"
+  totalPsiIncome                    Decimal? @db.Decimal(19, 4)
+  incomeFromLargestClient           Decimal? @db.Decimal(19, 4)
+  unrelatedClientCount              Int?
+  gainedClientsViaDirectAdvertising Boolean?
+  meetsResultsTest                  Boolean?
+  meetsEmploymentTest               Boolean?
+  meetsBusinessPremisesTest         Boolean?
+  hasPsbDetermination               Boolean?
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+
+  @@unique([entityId, financialYear])
+  @@index([userId])
+  @@map("psi_assessments")
+}
+
 // MON-101 (capture Stage 1) — the beneficiary's position in the Sch 2F s272-95
 // family group, relative to the trust's test individual. Mirrors the engine's
 // FamilyGroupRelationship (lib/tax-engine/divisions/fteIeeClassifier.ts:64).
