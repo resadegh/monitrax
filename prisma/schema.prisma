@@ -533,6 +533,7 @@ enum AuditAction {
 
   // Phase 44.2 — SMSF annual-return workbook save.
   SMSF_RETURN_SAVED
+  PSI_ASSESSMENT_SAVED
 
   // 2026-06-12 — "Start fresh" account data reset (wipe financial data,
   // keep account). Fired once per completed reset by

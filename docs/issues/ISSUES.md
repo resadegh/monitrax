@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**102 total** · 98 open · 🔵 22 · 🟡 3 · 🟠 18 · 🟢 55 · ✅ 3
+**102 total** · 98 open · 🔵 21 · 🟡 4 · 🟠 18 · 🟢 55 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -108,7 +108,7 @@
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
 | MON-100 | 🟢 VERIFIED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
 | MON-101 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
-| MON-102 | 🔵 OPEN | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | — | — |
+| MON-102 | 🟡 DIAGNOSED | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | — | ✅ |
 
 ---
 
@@ -1873,12 +1873,19 @@ Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: th
 
 ### MON-102 — PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-27
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-27
 
-> **What was wrong:** A verification check found a mismatch on app/dashboard/entities/[id]/tax/page.tsx (no PSI questionnaire) + prisma (no PsiAssessment model) + lib/services/entityTaxFactsAssembler.ts.
+> **What was wrong:** Monitrax could not apply the personal services income rules to real data because it never asked the questions the rules turn on: how much PSI the structure earned, how much came from its largest client, how many unrelated clients it served, and whether any of the ATO's personal-services-business tests are met.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** The entity tax page now shows a PSI self-assessment card for companies, sole traders, partnerships and trusts: three income numbers plus five Yes/No/Not-sure test questions. The answers persist per financial year and one assembler feeds them into the wired PSI rule — with two safety defaults: the rule stays off until all three numbers are entered, and an unanswered test counts as not-established (which can only be conservative, never hide tax).
+>
+> **What you should see:** On a company earning $150,000 of PSI with 90% from one client and no tests established, the entity tax view now shows '$150,000 attributed to the individual' with the law citation (s86-15). Leave any of the three numbers blank and nothing computes — today's numbers stay identical. Your own data has no PSI assessment saved, so nothing moves until you fill the card in.
+
+- **Root cause:** `lib/services/entityTaxFactsAssembler.ts:184`
+- **Neomatrix:** `engine.services.entityTaxFactsAssembler.buildPsiInput`, `engine.tax.psi.classifyPsi`
+- **Downstream consumers (§19.4):** `prisma PsiAssessment (new model, all fact columns nullable — migration 20260727000000; + AuditAction.PSI_ASSESSMENT_SAVED)`, `app/api/tax/entity/[entityId]/psi-assessment/route.ts GET/PUT (ownership-guarded persistence; null-preserving coercions — null = never-asked, never defaulted)`, `lib/services/entityTaxFactsAssembler.ts (buildPsiInput — the ONE producer with the numerics all-or-nothing gate; null test booleans → absent keys = not-established; assemblePsiInput reads the persisted row)`, `app/api/tax/entity/[entityId]/route.ts GET (feeds psiByEntity into the Stage-0 orchestrator path alongside fteIeeByEntity)`, `app/dashboard/entities/[id]/tax/page.tsx (PSI types now render the assessment card instead of the "isn't an SMSF" dead-end; live result parsed from crossCutting.psiByEntity)`, `components/tax/PsiAssessmentCard.tsx (questionnaire card — Stitch 73a1f751…, 9.1/10 Reza-approved; renders the LIVE overlay result, never re-derives)`
+- **Holistic test (§19.4):** `tests/tax/mon102PsiCapture.test.ts#numerics all-or-nothing gate (each numeric null → null) + null booleans → absent keys (not-established) + end-to-end $150,000 attribution worked example through both twins + PSB-determination direction + gate-closed byte-parity`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/entities/[id]/tax/page.tsx (no PSI questionnaire) + prisma (no PsiAssessment model) + lib/services/entityTaxFactsAssembler.ts.
+Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-27 on: the 9.1/10 design, the PsiAssessment schema, and both doctrines (numerics all-or-nothing; unanswered tests = not-established). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all three numerics; every other user byte-identical (locked). The not-established doctrine is asymmetric-safe: an unanswered PSB test can only move toward MORE attribution (the ATO posture — a PSB test must be positively demonstrable), stated in-UI by an amber note. Neo-sync: buildPsiInput modelled + feeds edge to classifyPsi; assembler anchors re-pinned (div7a 80→81, buildFteIeeInput 118→119 — the PsiInput import shift).
 

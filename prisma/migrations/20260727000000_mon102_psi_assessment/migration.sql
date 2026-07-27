@@ -23,3 +23,6 @@ CREATE TABLE "psi_assessments" (
 
 CREATE UNIQUE INDEX "psi_assessments_entityId_financialYear_key" ON "psi_assessments"("entityId", "financialYear");
 CREATE INDEX "psi_assessments_userId_idx" ON "psi_assessments"("userId");
+
+-- Audit action for the exclusive writer of psi_assessments.
+ALTER TYPE "AuditAction" ADD VALUE 'PSI_ASSESSMENT_SAVED';

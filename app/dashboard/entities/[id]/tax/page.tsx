@@ -22,6 +22,14 @@
  *  - Security: read/write gated by tax_data.*; the entity is verified to be
  *    the caller's own SMSF server-side.
  *
+ * MON-102 (capture Stage 2, 2026-07-27): for PSI-relevant structures
+ * (company / sole trader / partnership / trusts) the former "isn't an
+ * SMSF" dead-end now renders the PSI self-assessment card
+ * (`PsiAssessmentCard`) — facts persist via
+ * GET/PUT /api/tax/entity/[id]/psi-assessment and the LIVE overlay result
+ * arrives on this page's existing position fetch as
+ * `data.crossCutting.psiByEntity[entityId]` (never re-derived client-side).
+ *
  * Deferred (later slices): per-member balances, TBC tracking, franking
  * refunds, the household-tax-page entity breakdown.
  */
@@ -37,6 +45,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { BoundaryFootnote } from '@/components/tax/BoundaryFootnote';
+import { PsiAssessmentCard, type PsiOverlayResult } from '@/components/tax/PsiAssessmentCard';
 import { ArrowLeft, Loader2, Landmark, Info, Pencil } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -95,6 +104,13 @@ const EMPTY_FORM: FormState = {
 
 const FY_OPTIONS = ['2025-26', '2024-25', '2023-24'];
 
+/**
+ * Entity types the PSI rules (ITAA 1997 Part 2-42) can apply to — income can
+ * flow through any interposed entity, and a sole trader earns it directly.
+ * SMSFs keep their dedicated fund-income view below.
+ */
+const PSI_TYPES = ['COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'DISCRETIONARY_TRUST', 'UNIT_TRUST'];
+
 export default function SmsfTaxPage() {
   const params = useParams();
   const entityId = params?.id as string;
@@ -102,8 +118,9 @@ export default function SmsfTaxPage() {
 
   const [fy, setFy] = useState('2025-26');
   const [entityName, setEntityName] = useState<string>('');
-  const [isSmsf, setIsSmsf] = useState<boolean | null>(null);
+  const [entityType, setEntityType] = useState<string | null>(null);
   const [position, setPosition] = useState<EntityTaxPosition | null>(null);
+  const [psiResult, setPsiResult] = useState<PsiOverlayResult | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editing, setEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
@@ -149,15 +166,18 @@ export default function SmsfTaxPage() {
 
       if (entityRes.ok) {
         const e = await entityRes.json();
-        setEntityName(typeof e?.name === 'string' ? e.name : 'SMSF');
-        setIsSmsf(e?.type === 'SMSF');
+        setEntityName(typeof e?.name === 'string' ? e.name : '');
+        setEntityType(typeof e?.type === 'string' ? e.type : null);
       } else {
-        setIsSmsf(false);
+        setEntityType(null);
       }
 
       if (posRes.ok) {
         const p = await posRes.json();
         setPosition(p?.data?.entityPosition ?? null);
+        // MON-102: the LIVE PSI overlay result rides the same position
+        // response (Stage-0 orchestrator path) — never re-derived here.
+        setPsiResult(p?.data?.crossCutting?.psiByEntity?.[entityId] ?? null);
       }
       if (retRes.ok) {
         const r = await retRes.json();
@@ -207,6 +227,8 @@ export default function SmsfTaxPage() {
 
   const smsf = position?.result?.smsfIncomeTax;
   const ecpiPending = position?.uncomputed?.some((u) => u.id === 'UC-SMSF-ECPI-PROPORTION');
+  const isSmsf = entityType === 'SMSF';
+  const isPsiRelevant = entityType !== null && PSI_TYPES.includes(entityType);
 
   return (
     <DashboardLayout>
@@ -219,8 +241,12 @@ export default function SmsfTaxPage() {
         </Link>
 
         <PageHeader
-          title={entityName ? `${entityName} — tax position` : 'SMSF tax position'}
-          description="An estimate of your fund's income tax for the year. Confirm final figures with your SMSF accountant or auditor."
+          title={entityName ? `${entityName} — tax position` : 'Tax position'}
+          description={
+            isPsiRelevant
+              ? 'Assess whether the personal services income rules apply to income earned through this structure. Confirm final positions with your accountant.'
+              : "An estimate of your fund's income tax for the year. Confirm final figures with your SMSF accountant or auditor."
+          }
         />
 
         {/* FY selector */}
@@ -242,10 +268,28 @@ export default function SmsfTaxPage() {
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
           </div>
-        ) : isSmsf === false ? (
+        ) : isPsiRelevant ? (
+          <>
+            {/* MON-102 — PSI self-assessment for company / sole trader / partnership / trusts */}
+            <PsiAssessmentCard
+              entityId={entityId}
+              fy={fy}
+              authHeaders={authHeaders}
+              psiResult={psiResult}
+              onSaved={load}
+            />
+            {position && (
+              <BoundaryFootnote
+                citations={position.citations as never}
+                uncomputed={position.uncomputed as never}
+                fyLabel={`FY ${fy}`}
+              />
+            )}
+          </>
+        ) : !isSmsf ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              This page is for self-managed super funds. This structure isn&apos;t an SMSF.
+              This structure doesn&apos;t have a dedicated tax view yet.
             </CardContent>
           </Card>
         ) : (

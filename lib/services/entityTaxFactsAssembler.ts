@@ -40,6 +40,7 @@
 import { prisma } from '@/lib/db';
 import type { EntityTaxFacts, FYReference, UncomputedFlag } from '@/lib/tax-engine/types';
 import type { FteIeeInput } from '@/lib/tax-engine/divisions/fteIeeClassifier';
+import type { PsiInput } from '@/lib/tax-engine/divisions/psiClassifier';
 import {
   listDistributionResolutions,
   type DistributionResolutionSummary,
@@ -167,6 +168,82 @@ export async function assembleFteIeeInput(
     select: { id: true, name: true },
   });
   return buildFteIeeInput(operative, new Map(beneficiaries.map((b) => [b.id, b.name])));
+}
+
+/**
+ * MON-102 (capture Stage 2) — map a persisted `PsiAssessment` row to the
+ * PSI classifier's input. THE all-or-nothing NUMERICS gate (Reza GO
+ * 2026-07-27): returns null unless totalPsiIncome, incomeFromLargestClient
+ * AND unrelatedClientCount are all explicitly set — an incomplete
+ * assessment can never produce a PSI attribution. Unanswered test booleans
+ * (null) pass through as undefined = not-established — the engine's own
+ * contract and the ATO's posture (a PSB test must be positively
+ * demonstrable); the null direction can only move the result toward MORE
+ * attribution (a warning), never hide one. Pure; exported for unit testing.
+ */
+export function buildPsiInput(assessment: {
+  totalPsiIncome: number | null;
+  incomeFromLargestClient: number | null;
+  unrelatedClientCount: number | null;
+  gainedClientsViaDirectAdvertising: boolean | null;
+  meetsResultsTest: boolean | null;
+  meetsEmploymentTest: boolean | null;
+  meetsBusinessPremisesTest: boolean | null;
+  hasPsbDetermination: boolean | null;
+}): PsiInput | null {
+  if (
+    assessment.totalPsiIncome === null ||
+    assessment.incomeFromLargestClient === null ||
+    assessment.unrelatedClientCount === null
+  ) {
+    return null;
+  }
+  return {
+    totalPsiIncome: assessment.totalPsiIncome,
+    incomeFromLargestClient: assessment.incomeFromLargestClient,
+    unrelatedClientCount: assessment.unrelatedClientCount,
+    ...(assessment.gainedClientsViaDirectAdvertising !== null
+      ? { gainedClientsViaDirectAdvertising: assessment.gainedClientsViaDirectAdvertising }
+      : {}),
+    ...(assessment.meetsResultsTest !== null ? { meetsResultsTest: assessment.meetsResultsTest } : {}),
+    ...(assessment.meetsEmploymentTest !== null
+      ? { meetsEmploymentTest: assessment.meetsEmploymentTest }
+      : {}),
+    ...(assessment.meetsBusinessPremisesTest !== null
+      ? { meetsBusinessPremisesTest: assessment.meetsBusinessPremisesTest }
+      : {}),
+    ...(assessment.hasPsbDetermination !== null
+      ? { hasPsbDetermination: assessment.hasPsbDetermination }
+      : {}),
+  };
+}
+
+/**
+ * MON-102 — the ONE producer of the orchestrator's `psiByEntity` input for
+ * an entity (§12.2.1). Reads the persisted per-FY `PsiAssessment`, applies
+ * the numerics gate above. Returns null (overlay inert) for: no assessment
+ * row, incomplete numerics, or an entity the caller doesn't own.
+ */
+export async function assemblePsiInput(
+  userId: string,
+  entityId: string,
+  fy: FYReference,
+): Promise<PsiInput | null> {
+  const row = await prisma.psiAssessment.findFirst({
+    where: { entityId, userId, financialYear: fy.financialYear },
+  });
+  if (!row) return null;
+  return buildPsiInput({
+    totalPsiIncome: row.totalPsiIncome === null ? null : Number(row.totalPsiIncome),
+    incomeFromLargestClient:
+      row.incomeFromLargestClient === null ? null : Number(row.incomeFromLargestClient),
+    unrelatedClientCount: row.unrelatedClientCount,
+    gainedClientsViaDirectAdvertising: row.gainedClientsViaDirectAdvertising,
+    meetsResultsTest: row.meetsResultsTest,
+    meetsEmploymentTest: row.meetsEmploymentTest,
+    meetsBusinessPremisesTest: row.meetsBusinessPremisesTest,
+    hasPsbDetermination: row.hasPsbDetermination,
+  });
 }
 
 /**
