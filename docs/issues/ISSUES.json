@@ -3072,7 +3072,7 @@
     {
       "id": "MON-102",
       "title": "PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-27",
@@ -3097,7 +3097,9 @@
         "app/dashboard/entities/[id]/tax/page.tsx (PSI types now render the assessment card instead of the \"isn't an SMSF\" dead-end; live result parsed from crossCutting.psiByEntity)",
         "components/tax/PsiAssessmentCard.tsx (questionnaire card — Stitch 73a1f751…, 9.1/10 Reza-approved; renders the LIVE overlay result, never re-derives)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1516
+      ],
       "test": "tests/tax/mon102PsiCapture.test.ts#numerics all-or-nothing gate (each numeric null → null) + null booleans → absent keys (not-established) + end-to-end $150,000 attribution worked example through both twins + PSB-determination direction + gate-closed byte-parity",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-27 on: the 9.1/10 design, the PsiAssessment schema, and both doctrines (numerics all-or-nothing; unanswered tests = not-established). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all three numerics; every other user byte-identical (locked). The not-established doctrine is asymmetric-safe: an unanswered PSB test can only move toward MORE attribution (the ATO posture — a PSB test must be positively demonstrable), stated in-UI by an amber note. Neo-sync: buildPsiInput modelled + feeds edge to classifyPsi; assembler anchors re-pinned (div7a 80→81, buildFteIeeInput 118→119 — the PsiInput import shift)."

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**102 total** · 98 open · 🔵 21 · 🟡 4 · 🟠 18 · 🟢 55 · ✅ 3
+**102 total** · 98 open · 🔵 21 · 🟡 3 · 🟠 19 · 🟢 55 · ✅ 3
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -108,7 +108,7 @@
 | MON-099 | 🟢 VERIFIED | 🟠 | yes | Div 152 small-business CGT concessions built but unwired: active-asset capital gains never get the 15-year exemption / 50% active-asset reduction / retirement exemption / rollover in the live tax position | #1503 | ✅ |
 | MON-100 | 🟢 VERIFIED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
 | MON-101 | 🟢 VERIFIED | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
-| MON-102 | 🟡 DIAGNOSED | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | — | ✅ |
+| MON-102 | 🟠 FIXING | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | #1516 | ✅ |
 
 ---
 
@@ -1873,7 +1873,7 @@ Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: th
 
 ### MON-102 — PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-27
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-27
 
 > **What was wrong:** Monitrax could not apply the personal services income rules to real data because it never asked the questions the rules turn on: how much PSI the structure earned, how much came from its largest client, how many unrelated clients it served, and whether any of the ATO's personal-services-business tests are met.
 >
@@ -1884,6 +1884,7 @@ Capture Stage 1 (the first overlay made live-capable). Reza GO 2026-07-26 on: th
 - **Root cause:** `lib/services/entityTaxFactsAssembler.ts:184`
 - **Neomatrix:** `engine.services.entityTaxFactsAssembler.buildPsiInput`, `engine.tax.psi.classifyPsi`
 - **Downstream consumers (§19.4):** `prisma PsiAssessment (new model, all fact columns nullable — migration 20260727000000; + AuditAction.PSI_ASSESSMENT_SAVED)`, `app/api/tax/entity/[entityId]/psi-assessment/route.ts GET/PUT (ownership-guarded persistence; null-preserving coercions — null = never-asked, never defaulted)`, `lib/services/entityTaxFactsAssembler.ts (buildPsiInput — the ONE producer with the numerics all-or-nothing gate; null test booleans → absent keys = not-established; assemblePsiInput reads the persisted row)`, `app/api/tax/entity/[entityId]/route.ts GET (feeds psiByEntity into the Stage-0 orchestrator path alongside fteIeeByEntity)`, `app/dashboard/entities/[id]/tax/page.tsx (PSI types now render the assessment card instead of the "isn't an SMSF" dead-end; live result parsed from crossCutting.psiByEntity)`, `components/tax/PsiAssessmentCard.tsx (questionnaire card — Stitch 73a1f751…, 9.1/10 Reza-approved; renders the LIVE overlay result, never re-derives)`
+- **Fix PR(s):** #1516
 - **Holistic test (§19.4):** `tests/tax/mon102PsiCapture.test.ts#numerics all-or-nothing gate (each numeric null → null) + null booleans → absent keys (not-established) + end-to-end $150,000 attribution worked example through both twins + PSB-determination direction + gate-closed byte-parity`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
