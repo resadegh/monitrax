@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**103 total** · 44 open · 🔵 21 · 🟡 4 · 🟠 19 · 🟢 0 · ✅ 58
+**103 total** · 44 open · 🔵 21 · 🟡 3 · 🟠 20 · 🟢 0 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -109,7 +109,7 @@
 | MON-100 | ✅ CLOSED | 🟠 | yes | Entity tax route bypasses the master orchestrator: /api/tax/entity/[entityId] calls the entity engine directly, so the wired PSI/FTE-IEE/Div152 overlays can never reach the live position | #1506 | ✅ |
 | MON-101 | ✅ CLOSED | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
 | MON-102 | 🟠 FIXING | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | #1516 | ✅ |
-| MON-103 | 🟡 DIAGNOSED | 🟠 | yes | Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data | — | ✅ |
+| MON-103 | 🟠 FIXING | 🟠 | yes | Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data | #1517 | ✅ |
 
 ---
 
@@ -1893,7 +1893,7 @@ Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-
 
 ### MON-103 — Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-27
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-27
 
 > **What was wrong:** Monitrax could not apply the small-business CGT concessions to real data because it never asked the questions the rules turn on: the capital gain from the disposal, how long the asset was held, whether it was an active business asset, the size-test figures (net assets and turnover), whether the sale is retirement-connected, and which concessions the owner elects.
 >
@@ -1904,6 +1904,7 @@ Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-
 - **Root cause:** `lib/services/entityTaxFactsAssembler.ts:264`
 - **Neomatrix:** `engine.services.entityTaxFactsAssembler.buildDiv152Input`, `engine.tax.div152.applyDiv152`
 - **Downstream consumers (§19.4):** `prisma Div152Assessment (new model, all fact columns nullable — migration 20260727120000; + AuditAction.DIV152_ASSESSMENT_SAVED)`, `app/api/tax/entity/[entityId]/div152-assessment/route.ts GET/PUT (ownership-guarded persistence; null-preserving coercions — null = never-asked, never defaulted)`, `lib/services/entityTaxFactsAssembler.ts (buildDiv152Input — the ONE producer with the six-fact all-or-nothing gate + the elected-exemption-requires-lifetime-used rule; assembleDiv152Input reads the persisted row)`, `app/api/tax/entity/[entityId]/route.ts GET (feeds div152ByEntity into the Stage-0 orchestrator path alongside the FTE + PSI feeds)`, `app/dashboard/entities/[id]/tax/page.tsx (PSI-type entities render the Div 152 card below the PSI card; live result parsed from crossCutting.div152ByEntity)`, `components/tax/Div152AssessmentCard.tsx (questionnaire card — Stitch 8ff4092f…, 9.2/10; renders the LIVE overlay result step ladder, never re-derives)`
+- **Fix PR(s):** #1517
 - **Holistic test (§19.4):** `tests/tax/mon103Div152Capture.test.ts#six-fact all-or-nothing gate (each numeric + each eligibility null → null) + elected-exemption-requires-lifetime-used + unanswered elections → absent keys (engine defaults) + end-to-end $120k→$0 ladder worked example through both twins + 15-year direction + gate-closed byte-parity`
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 

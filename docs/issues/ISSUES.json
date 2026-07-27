@@ -3162,7 +3162,7 @@
     {
       "id": "MON-103",
       "title": "Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-27",
@@ -3187,7 +3187,9 @@
         "app/dashboard/entities/[id]/tax/page.tsx (PSI-type entities render the Div 152 card below the PSI card; live result parsed from crossCutting.div152ByEntity)",
         "components/tax/Div152AssessmentCard.tsx (questionnaire card — Stitch 8ff4092f…, 9.2/10; renders the LIVE overlay result step ladder, never re-derives)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        1517
+      ],
       "test": "tests/tax/mon103Div152Capture.test.ts#six-fact all-or-nothing gate (each numeric + each eligibility null → null) + elected-exemption-requires-lifetime-used + unanswered elections → absent keys (engine defaults) + end-to-end $120k→$0 ladder worked example through both twins + 15-year direction + gate-closed byte-parity",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Capture Stage 3 (Div 152 — the third and FINAL overlay made live-capable; the capture feature is complete). Reza standing GO 2026-07-27 ('go with stage 3'); the §18.8 9.2/10 Stitch design presented before any React (v1 8.3 → v3: emerald control/CTA/panel leakage replaced with the indigo identity). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all six facts (+ lifetime-used when the exemption is elected); every other user byte-identical (locked). The eligibility booleans are gate-required because NEITHER default is safe (false denies real concessions on display; true fabricates them); elections carry the engine's own contract defaults; the rollover election reports as deferred with the engine's UC-DIV152-ROLLOVER flag (replacement-asset tracking is the engine's own named future sub-PR). Neo-sync: buildDiv152Input modelled + feeds edge to applyDiv152; all three assembler anchors re-pinned +1 (the Div152Input import shift: div7a 81→82, buildFteIeeInput 119→120, buildPsiInput 184→185)."
