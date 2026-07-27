@@ -46,6 +46,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { BoundaryFootnote } from '@/components/tax/BoundaryFootnote';
 import { PsiAssessmentCard, type PsiOverlayResult } from '@/components/tax/PsiAssessmentCard';
+import { Div152AssessmentCard, type Div152OverlayResult } from '@/components/tax/Div152AssessmentCard';
 import { ArrowLeft, Loader2, Landmark, Info, Pencil } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -121,6 +122,7 @@ export default function SmsfTaxPage() {
   const [entityType, setEntityType] = useState<string | null>(null);
   const [position, setPosition] = useState<EntityTaxPosition | null>(null);
   const [psiResult, setPsiResult] = useState<PsiOverlayResult | null>(null);
+  const [div152Result, setDiv152Result] = useState<Div152OverlayResult | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editing, setEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
@@ -175,9 +177,10 @@ export default function SmsfTaxPage() {
       if (posRes.ok) {
         const p = await posRes.json();
         setPosition(p?.data?.entityPosition ?? null);
-        // MON-102: the LIVE PSI overlay result rides the same position
+        // MON-102/103: the LIVE overlay results ride the same position
         // response (Stage-0 orchestrator path) — never re-derived here.
         setPsiResult(p?.data?.crossCutting?.psiByEntity?.[entityId] ?? null);
+        setDiv152Result(p?.data?.crossCutting?.div152ByEntity?.[entityId] ?? null);
       }
       if (retRes.ok) {
         const r = await retRes.json();
@@ -276,6 +279,14 @@ export default function SmsfTaxPage() {
               fy={fy}
               authHeaders={authHeaders}
               psiResult={psiResult}
+              onSaved={load}
+            />
+            {/* MON-103 — Div 152 small-business CGT concession self-assessment (same entity types) */}
+            <Div152AssessmentCard
+              entityId={entityId}
+              fy={fy}
+              authHeaders={authHeaders}
+              div152Result={div152Result}
               onSaved={load}
             />
             {position && (

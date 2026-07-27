@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Small business CGT concessions Assessment</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dim": "#F1EFE8",
+                        "secondary-container": "#d9dff4",
+                        "outline": "#6e7b6c",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-primary-fixed": "#002109",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-primary": "#62df7d",
+                        "background": "#f4fcf0",
+                        "on-background": "#171d16",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#eff6ea",
+                        "surface-ivory": "#FAFAF7",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-tertiary-container": "#fdfcff",
+                        "trail-indigo": "#6366F1",
+                        "primary-fixed": "#7ffc97",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-surface": "#171d16",
+                        "error": "#ba1a1a",
+                        "trail-amber": "#F59E0B",
+                        "surface": "#f4fcf0",
+                        "primary-container": "#00873a",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-variant": "#dde5d9",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#d3e4fe",
+                        "error-red": "#DC2626",
+                        "primary": "#006b2c",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-container-high": "#e3eadf",
+                        "surface-container": "#e9f0e5",
+                        "inverse-surface": "#2b322b",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-bright": "#f4fcf0",
+                        "secondary": "#585e6f",
+                        "trail-violet": "#8B5CF6",
+                        "tertiary": "#4d5d73",
+                        "on-primary-container": "#f7fff2",
+                        "on-primary": "#ffffff",
+                        "surface-container-highest": "#dde5d9",
+                        "surface-tint": "#006e2d",
+                        "outline-variant": "#bdcaba",
+                        "secondary-fixed": "#dce2f6",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "trail-sky": "#0EA5E9",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "outline-slate": "#94A3B8",
+                        "tertiary-container": "#66768d",
+                        "on-secondary-container": "#5c6274",
+                        "trail-emerald": "#16A34A"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "48px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "48px",
+                        "unit": "4px",
+                        "container-max": "1280px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                        "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #FAFAF7; }
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 22px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(11, 18, 32, 0.04), 0 2px 4px -1px rgba(11, 18, 32, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(to right, #0EA5E9, #6366F1);
+        }
+        .input-premium {
+            border: 1.5px solid #94A3B8;
+            border-radius: 12px;
+            padding: 12px 16px;
+            width: 100%;
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.9);
+            font-variant-numeric: tabular-nums;
+        }
+        .input-premium:focus {
+            border-color: #16A34A;
+            outline: none;
+            box-shadow: none;
+        }
+        .pill-group {
+            display: inline-flex;
+            background: #F1EFE8;
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .pill {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #3e4a3d;
+        }
+        .pill.active {
+            background: #6366F1;
+            color: white;
+            box-shadow: 0 1px 3px rgba(11,18,32,0.1);
+        }
+        .pill-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .pill-toggle .option {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            background: #F1EFE8;
+            color: #5c6274;
+            transition: all 0.2s;
+        }
+        .pill-toggle .option.selected {
+            background: #6366F1;
+            color: white;
+        }
+        .stepladder-item {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 12px;
+        }
+        .stepladder-item::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 24px;
+            bottom: -12px;
+            width: 1px;
+            background-color: #dde5d9;
+        }
+        .stepladder-item:last-child::before {
+            display: none;
+        }
+        .stepladder-dot {
+            position: absolute;
+            left: 2px;
+            top: 8px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background-color: #6366F1;
+            border: 2px solid white;
+        }
+        .stepladder-item.final .stepladder-dot {
+            background-color: #6366F1;
+            width: 13px;
+            height: 13px;
+            left: 0;
+            top: 6px;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-on-surface antialiased bg-surface-ivory pb-20">
+<!-- Top Navigation (Shell) -->
+<nav class="fixed top-0 right-0 left-0 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80 hidden md:flex">
+<div class="flex items-center gap-4">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Monitrax</span>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div class="flex gap-6">
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors" href="#">Home</a>
+<a class="text-primary font-label-md text-label-md font-bold border-b-2 border-primary pb-1" href="#">Tax</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors" href="#">Wealth</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">settings</span>
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center cursor-pointer">
+<span class="font-label-md text-on-secondary-fixed-variant">JD</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-4 md:px-8 max-w-[800px] mx-auto">
+<div class="glass-card mb-8">
+<!-- Header -->
+<div class="p-6 md:p-8 border-b border-surface-variant">
+<div class="flex items-start gap-5">
+<div class="w-11 h-11 rounded-full bg-gradient-to-br from-trail-sky to-trail-indigo flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">work</span>
+</div>
+<div>
+<div class="font-eyebrow text-eyebrow text-transparent bg-clip-text bg-gradient-to-r from-trail-sky to-trail-indigo mb-2">SMALL BUSINESS CGT CONCESSIONS · DIV 152</div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-2">Sold a business asset this year?</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Answer these to see which concessions could reduce the capital gain. ITAA 1997 Div 152.</p>
+</div>
+</div>
+</div>
+<div class="p-6 md:p-8 space-y-10">
+<!-- Section 1 -->
+<section>
+<h2 class="font-eyebrow text-eyebrow text-tertiary-container mb-6">THE DISPOSAL</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-2">Capital gain (after any 50% CGT discount)</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">$</span>
+<input class="input-premium pl-8" type="text" value="120,000"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-2">Months the asset was held</label>
+<input class="input-premium" type="text" value="64"/>
+</div>
+</div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 py-3 border-t border-surface-variant/50">
+<span class="font-label-md text-label-md text-on-surface">Was it an active business asset?</span>
+<div class="pill-group">
+<div class="pill active">Yes</div>
+<div class="pill">No</div>
+<div class="pill">Not sure</div>
+</div>
+</div>
+</section>
+<!-- Section 2 -->
+<section>
+<h2 class="font-eyebrow text-eyebrow text-tertiary-container mb-6">THE SIZE TESTS</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-2">Net assets of you + connected entities</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">$</span>
+<input class="input-premium pl-8" type="text" value="4,200,000"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-2">Aggregated annual turnover</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">$</span>
+<input class="input-premium pl-8" placeholder="0" type="text"/>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 text-outline-slate inline-flex">
+<span class="material-symbols-outlined text-[18px]">info</span>
+<span class="font-body-sm text-body-sm">Either test passing satisfies the basic conditions.</span>
+</div>
+</section>
+<!-- Section 3 -->
+<section>
+<h2 class="font-eyebrow text-eyebrow text-tertiary-container mb-6">RETIREMENT &amp; ELECTIONS</h2>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<span class="font-label-md text-label-md text-on-surface">Is the sale connected to retirement or permanent incapacity?</span>
+<div class="pill-group">
+<div class="pill active">Yes</div>
+<div class="pill">No</div>
+<div class="pill">Not sure</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between py-3 border-b border-surface-variant/30">
+<span class="font-body-md text-body-md text-on-surface">Apply the 50% active asset reduction</span>
+<div class="pill-toggle">
+<div class="option selected">Yes</div>
+<div class="option">No</div>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between py-3">
+<span class="font-body-md text-body-md text-on-surface">Apply the retirement exemption</span>
+<div class="pill-toggle">
+<div class="option selected">Yes</div>
+<div class="option">No</div>
+</div>
+</div>
+<!-- Conditional Input -->
+<div class="ml-4 pl-4 border-l-2 border-surface-variant py-2 mt-1">
+<label class="block font-label-md text-label-md text-on-surface mb-2">Retirement exemption already used in your lifetime</label>
+<div class="relative max-w-[240px]">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">$</span>
+<input class="input-premium pl-8 py-2" type="text" value="400,000"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between py-3 border-t border-surface-variant/30">
+<span class="font-body-md text-body-md text-on-surface">Roll the remaining gain into a replacement asset</span>
+<div class="pill-toggle">
+<div class="option">Yes</div>
+<div class="option selected bg-surface-dim text-on-surface-variant">No</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 4 Doctrine -->
+<div class="bg-surface-dim rounded-[12px] p-4 flex items-start gap-3 border border-outline-variant/30">
+<span class="material-symbols-outlined text-trail-amber shrink-0 mt-0.5">warning</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                        This assessment only computes once every question above is answered. "Not sure" keeps the concessions off — nothing is ever assumed.
+                    </p>
+</div>
+</div>
+<!-- Section 5 Outcome -->
+<div class="bg-surface-ivory p-6 md:p-8 border-t border-surface-variant/30">
+<h2 class="font-eyebrow text-eyebrow text-tertiary-container mb-6">ASSESSED OUTCOME</h2>
+<div class="mb-8 pl-2">
+<div class="stepladder-item">
+<div class="stepladder-dot"></div>
+<div class="flex justify-between items-center w-full">
+<span class="font-body-md text-body-md text-on-surface-variant">Gain after CGT discount</span>
+<span class="font-body-md text-body-md text-on-surface font-medium tabular-nums">$120,000</span>
+</div>
+</div>
+<div class="stepladder-item">
+<div class="stepladder-dot"></div>
+<div class="flex justify-between items-center w-full">
+<span class="font-body-md text-body-md text-on-surface-variant">50% active asset reduction <span class="text-tertiary-container text-xs ml-1">(s152-205)</span></span>
+<span class="font-body-md text-body-md text-on-secondary-fixed-variant tabular-nums">-$60,000</span>
+</div>
+</div>
+<div class="stepladder-item">
+<div class="stepladder-dot"></div>
+<div class="flex justify-between items-center w-full">
+<span class="font-body-md text-body-md text-on-surface-variant">Retirement exemption <span class="text-tertiary-container text-xs ml-1">(s152-305)</span></span>
+<span class="font-body-md text-body-md text-on-secondary-fixed-variant tabular-nums">-$60,000</span>
+</div>
+</div>
+<div class="stepladder-item final pt-2">
+<div class="stepladder-dot"></div>
+<div class="flex justify-between items-center w-full">
+<span class="font-label-md text-label-md text-on-surface font-bold">Assessable gain</span>
+<span class="font-data-lg text-data-lg text-on-surface tabular-nums">$0</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">gavel</span>
+                        ITAA 1997 Div 152 · s152-10 basic conditions met
+                    </div>
+<div class="flex items-center gap-3 w-full md:w-auto">
+<button class="flex-1 md:flex-none px-6 py-3 rounded-xl border-1.5 border-outline-slate text-on-surface font-label-md text-label-md hover:bg-surface-dim transition-colors">
+                            Clear
+                        </button>
+<button class="flex-1 md:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-trail-sky to-trail-indigo text-white font-label-md text-label-md shadow-sm hover:opacity-90 transition-colors">
+                            Save assessment
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

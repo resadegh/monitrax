@@ -3158,6 +3158,39 @@
       "test": "tests/tax/mon102PsiCapture.test.ts#numerics all-or-nothing gate (each numeric null → null) + null booleans → absent keys (not-established) + end-to-end $150,000 attribution worked example through both twins + PSB-determination direction + gate-closed byte-parity",
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
       "notes": "Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-27 on: the 9.1/10 design, the PsiAssessment schema, and both doctrines (numerics all-or-nothing; unanswered tests = not-established). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all three numerics; every other user byte-identical (locked). The not-established doctrine is asymmetric-safe: an unanswered PSB test can only move toward MORE attribution (the ATO posture — a PSB test must be positively demonstrable), stated in-UI by an amber note. Neo-sync: buildPsiInput modelled + feeds edge to classifyPsi; assembler anchors re-pinned (div7a 80→81, buildFteIeeInput 118→119 — the PsiInput import shift)."
+    },
+    {
+      "id": "MON-103",
+      "title": "Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data",
+      "status": "DIAGNOSED",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-27",
+      "area": "tax",
+      "plain": {
+        "issue": "Monitrax could not apply the small-business CGT concessions to real data because it never asked the questions the rules turn on: the capital gain from the disposal, how long the asset was held, whether it was an active business asset, the size-test figures (net assets and turnover), whether the sale is retirement-connected, and which concessions the owner elects.",
+        "fix": "The entity tax page now shows a Div 152 self-assessment card for companies, sole traders, partnerships and trusts: the disposal facts, the two size tests, the retirement question and the three elections. The answers persist per financial year and one assembler feeds them into the wired concession engine — with an all-or-nothing safety gate: nothing computes until every question is answered, and electing the retirement exemption requires stating how much of the $500,000 lifetime cap is already used (never assumed zero).",
+        "check": "On an entity with a saved assessment — $120,000 gain, $4.2M net assets, active asset, 64 months held, retirement-connected, reduction + retirement exemption elected with $400,000 lifetime used — the entity tax view shows the step ladder ending in 'Assessable gain $0' with the law citations (s152-205, s152-305). Leave any question as 'Not sure' and nothing computes — today's numbers stay identical. Your own data has no Div 152 assessment saved, so nothing moves until you fill the card in."
+      },
+      "rootCause": [
+        "lib/services/entityTaxFactsAssembler.ts:264"
+      ],
+      "semanticKeys": [
+        "engine.services.entityTaxFactsAssembler.buildDiv152Input",
+        "engine.tax.div152.applyDiv152"
+      ],
+      "downstreamConsumers": [
+        "prisma Div152Assessment (new model, all fact columns nullable — migration 20260727120000; + AuditAction.DIV152_ASSESSMENT_SAVED)",
+        "app/api/tax/entity/[entityId]/div152-assessment/route.ts GET/PUT (ownership-guarded persistence; null-preserving coercions — null = never-asked, never defaulted)",
+        "lib/services/entityTaxFactsAssembler.ts (buildDiv152Input — the ONE producer with the six-fact all-or-nothing gate + the elected-exemption-requires-lifetime-used rule; assembleDiv152Input reads the persisted row)",
+        "app/api/tax/entity/[entityId]/route.ts GET (feeds div152ByEntity into the Stage-0 orchestrator path alongside the FTE + PSI feeds)",
+        "app/dashboard/entities/[id]/tax/page.tsx (PSI-type entities render the Div 152 card below the PSI card; live result parsed from crossCutting.div152ByEntity)",
+        "components/tax/Div152AssessmentCard.tsx (questionnaire card — Stitch 8ff4092f…, 9.2/10; renders the LIVE overlay result step ladder, never re-derives)"
+      ],
+      "fixPRs": [],
+      "test": "tests/tax/mon103Div152Capture.test.ts#six-fact all-or-nothing gate (each numeric + each eligibility null → null) + elected-exemption-requires-lifetime-used + unanswered elections → absent keys (engine defaults) + end-to-end $120k→$0 ladder worked example through both twins + 15-year direction + gate-closed byte-parity",
+      "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
+      "notes": "Capture Stage 3 (Div 152 — the third and FINAL overlay made live-capable; the capture feature is complete). Reza standing GO 2026-07-27 ('go with stage 3'); the §18.8 9.2/10 Stitch design presented before any React (v1 8.3 → v3: emerald control/CTA/panel leakage replaced with the indigo identity). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all six facts (+ lifetime-used when the exemption is elected); every other user byte-identical (locked). The eligibility booleans are gate-required because NEITHER default is safe (false denies real concessions on display; true fabricates them); elections carry the engine's own contract defaults; the rollover election reports as deferred with the engine's UC-DIV152-ROLLOVER flag (replacement-asset tracking is the engine's own named future sub-PR). Neo-sync: buildDiv152Input modelled + feeds edge to applyDiv152; all three assembler anchors re-pinned +1 (the Div152Input import shift: div7a 81→82, buildFteIeeInput 119→120, buildPsiInput 184→185)."
     }
   ]
 }

@@ -37,7 +37,7 @@ import {
   getTaxYearConfig,
   getCurrentTaxYearConfig,
 } from '@/lib/tax-engine/config/taxYearConfig';
-import { assembleEntityTaxFacts, assembleFteIeeInput, assemblePsiInput } from '@/lib/services/entityTaxFactsAssembler';
+import { assembleEntityTaxFacts, assembleFteIeeInput, assemblePsiInput, assembleDiv152Input } from '@/lib/services/entityTaxFactsAssembler';
 import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   EntityTaxFacts,
@@ -100,9 +100,11 @@ export const GET = withPermission<RouteContext>(
       // facts / not a trust) = overlay skipped = byte-identical response.
       // MON-102 (capture Stage 2): the PSI overlay input from the ONE
       // assembler producer — same null-= -inert contract as FTE/IEE.
-      const [fteInput, psiInput] = await Promise.all([
+      // MON-103 (capture Stage 3): the Div 152 overlay input — same contract.
+      const [fteInput, psiInput, div152Input] = await Promise.all([
         assembleFteIeeInput(auth.userId, entityId, fy),
         assemblePsiInput(auth.userId, entityId, fy),
+        assembleDiv152Input(auth.userId, entityId, fy),
       ]);
 
       const master = buildMasterTaxPositionDecimal({
@@ -111,6 +113,7 @@ export const GET = withPermission<RouteContext>(
         entities: [facts],
         ...(fteInput ? { fteIeeByEntity: { [entityId]: fteInput } } : {}),
         ...(psiInput ? { psiByEntity: { [entityId]: psiInput } } : {}),
+        ...(div152Input ? { div152ByEntity: { [entityId]: div152Input } } : {}),
       });
       const entityPosition = master.entities[0];
 
