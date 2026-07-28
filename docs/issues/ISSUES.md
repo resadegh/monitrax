@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**111 total** · 52 open · 🔵 23 · 🟡 3 · 🟠 26 · 🟢 0 · ✅ 58
+**111 total** · 52 open · 🔵 22 · 🟡 3 · 🟠 27 · 🟢 0 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -112,7 +112,7 @@
 | MON-103 | 🟠 FIXING | 🟠 | yes | Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data | #1517 | ✅ |
 | MON-104 | 🟠 FIXING | 🟠 | no | Capture write path persists the raw ?fy= query while the read path resolves FY through the config normaliser — a disagreeing FY saves an orphaned, permanently invisible capture row | #1519 | ✅ |
 | MON-105 | 🟠 FIXING | 🟠 | no | Div 152 capture card gated behind PSI_TYPES — INDIVIDUAL / PERSONAL_NAME / fixed, hybrid + testamentary trusts and deceased estates can never capture Div 152 facts | #1519 | ✅ |
-| MON-106 | 🔵 OPEN | 🟠 | yes | No FY2026-27 tax year config — engine silently falls back to FY25-26 brackets; the $18,201–$45,000 band taxed at 16% instead of the legislated 15% (≈$268 overstatement on the live position) | — | — |
+| MON-106 | 🟠 FIXING | 🟠 | yes | No FY2026-27 tax year config — engine silently falls back to FY25-26 brackets; the $18,201–$45,000 band taxed at 16% instead of the legislated 15% (≈$268 overstatement on the live position) | #1520 | ✅ |
 | MON-107 | 🟠 FIXING | 🟡 | no | PSI card hardcodes s86-15 for every outcome branch — the $0 PSB (non-attribution) branch cites the attribution provision; the engine citations array is discarded | #1519 | ✅ |
 | MON-108 | 🟠 FIXING | 🟢 | no | Div 152 outcome rows render the citation twice — the engine embeds it in the concession label AND emits it as a separate citation field | #1519 | ✅ |
 | MON-109 | 🟠 FIXING | 🟡 | no | Legislated tax thresholds re-typed as literals outside the tax engine — 0.8 one-client test (classifier inline + PSI card), 180 months, $6M / $2M / $500k display copy on the Div 152 card | #1519 | ✅ |
@@ -1958,16 +1958,22 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 
 ### MON-106 — No FY2026-27 tax year config — engine silently falls back to FY25-26 brackets; the $18,201–$45,000 band taxed at 16% instead of the legislated 15% (≈$268 overstatement on the live position)
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-28
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-28
 
 > **What was wrong:** The tax page header says Financial Year 2026-27 but the rates underneath are last year's — so the estimated tax owing is about $268 higher than the law says for this year.
 >
+> **What changed:** This year’s (FY2026-27) official tax rates were added — including the legislated cut of the $18,201–$45,000 band from 16% to 15% — and the app now announces loudly when a year’s rates are missing instead of quietly using last year’s. A build guard makes a missing new-year config impossible to ship past 1 July.
+>
+> **What you should see:** The tax page header, bracket table and footnote all say FY26-27 now, and estimated tax owing drops by about $268 (tax on income $35,146 → $34,878). Every other figure (Medicare $2,909, deductions, income) stays put.
+
 - **Root cause:** `lib/tax-engine/config/taxYearConfig.ts:349`, `lib/tax-engine/config/taxYearConfig.ts:366`
 - **Neomatrix:** `engine.taxYearConfig.getCurrentTaxYearConfig`, `input.taxYearConfig.brackets`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `lib/tax-engine/config/taxYearConfig.ts (TAX_YEAR_2026_27 — THE one config producer; registry + resolver serve it)`, `lib/tax-engine/core/incomeTaxCalculator.ts (brackets consumed — both twins)`, `lib/tax-engine/position/taxPositionCalculator.ts (Float + Decimal — configFinancialYear/configStale stated by the engine)`, `lib/tax-engine/position/userTaxPosition.ts → /api/tax/position → /dashboard/tax (header ≡ bracket table ≡ footnote all FY26-27 now; amber stale banner when a requested FY has no config)`, `/cashflow + /dashboard/cfo tax figures (same canonical bundle — move by the same −$268)`, `app/api/tax/config/route.ts (availableFinancialYears now includes 2026-27)`, `app/api/tax/entity/[entityId]/* capture routes (2026-27 becomes a configured, writable FY under the MON-104 resolver)`, `tests/golden/ring2.taxParity.test.ts (golden netTax re-pinned 32,284 → 32,016 — the same legislated −$268, documented at the pin)`
+- **Fix PR(s):** #1520
+- **Holistic test (§19.4):** `tests/tax/mon106Fy2026_27Config.test.ts#clock-derived current-FY-config CI guard + Ring-0 bracket walk ($145,426: 35,145.62 → 34,877.62, exactly −268.00) + bracket-table integrity + configStale contract both twins`
 - **Detail:** `neoaudit-run:VR-037`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/config/taxYearConfig.ts:349. Evidence/run: VR-037.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/config/taxYearConfig.ts:349. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (root: no TAX_YEAR_2026_27 entry + silent latest-config fallback) → FIXING on #1520 (PR-B, stacked on #1519; Reza's number-changing merge click is the gate). Ring-0 walk: FY25-26 35,145.62 / FY26-27 34,877.62 / delta exactly 268.00 on taxable 145,426. Old totals NOT preserved — they were wrong. Supersedes backlog item 34's 2026-06-15 deferral (row flipped in the same PR). Discovered follow-up (surfaced, not fixed here): getUserTaxPosition computes historical ?financialYear= requests on the CURRENT config — the new configStale banner makes that visible; candidate future issue.
 
 ### MON-107 — PSI card hardcodes s86-15 for every outcome branch — the $0 PSB (non-attribution) branch cites the attribution provision; the engine citations array is discarded
 
