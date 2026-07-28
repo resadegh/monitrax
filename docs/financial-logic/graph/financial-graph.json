@@ -5089,7 +5089,7 @@
       "kind": "engine",
       "label": "Entity tax-facts: Div 7A loans",
       "file": "lib/services/entityTaxFactsAssembler.ts",
-      "line": 81,
+      "line": 82,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -5100,7 +5100,7 @@
       "authority": "Feeds the Div 7A classifier (ITAA 1936 Div 7A).",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:81 (NI-4 modelled; fixture pending)",
+      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:82 (NI-4 modelled; fixture pending)",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
@@ -6458,7 +6458,7 @@
       "kind": "engine",
       "label": "FTE/IEE input assembler (the all-or-nothing capture gate)",
       "file": "lib/services/entityTaxFactsAssembler.ts",
-      "line": 119,
+      "line": 120,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -6466,7 +6466,7 @@
       "semanticKey": null,
       "produces": "FteIeeInput | null — maps an operative DistributionResolution's allocations (MON-101 captured facts: Sch 2F relationship, hasQuotedTfn, coveredByIee) to the classifier's input. Null unless the family-trust election is ON and EVERY allocated beneficiary has relationship + hasQuotedTfn explicitly set (the all-or-nothing safe default, Reza GO 2026-07-26 — a null never fabricates a 47% classification). distributionAmount = presentlyEntitledShare × trustNetIncome (the same s95 base as the Div 6 allocation).",
       "formula": "gate: hasFamilyTrustElection && every(relationship != null && hasQuotedTfn != null); distributionAmount = share × trustNetIncome",
-      "authority": "ITAA 1936 Sch 2F (facts feed engine.tax.fteIee.classifyFteIeeDistributions — the law lives in the classifier, the assembler performs NO tax arithmetic). Wired to the live route via assembleFteIeeInput (:149) → /api/tax/entity/[entityId] GET → buildMasterTaxPositionDecimal input.fteIeeByEntity.",
+      "authority": "ITAA 1936 Sch 2F (facts feed engine.tax.fteIee.classifyFteIeeDistributions — the law lives in the classifier, the assembler performs NO tax arithmetic). Wired to the live route via assembleFteIeeInput (:150) → /api/tax/entity/[entityId] GET → buildMasterTaxPositionDecimal input.fteIeeByEntity.",
       "inputs": [
         "DistributionAllocation.relationship (enum, null=never-asked)",
         "DistributionAllocation.hasQuotedTfn (bool?, null=Not sure)",
@@ -6476,7 +6476,7 @@
         "trustNetIncome (AUD/year)"
       ],
       "astHash": null,
-      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:119 + tests/tax/mon101FteIeeCapture.test.ts",
+      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:120 + tests/tax/mon101FteIeeCapture.test.ts",
       "workedExample": "election ON; outside-family 40% of $100,000 without IEE → FTDT 0.47 × 40,000 = $18,800 (locked in the ratchet)",
       "verifiedDate": "2026-07-26",
       "status": "documented"
@@ -6486,7 +6486,7 @@
       "kind": "engine",
       "label": "PSI input assembler (the numerics all-or-nothing capture gate)",
       "file": "lib/services/entityTaxFactsAssembler.ts",
-      "line": 184,
+      "line": 185,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -6494,7 +6494,7 @@
       "semanticKey": null,
       "produces": "PsiInput | null — maps the persisted per-FY PsiAssessment (MON-102 captured facts) to the classifier's input. Null unless ALL THREE numerics (totalPsiIncome, incomeFromLargestClient, unrelatedClientCount) are explicitly set (the numerics all-or-nothing safe default, Reza GO 2026-07-27 — a partial questionnaire never produces a partial number). Unanswered test booleans (null) map to ABSENT keys = not-established (the engine's own default and the ATO posture: a PSB test must be positively demonstrable) — asymmetric-safe, can only move toward MORE attribution.",
       "formula": "gate: totalPsiIncome != null && incomeFromLargestClient != null && unrelatedClientCount != null; test booleans spread only when non-null (null → undefined)",
-      "authority": "ITAA 1997 Part 2-42 (facts feed engine.tax.psi.classifyPsi — the law lives in the classifier, the assembler performs NO tax arithmetic). Wired to the live route via assemblePsiInput (:227) → /api/tax/entity/[entityId] GET → buildMasterTaxPositionDecimal input.psiByEntity.",
+      "authority": "ITAA 1997 Part 2-42 (facts feed engine.tax.psi.classifyPsi — the law lives in the classifier, the assembler performs NO tax arithmetic). Wired to the live route via assemblePsiInput (:228) → /api/tax/entity/[entityId] GET → buildMasterTaxPositionDecimal input.psiByEntity.",
       "inputs": [
         "PsiAssessment.totalPsiIncome (AUD/year, null=never-asked)",
         "PsiAssessment.incomeFromLargestClient (AUD/year, null=never-asked)",
@@ -6504,8 +6504,37 @@
         "PsiAssessment.hasPsbDetermination (bool?, null=Not sure)"
       ],
       "astHash": null,
-      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:184 + tests/tax/mon102PsiCapture.test.ts",
+      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:185 + tests/tax/mon102PsiCapture.test.ts",
       "workedExample": "$150,000 PSI, $135,000 (90%) largest client, no tests established → 80%-one-client FAILS → NOT PSB → $150,000 attributed per s86-15 (locked in the ratchet)",
+      "verifiedDate": "2026-07-27",
+      "status": "documented"
+    },
+    {
+      "id": "engine.services.entityTaxFactsAssembler.buildDiv152Input",
+      "kind": "engine",
+      "label": "Div 152 input assembler (the all-or-nothing capture gate)",
+      "file": "lib/services/entityTaxFactsAssembler.ts",
+      "line": 264,
+      "layer": "service",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Div152Input | null — maps the persisted per-FY Div152Assessment (MON-103 captured facts) to the concession engine's input. Null unless the FOUR numerics (gainAfterDiv115, maxNetAssetValue, aggregatedTurnover, monthsHeld) AND the TWO eligibility booleans (isActiveAsset, isRetirementOrIncapacity) are all explicitly set (the all-or-nothing safe default, Reza standing GO 2026-07-27 — for the eligibility booleans NEITHER default is safe: false denies real concessions on display, true fabricates them). Elections spread only when answered (null → the engine's own contract defaults); electing the retirement exemption REQUIRES retirementExemptionUsedToDate (a blank never assumes $0 of the $500k lifetime cap used).",
+      "formula": "gate: all four numerics != null && isActiveAsset != null && isRetirementOrIncapacity != null && !(electRetirementExemption && usedToDate == null); elections spread only when non-null",
+      "authority": "ITAA 1997 Div 152 (facts feed engine.tax.div152.applyDiv152 — the law lives in the engine, the assembler performs NO tax arithmetic). Wired to the live route via assembleDiv152Input (:319) → /api/tax/entity/[entityId] GET → buildMasterTaxPositionDecimal input.div152ByEntity.",
+      "inputs": [
+        "Div152Assessment.gainAfterDiv115 (AUD, post-Div-115, null=never-asked)",
+        "Div152Assessment.maxNetAssetValue (AUD, null=never-asked)",
+        "Div152Assessment.aggregatedTurnover (AUD/year, null=never-asked)",
+        "Div152Assessment.monthsHeld (months, null=never-asked)",
+        "Div152Assessment.isActiveAsset / isRetirementOrIncapacity (bool?, null=Not sure)",
+        "Div152Assessment.electActiveAssetReduction / electRetirementExemption / electRollover (bool?, null=engine default)",
+        "Div152Assessment.retirementExemptionUsedToDate (AUD, required when exemption elected)"
+      ],
+      "astHash": null,
+      "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:264 + tests/tax/mon103Div152Capture.test.ts",
+      "workedExample": "gain $120,000, MNAV $4.2M, active, 64 months, reduction + retirement exemption with $400k used → AAR −$60,000 → exemption −$60,000 (cap remaining $100k) → assessable $0 (locked in the ratchet)",
       "verifiedDate": "2026-07-27",
       "status": "documented"
     }
@@ -9903,6 +9932,14 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "app/api/tax/entity/[entityId]/route.ts:105 — assemblePsiInput → psiByEntity → buildMasterTaxPositionDecimal step 3.6 → classifyPsi (MON-102)",
+      "verifiedDate": "2026-07-27"
+    },
+    {
+      "from": "engine.services.entityTaxFactsAssembler.buildDiv152Input",
+      "to": "engine.tax.div152.applyDiv152",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "app/api/tax/entity/[entityId]/route.ts:107 — assembleDiv152Input → div152ByEntity → buildMasterTaxPositionDecimal step 3.8 → applyDiv152Decimal (MON-103)",
       "verifiedDate": "2026-07-27"
     }
   ]

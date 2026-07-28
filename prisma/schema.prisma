@@ -534,6 +534,7 @@ enum AuditAction {
   // Phase 44.2 — SMSF annual-return workbook save.
   SMSF_RETURN_SAVED
   PSI_ASSESSMENT_SAVED
+  DIV152_ASSESSMENT_SAVED
 
   // 2026-06-12 — "Start fresh" account data reset (wipe financial data,
   // keep account). Fired once per completed reset by
@@ -7127,6 +7128,40 @@ model PsiAssessment {
   @@unique([entityId, financialYear])
   @@index([userId])
   @@map("psi_assessments")
+}
+
+// MON-103 (capture Stage 3) — per-entity per-FY Div 152 small-business CGT
+// concession self-assessment facts (ITAA 1997 Div 152). ALL fields nullable:
+// null = never-asked. The assembler builds Div152Input ONLY when the four
+// numerics AND the two eligibility answers (isActiveAsset,
+// isRetirementOrIncapacity) are all explicitly set — for those two booleans
+// NEITHER default is safe (false denies real concessions on display; true
+// fabricates them), so "Not sure" keeps the overlay inert. Elections default
+// to the engine's own contract (reduction on, exemption/rollover off);
+// electing the retirement exemption REQUIRES retirementExemptionUsedToDate
+// (a blank can never assume $0 of the $500k lifetime cap already used).
+// Reza standing GO 2026-07-27 ("go with stage 3").
+model Div152Assessment {
+  id                            String   @id @default(uuid())
+  userId                        String
+  entityId                      String // LegalEntity (plain FK — service-validated)
+  financialYear                 String // "2025-26"
+  gainAfterDiv115               Decimal? @db.Decimal(19, 4)
+  maxNetAssetValue              Decimal? @db.Decimal(19, 4)
+  aggregatedTurnover            Decimal? @db.Decimal(19, 4)
+  monthsHeld                    Int?
+  isActiveAsset                 Boolean?
+  isRetirementOrIncapacity      Boolean?
+  electActiveAssetReduction     Boolean?
+  electRetirementExemption      Boolean?
+  electRollover                 Boolean?
+  retirementExemptionUsedToDate Decimal? @db.Decimal(19, 4)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@unique([entityId, financialYear])
+  @@index([userId])
+  @@map("div152_assessments")
 }
 
 // MON-101 (capture Stage 1) — the beneficiary's position in the Sch 2F s272-95

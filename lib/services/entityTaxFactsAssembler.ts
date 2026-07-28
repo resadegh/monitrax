@@ -41,6 +41,7 @@ import { prisma } from '@/lib/db';
 import type { EntityTaxFacts, FYReference, UncomputedFlag } from '@/lib/tax-engine/types';
 import type { FteIeeInput } from '@/lib/tax-engine/divisions/fteIeeClassifier';
 import type { PsiInput } from '@/lib/tax-engine/divisions/psiClassifier';
+import type { Div152Input } from '@/lib/tax-engine/divisions/div152SmallBusinessConcessions';
 import {
   listDistributionResolutions,
   type DistributionResolutionSummary,
@@ -243,6 +244,99 @@ export async function assemblePsiInput(
     meetsEmploymentTest: row.meetsEmploymentTest,
     meetsBusinessPremisesTest: row.meetsBusinessPremisesTest,
     hasPsbDetermination: row.hasPsbDetermination,
+  });
+}
+
+/**
+ * MON-103 (capture Stage 3) — map a persisted `Div152Assessment` row to the
+ * Div 152 concession engine's input. THE all-or-nothing gate (Reza standing
+ * GO 2026-07-27): returns null unless the FOUR numerics (gainAfterDiv115,
+ * maxNetAssetValue, aggregatedTurnover, monthsHeld) AND the TWO eligibility
+ * answers (isActiveAsset, isRetirementOrIncapacity) are all explicitly set.
+ * For those two booleans NEITHER default is safe — false denies real
+ * concessions on display, true fabricates them — so "Not sure" keeps the
+ * overlay inert. Elections spread only when answered (null → the engine's
+ * own contract defaults: reduction ON, exemption/rollover OFF). Electing the
+ * retirement exemption additionally REQUIRES retirementExemptionUsedToDate —
+ * a blank can never assume $0 of the $500k lifetime cap already used, which
+ * would OVERSTATE the exemption. Pure; exported for unit testing.
+ */
+export function buildDiv152Input(assessment: {
+  gainAfterDiv115: number | null;
+  maxNetAssetValue: number | null;
+  aggregatedTurnover: number | null;
+  monthsHeld: number | null;
+  isActiveAsset: boolean | null;
+  isRetirementOrIncapacity: boolean | null;
+  electActiveAssetReduction: boolean | null;
+  electRetirementExemption: boolean | null;
+  electRollover: boolean | null;
+  retirementExemptionUsedToDate: number | null;
+}): Div152Input | null {
+  if (
+    assessment.gainAfterDiv115 === null ||
+    assessment.maxNetAssetValue === null ||
+    assessment.aggregatedTurnover === null ||
+    assessment.monthsHeld === null ||
+    assessment.isActiveAsset === null ||
+    assessment.isRetirementOrIncapacity === null
+  ) {
+    return null;
+  }
+  // Retirement exemption elected → the lifetime-used figure is REQUIRED.
+  if (
+    assessment.electRetirementExemption === true &&
+    assessment.retirementExemptionUsedToDate === null
+  ) {
+    return null;
+  }
+  return {
+    gainAfterDiv115: assessment.gainAfterDiv115,
+    maxNetAssetValue: assessment.maxNetAssetValue,
+    aggregatedTurnover: assessment.aggregatedTurnover,
+    monthsHeld: assessment.monthsHeld,
+    isActiveAsset: assessment.isActiveAsset,
+    isRetirementOrIncapacity: assessment.isRetirementOrIncapacity,
+    ...(assessment.electActiveAssetReduction !== null
+      ? { electActiveAssetReduction: assessment.electActiveAssetReduction }
+      : {}),
+    ...(assessment.electRetirementExemption !== null
+      ? { electRetirementExemption: assessment.electRetirementExemption }
+      : {}),
+    ...(assessment.electRollover !== null ? { electRollover: assessment.electRollover } : {}),
+    ...(assessment.retirementExemptionUsedToDate !== null
+      ? { retirementExemptionUsedToDate: assessment.retirementExemptionUsedToDate }
+      : {}),
+  };
+}
+
+/**
+ * MON-103 — the ONE producer of the orchestrator's `div152ByEntity` input
+ * for an entity (§12.2.1). Reads the persisted per-FY `Div152Assessment`,
+ * applies the all-or-nothing gate above. Returns null (overlay inert) for:
+ * no assessment row, incomplete facts, or an entity the caller doesn't own.
+ */
+export async function assembleDiv152Input(
+  userId: string,
+  entityId: string,
+  fy: FYReference,
+): Promise<Div152Input | null> {
+  const row = await prisma.div152Assessment.findFirst({
+    where: { entityId, userId, financialYear: fy.financialYear },
+  });
+  if (!row) return null;
+  return buildDiv152Input({
+    gainAfterDiv115: row.gainAfterDiv115 === null ? null : Number(row.gainAfterDiv115),
+    maxNetAssetValue: row.maxNetAssetValue === null ? null : Number(row.maxNetAssetValue),
+    aggregatedTurnover: row.aggregatedTurnover === null ? null : Number(row.aggregatedTurnover),
+    monthsHeld: row.monthsHeld,
+    isActiveAsset: row.isActiveAsset,
+    isRetirementOrIncapacity: row.isRetirementOrIncapacity,
+    electActiveAssetReduction: row.electActiveAssetReduction,
+    electRetirementExemption: row.electRetirementExemption,
+    electRollover: row.electRollover,
+    retirementExemptionUsedToDate:
+      row.retirementExemptionUsedToDate === null ? null : Number(row.retirementExemptionUsedToDate),
   });
 }
 
