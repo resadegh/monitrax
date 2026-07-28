@@ -117,8 +117,16 @@ export interface Div152Result {
   /** Final assessable gain after all concessions. */
   assessableGain: number;
   /**
+   * MON-110 — the gain the concession ladder operates on (the input gain
+   * clamped at 0), exposed so the surface RENDERS it instead of
+   * reconstructing it from step arithmetic (Calc-SSOT wall §8.3).
+   */
+  gainBeforeConcessions: number;
+  /**
    * Per-concession breakdown — useful for AFSL footer rendering.
    * Each step shows the running gain + which concession applied.
+   * MON-108: `concession` is a clean human label with NO embedded citation —
+   * `citation` is the sole carrier (the surface renders it exactly once).
    */
   steps: Array<{
     concession: string;
@@ -133,10 +141,13 @@ export interface Div152Result {
   uncomputed: UncomputedFlag[];
 }
 
-const MNAV_THRESHOLD = 6_000_000; // s152-15
-const TURNOVER_THRESHOLD = 2_000_000; // s152-20
-const RETIREMENT_LIFETIME_CAP = 500_000; // s152-310
-const FIFTEEN_YEAR_MONTHS = 15 * 12;
+// MON-109: exported — the capture layer (Div152AssessmentCard) reads THESE
+// for its comparisons AND its display copy; legislated thresholds are never
+// re-typed outside the engine (tests/tax/mon109ThresholdTrace.test.ts).
+export const MNAV_THRESHOLD = 6_000_000; // s152-15 maximum net asset value
+export const TURNOVER_THRESHOLD = 2_000_000; // s152-20 CGT small business entity
+export const RETIREMENT_LIFETIME_CAP = 500_000; // s152-310 lifetime cap
+export const FIFTEEN_YEAR_MONTHS = 15 * 12; // s152-105 15-year exemption
 
 const BASE_CITATIONS: AuthorityCitation[] = [
   { kind: 'ITAA_1997', reference: 'Div 152', lastReviewed: '2026-05-05' },
@@ -164,6 +175,8 @@ export function applyDiv152(input: Div152Input): Div152Result {
   const citations: AuthorityCitation[] = [...BASE_CITATIONS];
   const uncomputed: UncomputedFlag[] = [];
   const steps: Div152Result['steps'] = [];
+  // MON-110: the ONE stated starting point for the ladder (and the surface).
+  const gainBeforeConcessions = Math.max(0, gainAfterDiv115);
 
   // Basic conditions: MNAV ≤ $6M OR aggregated turnover ≤ $2M, AND
   // asset is active (s152-10).
@@ -197,6 +210,7 @@ export function applyDiv152(input: Div152Input): Div152Result {
       retirementExemptionApplied: 0,
       rolloverApplied: 0,
       assessableGain: gainAfterDiv115,
+      gainBeforeConcessions,
       steps: [
         {
           concession: 'Basic conditions not met',
@@ -210,14 +224,14 @@ export function applyDiv152(input: Div152Input): Div152Result {
     };
   }
 
-  let runningGain = Math.max(0, gainAfterDiv115);
+  let runningGain = gainBeforeConcessions;
 
   // Step 1: 15-year exemption (s152-105). Gain entirely disregarded.
   // Requires (a) asset held ≥ 15 years AND (b) retirement OR incapacity.
   if (monthsHeld >= FIFTEEN_YEAR_MONTHS && isRetirementOrIncapacity) {
     citations.push({ kind: 'ITAA_1997', reference: 's152-105', lastReviewed: '2026-05-05' });
     steps.push({
-      concession: '15-year exemption (s152-105)',
+      concession: '15-year exemption',
       reduction: runningGain,
       runningGain: 0,
       citation: 's152-105',
@@ -229,6 +243,7 @@ export function applyDiv152(input: Div152Input): Div152Result {
       retirementExemptionApplied: 0,
       rolloverApplied: 0,
       assessableGain: 0,
+      gainBeforeConcessions,
       steps,
       citations,
       uncomputed,
@@ -243,7 +258,7 @@ export function applyDiv152(input: Div152Input): Div152Result {
     runningGain -= reduction;
     activeAssetReductionApplied = true;
     steps.push({
-      concession: '50% active asset reduction (s152-205)',
+      concession: '50% active asset reduction',
       reduction,
       runningGain,
       citation: 's152-205',
@@ -261,7 +276,7 @@ export function applyDiv152(input: Div152Input): Div152Result {
     retirementExemptionApplied = Math.min(runningGain, remainingLifetimeCap);
     runningGain -= retirementExemptionApplied;
     steps.push({
-      concession: 'Retirement exemption (s152-305)',
+      concession: 'Retirement exemption',
       reduction: retirementExemptionApplied,
       runningGain,
       citation: 's152-305',
@@ -286,7 +301,7 @@ export function applyDiv152(input: Div152Input): Div152Result {
     rolloverApplied = runningGain;
     runningGain = 0;
     steps.push({
-      concession: 'Small business rollover (s152-410)',
+      concession: 'Small business rollover',
       reduction: rolloverApplied,
       runningGain,
       citation: 's152-410',
@@ -306,6 +321,7 @@ export function applyDiv152(input: Div152Input): Div152Result {
     retirementExemptionApplied,
     rolloverApplied,
     assessableGain: runningGain,
+    gainBeforeConcessions,
     steps,
     citations,
     uncomputed,
@@ -336,6 +352,8 @@ export interface Div152ResultDecimal {
   retirementExemptionApplied: Decimal;
   rolloverApplied: Decimal;
   assessableGain: Decimal;
+  /** MON-110 — see Div152Result.gainBeforeConcessions. */
+  gainBeforeConcessions: Decimal;
   steps: Array<{
     concession: string;
     reduction: Decimal;
@@ -370,6 +388,8 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
   const citations: AuthorityCitation[] = [...BASE_CITATIONS];
   const uncomputed: UncomputedFlag[] = [];
   const steps: Div152ResultDecimal['steps'] = [];
+  // MON-110: the ONE stated starting point for the ladder (and the surface).
+  const gainBeforeConcessions = Decimal.max(zero, gainAfterDiv115);
 
   const mnavThreshold = new Decimal(MNAV_THRESHOLD);
   const turnoverThreshold = new Decimal(TURNOVER_THRESHOLD);
@@ -402,6 +422,7 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
       retirementExemptionApplied: zero,
       rolloverApplied: zero,
       assessableGain: gainAfterDiv115,
+      gainBeforeConcessions,
       steps: [
         { concession: 'Basic conditions not met', reduction: zero, runningGain: gainAfterDiv115, citation: 's152-10' },
       ],
@@ -410,13 +431,13 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
     };
   }
 
-  let runningGain = Decimal.max(zero, gainAfterDiv115);
+  let runningGain = gainBeforeConcessions;
 
   // 15-year exemption.
   if (monthsHeld >= FIFTEEN_YEAR_MONTHS && isRetirementOrIncapacity) {
     citations.push({ kind: 'ITAA_1997', reference: 's152-105', lastReviewed: '2026-05-05' });
     steps.push({
-      concession: '15-year exemption (s152-105)',
+      concession: '15-year exemption',
       reduction: runningGain,
       runningGain: zero,
       citation: 's152-105',
@@ -428,6 +449,7 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
       retirementExemptionApplied: zero,
       rolloverApplied: zero,
       assessableGain: zero,
+      gainBeforeConcessions,
       steps,
       citations,
       uncomputed,
@@ -442,7 +464,7 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
     runningGain = runningGain.minus(reduction);
     activeAssetReductionApplied = true;
     steps.push({
-      concession: '50% active asset reduction (s152-205)',
+      concession: '50% active asset reduction',
       reduction,
       runningGain,
       citation: 's152-205',
@@ -459,7 +481,7 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
     const gainBeforeRetirementExemption = runningGain;
     runningGain = runningGain.minus(retirementExemptionApplied);
     steps.push({
-      concession: 'Retirement exemption (s152-305)',
+      concession: 'Retirement exemption',
       reduction: retirementExemptionApplied,
       runningGain,
       citation: 's152-305',
@@ -481,7 +503,7 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
     rolloverApplied = runningGain;
     runningGain = zero;
     steps.push({
-      concession: 'Small business rollover (s152-410)',
+      concession: 'Small business rollover',
       reduction: rolloverApplied,
       runningGain,
       citation: 's152-410',
@@ -501,6 +523,7 @@ export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecim
     retirementExemptionApplied,
     rolloverApplied,
     assessableGain: runningGain,
+    gainBeforeConcessions,
     steps,
     citations,
     uncomputed,

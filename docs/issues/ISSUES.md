@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**103 total** · 44 open · 🔵 21 · 🟡 3 · 🟠 20 · 🟢 0 · ✅ 58
+**111 total** · 52 open · 🔵 23 · 🟡 3 · 🟠 26 · 🟢 0 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -110,6 +110,14 @@
 | MON-101 | ✅ CLOSED | 🟠 | yes | FTE/IEE facts uncaptured: beneficiary family-group relationship, TFN status, and IEE coverage exist nowhere, so the wired FTDT/withholding overlay can never fire on real data | #1509 | ✅ |
 | MON-102 | 🟠 FIXING | 🟠 | yes | PSI facts uncaptured: no schema, assembler, or UI carries the Part 2-42 personal-services-income inputs, so the wired PSI overlay can never fire on real data | #1516 | ✅ |
 | MON-103 | 🟠 FIXING | 🟠 | yes | Div 152 facts uncaptured: no schema, assembler, or UI carries the small-business CGT concession inputs, so the wired Div 152 overlay can never fire on real data | #1517 | ✅ |
+| MON-104 | 🟠 FIXING | 🟠 | no | Capture write path persists the raw ?fy= query while the read path resolves FY through the config normaliser — a disagreeing FY saves an orphaned, permanently invisible capture row | #1519 | ✅ |
+| MON-105 | 🟠 FIXING | 🟠 | no | Div 152 capture card gated behind PSI_TYPES — INDIVIDUAL / PERSONAL_NAME / fixed, hybrid + testamentary trusts and deceased estates can never capture Div 152 facts | #1519 | ✅ |
+| MON-106 | 🔵 OPEN | 🟠 | yes | No FY2026-27 tax year config — engine silently falls back to FY25-26 brackets; the $18,201–$45,000 band taxed at 16% instead of the legislated 15% (≈$268 overstatement on the live position) | — | — |
+| MON-107 | 🟠 FIXING | 🟡 | no | PSI card hardcodes s86-15 for every outcome branch — the $0 PSB (non-attribution) branch cites the attribution provision; the engine citations array is discarded | #1519 | ✅ |
+| MON-108 | 🟠 FIXING | 🟢 | no | Div 152 outcome rows render the citation twice — the engine embeds it in the concession label AND emits it as a separate citation field | #1519 | ✅ |
+| MON-109 | 🟠 FIXING | 🟡 | no | Legislated tax thresholds re-typed as literals outside the tax engine — 0.8 one-client test (classifier inline + PSI card), 180 months, $6M / $2M / $500k display copy on the Div 152 card | #1519 | ✅ |
+| MON-110 | 🟠 FIXING | 🟡 | no | Div152Result exposes no gainBeforeConcessions — the card reconstructs it from steps[0].runningGain + steps[0].reduction (surface arithmetic on engine values, Calc-SSOT wall breach) | #1519 | ✅ |
+| MON-111 | 🔵 OPEN | 🟡 | yes | s86-15 PSI attribution reaches only the entity surface — the household position never receives the legislated attribution to the individual (tracked Phase 41e.6/41e.7 company-dispatch deferral) | — | — |
 
 ---
 
@@ -1909,4 +1917,144 @@ Capture Stage 2 (PSI — the second overlay made live-capable). Reza GO 2026-07-
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
 Capture Stage 3 (Div 152 — the third and FINAL overlay made live-capable; the capture feature is complete). Reza standing GO 2026-07-27 ('go with stage 3'); the §18.8 9.2/10 Stitch design presented before any React (v1 8.3 → v3: emerald control/CTA/panel leakage replaced with the indigo identity). changesNumbers YES-CONDITIONAL: fires only once an entity has a saved assessment with all six facts (+ lifetime-used when the exemption is elected); every other user byte-identical (locked). The eligibility booleans are gate-required because NEITHER default is safe (false denies real concessions on display; true fabricates them); elections carry the engine's own contract defaults; the rollover election reports as deferred with the engine's UC-DIV152-ROLLOVER flag (replacement-asset tracking is the engine's own named future sub-PR). Neo-sync: buildDiv152Input modelled + feeds edge to applyDiv152; all three assembler anchors re-pinned +1 (the Div152Input import shift: div7a 81→82, buildFteIeeInput 119→120, buildPsiInput 184→185).
+
+### MON-104 — Capture write path persists the raw ?fy= query while the read path resolves FY through the config normaliser — a disagreeing FY saves an orphaned, permanently invisible capture row
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: tax · opened 2026-07-28
+
+> **What was wrong:** Saving a tax questionnaire for a financial year the app does not recognise silently stores it somewhere the app never looks — the save appears to succeed but the assessment never shows up.
+>
+> **What changed:** Every capture route now resolves the financial year through the one config normaliser the read path uses, and a year the app does not recognise is rejected with a clear message instead of being saved somewhere invisible.
+>
+> **What you should see:** Saving a questionnaire and reloading always shows what you saved; a request for an unrecognised year gets an explicit error instead of a silent fake save.
+
+- **Root cause:** `app/api/tax/entity/[entityId]/psi-assessment/route.ts:37`, `app/api/tax/entity/[entityId]/div152-assessment/route.ts:40`, `app/api/tax/entity/[entityId]/smsf-return/route.ts:30`
+- **Neomatrix:** `engine.services.entityTaxFactsAssembler.buildPsiInput`, `engine.services.entityTaxFactsAssembler.buildDiv152Input`
+- **Downstream consumers (§19.4):** `app/api/tax/entity/[entityId]/psi-assessment/route.ts (GET+PUT — resolves via THE canonical resolver, rejects unconfigured FY)`, `app/api/tax/entity/[entityId]/div152-assessment/route.ts (GET+PUT — same)`, `app/api/tax/entity/[entityId]/smsf-return/route.ts (GET+PUT — same class, migrated in the same sweep)`, `lib/services/entityTaxFactsAssembler.ts (reads assessments at the normalised fy.financialYear — the read side of the identity)`, `app/api/tax/entity/[entityId]/route.ts + app/api/tax/config/route.ts (read-only normalise-on-read via getTaxYearConfig — unchanged by design)`, `app/api/bookkeeping/tax-pack/export/route.ts (read-only export filter — out of the orphan class, unchanged)`
+- **Fix PR(s):** #1519
+- **Holistic test (§19.4):** `tests/tax/mon104FyResolver.test.ts#resolver contract + real-handler round-trip (PUT key ≡ GET key) + unconfigured-FY 400-rejects-and-persists-nothing + 3-route topology lock`
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/tax/entity/[entityId]/psi-assessment/route.ts:37. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click).
+
+### MON-105 — Div 152 capture card gated behind PSI_TYPES — INDIVIDUAL / PERSONAL_NAME / fixed, hybrid + testamentary trusts and deceased estates can never capture Div 152 facts
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: tax · opened 2026-07-28
+
+> **What was wrong:** The small-business CGT concession questionnaire only appears for company-like structures — an individual who sold a business asset (the most common case in Australia) can never reach it.
+>
+> **What changed:** The small-business CGT questionnaire got its own eligibility rule — any structure that can hold and sell a business asset sees it (super funds keep their dedicated fund view) — instead of borrowing the personal-services rule list.
+>
+> **What you should see:** Open an INDIVIDUAL or personal-name entity’s tax page: the "Sold a business asset this year?" card now appears.
+
+- **Root cause:** `app/dashboard/entities/[id]/tax/page.tsx:113`, `app/dashboard/entities/[id]/tax/page.tsx:274`
+- **Neomatrix:** `engine.tax.div152.applyDiv152`
+- **Downstream consumers (§19.4):** `lib/tax-engine/eligibility.ts (NEW — the one home of both eligibility grammars)`, `app/dashboard/entities/[id]/tax/page.tsx (gates each card on its own predicate; PSI list deleted from the page)`, `components/tax/Div152AssessmentCard.tsx (now reachable for INDIVIDUAL/PERSONAL_NAME/fixed+hybrid+testamentary trusts/deceased estates)`
+- **Fix PR(s):** #1519
+- **Holistic test (§19.4):** `tests/tax/mon105Div152Eligibility.test.ts#reachability for the six shut-out types + not-aliases lock + page topology`
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/entities/[id]/tax/page.tsx:274. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click).
+
+### MON-106 — No FY2026-27 tax year config — engine silently falls back to FY25-26 brackets; the $18,201–$45,000 band taxed at 16% instead of the legislated 15% (≈$268 overstatement on the live position)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: tax · opened 2026-07-28
+
+> **What was wrong:** The tax page header says Financial Year 2026-27 but the rates underneath are last year's — so the estimated tax owing is about $268 higher than the law says for this year.
+>
+- **Root cause:** `lib/tax-engine/config/taxYearConfig.ts:349`, `lib/tax-engine/config/taxYearConfig.ts:366`
+- **Neomatrix:** `engine.taxYearConfig.getCurrentTaxYearConfig`, `input.taxYearConfig.brackets`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/config/taxYearConfig.ts:349. Evidence/run: VR-037.
+
+### MON-107 — PSI card hardcodes s86-15 for every outcome branch — the $0 PSB (non-attribution) branch cites the attribution provision; the engine citations array is discarded
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: tax · opened 2026-07-28
+
+> **What was wrong:** When the outcome is personal services BUSINESS (no tax attributed), the card still cites the law section for attribution — the opposite of what happened.
+>
+> **What changed:** The card now displays the law citations the tax engine actually produced for that outcome, instead of one hardcoded citation for every outcome.
+>
+> **What you should see:** A "personal services business" ($0 attributed) outcome cites s87-60 (or the passing test’s section); s86-15 appears only when income is actually attributed.
+
+- **Root cause:** `components/tax/PsiAssessmentCard.tsx:253`
+- **Neomatrix:** `engine.tax.psi.classifyPsi`
+- **Downstream consumers (§19.4):** `components/tax/citationLine.ts (NEW pure formatter — the only render path for engine citations)`, `components/tax/PsiAssessmentCard.tsx (renders result.citations; hardcoded literal deleted)`
+- **Fix PR(s):** #1519
+- **Holistic test (§19.4):** `tests/tax/mon107PsiCitationLine.test.ts#PSB-determination line contains s87-60 and never s86-15, from real classifier output`
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/PsiAssessmentCard.tsx:253. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click).
+
+### MON-108 — Div 152 outcome rows render the citation twice — the engine embeds it in the concession label AND emits it as a separate citation field
+
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: tax · opened 2026-07-28
+
+> **What was wrong:** The concession lines read like 50% active asset reduction (s152-205) (s152-205) — the law reference is printed twice.
+>
+> **What changed:** The engine now emits a clean concession name and the law reference separately, so the card prints the reference once.
+>
+> **What you should see:** Concession rows read "50% active asset reduction (s152-205)" — the doubled "(s152-205) (s152-205)" is gone.
+
+- **Root cause:** `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:246`, `components/tax/Div152AssessmentCard.tsx:392`
+- **Neomatrix:** `engine.tax.div152.applyDiv152`
+- **Downstream consumers (§19.4):** `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts (both twins — clean labels, citation the sole carrier)`, `components/tax/Div152AssessmentCard.tsx (renders {concession} ({citation}) — now a single citation)`
+- **Fix PR(s):** #1519
+- **Holistic test (§19.4):** `tests/tax/mon108ConcessionLabels.test.ts#no concession label matches /\(s\d/ on any branch of either twin; rendered row cites exactly once`
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/Div152AssessmentCard.tsx:392. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click).
+
+### MON-109 — Legislated tax thresholds re-typed as literals outside the tax engine — 0.8 one-client test (classifier inline + PSI card), 180 months, $6M / $2M / $500k display copy on the Div 152 card
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: tax · opened 2026-07-28
+
+> **What was wrong:** Legal thresholds like the 80% one-client test and the $6M asset cap are typed by hand in several places — if the law changes and the engine is updated, the screens could keep showing the old numbers.
+>
+> **What changed:** The legal thresholds now live in the tax engine only; the screens read and format them from there, and an automated guard fails the build if anyone re-types a threshold on a card again.
+>
+> **What you should see:** The 80% one-client hint and the $6,000,000 / $2,000,000 / $500,000 copy on the cards are driven by the engine’s values — if a reform moves a threshold in the engine, the cards move with it.
+
+- **Root cause:** `lib/tax-engine/divisions/psiClassifier.ts:181`, `components/tax/PsiAssessmentCard.tsx:212`, `components/tax/Div152AssessmentCard.tsx:277`
+- **Neomatrix:** `engine.tax.psi.classifyPsi`, `engine.tax.div152.applyDiv152`
+- **Downstream consumers (§19.4):** `lib/tax-engine/divisions/psiClassifier.ts (ONE_CLIENT_THRESHOLD exported + used in the classification)`, `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts (MNAV/TURNOVER/RETIREMENT-CAP/FIFTEEN-YEAR exported)`, `components/tax/PsiAssessmentCard.tsx (comparison + hint copy from the constant)`, `components/tax/Div152AssessmentCard.tsx (comparison + $6M/$2M/$500k display copy formatted from the constants)`, `docs/blueprint/NEOAUDIT.md §7 (the detector registered in the rule inventory)`
+- **Fix PR(s):** #1519
+- **Holistic test (§19.4):** `tests/tax/mon109ThresholdTrace.test.ts#constants pinned to legislated values + NeoAudit detector: threshold numerals in components/tax/** fail CI unless @tax-threshold-allowed`
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/divisions/psiClassifier.ts:181. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click).
+
+### MON-110 — Div152Result exposes no gainBeforeConcessions — the card reconstructs it from steps[0].runningGain + steps[0].reduction (surface arithmetic on engine values, Calc-SSOT wall breach)
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: tax · opened 2026-07-28
+
+> **What was wrong:** The card does its own little sum to display the starting gain instead of the engine stating it — correct today, but it would silently break if the calculation steps ever reorder.
+>
+> **What changed:** The engine now states the pre-concession gain itself and the card just displays it — the card’s own little sum is gone, and a guard keeps any card from doing arithmetic on engine results again.
+>
+> **What you should see:** The "Gain after CGT discount" line shows the same figure as before, now sourced from the engine — and it stays correct even if the concession steps ever reorder.
+
+- **Root cause:** `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:106`, `components/tax/Div152AssessmentCard.tsx:384`
+- **Neomatrix:** `engine.tax.div152.applyDiv152`
+- **Downstream consumers (§19.4):** `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts (both twins return gainBeforeConcessions — ONE stated definition)`, `components/tax/Div152AssessmentCard.tsx (renders the stated field; steps[0] reconstruction deleted)`, `app/api/tax/entity/[entityId]/route.ts (serialises the new field additively via crossCutting)`
+- **Fix PR(s):** #1519
+- **Holistic test (§19.4):** `tests/tax/mon110GainBeforeConcessions.test.ts#Float ≡ Decimal parity incl. gainBeforeConcessions on every branch + no-arithmetic-on-engine-result-fields scan of components/tax/**`
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/Div152AssessmentCard.tsx:384. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click).
+
+### MON-111 — s86-15 PSI attribution reaches only the entity surface — the household position never receives the legislated attribution to the individual (tracked Phase 41e.6/41e.7 company-dispatch deferral)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-07-28
+
+> **What was wrong:** When the personal-services rules attribute company income to you personally, your household tax page does not yet include it — it shows only on the company's own tax view, with a note. The routing lands with the planned company-tax dispatch work.
+>
+- **Root cause:** `lib/tax-engine/divisions/psiClassifier.ts:261`
+- **Neomatrix:** `engine.tax.psi.classifyPsi`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-037`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/divisions/psiClassifier.ts:261. Evidence/run: VR-037.
 

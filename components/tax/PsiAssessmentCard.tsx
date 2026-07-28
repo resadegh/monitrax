@@ -29,11 +29,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Briefcase, Info, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { ONE_CLIENT_THRESHOLD } from '@/lib/tax-engine/divisions/psiClassifier';
+import { formatCitationLine, type CitationRef } from '@/components/tax/citationLine';
 
 export interface PsiOverlayResult {
   isPsi: boolean;
   isPsb: boolean;
   psiAttributedToIndividual: number;
+  /** MON-107 — the engine's per-branch citation trail, rendered verbatim
+   *  (s87-60 on the determination PSB route, s86-15 only on attribution). */
+  citations?: CitationRef[];
 }
 
 interface SavedAssessment {
@@ -209,9 +214,10 @@ export function PsiAssessmentCard({
               <div>
                 <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Largest client</div>
                 <Input inputMode="decimal" value={largestClient} onChange={(e) => setLargestClient(e.target.value)} placeholder="$" className="tabular-nums" />
-                {largestShare !== null && largestShare >= 0.8 && (
+                {largestShare !== null && largestShare >= ONE_CLIENT_THRESHOLD && (
                   <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
-                    {(largestShare * 100).toFixed(0)}% of total &mdash; the 80% one-client test applies
+                    {(largestShare * 100).toFixed(0)}% of total &mdash; the{' '}
+                    {(ONE_CLIENT_THRESHOLD * 100).toFixed(0)}% one-client test applies
                   </p>
                 )}
               </div>
@@ -250,7 +256,9 @@ export function PsiAssessmentCard({
                         ? 'Personal services income — attributed to the individual'
                         : 'Not personal services income'}
                   </div>
-                  <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">ITAA 1997 Part 2-42 · s86-15</div>
+                  <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                    {formatCitationLine(psiResult.citations)}
+                  </div>
                 </div>
                 <div className="flex-shrink-0 text-right">
                   <div className="text-2xl font-semibold tabular-nums">{formatCurrency(psiResult.psiAttributedToIndividual)}</div>

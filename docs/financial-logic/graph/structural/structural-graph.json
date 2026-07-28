@@ -6,12 +6,12 @@
       "lib",
       "app"
     ],
-    "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line].",
+    "note": "Layer 0 — structural skeleton. Generated; do not hand-edit. Regenerate with `npm run neomatrix:graphify`. Node = [id, label, file, line]; edge = [relation, from, to, file, line]. Hand-move 2026-07-28 (graphify offline, 1ff5803d/2846163 precedent): + lib/tax-engine/eligibility.ts (MON-105).",
     "counts": {
-      "files": 1085,
+      "files": 1098,
       "filesOnDisk": 1086,
-      "nodes": 8751,
-      "edges": 15391,
+      "nodes": 8756,
+      "edges": 15395,
       "allowlisted": 3
     }
   },
@@ -1054,6 +1054,7 @@
     "lib/tax-engine/divisions/trustDistribution.ts",
     "lib/tax-engine/divisions/trustLossRules.ts",
     "lib/tax-engine/divisions/trustMinimumTax.ts",
+    "lib/tax-engine/eligibility.ts",
     "lib/tax-engine/entity/entityTaxRouter.ts",
     "lib/tax-engine/gst/gstCalculator.ts",
     "lib/tax-engine/income/index.ts",
@@ -53620,6 +53621,36 @@
       "hasDisjointIdentifiers()",
       "lib/bank/merchantNormalize.ts",
       90
+    ],
+    [
+      "tax_engine_eligibility",
+      "eligibility.ts",
+      "lib/tax-engine/eligibility.ts",
+      1
+    ],
+    [
+      "tax_engine_eligibility_psi_eligible_types",
+      "PSI_ELIGIBLE_TYPES",
+      "lib/tax-engine/eligibility.ts",
+      23
+    ],
+    [
+      "tax_engine_eligibility_ispsieligibleentitytype",
+      "isPsiEligibleEntityType()",
+      "lib/tax-engine/eligibility.ts",
+      31
+    ],
+    [
+      "tax_engine_eligibility_div152_ineligible_types",
+      "DIV152_INELIGIBLE_TYPES",
+      "lib/tax-engine/eligibility.ts",
+      47
+    ],
+    [
+      "tax_engine_eligibility_isdiv152eligibleentitytype",
+      "isDiv152EligibleEntityType()",
+      "lib/tax-engine/eligibility.ts",
+      49
     ]
   ],
   "edges": [
@@ -161359,6 +161390,34 @@
       "bank_merchantnormalize_hasdisjointidentifiers",
       "lib/bank/merchantNormalize.ts",
       90
+    ],
+    [
+      "contains",
+      "tax_engine_eligibility",
+      "tax_engine_eligibility_psi_eligible_types",
+      "lib/tax-engine/eligibility.ts",
+      23
+    ],
+    [
+      "contains",
+      "tax_engine_eligibility",
+      "tax_engine_eligibility_ispsieligibleentitytype",
+      "lib/tax-engine/eligibility.ts",
+      31
+    ],
+    [
+      "contains",
+      "tax_engine_eligibility",
+      "tax_engine_eligibility_div152_ineligible_types",
+      "lib/tax-engine/eligibility.ts",
+      47
+    ],
+    [
+      "contains",
+      "tax_engine_eligibility",
+      "tax_engine_eligibility_isdiv152eligibleentitytype",
+      "lib/tax-engine/eligibility.ts",
+      49
     ]
   ]
 }

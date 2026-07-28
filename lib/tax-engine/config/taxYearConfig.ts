@@ -372,6 +372,36 @@ export function getTaxYearConfig(financialYear: string): TaxYearConfig {
 }
 
 /**
+ * MON-104 — is this FY string a configured tax year (an exact registry key)?
+ * The write boundary uses this to REJECT an unconfigured FY instead of
+ * persisting a row under a key the read path (which normalises through
+ * `getTaxYearConfig` / `getCurrentTaxYearConfig`) will never ask for.
+ */
+export function isTaxYearConfigured(financialYear: string): boolean {
+  return Object.prototype.hasOwnProperty.call(TAX_YEAR_CONFIGS, financialYear);
+}
+
+/**
+ * MON-104 — THE canonical FY resolver for capture/assessment routes
+ * (psi-assessment, div152-assessment, smsf-return). One producer for the
+ * derived "which FY does this request mean" value, used by BOTH the write
+ * and the read side of every capture route so a persisted row's key is
+ * always a key the reader resolves to.
+ *
+ *   - absent/empty `?fy=` → the current FY config (which itself normalises
+ *     an unconfigured current year to the latest available config — so the
+ *     default write key always equals the default read key);
+ *   - a configured FY → that config;
+ *   - anything else → null. The caller MUST fail loud (4xx), never persist:
+ *     an orphaned capture saves silently and stays inert forever (VR-037
+ *     finding 1 — the worst failure mode for a capture feature).
+ */
+export function resolveRequestedTaxYear(requestedFy: string | null): TaxYearConfig | null {
+  if (requestedFy === null || requestedFy === '') return getCurrentTaxYearConfig();
+  return TAX_YEAR_CONFIGS[requestedFy] ?? null;
+}
+
+/**
  * Get the current financial year configuration
  */
 export function getCurrentTaxYearConfig(): TaxYearConfig {

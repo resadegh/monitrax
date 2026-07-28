@@ -47,6 +47,7 @@ import { Switch } from '@/components/ui/switch';
 import { BoundaryFootnote } from '@/components/tax/BoundaryFootnote';
 import { PsiAssessmentCard, type PsiOverlayResult } from '@/components/tax/PsiAssessmentCard';
 import { Div152AssessmentCard, type Div152OverlayResult } from '@/components/tax/Div152AssessmentCard';
+import { isPsiEligibleEntityType, isDiv152EligibleEntityType } from '@/lib/tax-engine/eligibility';
 import { ArrowLeft, Loader2, Landmark, Info, Pencil } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -104,13 +105,6 @@ const EMPTY_FORM: FormState = {
 };
 
 const FY_OPTIONS = ['2025-26', '2024-25', '2023-24'];
-
-/**
- * Entity types the PSI rules (ITAA 1997 Part 2-42) can apply to — income can
- * flow through any interposed entity, and a sole trader earns it directly.
- * SMSFs keep their dedicated fund-income view below.
- */
-const PSI_TYPES = ['COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'DISCRETIONARY_TRUST', 'UNIT_TRUST'];
 
 export default function SmsfTaxPage() {
   const params = useParams();
@@ -231,7 +225,11 @@ export default function SmsfTaxPage() {
   const smsf = position?.result?.smsfIncomeTax;
   const ecpiPending = position?.uncomputed?.some((u) => u.id === 'UC-SMSF-ECPI-PROPORTION');
   const isSmsf = entityType === 'SMSF';
-  const isPsiRelevant = entityType !== null && PSI_TYPES.includes(entityType);
+  // MON-105: PSI and Div 152 eligibility are INDEPENDENT grammars — the
+  // Div 152 card must never be gated behind the PSI list (an individual
+  // disposing of an active business asset is the commonest Div 152 case).
+  const isPsiRelevant = isPsiEligibleEntityType(entityType);
+  const isDiv152Relevant = isDiv152EligibleEntityType(entityType);
 
   return (
     <DashboardLayout>
@@ -246,9 +244,11 @@ export default function SmsfTaxPage() {
         <PageHeader
           title={entityName ? `${entityName} — tax position` : 'Tax position'}
           description={
-            isPsiRelevant
-              ? 'Assess whether the personal services income rules apply to income earned through this structure. Confirm final positions with your accountant.'
-              : "An estimate of your fund's income tax for the year. Confirm final figures with your SMSF accountant or auditor."
+            isSmsf
+              ? "An estimate of your fund's income tax for the year. Confirm final figures with your SMSF accountant or auditor."
+              : isPsiRelevant
+                ? 'Assess whether the personal services income rules apply to income earned through this structure. Confirm final positions with your accountant.'
+                : 'Assess whether the small business CGT concessions apply to a disposal by this structure. Confirm final positions with your accountant.'
           }
         />
 
@@ -271,25 +271,38 @@ export default function SmsfTaxPage() {
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
           </div>
-        ) : isPsiRelevant ? (
+        ) : !isSmsf ? (
           <>
-            {/* MON-102 — PSI self-assessment for company / sole trader / partnership / trusts */}
-            <PsiAssessmentCard
-              entityId={entityId}
-              fy={fy}
-              authHeaders={authHeaders}
-              psiResult={psiResult}
-              onSaved={load}
-            />
-            {/* MON-103 — Div 152 small-business CGT concession self-assessment (same entity types) */}
-            <Div152AssessmentCard
-              entityId={entityId}
-              fy={fy}
-              authHeaders={authHeaders}
-              div152Result={div152Result}
-              onSaved={load}
-            />
-            {position && (
+            {/* MON-102 — PSI self-assessment (Part 2-42 entity types only) */}
+            {isPsiRelevant && (
+              <PsiAssessmentCard
+                entityId={entityId}
+                fy={fy}
+                authHeaders={authHeaders}
+                psiResult={psiResult}
+                onSaved={load}
+              />
+            )}
+            {/* MON-103 — Div 152 small-business CGT concession self-assessment.
+                MON-105: gated by its OWN eligibility grammar (entity-type-
+                agnostic per s152-10), never by the PSI list. */}
+            {isDiv152Relevant && (
+              <Div152AssessmentCard
+                entityId={entityId}
+                fy={fy}
+                authHeaders={authHeaders}
+                div152Result={div152Result}
+                onSaved={load}
+              />
+            )}
+            {!isPsiRelevant && !isDiv152Relevant && (
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  This structure doesn&apos;t have a dedicated tax view yet.
+                </CardContent>
+              </Card>
+            )}
+            {(isPsiRelevant || isDiv152Relevant) && position && (
               <BoundaryFootnote
                 citations={position.citations as never}
                 uncomputed={position.uncomputed as never}
@@ -297,12 +310,6 @@ export default function SmsfTaxPage() {
               />
             )}
           </>
-        ) : !isSmsf ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              This structure doesn&apos;t have a dedicated tax view yet.
-            </CardContent>
-          </Card>
         ) : (
           <>
             {/* Result */}

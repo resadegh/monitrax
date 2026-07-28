@@ -118,6 +118,16 @@ const BASE_CITATIONS: AuthorityCitation[] = [
 ];
 
 /**
+ * MON-109 — the 80% one-client rule (s87-15(3)/s87-40 "80% rule"; TR 2022/3):
+ * when ≥ 80% of the PSI comes from one client (+ associates), PSB status
+ * needs the results test or an ATO determination. Exported so the capture
+ * layer (PsiAssessmentCard) reads THIS for its comparison and hint copy —
+ * the threshold is never re-typed outside the engine
+ * (tests/tax/mon109ThresholdTrace.test.ts).
+ */
+export const ONE_CLIENT_THRESHOLD = 0.8;
+
+/**
  * Classify an entity's income for PSI / PSB status.
  *
  * Decision flow:
@@ -178,7 +188,7 @@ export function classifyPsi(input: PsiInput): PsiClassificationResult {
       ? incomeFromLargestClient / totalPsiIncome
       : 0;
   const eightyPercentOneClient: PsiTestResult =
-    oneClientPercentage < 0.8 ? 'PASS' : 'FAIL';
+    oneClientPercentage < ONE_CLIENT_THRESHOLD ? 'PASS' : 'FAIL';
 
   const resultsTestResult: PsiTestResult = meetsResultsTest ? 'PASS' : 'FAIL';
   const employmentTestResult: PsiTestResult = meetsEmploymentTest
