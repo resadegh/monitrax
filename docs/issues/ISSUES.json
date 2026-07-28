@@ -3197,13 +3197,15 @@
     {
       "id": "MON-104",
       "title": "Capture write path persists the raw ?fy= query while the read path resolves FY through the config normaliser — a disagreeing FY saves an orphaned, permanently invisible capture row",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": false,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "Saving a tax questionnaire for a financial year the app does not recognise silently stores it somewhere the app never looks — the save appears to succeed but the assessment never shows up."
+        "issue": "Saving a tax questionnaire for a financial year the app does not recognise silently stores it somewhere the app never looks — the save appears to succeed but the assessment never shows up.",
+        "fix": "Every capture route now resolves the financial year through the one config normaliser the read path uses, and a year the app does not recognise is rejected with a clear message instead of being saved somewhere invisible.",
+        "check": "Saving a questionnaire and reloading always shows what you saved; a request for an unrecognised year gets an explicit error instead of a silent fake save."
       },
       "rootCause": [
         "app/api/tax/entity/[entityId]/psi-assessment/route.ts:37",
@@ -3214,22 +3216,33 @@
         "engine.services.entityTaxFactsAssembler.buildPsiInput",
         "engine.services.entityTaxFactsAssembler.buildDiv152Input"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "app/api/tax/entity/[entityId]/psi-assessment/route.ts (GET+PUT — resolves via THE canonical resolver, rejects unconfigured FY)",
+        "app/api/tax/entity/[entityId]/div152-assessment/route.ts (GET+PUT — same)",
+        "app/api/tax/entity/[entityId]/smsf-return/route.ts (GET+PUT — same class, migrated in the same sweep)",
+        "lib/services/entityTaxFactsAssembler.ts (reads assessments at the normalised fy.financialYear — the read side of the identity)",
+        "app/api/tax/entity/[entityId]/route.ts + app/api/tax/config/route.ts (read-only normalise-on-read via getTaxYearConfig — unchanged by design)",
+        "app/api/bookkeeping/tax-pack/export/route.ts (read-only export filter — out of the orphan class, unchanged)"
+      ],
+      "fixPRs": [
+        1519
+      ],
+      "test": "tests/tax/mon104FyResolver.test.ts#resolver contract + real-handler round-trip (PUT key ≡ GET key) + unconfigured-FY 400-rejects-and-persists-nothing + 3-route topology lock",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/tax/entity/[entityId]/psi-assessment/route.ts:37. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/tax/entity/[entityId]/psi-assessment/route.ts:37. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click)."
     },
     {
       "id": "MON-105",
       "title": "Div 152 capture card gated behind PSI_TYPES — INDIVIDUAL / PERSONAL_NAME / fixed, hybrid + testamentary trusts and deceased estates can never capture Div 152 facts",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": false,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "The small-business CGT concession questionnaire only appears for company-like structures — an individual who sold a business asset (the most common case in Australia) can never reach it."
+        "issue": "The small-business CGT concession questionnaire only appears for company-like structures — an individual who sold a business asset (the most common case in Australia) can never reach it.",
+        "fix": "The small-business CGT questionnaire got its own eligibility rule — any structure that can hold and sell a business asset sees it (super funds keep their dedicated fund view) — instead of borrowing the personal-services rule list.",
+        "check": "Open an INDIVIDUAL or personal-name entity’s tax page: the \"Sold a business asset this year?\" card now appears."
       },
       "rootCause": [
         "app/dashboard/entities/[id]/tax/page.tsx:113",
@@ -3238,11 +3251,17 @@
       "semanticKeys": [
         "engine.tax.div152.applyDiv152"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "lib/tax-engine/eligibility.ts (NEW — the one home of both eligibility grammars)",
+        "app/dashboard/entities/[id]/tax/page.tsx (gates each card on its own predicate; PSI list deleted from the page)",
+        "components/tax/Div152AssessmentCard.tsx (now reachable for INDIVIDUAL/PERSONAL_NAME/fixed+hybrid+testamentary trusts/deceased estates)"
+      ],
+      "fixPRs": [
+        1519
+      ],
+      "test": "tests/tax/mon105Div152Eligibility.test.ts#reachability for the six shut-out types + not-aliases lock + page topology",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/entities/[id]/tax/page.tsx:274. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/entities/[id]/tax/page.tsx:274. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click)."
     },
     {
       "id": "MON-106",
@@ -3272,13 +3291,15 @@
     {
       "id": "MON-107",
       "title": "PSI card hardcodes s86-15 for every outcome branch — the $0 PSB (non-attribution) branch cites the attribution provision; the engine citations array is discarded",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "When the outcome is personal services BUSINESS (no tax attributed), the card still cites the law section for attribution — the opposite of what happened."
+        "issue": "When the outcome is personal services BUSINESS (no tax attributed), the card still cites the law section for attribution — the opposite of what happened.",
+        "fix": "The card now displays the law citations the tax engine actually produced for that outcome, instead of one hardcoded citation for every outcome.",
+        "check": "A \"personal services business\" ($0 attributed) outcome cites s87-60 (or the passing test’s section); s86-15 appears only when income is actually attributed."
       },
       "rootCause": [
         "components/tax/PsiAssessmentCard.tsx:253"
@@ -3286,22 +3307,29 @@
       "semanticKeys": [
         "engine.tax.psi.classifyPsi"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "components/tax/citationLine.ts (NEW pure formatter — the only render path for engine citations)",
+        "components/tax/PsiAssessmentCard.tsx (renders result.citations; hardcoded literal deleted)"
+      ],
+      "fixPRs": [
+        1519
+      ],
+      "test": "tests/tax/mon107PsiCitationLine.test.ts#PSB-determination line contains s87-60 and never s86-15, from real classifier output",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/PsiAssessmentCard.tsx:253. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/PsiAssessmentCard.tsx:253. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click)."
     },
     {
       "id": "MON-108",
       "title": "Div 152 outcome rows render the citation twice — the engine embeds it in the concession label AND emits it as a separate citation field",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "low",
       "changesNumbers": false,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "The concession lines read like 50% active asset reduction (s152-205) (s152-205) — the law reference is printed twice."
+        "issue": "The concession lines read like 50% active asset reduction (s152-205) (s152-205) — the law reference is printed twice.",
+        "fix": "The engine now emits a clean concession name and the law reference separately, so the card prints the reference once.",
+        "check": "Concession rows read \"50% active asset reduction (s152-205)\" — the doubled \"(s152-205) (s152-205)\" is gone."
       },
       "rootCause": [
         "lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:246",
@@ -3310,22 +3338,29 @@
       "semanticKeys": [
         "engine.tax.div152.applyDiv152"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "lib/tax-engine/divisions/div152SmallBusinessConcessions.ts (both twins — clean labels, citation the sole carrier)",
+        "components/tax/Div152AssessmentCard.tsx (renders {concession} ({citation}) — now a single citation)"
+      ],
+      "fixPRs": [
+        1519
+      ],
+      "test": "tests/tax/mon108ConcessionLabels.test.ts#no concession label matches /\\(s\\d/ on any branch of either twin; rendered row cites exactly once",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/Div152AssessmentCard.tsx:392. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/Div152AssessmentCard.tsx:392. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click)."
     },
     {
       "id": "MON-109",
       "title": "Legislated tax thresholds re-typed as literals outside the tax engine — 0.8 one-client test (classifier inline + PSI card), 180 months, $6M / $2M / $500k display copy on the Div 152 card",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "Legal thresholds like the 80% one-client test and the $6M asset cap are typed by hand in several places — if the law changes and the engine is updated, the screens could keep showing the old numbers."
+        "issue": "Legal thresholds like the 80% one-client test and the $6M asset cap are typed by hand in several places — if the law changes and the engine is updated, the screens could keep showing the old numbers.",
+        "fix": "The legal thresholds now live in the tax engine only; the screens read and format them from there, and an automated guard fails the build if anyone re-types a threshold on a card again.",
+        "check": "The 80% one-client hint and the $6,000,000 / $2,000,000 / $500,000 copy on the cards are driven by the engine’s values — if a reform moves a threshold in the engine, the cards move with it."
       },
       "rootCause": [
         "lib/tax-engine/divisions/psiClassifier.ts:181",
@@ -3336,22 +3371,32 @@
         "engine.tax.psi.classifyPsi",
         "engine.tax.div152.applyDiv152"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "lib/tax-engine/divisions/psiClassifier.ts (ONE_CLIENT_THRESHOLD exported + used in the classification)",
+        "lib/tax-engine/divisions/div152SmallBusinessConcessions.ts (MNAV/TURNOVER/RETIREMENT-CAP/FIFTEEN-YEAR exported)",
+        "components/tax/PsiAssessmentCard.tsx (comparison + hint copy from the constant)",
+        "components/tax/Div152AssessmentCard.tsx (comparison + $6M/$2M/$500k display copy formatted from the constants)",
+        "docs/blueprint/NEOAUDIT.md §7 (the detector registered in the rule inventory)"
+      ],
+      "fixPRs": [
+        1519
+      ],
+      "test": "tests/tax/mon109ThresholdTrace.test.ts#constants pinned to legislated values + NeoAudit detector: threshold numerals in components/tax/** fail CI unless @tax-threshold-allowed",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/divisions/psiClassifier.ts:181. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/divisions/psiClassifier.ts:181. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click)."
     },
     {
       "id": "MON-110",
       "title": "Div152Result exposes no gainBeforeConcessions — the card reconstructs it from steps[0].runningGain + steps[0].reduction (surface arithmetic on engine values, Calc-SSOT wall breach)",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "The card does its own little sum to display the starting gain instead of the engine stating it — correct today, but it would silently break if the calculation steps ever reorder."
+        "issue": "The card does its own little sum to display the starting gain instead of the engine stating it — correct today, but it would silently break if the calculation steps ever reorder.",
+        "fix": "The engine now states the pre-concession gain itself and the card just displays it — the card’s own little sum is gone, and a guard keeps any card from doing arithmetic on engine results again.",
+        "check": "The \"Gain after CGT discount\" line shows the same figure as before, now sourced from the engine — and it stays correct even if the concession steps ever reorder."
       },
       "rootCause": [
         "lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:106",
@@ -3360,11 +3405,17 @@
       "semanticKeys": [
         "engine.tax.div152.applyDiv152"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "lib/tax-engine/divisions/div152SmallBusinessConcessions.ts (both twins return gainBeforeConcessions — ONE stated definition)",
+        "components/tax/Div152AssessmentCard.tsx (renders the stated field; steps[0] reconstruction deleted)",
+        "app/api/tax/entity/[entityId]/route.ts (serialises the new field additively via crossCutting)"
+      ],
+      "fixPRs": [
+        1519
+      ],
+      "test": "tests/tax/mon110GainBeforeConcessions.test.ts#Float ≡ Decimal parity incl. gainBeforeConcessions on every branch + no-arithmetic-on-engine-result-fields scan of components/tax/**",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/Div152AssessmentCard.tsx:384. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/tax/Div152AssessmentCard.tsx:384. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (§19.2 root causes verified at the anchors) → FIXING on #1519 (PR-A of the VR-037 pair; MON-106 rides PR-B for Reza's click)."
     },
     {
       "id": "MON-111",
