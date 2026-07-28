@@ -433,6 +433,16 @@ export interface TaxOffsets {
 
 export interface TaxPositionResult {
   financialYear: string;
+  /**
+   * MON-106 — the FY of the config the numbers were actually computed with.
+   * When it differs from `financialYear`, the requested year has no config
+   * and the engine used its normalised fallback: `configStale` is true and
+   * the surface MUST say so ("FYX rates are not yet configured — figures
+   * shown use FYY") instead of silently rendering a mismatched year
+   * (§12.14: a stale config is a defect that must announce itself).
+   */
+  configFinancialYear: string;
+  configStale: boolean;
   income: IncomeBreakdown;
   deductions: DeductionBreakdown;
   tax: TaxCalculation;

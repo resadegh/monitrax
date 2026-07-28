@@ -52,7 +52,11 @@ import { getMasterFinancialSnapshot, type MasterFinancialSnapshot } from '@/lib/
 import { GOLDEN_USER_ID } from './goldenHousehold';
 
 // The §19.2 hand-computed pin (see file header).
-const PIN = { taxableIncome: 124_800, netTax: 32_284, totalDeductions: 0 };
+// MON-106 re-pin (2026-07-28): the FY2026-27 config landed with the
+// legislated 15% band (was 16%), so current-FY income tax on the golden's
+// $124,800 taxable falls by exactly (45,000 − 18,201 + 1) × 1% = $268:
+// 4,020 + 79,800 × 30% = 27,960 (was 28,228) → netTax 32,284 → 32,016.
+const PIN = { taxableIncome: 124_800, netTax: 32_016, totalDeductions: 0 };
 
 let bundleNetTax: number;
 let bundleTaxable: number;
