@@ -30,15 +30,32 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
-import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { getAvailableTaxYears, resolveRequestedTaxYear } from '@/lib/tax-engine/config/taxYearConfig';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 
 type RouteContext = { params: Promise<{ entityId: string }> };
 
-function resolveFy(request: NextRequest): string {
-  const fy = new URL(request.url).searchParams.get('fy');
-  return fy ?? getCurrentTaxYearConfig().financialYear;
+/**
+ * MON-104 — FY resolves through THE canonical resolver (the same normaliser
+ * the read path uses), and an unresolvable FY is REJECTED at the boundary
+ * rather than persisted as an orphaned, permanently-invisible row.
+ */
+function resolveFy(request: NextRequest): { financialYear: string } | { reject: NextResponse } {
+  const requested = new URL(request.url).searchParams.get('fy');
+  const config = resolveRequestedTaxYear(requested);
+  if (!config) {
+    return {
+      reject: NextResponse.json(
+        {
+          success: false,
+          error: `"${requested}" is not a configured financial year, so nothing was saved. Configured years: ${getAvailableTaxYears().join(', ')} (omit fy for the current year).`,
+        },
+        { status: 400 },
+      ),
+    };
+  }
+  return { financialYear: config.financialYear };
 }
 
 async function verifyOwnedEntity(entityId: string, userId: string) {
@@ -65,7 +82,9 @@ export const GET = withPermission<RouteContext>(
   'tax_data.read',
   async (request, auth, context) => {
     const { entityId } = await context!.params;
-    const financialYear = resolveFy(request);
+    const fy = resolveFy(request);
+    if ('reject' in fy) return fy.reject;
+    const { financialYear } = fy;
 
     const entity = await verifyOwnedEntity(entityId, auth.userId);
     if (!entity) {
@@ -87,7 +106,9 @@ export const PUT = withPermission<RouteContext>(
   'tax_data.write',
   async (request, auth, context) => {
     const { entityId } = await context!.params;
-    const financialYear = resolveFy(request);
+    const fy = resolveFy(request);
+    if ('reject' in fy) return fy.reject;
+    const { financialYear } = fy;
 
     const entity = await verifyOwnedEntity(entityId, auth.userId);
     if (!entity) {

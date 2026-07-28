@@ -203,6 +203,8 @@ One generated readout — publish when ALL green: Rings 0–2 green on CI · R3-
 | Percy / Chromatic | — | skip | cost / Storybook-shaped for no marginal value |
 | Hosted agent browsers (Browserbase etc.) | — | skip | needless third-party data path; local headless Playwright MCP suffices |
 | AI "QA platform" vendors | — | skip | duplicate Claude Code + the checked-in suite |
+| MON-109 threshold-trace detector | R1-lint | **LANDED 2026-07-28** | tax-threshold numerals (percentage comparisons, currency magnitudes ≥ $1k) in `components/tax/**` fail CI unless annotated `@tax-threshold-allowed`; the engine constants are the ONE source (`tests/tax/mon109ThresholdTrace.test.ts`) |
+| MON-110 no-surface-arithmetic audit | R1-lint | **LANDED 2026-07-28** | VR-037 Part D's hand-run "cards do no tax arithmetic" guard promoted to CI — any `+ − * /` on an engine result field in `components/tax/**` fails (`tests/tax/mon110GainBeforeConcessions.test.ts`) |
 
 **Boundary restated:** third-party tools operate on synthetic/golden data only; real data is first-party only (R3-self, R3-eyes).
 

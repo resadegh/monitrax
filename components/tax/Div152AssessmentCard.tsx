@@ -2,9 +2,10 @@
 
 /**
  * MON-103 (capture Stage 3) — the Div 152 small-business CGT concession
- * self-assessment card on /dashboard/entities/[id]/tax for PSI-relevant
- * entity types (COMPANY / SOLE_TRADER / PARTNERSHIP / DISCRETIONARY_TRUST /
- * UNIT_TRUST — the same set the engine composes for).
+ * self-assessment card on /dashboard/entities/[id]/tax. MON-105: rendered
+ * for every Div 152-eligible entity type (its OWN grammar in
+ * lib/tax-engine/eligibility.ts — entity-type-agnostic per s152-10, never
+ * the PSI list).
  *
  * Anatomy (ITAA 1997 Div 152): the disposal (gain after any Div 115
  * discount + months held + active-asset tri-state) → the size tests (MNAV
@@ -38,11 +39,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Info, Loader2, Store } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  FIFTEEN_YEAR_MONTHS,
+  MNAV_THRESHOLD,
+  RETIREMENT_LIFETIME_CAP,
+  TURNOVER_THRESHOLD,
+} from '@/lib/tax-engine/divisions/div152SmallBusinessConcessions';
 
 export interface Div152OverlayResult {
   basicConditionsMet: boolean;
   fifteenYearExemptionApplied: boolean;
   assessableGain: number;
+  /** MON-110 — stated by the engine; the card renders it, never re-derives it. */
+  gainBeforeConcessions: number;
   steps: Array<{ concession: string; reduction: number; runningGain: number; citation: string }>;
 }
 
@@ -274,7 +283,7 @@ export function Div152AssessmentCard({
                     Months the asset was held
                   </div>
                   <Input inputMode="numeric" value={months} onChange={(e) => setMonths(e.target.value)} placeholder="0" className="tabular-nums" />
-                  {months !== '' && Number(months) >= 180 && (
+                  {months !== '' && Number(months) >= FIFTEEN_YEAR_MONTHS && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       15+ years &mdash; the full exemption may apply (s152-105)
                     </p>
@@ -300,14 +309,18 @@ export function Div152AssessmentCard({
                     Net assets of you + connected entities
                   </div>
                   <Input inputMode="decimal" value={mnav} onChange={(e) => setMnav(e.target.value)} placeholder="$" className="tabular-nums" />
-                  <p className="mt-1 text-[11px] text-muted-foreground">Under $6,000,000 passes the MNAV test (s152-15)</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Under {formatCurrency(MNAV_THRESHOLD)} passes the MNAV test (s152-15)
+                  </p>
                 </div>
                 <div>
                   <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Aggregated annual turnover
                   </div>
                   <Input inputMode="decimal" value={turnover} onChange={(e) => setTurnover(e.target.value)} placeholder="$" className="tabular-nums" />
-                  <p className="mt-1 text-[11px] text-muted-foreground">Under $2,000,000 qualifies as a CGT small business entity (s152-20)</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Under {formatCurrency(TURNOVER_THRESHOLD)} qualifies as a CGT small business entity (s152-20)
+                  </p>
                 </div>
               </div>
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -336,7 +349,9 @@ export function Div152AssessmentCard({
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="text-[13px]">Apply the retirement exemption</div>
-                      <div className="text-[11px] text-muted-foreground">Lifetime cap $500,000 &mdash; s152-305</div>
+                      <div className="text-[11px] text-muted-foreground">
+                      Lifetime cap {formatCurrency(RETIREMENT_LIFETIME_CAP)} &mdash; s152-305
+                    </div>
                     </div>
                     <Election value={electExemption} onChange={setElectExemption} />
                   </div>
@@ -379,11 +394,7 @@ export function Div152AssessmentCard({
                   <div className="flex items-center justify-between text-[13px]">
                     <span>Gain after CGT discount</span>
                     <span className="tabular-nums">
-                      {formatCurrency(
-                        div152Result.steps.length > 0
-                          ? div152Result.steps[0].runningGain + div152Result.steps[0].reduction
-                          : div152Result.assessableGain,
-                      )}
+                      {formatCurrency(div152Result.gainBeforeConcessions)}
                     </span>
                   </div>
                   {div152Result.steps.map((s) => (
