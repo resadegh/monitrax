@@ -48,13 +48,21 @@ function getNetMonthlyIncome(incomeItem: { amount: number; frequency: string; ty
 
 /** Assemble the canonical `FinancialHealthInput` for a user from the database. */
 export async function buildHealthInput(userId: string): Promise<FinancialHealthInput> {
-  const [properties, loans, accounts, income, expenses, holdings] = await Promise.all([
+  const [properties, loans, accounts, income, expenses, holdings, scoreSnapshots] = await Promise.all([
     prisma.property.findMany({ where: { userId }, include: { loans: true, income: true, expenses: true } }),
     prisma.loan.findMany({ where: { userId }, include: { property: true, offsetAccount: true } }),
     prisma.account.findMany({ where: { userId } }),
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
     prisma.investmentHolding.findMany({ where: { investmentAccount: { userId } } }),
+    // MON-134: stored monthly score snapshots — the ONLY trend input (D15).
+    // Last 24 months, oldest first; the engine stays pure and never fetches.
+    prisma.healthScoreSnapshot.findMany({
+      where: { userId },
+      orderBy: { snapshotDate: 'asc' },
+      take: 24,
+      select: { snapshotDate: true, score: true, formulaVersion: true },
+    }),
   ]);
 
   // Totals (investments at cost basis — see file header note).
@@ -169,5 +177,6 @@ export async function buildHealthInput(userId: string): Promise<FinancialHealthI
       missingLinks: [],
       consistencyScore,
     },
+    healthScoreHistory: scoreSnapshots,
   };
 }

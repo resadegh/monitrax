@@ -20,6 +20,7 @@ import {
   RiskMapEntry,
   InputSource,
   AggregatedMetrics,
+  HealthScoreHistoryPoint,
   scoreToRiskBand,
 } from './types';
 
@@ -152,42 +153,71 @@ export function calculateConfidence(
 // =============================================================================
 
 /**
- * Calculate score trend (simplified - would need historical data in production)
+ * MON-134 / D15 — the version of the scoring formula. Bump when the score's
+ * inputs/weights change (MON-131 tranches); `HealthScoreSnapshot.formulaVersion`
+ * pins each stored row to the formula that produced it, and `calculateTrend`
+ * marks a break where consecutive snapshots differ — a trend spanning two
+ * formulas must show the break, never smooth over it.
  */
-export function calculateTrend(currentScore: number): ScoreTrend {
-  // In production, this would fetch historical scores from database
-  // For now, return a stable trend
+export const HEALTH_FORMULA_VERSION = 1;
 
-  const now = new Date();
-  const history: TrendPoint[] = [];
+/**
+ * MON-134 fix: the trend is derived from STORED monthly snapshots of the real
+ * score — never generated. The previous implementation invented 7 months of
+ * history with random noise and derived the IMPROVING/DECLINING/STABLE
+ * verdict + changePercent from the noise (found by the Matrix Relay's first
+ * A3 self-diff: 15 leaves moved between two captures of an unchanged DB).
+ * Deterministic for a fixed input — no clock, no randomness (brief §4.4).
+ *
+ * - < 2 snapshots  → INSUFFICIENT_HISTORY, empty history, NO changePercent
+ *   (the absent case is representable — never 0, never a 'STABLE' fallback).
+ * - ≥ 2 snapshots  → direction + changePercent from the real stored scores:
+ *   change = newest.score − oldest.score; > 2 IMPROVING, < −2 DECLINING,
+ *   else STABLE (the pre-existing ±2 thresholds, now over real data).
+ * - Consecutive snapshots with different formulaVersion → the later snapshot's
+ *   ISO date is recorded in `formulaBreaks` (D15: show the break).
+ */
+export function calculateTrend(history: HealthScoreHistoryPoint[]): ScoreTrend {
+  const sorted = [...history].sort(
+    (a, b) => new Date(a.snapshotDate).getTime() - new Date(b.snapshotDate).getTime(),
+  );
 
-  // Generate placeholder history (last 6 months)
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(now);
-    date.setMonth(date.getMonth() - i);
-    history.push({
-      date,
-      score: currentScore + (Math.random() - 0.5) * 5, // Small random variance
-    });
+  if (sorted.length < 2) {
+    return {
+      direction: 'INSUFFICIENT_HISTORY',
+      periodMonths: 0,
+      history: [],
+    };
   }
 
-  // Calculate direction based on recent trend
-  const recentScores = history.slice(-3);
-  const avgRecent = recentScores.reduce((sum, p) => sum + p.score, 0) / recentScores.length;
-  const olderScores = history.slice(0, 3);
-  const avgOlder = olderScores.reduce((sum, p) => sum + p.score, 0) / olderScores.length;
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const change = last.score - first.score;
 
   let direction: ScoreTrend['direction'];
-  const change = avgRecent - avgOlder;
   if (change > 2) direction = 'IMPROVING';
   else if (change < -2) direction = 'DECLINING';
   else direction = 'STABLE';
 
+  const firstDate = new Date(first.snapshotDate);
+  const lastDate = new Date(last.snapshotDate);
+  const periodMonths =
+    (lastDate.getUTCFullYear() - firstDate.getUTCFullYear()) * 12 +
+    (lastDate.getUTCMonth() - firstDate.getUTCMonth());
+
+  const formulaBreaks: string[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].formulaVersion !== sorted[i - 1].formulaVersion) {
+      formulaBreaks.push(new Date(sorted[i].snapshotDate).toISOString());
+    }
+  }
+
   return {
     direction,
     changePercent: Math.round(change * 10) / 10,
-    periodMonths: 6,
-    history,
+    periodMonths,
+    history: sorted.map((p) => ({ date: new Date(p.snapshotDate), score: p.score })),
+    ...(formulaBreaks.length ? { formulaBreaks } : {}),
   };
 }
 
@@ -203,7 +233,8 @@ export function generateEvidencePack(
   categories: HealthCategory[],
   trend: ScoreTrend
 ): EvidencePack {
-  const now = new Date();
+  // MON-134 §4.4 determinism: injectable clock.
+  const now = input.asOf ?? new Date();
 
   // Input sources used
   const inputsUsed: InputSource[] = [
@@ -320,14 +351,18 @@ export function generateHealthScore(
 ): FinancialHealthScore {
   const score = calculateAggregateScore(categories, modifiers);
   const confidence = calculateConfidence(input, metrics);
-  const trend = calculateTrend(score);
+  // MON-134: the trend reads STORED monthly snapshots only (never the live
+  // score, never generated history). Absent/empty → INSUFFICIENT_HISTORY.
+  const trend = calculateTrend(input.healthScoreHistory ?? []);
 
   return {
     score,
     confidence,
     breakdown: categories,
     trend,
-    timestamp: new Date(),
+    // MON-134 §4.4 determinism: injectable clock — byte-identical output for
+    // identical input when `asOf` is supplied.
+    timestamp: input.asOf ?? new Date(),
   };
 }
 
@@ -359,7 +394,7 @@ export function generateHealthReport(input: FinancialHealthInput): FinancialHeal
     evidence,
     metrics,
     modifiers,
-    generatedAt: new Date(),
+    generatedAt: input.asOf ?? new Date(),
     userId: input.userId,
   };
 }
