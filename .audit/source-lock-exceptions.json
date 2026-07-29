@@ -1,7 +1,7 @@
 {
-  "comment": "Calc-SSOT Wall A1 \u2014 tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
-  "generatedAt": "2026-07-17T11:25:20.073Z",
-  "count": 68,
+  "comment": "Calc-SSOT Wall A1 — tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
+  "generatedAt": "2026-07-29T04:55:08.403Z",
+  "count": 223,
   "entries": [
     {
       "file": "app/api/ai/debt-analysis/route.ts",
@@ -162,6 +162,261 @@
       "file": "app/dashboard/properties/page.tsx",
       "pattern": "RAW_MIN_REPAYMENT_COST",
       "count": 4
+    },
+    {
+      "file": "lib/calculations/assetValuation.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/calculations/cashflowOrchestrator.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 2
+    },
+    {
+      "file": "lib/calculations/cashflowOrchestrator.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 3
+    },
+    {
+      "file": "lib/calculations/cashflowOrchestrator.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 3
+    },
+    {
+      "file": "lib/calculations/entityBreakdown.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 2
+    },
+    {
+      "file": "lib/calculations/entityBreakdown.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 2
+    },
+    {
+      "file": "lib/calculations/loanAggregator.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 2
+    },
+    {
+      "file": "lib/calculations/propertyCashflow.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/calculations/propertyCashflow.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 3
+    },
+    {
+      "file": "lib/cashflow/buildCFEInput.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/cashflow/forecasting.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/cfo/aiAdvisor.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 3
+    },
+    {
+      "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 1
+    },
+    {
+      "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 3
+    },
+    {
+      "file": "lib/cfo/intelligenceEngine.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 1
+    },
+    {
+      "file": "lib/cfo/riskRadar.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 10
+    },
+    {
+      "file": "lib/cfo/riskRadar.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 11
+    },
+    {
+      "file": "lib/cfo/riskRadar.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 3
+    },
+    {
+      "file": "lib/cfo/scoreCalculator.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 20
+    },
+    {
+      "file": "lib/cfo/scoreCalculator.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 8
+    },
+    {
+      "file": "lib/cfo/scoreCalculator.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 6
+    },
+    {
+      "file": "lib/health/buildHealthInput.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/health/buildHealthInput.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 1
+    },
+    {
+      "file": "lib/health/buildHealthInput.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/health/metricAggregation.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 4
+    },
+    {
+      "file": "lib/income/netIncomeCalculator.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 1
+    },
+    {
+      "file": "lib/income/unmatchedDeclaredIncome.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 1
+    },
+    {
+      "file": "lib/intelligence/portfolioEngine.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 3
+    },
+    {
+      "file": "lib/intelligence/portfolioEngine.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 4
+    },
+    {
+      "file": "lib/neobrain/debtProjections.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/onboarding/debtsSync.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 6
+    },
+    {
+      "file": "lib/onboarding/propertiesSync.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 6
+    },
+    {
+      "file": "lib/planning/debtPlanner.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/reports/contextBuilder.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 2
+    },
+    {
+      "file": "lib/reports/contextBuilder.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/reports/generators/financialOverview.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 2
+    },
+    {
+      "file": "lib/reports/generators/incomeExpense.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 4
+    },
+    {
+      "file": "lib/reports/generators/loanDebt.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 5
+    },
+    {
+      "file": "lib/services/loanCosts.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/services/masterFinancialService.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 4
+    },
+    {
+      "file": "lib/services/moneyFlowService.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 2
+    },
+    {
+      "file": "lib/services/moneyFlowService.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 3
+    },
+    {
+      "file": "lib/services/propertyActuals.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/strategy/analyzers/debtAnalyzer.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/strategy/analyzers/riskAnalyzer.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 1
+    },
+    {
+      "file": "lib/testing/exporter.ts",
+      "pattern": "RAW_ARRAY_REDUCE_SUM",
+      "count": 3
+    },
+    {
+      "file": "lib/testing/exporter.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 3
+    },
+    {
+      "file": "lib/testing/loader.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/testing/normalizer.ts",
+      "pattern": "RAW_MIN_REPAYMENT_COST",
+      "count": 1
+    },
+    {
+      "file": "lib/utils/reconciliation.ts",
+      "pattern": "RAW_FREQ_RUN_RATE",
+      "count": 2
     }
   ]
 }

@@ -1,0 +1,39 @@
+{
+  "_comment": "MON-131 producer-census ratchet seed — RATCHET-DOWN-ONLY. A rising count fails CI; a falling count requires re-seeding in the same PR (the drop is the deliverable — record it in history). Method: scripts/census/producers-census.mjs header.",
+  "seededAt": "2026-07-29",
+  "counts": {
+    "expenseRunRate": 84,
+    "incomeRunRate": 135,
+    "loanCost": 32,
+    "netWorth": 7,
+    "savingsRate": 30,
+    "emergencyMonths": 14,
+    "medicareLevy": 26,
+    "superCap": 10,
+    "depreciation": 15,
+    "payg": 64,
+    "incomeTax": 77,
+    "propertyEquity": 11,
+    "cashflow": 59
+  },
+  "history": [
+    {
+      "date": "2026-07-29",
+      "counts": {
+        "expenseRunRate": 84,
+        "incomeRunRate": 135,
+        "loanCost": 32,
+        "netWorth": 7,
+        "savingsRate": 30,
+        "emergencyMonths": 14,
+        "medicareLevy": 26,
+        "superCap": 10,
+        "depreciation": 15,
+        "payg": 64,
+        "incomeTax": 77,
+        "propertyEquity": 11,
+        "cashflow": 59
+      }
+    }
+  ]
+}

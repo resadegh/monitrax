@@ -2,6 +2,7 @@
 
 > **THE FIRST-PRIORITY PROGRAMME.** One canonical producer per named financial quantity, everywhere.
 > **Registry umbrella:** MON-131. **Tranche issues:** MON-127 (budget remainder) · MON-128 (income) · MON-129 (expense run-rate) · MON-130 (loan cost) · MON-132 (survival runway).
+> ⚠️ These ids are **Matrix-ledger assignments, not yet in `docs/issues/ISSUES.json`** — the registry is frozen for the Matrix's reconciliation PR (directive 2026-07-29: no `issues:raise`, no status changes until it merges). Register them there, in pinned order, never via auto-numbering while the gap exists.
 > **This file is the living record** — update it as decisions are made (brief §12 footer). CLAUDE.md wins on any conflict.
 
 ## §0 Provenance — read this honestly
@@ -20,10 +21,14 @@ gaps, stated rather than papered over:
 2. **MON-115…124 are a ten-id ledger gap.** The ids are reserved in the Matrix ledger; their
    definitions were never committed to `docs/issues/ISSUES.json` and are unrecoverable from this
    repo (the brief cites MON-117 in passing — the what-if hardcoded `30000`/`0.12` — but a full
-   definition would be a guess, and we never guess). The registry deliberately leaves the gap to
-   preserve pinned cross-references. Similarly, **`docs/verification/runs/VR-040.md` was never
-   committed**; its recoverable findings were re-filed from the brief as MON-125/126 (previously)
-   and MON-127…132 (2026-07-29).
+   definition would be a guess, and we never guess). Similarly, **`docs/verification/runs/VR-040.md`
+   was never committed**. The registry is FROZEN pending the Matrix's reconciliation PR (directive
+   2026-07-29), which owns: executing `scripts/matrix/vr038-039-advance.mjs` +
+   `vr038-039-promote.mjs` (merged in #1521, still unexecuted — MON-104…110 read FIXING despite
+   VR-038/039), filing MON-115…124's ledger definitions, and registering MON-127…132 in pinned
+   order. Both scripts are idempotent and were dry-validated end-to-end on 2026-07-29 (they apply
+   cleanly: 104…110 → VERIFIED, 105…110 → CLOSED, 104 HELD, 112/113/114 raised, gates green at
+   116 issues).
 
 ## §1 The problem
 

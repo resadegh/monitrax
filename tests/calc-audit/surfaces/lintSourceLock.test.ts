@@ -121,3 +121,40 @@ describe('Wall A1 — live repo is exactly at its tracked debt (the CI gate)', (
     expect(ratchet.stale, `Ratchet down paid debt in .audit/source-lock-exceptions.json:\n${fmt(ratchet.stale)}`).toHaveLength(0);
   });
 });
+
+// ── MON-131 Tranche 0 — the producer-census ratchet (sibling gate to the wall) ──
+// Proves (precisely — §22.2.4): the census runs deterministically and the
+// measured per-quantity counts match the committed seed exactly — a RISING
+// count (a new producer of an existing quantity) and a STALE seed after a drop
+// both fail. It does NOT prove any count is semantically complete — the v1
+// formula-shape method and its unmeasured list are stated in
+// scripts/census/producers-census.mjs; coverage grows per Phase A contract.
+describe('MON-131 producer-census ratchet (Tranche 0)', () => {
+  const { execSync } = require('node:child_process');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const ROOT = path.resolve(__dirname, '../../..');
+
+  it('census --check passes against the committed seed (ratchet-down-only)', () => {
+    const out = execSync('node scripts/census/producers-census.mjs --check', {
+      cwd: ROOT, encoding: 'utf8',
+    });
+    expect(out).toContain('✓ producer-census ratchet');
+  });
+
+  it('the census is deterministic across runs', () => {
+    const run = () =>
+      execSync('node scripts/census/producers-census.mjs', { cwd: ROOT, encoding: 'utf8' })
+        .split('\n').filter((l: string) => /^\s{2}\w/.test(l)).join('\n');
+    expect(run()).toEqual(run());
+  });
+
+  it('the seed exists, is well-formed, and every measured count is >= 1', () => {
+    const seed = JSON.parse(fs.readFileSync(path.resolve(ROOT, '.audit/producer-census.json'), 'utf8'));
+    expect(Object.keys(seed.counts).length).toBeGreaterThanOrEqual(13);
+    for (const [k, v] of Object.entries(seed.counts)) {
+      expect(typeof v, `count for ${k}`).toBe('number');
+      expect(v as number, `count for ${k} must be >= 1 (a zero-site quantity should be removed with reason)`).toBeGreaterThanOrEqual(1);
+    }
+  });
+});
