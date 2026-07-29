@@ -8,6 +8,26 @@
 
 ## 🟡 Active Workstreams
 
+### 0·REF. MON-131 "Reference Numbers" — one canonical producer per quantity (THE FIRST-PRIORITY PROGRAMME)
+
+- **Status:** 🟡 **Tranches −1 + 0 BUILT (one draft PR, moves NO numbers)** — golden-baseline script + producer-census ratchet + source-lock extended to `lib/` + `REFERENCE_NUMBERS{_DESIGN,}.md` published. Awaiting merge, then the Matrix-side baseline capture, then Tranche 1 (income, MON-128) behind its Phase A contract + Reza gate.
+- **Started:** 2026-07-29 · **Owner:** Claude (Code, Fable 5) build · Reza (per-tranche merge — every tranche after 0 is changesNumbers) · the Matrix (census of record, Ring-3 per tranche, golden-baseline capture).
+- **Last touched:** 2026-07-29 — Tranche −1 + 0 PR.
+- **Spec of record:** [`docs/architecture/REFERENCE_NUMBERS_DESIGN.md`](../architecture/REFERENCE_NUMBERS_DESIGN.md) (living decisions register — D1/D2/D6/D7 NOT RECOVERED, Matrix to supply) + [`docs/architecture/REFERENCE_NUMBERS.md`](../architecture/REFERENCE_NUMBERS.md) (the quantity register).
+- **Why this matters:** ~336 producers across 23 quantities (22 MULTIPLE); fixing one place has only ever changed which screens disagree. Medicare (single-sourced) is the proof the architecture works. Everything on Monitrax rides on this fix (Reza, 2026-07-29).
+- **Checklist:**
+  - [x] **T−1 registry truth** — vr038-039 scripts dry-validated; STOOD DOWN mid-session to the Matrix's registry-reconciliation PR (docs/issues/ frozen; MON-115…124 + MON-127…132 land there).
+  - [x] **T−1 golden baseline** — `scripts/matrix/golden-baseline.mjs` (capture + three-outcome diff). ⏳ CAPTURE pending on the Matrix/Reza side (needs DATABASE_URL) — commit `.audit/golden-baseline-<sha>.json` before Tranche 1.
+  - [x] **T0 census** — `npm run census:producers[:check]`, 13 quantities measured (564 sites), 11 UNMEASURED listed; seed `.audit/producer-census.json`; in `vercel-build` + vitest, ratchet-down-only.
+  - [x] **T0 source-lock → lib/** — 3 producer rules over `lib/**/*.ts`; minimal canonical-home exemptions; comment-stripping; debt reseeded app 68 + lib 155 = 223.
+  - [x] **T0 REFERENCE_NUMBERS.md** — FACT/DERIVED register, 23 quantities, canonical homes where established, 🅰 Phase A forks marked (D5/D8/D9/D10/D11/D13, MON-132 runway).
+  - [ ] **Tranche 1 income (MON-128)** — Phase A contract → Reza gate → migrate `incomeAggregator` (+Decimal twin) onto `monthlyRunRate` + D9 net semantics; `netTotal ≤ grossTotal` invariant; expectedMoves pre-declared; golden-baseline diff.
+  - [ ] **Tranche 2 loan cost (MON-130)** — 12 raw-`minRepayment` producers → `resolveLoanMonthlyCost`; `moneyFlowService:385` skip-continue is the Activity $106K/yr root.
+  - [ ] **Tranche 3 expense run-rate (MON-129)** — 23 reducers / 12 files → `monthlyRunRate`/`annualRunRate`, Float + Decimal.
+  - [ ] Tranches 4–7 per `REFERENCE_NUMBERS_DESIGN.md` §4 (tax constants + depreciation, balance sheet, rates/scores/runway, budget remainder).
+- **Risk:** highest-touch programme in the repo; controlled by the golden baseline (undeclared movement = STOP), the census ratchet, per-tranche Ring-3, and the Phase A Reza gate on every semantic.
+- **Blocking:** the Matrix's registry-reconciliation PR (issue ids) + golden-baseline capture (real data) before any number-moving tranche.
+
 ### 0·WALL. Calc-SSOT Wall Part 1 — freeze drift + remediate recent-fix drift (MON-081…086)
 
 - **Status:** 🟡 **BUILT (Parts A + B1/B2/B3, one draft PR) — awaiting Reza's merge (changesNumbers), then the Matrix's CROSS-SURFACE Ring-3 on live data.**
