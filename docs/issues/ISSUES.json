@@ -3456,7 +3456,7 @@
     {
       "id": "MON-125",
       "title": "Budget generator is a fourth uncanonical expense producer — one-offs annualised forever + interest-only loans cost $0 → recommended budget $62,530/mo vs $41,303/mo income (151%)",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "critical",
       "changesNumbers": true,
       "opened": "2026-07-29",
@@ -3488,13 +3488,14 @@
         1523
       ],
       "test": "tests/budget/mon125BudgetGeneratorSsot.test.ts#one-off gate + IO-loan actuals through the REAL route handler + resolver fallback order ×3 + cross-producer parity (the fifth-producer stopper) + income-sanity flag + topology/paid-debt locks",
-      "tracker": "neoaudit-run:VR-040",
-      "notes": "Raised from the Matrix MON-125 code brief (traced at HEAD 2f4ac8cc; VR-040 pending merge from the Matrix session). Three bypasses in one route: (1) prisma.expense.findMany with no isRecurring basis → 132 one-offs ($50,840) annualised into committed; (2) toMonthly instead of monthlyRunRate in both reducers; (3) raw loan.minRepayment instead of resolveLoanMonthlyCost → Broadbeach + Thornland Lot 2 IO loans ($3,709/mo real interest) + HECS absent from Must Pay ($8,817 vs canonical $12,779). All three bypasses were GRANDFATHERED debt in .audit/source-lock-exceptions.json (seeded 2026-07-17) — the wall detected them and passed the build; paying the debt is part of the fix. Arithmetic corroboration: committed $51,034 − loans $8,817 + discretionary $10,105 = $52,322 = one-offs $50,840 + recurring $1,482 exactly. Registered with a PINNED id from the Matrix ledger (not issues:raise auto-numbering) to preserve cross-references. [2026-07-29] DIAGNOSED (root causes verbatim from the Matrix VR-040 trace, re-verified at source) → FIXING on #1523. §10 agent-fee decision deliberately NOT taken (per brief) — surfaced on the PR for Reza's pre-merge confirm; if he confirms exclusion, a follow-up one-line derivedFromIncomeId filter lands with the parity test updated to the same basis on both sides."
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Raised from the Matrix MON-125 code brief (traced at HEAD 2f4ac8cc; VR-040 pending merge from the Matrix session). Three bypasses in one route: (1) prisma.expense.findMany with no isRecurring basis → 132 one-offs ($50,840) annualised into committed; (2) toMonthly instead of monthlyRunRate in both reducers; (3) raw loan.minRepayment instead of resolveLoanMonthlyCost → Broadbeach + Thornland Lot 2 IO loans ($3,709/mo real interest) + HECS absent from Must Pay ($8,817 vs canonical $12,779). All three bypasses were GRANDFATHERED debt in .audit/source-lock-exceptions.json (seeded 2026-07-17) — the wall detected them and passed the build; paying the debt is part of the fix. Arithmetic corroboration: committed $51,034 − loans $8,817 + discretionary $10,105 = $52,322 = one-offs $50,840 + recurring $1,482 exactly. Registered with a PINNED id from the Matrix ledger (not issues:raise auto-numbering) to preserve cross-references. [2026-07-29] DIAGNOSED (root causes verbatim from the Matrix VR-040 trace, re-verified at source) → FIXING on #1523. §10 agent-fee decision deliberately NOT taken (per brief) — surfaced on the PR for Reza's pre-merge confirm; if he confirms exclusion, a follow-up one-line derivedFromIncomeId filter lands with the parity test updated to the same basis on both sides. | VR-041 Ring-3 PASS. The budget generator now consumes the canonical producers: the one-off gate holds (one-off contribution $0), loans resolve actuals-first ($12,779/mo against the canonical aggregate), recurring essentials $1,482/mo, committed $14,261/mo — every figure landed on the pre-declared prediction.",
+      "verified": "2026-07-29"
     },
     {
       "id": "MON-126",
       "title": "expenses.monthly.byCategory has no isRecurring basis — master feeds ALL rows to aggregateExpensesByCategory, so the Spending Pareto panel reads $52,323/mo directly above the page’s own \"132 one-offs — counted once, not monthly\"",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-29",
@@ -3522,8 +3523,214 @@
         1523
       ],
       "test": "tests/budget/mon125BudgetGeneratorSsot.test.ts#MON-126 basis lock (master byCategory feed gated to isRecurring !== false)",
-      "tracker": "neoaudit-run:VR-040",
-      "notes": "Raised from the Matrix MON-125 code brief §4f, which referenced this finding as \"MON-115\" — that id COLLIDES with the merged NEO_ALIGNMENT_SWEEP_2026_07_29 allocation (F4 duplicate-orchestrator-identity = MON-115), so it is registered here as MON-126; the Matrix should reconcile its ledger. Root: master gates recurring/essential/discretionary at the call site (isRecurring !== false) but passes ALL expense rows to aggregateExpensesByCategory at :953 — same contamination class as MON-125, different producer. Consumers: expenses.monthly.byCategory → /api/dashboard/spending-pareto:68 → SpendingParetoLens on /dashboard/expenses. NOTE for the sweep reconciliation: the sweep doc §\"filed as MON-112…120, registry 120 valid\" does not match the registry at HEAD 4ae03705 (111 issues, max MON-111) — the sweep’s registry filing never landed. [2026-07-29] DIAGNOSED → FIXING on #1523 (same PR as MON-125 — same contamination class, brief §4f explicitly one PR; justification recorded per Part 24 rule 1)."
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Raised from the Matrix MON-125 code brief §4f, which referenced this finding as \"MON-115\" — that id COLLIDES with the merged NEO_ALIGNMENT_SWEEP_2026_07_29 allocation (F4 duplicate-orchestrator-identity = MON-115), so it is registered here as MON-126; the Matrix should reconcile its ledger. Root: master gates recurring/essential/discretionary at the call site (isRecurring !== false) but passes ALL expense rows to aggregateExpensesByCategory at :953 — same contamination class as MON-125, different producer. Consumers: expenses.monthly.byCategory → /api/dashboard/spending-pareto:68 → SpendingParetoLens on /dashboard/expenses. NOTE for the sweep reconciliation: the sweep doc §\"filed as MON-112…120, registry 120 valid\" does not match the registry at HEAD 4ae03705 (111 issues, max MON-111) — the sweep’s registry filing never landed. [2026-07-29] DIAGNOSED → FIXING on #1523 (same PR as MON-125 — same contamination class, brief §4f explicitly one PR; justification recorded per Part 24 rule 1). | VR-041 Ring-3 PASS. aggregateExpensesByCategory now applies the isRecurring gate, so the Pareto breakdown equals the recurring run-rate rather than total spend.",
+      "verified": "2026-07-29"
+    },
+    {
+      "id": "MON-127",
+      "title": "Budget tool models TOTAL SPEND, not the surplus — the variable estimate is ABS benchmark x household size and neither path ever reads income; Reza's stated rule (budget the remainder in 3 modes) was never captured",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "cashflow",
+      "plain": {
+        "issue": "The budget tool works out what a household your size typically spends, using national averages, and calls that your budget. It never looks at what you actually have left over. On your numbers: income $41,303 minus committed $14,261 leaves $27,042 a month to budget - and that $27,042 is the number the three options should be splitting up."
+      },
+      "rootCause": [
+        "lib/budget-analysis/aiPrompt.ts:311",
+        "lib/budget-analysis/aiPrompt.ts:278",
+        "app/api/budget-analysis/generate/route.ts:381"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/budget-analysis/aiPrompt.ts:311. Expected: remainder = monthly net income - committed; the tool offers three modes of allocating THAT remainder (Reza's stated product rule). Actual: calculateBenchmarkExpenses(params, trackedCategories) takes only {adultsCount, childrenCount, childrenAges, petsCount, petTypes, carsCount, lifestylePreference} - income is not in scope. Every category is headcount x ABS 2023-24 base rate x lifestyle multiplier. Income enters route.ts ONLY at :262-269/:284-286/:390/:551 as a post-hoc exceeds-income flag, never as an input. Scenarios (:381-383) are Minimum/Recommended/Comfortable modes of TOTAL SPEND.. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyInflow."
+    },
+    {
+      "id": "MON-128",
+      "title": "aggregateIncome has NO one-off gate and 'net' is only net for SALARY — quickMetrics.monthlyIncome reads $41,303/mo ($495,636/yr) labelled net-of-PAYG against the app's own declared GROSS of $317,751/yr",
+      "status": "OPEN",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "cashflow",
+      "plain": {
+        "issue": "Your monthly income shows as $41,303 in the budget tool and on the year-to-date chart. That is $495,636 a year, described as after-tax — but the Tax page says you earned $317,751 before tax. After-tax income cannot be larger than before-tax income. The Income page separately says $25,335 a month."
+      },
+      "rootCause": [
+        "lib/calculations/incomeAggregator.ts:160",
+        "lib/calculations/incomeAggregator.ts:92",
+        "lib/services/masterFinancialService.ts:2100"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/calculations/incomeAggregator.ts:160. Expected: net monthly income <= gross monthly income ($317,751/12 = $26,479); one-off income rows contribute 0 to a monthly run-rate; one centralised income figure per the quickMetrics SSOT contract at masterFinancialService.ts:350-352. Actual: quickMetrics.monthlyIncome = $41,303/mo = $495,636/yr, 56% ABOVE declared gross and labelled 'monthly NET income (after PAYG)'. The Income page states a different net monthly ($25,335) and the Activity YTD Sankey shares this producer ($496K/yr).. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyInflow. | VR-041, TRACED END-TO-END. CHAIN: masterFinancialService.ts:2100 quickMetrics.monthlyIncome = monthlyIncome.all.netTotal <- :1865 buildIncomeBreakdown(...) <- :1130 aggregateIncome(aggregateSource) <- lib/calculations/incomeAggregator.ts:160 loop. THREE defects found in that loop: (1) NO ONE-OFF GATE - grep for isRecurring/monthlyRunRate/oneOff in incomeAggregator.ts returns NOTHING. getNetAmount:106 does converter(item.amount, item.frequency) raw, so every one-off income row is annualised as if it recurs. This is the MON-053 defect (one-off ATO deposits annualised x12) fixed on the TAX path but never on this aggregate, and the exact income-side twin of MON-125/MON-126. (2) 'NET' IS ONLY NET FOR SALARY - :105-106 comments 'For non-salary income, we don't deduct tax', so rental and other income flow through GROSS while the field is typed and consumed as 'monthly NET income (after PAYG)' (:354). (3) NOT ESTABLISHED, flag only: :96-98 returns item.netAmount/12 for SALARY+GROSS regardless of item.frequency, assuming netAmount is annual. Whether any row stores it otherwise was NOT traced. EXPECTATION FROM ARITHMETIC LAW: net income cannot exceed gross income. Declared gross is $317,751/yr = $26,479/mo (Tax page, VR-041). Net-of-tax is approximately 317,751 - 37,786 = $279,965/yr = $23,330/mo, consistent with the Income page's own $25,335. The reported $41,303/mo is ~77% above that and definitionally impossible. BLAST RADIUS: this value feeds savingsRate (:1413), debtToIncome (:1422), the MON-125 budget income-sanity guard (app/api/budget-analysis/generate/route.ts:267) and the health score - so the -30.5% savings rate, the 416% debt-to-income and the budget guard are all computed on it. SSOT NOTE: masterFinancialService.ts:350-352 states the contract explicitly - 'any surface that wants the 3-line personal-P&L scoreboard reads from here, never re-derives' - yet the Income page shows $25,335 and Home's KPI shows $19,899/mo. This is the unlabelled fourth basis recorded in VR-040 as MON-059, now identified as this producer."
+    },
+    {
+      "id": "MON-129",
+      "title": "CLASS SWEEP: 23 producers under lib/ convert Income/Expense rows to run-rates with no one-off gate — the Calc-SSOT wall never scanned lib/ (SCAN_ROOT='app'), so every engine bypass is invisible to CI",
+      "status": "OPEN",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "cashflow",
+      "plain": {
+        "issue": "The same mistake we just fixed in the budget tool — treating a one-off purchase or payment as if it happens every month — exists in 23 more places in the engine code. It affects your health score, risk radar, cashflow, entity breakdown, reports and the year-to-date money-flow chart. The automated guard that was built to catch this only ever looked at screens, never at the engines underneath them."
+      },
+      "rootCause": [
+        "lib/cfo/scoreCalculator.ts:130",
+        "lib/cfo/riskRadar.ts:146",
+        "lib/calculations/cashflowOrchestrator.ts:136",
+        "lib/calculations/entityBreakdown.ts:157",
+        "lib/services/moneyFlowService.ts:335",
+        "lib/reports/contextBuilder.ts:469",
+        "lib/health/buildHealthInput.ts:43",
+        "scripts/lint-source-lock.ts:53"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/utils/frequencies.ts:45. Expected: every Income/Expense run-rate uses monthlyRunRate()/annualRunRate() (frequencies.ts:45, which returns 0 when isRecurring === false); the source-lock lint scans lib/ producers as well as app/ surfaces. Actual: 79 raw toMonthly/toAnnual call sites in lib/, 66 ungated, of which 23 are confirmed-exposed Income/Expense reducers across 12 files. scripts/lint-source-lock.ts:53 sets SCAN_ROOT='app' with the comment 'Engines under lib/ are the producers — out of scope', so CI has never checked any of them.. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyOutflow, monthlyInflow."
+    },
+    {
+      "id": "MON-130",
+      "title": "CLASS SWEEP 2: 12 producers under lib/ read raw loan.minRepayment as a monthly cost — interest-only loans silently cost $0, and moneyFlowService SKIPS them entirely (root cause of the Activity 'Loans $106K/yr' vs canonical $12,779)",
+      "status": "OPEN",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "cashflow",
+      "plain": {
+        "issue": "Your two interest-only investment loans cost $3,709 a month in real interest. Twelve different parts of the app treat them as costing nothing, because they read the contractual minimum repayment — which is zero for an interest-only loan. The year-to-date money chart leaves them out altogether."
+      },
+      "rootCause": [
+        "lib/services/moneyFlowService.ts:385",
+        "lib/planning/debtPlanner.ts:164",
+        "lib/calculations/cashflowOrchestrator.ts:219",
+        "lib/calculations/loanAggregator.ts:90",
+        "lib/cfo/scoreCalculator.ts:132",
+        "lib/cfo/riskRadar.ts:202",
+        "lib/cashflow/buildCFEInput.ts:115",
+        "lib/reports/contextBuilder.ts:392"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/services/moneyFlowService.ts:385. Expected: every per-loan monthly cost comes from resolveLoanMonthlyCost() / totalLoanMonthlyCost() (actuals -> contractual minRepayment -> interest floor), per MON-081 and the #1523 migration. Actual: 12 producers read loan.minRepayment directly. Reza's two interest-only Bankwest loans have minRepayment = 0, so they contribute $0 to the debt planner, cashflow orchestrator, CFO score, risk radar, CFE input and reports. moneyFlowService.ts:385 goes further and 'continue's past any loan with minRepayment <= 0, dropping them from the money-flow chart entirely — this is why Activity shows Loans $106K/yr (~$8,833/mo) against the canonical $12,779/mo. buildHealthInput.ts:95 handles interest-only CORRECTLY but does so with its own duplicate interest-floor implementation rather than the canonical resolver.. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyOutflow."
+    },
+    {
+      "id": "MON-131",
+      "title": "Reference Numbers — every canonical financial quantity has multiple producers (~336 across 23 quantities); one calc engine per named number, enforced",
+      "status": "OPEN",
+      "severity": "critical",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "cashflow",
+      "plain": {
+        "issue": "Every important number in Monitrax is worked out in many different places, each with its own formula — spending 28 ways, cashflow 27, depreciation 22, PAYG 23. That is why the same figure disagrees between screens: there is no single answer to compare against, so fixing one place never fixes the number. Only the Medicare levy is calculated in exactly one place."
+      },
+      "rootCause": [
+        "lib/calculations/cashflowOrchestrator.ts:302",
+        "lib/cfo/scoreCalculator.ts:125",
+        "lib/health/metricAggregation.ts:115",
+        "lib/reports/contextBuilder.ts:250",
+        "lib/intelligence/portfolioEngine.ts:392",
+        "lib/services/moneyFlowService.ts:334",
+        "scripts/lint-source-lock.ts:53"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/services/masterFinancialService.ts:350. Expected: one canonical producer per quantity, every other call site reading it — the stated architecture (masterFinancialService.ts:350-352 'any surface that wants the 3-line personal-P&L scoreboard reads from here, never re-derives'). Actual: Producer census at f13368ef: expense run-rate 28 producers, monthly cashflow 27, per-loan cost 24, savings rate 21, net income 16, gross income 14, assets/liabilities 14, property equity 13, forecast inflow/outflow 11, per-property cashflow/yield 10, liquid cash 8, emergency-fund months 8, net worth 7. 13 of 13 quantities verdict MULTIPLE; none SINGLE. Includes hardcoded fallbacks (forecastEngine.ts:220 defaults 100000/60000), magic multipliers (exporter.ts:262 gross = net x1.3), a converter with no ANNUAL case (contextBuilder.ts:250 = MON-034) and an inline frequency switch (app/api/safety-net/route.ts:72).. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyInflow, monthlyOutflow. | REZA 2026-07-29: named 'Reference Numbers'. THIS IS THE ROOT CAUSE ISSUE AND THE FIRST PRIORITY - most care and resources. Design record: docs/architecture/REFERENCE_NUMBERS_DESIGN.md (living; decisions register at section 6). WAVE 2 CENSUS ADDED: depreciation 22 producers (22 distinct, zero Decimal twins), income tax 23, PAYG 23, taxable income 21, super cap 16, deductions 8, health score 6, land tax 6, negative gearing 6, Medicare 4 (2 distinct - THE ONLY SINGLE-SOURCED QUANTITY IN THE APP). TOTAL ~336 producers across 23 quantities; 22 of 23 MULTIPLE. SUBSUMPTION (mechanically checked, not assumed): 25 of 54 live issues cite a catalogued producer file. Of those, ~19 are DOWNSTREAM of producer multiplicity and should close or become trivially closeable when the collapse lands: MON-001, 020, 023, 024, 031, 034, 037, 055, 056, 059, 060, 063, 064, 073, 127, 128, 129, 130, 132. The other 6 cite the same files but have unrelated causes and will NOT close: MON-047 (dead unwired code), MON-065 (doubled currency symbol), MON-066 (contradictory copy), MON-074/084 (duplicate FACT rows - that is the intake-dedup guard, a different failure mode). DECISION D8 (Reza delegated, Matrix recommendation adopted 2026-07-29): cashflow subtracts the FULL loan repayment because cash is cash, BUT the principal portion is labelled 'wealth transfer, not spending' - accounting basis: interest is an expense, principal is a balance-sheet movement that converts cash into equity. Affects the headline -$6,073/mo. ALSO DECIDED: D5 liquid = cash equivalents only per AASB 107 (shares/ETFs a separate labelled line; SMSF assets excluded from both - preserved, not merely illiquid); D9 'net income' must be after-tax across ALL sources or be renamed (today it is net only for salary while rental flows through gross); D10 portfolio equity INCLUDES RENTAL-type properties (the exclusion at app/dashboard/properties/page.tsx:494 is a bug, not a definition); D11 depreciation gets ONE producer with an explicit rate-unit contract stated in the type (percentage vs fraction) - properties/[id]/depreciation/page.tsx:194 uses cost x (rate/100) x 2 while reports/contextBuilder.ts:521 uses cost x rate x 2, which is MON-026's 100x bug armed to recur; D12 every legislated constant comes from TAX_YEAR_CONFIGS, never typed into a page (what-if/[lever]/page.tsx:422 hardcodes 30000 and 0.12 - root cause of MON-073 and MON-117; income/page.tsx:356 invents PAYG as annual x 0.30); D13 the four health-score formulas are four DIFFERENT questions and get four names rather than being reconciled to one number."
+    },
+    {
+      "id": "MON-132",
+      "title": "Emergency fund must be a SURVIVAL RUNWAY — liquid cash / (essential expenses - salary-independent income), answering 'if I lose my salary, how long do I last' (Reza decision 2026-07-29)",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "cashflow",
+      "plain": {
+        "issue": "Your Safety Net says 11.6 months, worked out as your cash divided by everything you spend. That is not what an emergency fund is for. It should answer one question: if your salary stopped tomorrow, how long could you last - which means subtracting the income that keeps arriving anyway, like your rent."
+      },
+      "rootCause": [
+        "lib/services/masterFinancialService.ts:1384",
+        "lib/cfo/scoreCalculator.ts:190",
+        "lib/health/metricAggregation.ts:163"
+      ],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/services/masterFinancialService.ts:1384. Expected: liquid cash / (essential expenses - salary-independent 'safe' income such as rental), with the sentence 'if you lose your salary income, how long you can survive' shown on the page. Actual: Safety Net divides liquid cash by TOTAL monthly outgoings ($25,973/mo incl. one-off capital spend) giving 11.6 months. Three producers disagree on the denominator: masterFinancialService:1384 uses actual average outflow, scoreCalculator:190 uses essential-only, metricAggregation:163 uses all declared expenses and counts shares/ETFs as liquid.. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyOutflow. | REZA DECISION 2026-07-29, this is the SPEC not an option: the emergency fund is a SURVIVAL RUNWAY. FORMULA: liquid cash / (essential expenses - salary-independent 'safe' income such as rental). The sentence 'if you lose your salary income, how long you can survive' MUST APPEAR ON THE PAGE - the label is part of the fix, not decoration. INDICATIVE ONLY at f13368ef, pending MON-128: liquid $301,808; committed $14,261/mo (recurring essentials $1,482 + canonical loans $12,779); rental ~$10,102/mo; net burn ~$4,159/mo; runway ~72 months against the 11.6 shown today. DO NOT BUILD ON THESE INPUTS YET - the rental figure is itself unresolved (Income page $121,227/yr vs Tax page $121,881/yr) and every income aggregate is suspect until MON-128 lands. SUB-DECISION RESOLVED (Reza, 2026-07-29): LOAN REPAYMENTS ARE ESSENTIAL. essential = recurring bills + all loan repayments = $1,482 + $12,779 = $14,261/mo. Rationale: the bank still wants paying if salary stops. Net burn = 14,261 - rental ~10,102 = ~$4,159/mo; runway ~72 months on liquid $301,808. SPEC IS NOW COMPLETE - build once MON-128 has made the income inputs trustworthy."
+    },
+    {
+      "id": "MON-133",
+      "title": "Legislated tax constants hardcoded outside TAX_YEAR_CONFIGS in ~12 production files — including a STALE Super Guarantee rate of 11.5% in two live paths (the legislated rate is 12%)",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "tax",
+      "plain": {
+        "issue": "Tax rates and caps set by law are typed directly into pages and engines instead of being read from the one place that holds them. Two of them are out of date: the app uses a compulsory super rate of 11.5% when the legislated rate is 12%. That understates employer contributions everywhere those paths are used."
+      },
+      "rootCause": [
+        "app/dashboard/income/page.tsx:566",
+        "lib/cashflow/savingOpportunities.ts:162",
+        "lib/cashflow/savingOpportunities.ts:56",
+        "app/dashboard/cfo/what-if/[lever]/page.tsx:419",
+        "lib/tax-engine/super/capTracker.ts:374",
+        "lib/tax-engine/super/contributionCalculator.ts:186",
+        "components/dashboard/DebtQualityWidget.tsx:80",
+        "lib/cgt/index.ts:68"
+      ],
+      "semanticKeys": [
+        "engine.taxYearConfig.getCurrentTaxYearConfig"
+      ],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-041",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/income/page.tsx:566. Expected: every legislated rate, cap and threshold read from TAX_YEAR_CONFIGS; no numeric tax constant typed into a page, component, route or engine outside the config module. Actual: ~35 hardcoded legislated constants across ~12 production files. STALE VALUES: superGuaranteeRate 0.115 at income/page.tsx:566 (comment says '11.5% for 2024-25') and sgRate 0.115 at savingOpportunities.ts:162 — the legislated rate is 12%. SILENT WRONG-YEAR FALLBACKS: capTracker.ts:374 '|| 30000' and :381 '|| 120000'. DUPLICATE CONSTANT: lib/cgt/index.ts:68 SMALL_BUSINESS_CGT_THRESHOLD = 6000000 duplicates div152SmallBusinessConcessions.ts:147 MNAV_THRESHOLD = 6_000_000. Also: contributions tax 0.15 in 7 sites, excess-contributions 0.32/0.47, TSB threshold 500000 twice, marginalTaxRate 0.37 defaulted in 5 component/route sites, what-if page carrying its own sgRate 0.12 + cap 30_000 (MON-073/117 root cause).. Evidence/run: VR-041."
+    },
+    {
+      "id": "MON-134",
+      "title": "Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise",
+      "status": "OPEN",
+      "severity": "high",
+      "changesNumbers": true,
+      "opened": "2026-07-29",
+      "area": "health",
+      "plain": {
+        "issue": "The health score's trend — the up/down verdict, the percentage change, and the 7-month history chart data — is not based on any stored history. It is generated fresh on every request from today's score plus random noise, so it changes every time you look at it and can claim you are improving or declining based on nothing. Found by the Matrix Relay's first self-diff: 15 leaves moved between two captures of an unchanged database, all in this subtree."
+      },
+      "rootCause": [
+        "lib/health/aggregateEngine.ts:157"
+      ],
+      "semanticKeys": [
+        "engine.aggregateEngine.generateHealthReport"
+      ],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:relay-A3-c9a464c2",
+      "notes": "Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 15 moved — all under healthScore.trend/evidence.historicalTrend). Root cause verified at source: calculateTrend(currentScore) synthesises history as currentScore + (Math.random()-0.5)*5 and derives direction/changePercent from the invented series; the code comment admits it. Tranche-blocking for MON-131: a producer whose output differs on every call makes every golden-baseline diff STOP on noise. D15 (Reza 2026-07-29): score monthly from stored real snapshots (HealthScoreSnapshot, netWorthHistory pattern, formula-versioned); <2 snapshots → INSUFFICIENT_HISTORY, never a number; version-spanning trends show the break. Coverage boundary: grep of app/+components/ for historicalTrend/trend.history/changePercent found NO rendering surface — emitted by the canonical engine, served by /api/financial-health, consumed by cfo/intelligenceEngine; whether any screen renders it is established during the build, not assumed."
     }
   ]
 }
