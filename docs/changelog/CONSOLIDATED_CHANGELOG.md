@@ -202,6 +202,14 @@
 
 ## July 2026
 
+### 2026-07-29 — MON-134 PR-2: `HealthScoreSnapshot` schema + migration (additive only — ships ahead of the read path per the brief §4.1)
+- **Type:** feat (schema) | **Scope:** `prisma/schema.prisma` (+`User` relation), `prisma/migrations/20260729133413_mon134_health_score_snapshot/`, `docs/architecture/03_DATA_MODEL.md`
+- One row per (user, month-anchor): `score` (canonical `generateHealthReport` 0-100), `riskBand`, **`formulaVersion`** (MON-131 will change the score's inputs — a trend spanning two formulas must show the break, D15), `capturedAt`. `@@unique([userId, snapshotDate])`, cascade on user delete, `health_score_snapshots`.
+- The §3.2 **audit-snapshot exception** (`NetWorthSnapshot` pattern) with ONE deliberate divergence, documented in the model JSDoc: **WRITE-ONCE per month** (brief §4.2 — re-running the writer must not change an existing row), stricter than the net-worth recorder's current-month refresh.
+- Migration is a pure additive `CREATE TABLE` (no `DROP`/`ALTER`, no backfill) — generated via `prisma migrate diff` (no DB in the sandbox; the preview build's `prisma migrate deploy` against dev is the real application test, §12.12). No §12.11 destructive-write checklist required — nothing touches an existing row.
+- Writer + real `calculateTrend` + determinism/`Math.random()` guards follow in PR-3 (changesNumbers — Reza's click).
+- **Gate (§20.6): Document 10/10 (brief §4.1 + §3.2 pattern conformance, divergence stated) · Requirements 10/10 · Logic 10/10.** Verifies: schema validates, client generates, tsc clean, migration SQL matches the model. Does NOT verify: the migration against a live DB (preview build does) or any trend behaviour (PR-3).
+
 ### 2026-07-29 — MON-131 Tranche −1b: the Matrix Relay — admin-side capture endpoints (moves NO numbers)
 - **Type:** feat (tooling) | **Scope:** `lib/matrix/goldenBaseline.ts` (new — THE capture/diff module), `app/api/admin/matrix/{golden-baseline,golden-baseline/diff,census}/route.ts` (new), `scripts/matrix/golden-baseline.mjs` (now a thin CLI wrapper), `tests/matrix/goldenBaselineRelay.test.ts`
 - **Why:** the Tranche −1 baseline script requires DATABASE_URL, so every capture/diff needed Reza's terminal — dozens of manual round-trips across the programme. The deployed app already reaches the DB and the admin portal already carries this surface class (`/api/admin/calc-audit`). The relay lets the Matrix capture/diff over an authenticated browser session; Reza's terminal leaves the loop.
