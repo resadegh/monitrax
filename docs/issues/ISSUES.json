@@ -3266,13 +3266,15 @@
     {
       "id": "MON-106",
       "title": "No FY2026-27 tax year config — engine silently falls back to FY25-26 brackets; the $18,201–$45,000 band taxed at 16% instead of the legislated 15% (≈$268 overstatement on the live position)",
-      "status": "OPEN",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-28",
       "area": "tax",
       "plain": {
-        "issue": "The tax page header says Financial Year 2026-27 but the rates underneath are last year's — so the estimated tax owing is about $268 higher than the law says for this year."
+        "issue": "The tax page header says Financial Year 2026-27 but the rates underneath are last year's — so the estimated tax owing is about $268 higher than the law says for this year.",
+        "fix": "This year’s (FY2026-27) official tax rates were added — including the legislated cut of the $18,201–$45,000 band from 16% to 15% — and the app now announces loudly when a year’s rates are missing instead of quietly using last year’s. A build guard makes a missing new-year config impossible to ship past 1 July.",
+        "check": "The tax page header, bracket table and footnote all say FY26-27 now, and estimated tax owing drops by about $268 (tax on income $35,146 → $34,878). Every other figure (Medicare $2,909, deductions, income) stays put."
       },
       "rootCause": [
         "lib/tax-engine/config/taxYearConfig.ts:349",
@@ -3282,11 +3284,22 @@
         "engine.taxYearConfig.getCurrentTaxYearConfig",
         "input.taxYearConfig.brackets"
       ],
-      "downstreamConsumers": [],
-      "fixPRs": [],
-      "test": null,
+      "downstreamConsumers": [
+        "lib/tax-engine/config/taxYearConfig.ts (TAX_YEAR_2026_27 — THE one config producer; registry + resolver serve it)",
+        "lib/tax-engine/core/incomeTaxCalculator.ts (brackets consumed — both twins)",
+        "lib/tax-engine/position/taxPositionCalculator.ts (Float + Decimal — configFinancialYear/configStale stated by the engine)",
+        "lib/tax-engine/position/userTaxPosition.ts → /api/tax/position → /dashboard/tax (header ≡ bracket table ≡ footnote all FY26-27 now; amber stale banner when a requested FY has no config)",
+        "/cashflow + /dashboard/cfo tax figures (same canonical bundle — move by the same −$268)",
+        "app/api/tax/config/route.ts (availableFinancialYears now includes 2026-27)",
+        "app/api/tax/entity/[entityId]/* capture routes (2026-27 becomes a configured, writable FY under the MON-104 resolver)",
+        "tests/golden/ring2.taxParity.test.ts (golden netTax re-pinned 32,284 → 32,016 — the same legislated −$268, documented at the pin)"
+      ],
+      "fixPRs": [
+        1520
+      ],
+      "test": "tests/tax/mon106Fy2026_27Config.test.ts#clock-derived current-FY-config CI guard + Ring-0 bracket walk ($145,426: 35,145.62 → 34,877.62, exactly −268.00) + bracket-table integrity + configStale contract both twins",
       "tracker": "neoaudit-run:VR-037",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/config/taxYearConfig.ts:349. Evidence/run: VR-037."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/config/taxYearConfig.ts:349. Evidence/run: VR-037. [2026-07-28] DIAGNOSED (root: no TAX_YEAR_2026_27 entry + silent latest-config fallback) → FIXING on #1520 (PR-B, stacked on #1519; Reza's number-changing merge click is the gate). Ring-0 walk: FY25-26 35,145.62 / FY26-27 34,877.62 / delta exactly 268.00 on taxable 145,426. Old totals NOT preserved — they were wrong. Supersedes backlog item 34's 2026-06-15 deferral (row flipped in the same PR). Discovered follow-up (surfaced, not fixed here): getUserTaxPosition computes historical ?financialYear= requests on the CURRENT config — the new configStale banner makes that visible; candidate future issue."
     },
     {
       "id": "MON-107",

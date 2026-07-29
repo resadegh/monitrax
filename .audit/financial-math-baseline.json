@@ -12,13 +12,13 @@
     },
     {
       "file": "app/dashboard/tax/page.tsx",
-      "line": 798,
+      "line": 815,
       "pattern": "INLINE_ARITHMETIC",
       "match": "taxPosition.tax.marginalRate - taxConfig.superContributionsTaxRate"
     },
     {
       "file": "app/dashboard/tax/page.tsx",
-      "line": 801,
+      "line": 818,
       "pattern": "INLINE_ARITHMETIC",
       "match": "taxConfig.concessionalCap - taxPosition.super.concessional"
     },

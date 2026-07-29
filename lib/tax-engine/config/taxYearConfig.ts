@@ -241,6 +241,105 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
 };
 
 // =============================================================================
+// 2026-27 Financial Year (Current from 1 Jul 2026 — MON-106)
+// =============================================================================
+
+/**
+ * FY26-27 config (MON-106, VR-037 finding 3). Before this entry existed the
+ * engine silently fell back to FY25-26 brackets — taxing the $18,201–$45,000
+ * band at 16% instead of the legislated 15% (≈$268 overstatement on a
+ * $145,426 taxable income; Ring-0 walk locked in
+ * tests/tax/mon106Fy2026_27Config.test.ts).
+ *
+ * THE legislated change this entry applies:
+ *   - Lowest resident bracket 16% → **15%** from 1 Jul 2026 — Treasury Laws
+ *     Amendment (More Cost of Living in Every Pocket) Act 2025 (2025-26
+ *     Federal Budget measure; the same Act steps it to 14% from 1 Jul 2027 —
+ *     see reviewSchedule). Base amounts re-derived from the new rate:
+ *     $4,020 at $45,001 / $31,020 at $135,001 / $51,370 at $190,001.
+ *
+ * Everything else is CARRIED FORWARD from FY25-26 pending confirmed ATO
+ * indexation (AWOTE super caps, Medicare thresholds/MLS tiers, co-contribution,
+ * TBC CPI step) — each carried value is commented. Reza's merge review of this
+ * config is the sign-off gate the 2026-06-15 deferral decision required
+ * (docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md item 34); the
+ * 2027-06-15 review checkpoint picks up the indexed figures + the 14% step.
+ */
+export const TAX_YEAR_2026_27: TaxYearConfig = {
+  financialYear: '2026-27',
+  startDate: new Date(2026, 6, 1), // July 1, 2026
+  endDate: new Date(2027, 5, 30), // June 30, 2027
+  label: 'FY26-27',
+
+  // Lowest bracket 16% → 15% from 1 Jul 2026 (More Cost of Living in Every
+  // Pocket Act 2025). Higher-bracket rates/thresholds unchanged by the Act;
+  // base amounts re-derived from the 15% band.
+  brackets: [
+    { min: 0, max: 18200, baseAmount: 0, rate: 0 },
+    { min: 18201, max: 45000, baseAmount: 0, rate: 0.15 }, // was 0.16 (FY24-25/FY25-26)
+    { min: 45001, max: 135000, baseAmount: 4020, rate: 0.30 }, // 26,800 × 15% (was 4,288)
+    { min: 135001, max: 190000, baseAmount: 31020, rate: 0.37 }, // 4,020 + 90,000 × 30%
+    { min: 190001, max: null, baseAmount: 51370, rate: 0.45 }, // 31,020 + 55,000 × 37%
+  ],
+  taxFreeThreshold: 18200,
+
+  medicareRate: 0.02,
+  medicareThresholds: TAX_YEAR_2025_26.medicareThresholds, // carried — pending ATO FY26-27 indexation
+  medicareSurchargeThresholds: TAX_YEAR_2025_26.medicareSurchargeThresholds, // carried — pending ATO
+  medicareSurchargeFamily: TAX_YEAR_2025_26.medicareSurchargeFamily, // MON-088 rule; multipliers not indexed
+
+  lito: TAX_YEAR_2025_26.lito, // unchanged by the Act; not indexed
+  saptoSingle: 2230, // carried — pending ATO
+  saptoCoupleEach: 1602, // carried — pending ATO
+
+  // Super — SG rate reached its legislated 12% maximum on 1 Jul 2025; no
+  // further step is legislated.
+  superGuaranteeRate: 0.12,
+  superGuaranteeQuarterlyCap: TAX_YEAR_2025_26.superGuaranteeQuarterlyCap, // carried — ATO publishes the FY26-27 max contribution base annually
+  concessionalCap: 30000, // carried — AWOTE-indexed in $2,500 steps; confirm at the 2027-06-15 review
+  nonConcessionalCap: 120000, // carried — 4 × concessional cap; moves only if the concessional cap moves
+  division293Threshold: 250000, // not indexed (ITAA 1997 s293-20)
+  superContributionsTaxRate: 0.15, // ITAA 1997 s295-485 — structural rate
+  coContributionIncomeThreshold: 60400, // carried — pending ATO indexation
+  carryForwardTsbThreshold: 500000, // ITAA 1997 s291-20(3) — not indexed
+  // Carried from FY25-26 ($2.0M TBC-derived tiers, s292-85(3)-(4)); the TBC
+  // moves only on a CPI step — confirm at the 2027-06-15 review.
+  bringForwardThresholds: TAX_YEAR_2025_26.bringForwardThresholds,
+
+  cgtDiscount: 0.5,
+  cgtDiscountMonths: 12,
+
+  reviewSchedule: {
+    // Before FY27-28 commences: (a) the SAME Act steps the lowest bracket
+    // 15% → 14% on 1 Jul 2027 — a FY27-28 config is REQUIRED by then (the
+    // mon106 clock-derived CI guard goes red on 1 Jul 2027 without it);
+    // (b) confirm the ATO-indexed items carried forward above.
+    nextReviewBy: '2027-06-15',
+    reviewers: ['Reza', 'tax-engine-owner'],
+  },
+
+  // Phase 41e.3 — high-balance super tax
+  transferBalanceCap: 2000000, // carried — pending any CPI-triggered step
+  div296CommencementVerified: false, // verify status before applying (§12.14 FW-2)
+  div296TsbThreshold: 3000000,
+  div296Rate: 0.15,
+
+  // Phase 41E reform 2026-27 — ALL flags stay false until each Bill's Royal
+  // Assent is verified (§12.14 FW-2: never apply post-reform math before
+  // commencement is verified). Measure 5 (loss carry-back) nominally starts
+  // FY26-27 but remains gated behind lossCarryBackCommencementVerified.
+  negativeGearingReformCommencementVerified: false,
+  cgtIndexationCommencementVerified: false,
+  cgtMinRateCommencementVerified: false,
+  trustMinTaxCommencementVerified: false,
+  foreignResidentCgtCommencementVerified: false,
+  lossCarryBackCommencementVerified: false,
+  evFbtPhase2CommencementVerified: false,
+  dynamicPaygCommencementVerified: false,
+  cpiQuarterlyIndex: {},
+};
+
+// =============================================================================
 // 2023-24 Financial Year (Previous)
 // =============================================================================
 
@@ -347,6 +446,7 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
 // =============================================================================
 
 const TAX_YEAR_CONFIGS: Record<string, TaxYearConfig> = {
+  '2026-27': TAX_YEAR_2026_27,
   '2025-26': TAX_YEAR_2025_26,
   '2024-25': TAX_YEAR_2024_25,
   '2023-24': TAX_YEAR_2023_24,

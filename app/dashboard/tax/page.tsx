@@ -77,6 +77,10 @@ interface TaxPositionResponse {
   success: boolean;
   financialYear: string;
   isCurrent: boolean;
+  /** MON-106 — the FY of the config the numbers were computed with; when it
+   *  differs from financialYear the page announces it (never silent). */
+  configFinancialYear?: string;
+  configStale?: boolean;
   summary: {
     totalIncome: number;
     totalDeductions: number;
@@ -197,6 +201,19 @@ export default function TaxPage() {
       />
 
       <div className="space-y-6">
+        {/* MON-106 — a not-yet-configured FY announces itself (UNCOMPUTED-class
+            flag): the engine computed on its normalised fallback config and the
+            user must see that, never a silently mismatched year (§12.14). */}
+        {taxPosition?.configStale && taxPosition.configFinancialYear && (
+          <div className="flex items-start gap-2.5 rounded-[12px] border border-amber-400/30 bg-amber-50/60 px-4 py-3 dark:bg-amber-950/20">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm text-amber-900 dark:text-amber-100">
+              FY{taxPosition.financialYear} rates are not yet configured &mdash; figures shown use
+              FY{taxPosition.configFinancialYear}. They will update automatically once the
+              FY{taxPosition.financialYear} tax settings are added.
+            </p>
+          </div>
+        )}
         {error && (
           <Card className="border-destructive">
             <CardHeader>

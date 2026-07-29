@@ -12,6 +12,7 @@ import {
   TAX_YEAR_2023_24,
   TAX_YEAR_2024_25,
   TAX_YEAR_2025_26,
+  TAX_YEAR_2026_27,
   getTaxYearConfig,
   getCurrentTaxYearConfig,
 } from '@/lib/tax-engine/config/taxYearConfig';
@@ -21,6 +22,9 @@ const ALL_FYS: ReadonlyArray<{ fy: string; config: TaxYearConfig }> = [
   { fy: '2023-24', config: TAX_YEAR_2023_24 },
   { fy: '2024-25', config: TAX_YEAR_2024_25 },
   { fy: '2025-26', config: TAX_YEAR_2025_26 },
+  // MON-106: FY26-27 — the legislated 15% band (More Cost of Living in
+  // Every Pocket Act 2025); indexed items carried forward pending ATO.
+  { fy: '2026-27', config: TAX_YEAR_2026_27 },
 ];
 
 describe('TaxYearConfig — canonical SSOT (CLAUDE.md §12.2 + audit §10.4)', () => {

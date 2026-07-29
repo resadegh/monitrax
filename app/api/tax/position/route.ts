@@ -46,6 +46,11 @@ export const GET = withPermission('report.read', async (request, auth) => {
       success: true,
       financialYear: taxPosition.financialYear,
       isCurrent: taxPosition.financialYear === currentFY.year,
+      // MON-106: pass the engine's stale-config surfacing through — the page
+      // announces a not-yet-configured FY instead of silently rendering a
+      // mismatched year.
+      configFinancialYear: taxPosition.configFinancialYear,
+      configStale: taxPosition.configStale,
       summary: {
         totalIncome: r(taxPosition.income.total),
         totalDeductions: r(taxPosition.deductions.total),

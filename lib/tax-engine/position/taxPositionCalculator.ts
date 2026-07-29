@@ -394,6 +394,11 @@ export function calculateTaxPosition(
 
   return {
     financialYear,
+    // MON-106: announce, never silently substitute — when the requested FY
+    // has no config the engine computed on the normalised fallback, and the
+    // surface renders that fact.
+    configFinancialYear: fyConfig.financialYear,
+    configStale: financialYear !== fyConfig.financialYear,
     income: incomeBreakdown,
     deductions: deductionBreakdown,
     tax: taxCalculation,
@@ -667,6 +672,9 @@ export interface TaxCalculationDecimal {
 
 export interface TaxPositionResultDecimal {
   financialYear: string;
+  /** MON-106 — see TaxPositionResult.configFinancialYear / configStale. */
+  configFinancialYear: string;
+  configStale: boolean;
   income: IncomeBreakdownDecimal;
   deductions: DeductionBreakdownDecimal;
   tax: TaxCalculationDecimal;
@@ -905,6 +913,9 @@ export function calculateTaxPositionDecimal(
 
   return {
     financialYear,
+    // MON-106 — mirror of the Float twin's stale-config surfacing.
+    configFinancialYear: fyConfig.financialYear,
+    configStale: financialYear !== fyConfig.financialYear,
     income: incomeBreakdown,
     deductions: deductionBreakdown,
     tax: taxCalculation,
