@@ -14,6 +14,21 @@
  * the dark-cosmos glass vocabulary as a deliberate immersive data-viz choice.
  * Design reference: `.stitch/designs/neomatrix/explorer-desktop-dark.png`.
  *
+ * THREE VIEWS, one axis. `Semantic` and `Proven` render the verified Layer-1
+ * graph coloured by DOMAIN. `Structural` (NI-5b) renders the whole-codebase
+ * Graphify Layer 0 — server-aggregated, drilled by directory — coloured by
+ * ARCHITECTURAL LAYER on the same `db → engine → service → route → ui` axis the
+ * semantic schema uses (`lib/admin/neomatrix/structuralLayers.ts`, shared with
+ * the route so both ends group and colour on ONE definition). It used to colour
+ * by a hash of the directory name, which was pretty and said nothing.
+ *
+ * NOTHING ABOUT SCALE IS HARDCODED HERE. Every count, total and cap shown to a
+ * human is read from the payload; a truncated page says so in the place it is
+ * truncated and offers the larger fetch from there. The previous version shipped
+ * "8,587 nodes", "8,589 symbols", "~97 directory clusters" and "top 800 by
+ * connections" as literals — written when Layer 0 covered two roots, still on
+ * screen after it grew to nine plus prisma/.
+ *
  * The 3D canvas is `react-force-graph-3d` (three.js), dynamically imported
  * (ssr:false) so three.js stays out of the SSR bundle and only loads on this
  * admin route. The 2D/3D toggle drives `numDimensions` on the same WebGL scene
@@ -24,6 +39,12 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import {
+  LAYER_COLORS,
+  LAYER_SCOPE,
+  STRUCTURAL_LAYERS,
+  type StructuralLayer,
+} from '@/lib/admin/neomatrix/structuralLayers';
 
 // three.js needs `window`; load only on the client.
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
@@ -46,7 +67,13 @@ const BRIDGE_DIM = '#334155';
 // "intentionally not connected (planned)", not an accidental break.
 const ISLAND_AMBER = '#F59E0B';
 const DOMAINS = ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'] as const;
-const LAYERS = ['db', 'engine', 'ui'] as const;
+// The FULL semantic layer enum (financial-graph.schema.md). This used to be
+// ['db','engine','ui'] — `service` and `route` are legal schema values, so every
+// service/route node fell into the "other" chip and the rail could not name the
+// layer it was showing. The four input-builder orchestrators modelled on
+// 2026-07-29 are all `layer: 'service'`, which is exactly the case that made the
+// omission visible.
+const LAYERS = ['db', 'engine', 'service', 'route', 'ui'] as const;
 const TRAIL = ['T', 'R', 'A', 'I', 'L'] as const;
 
 interface RawNode {
@@ -68,6 +95,11 @@ interface RawNode {
   verifiedDate: string | null;
   status: string | null;
   proven?: boolean; // engine/orchestrator with a calc-audit fixture (tagged by the API)
+  // Structural (Layer-0) nodes only: the architectural layer the server derived
+  // from the file path (`lib/admin/neomatrix/structuralLayers.ts`). Semantic
+  // nodes carry their own `layer` from the schema instead; the two are the same
+  // axis, which is the point — see the LAYER_COLORS legend.
+  structuralLayer?: StructuralLayer;
 }
 interface RawEdge {
   from: string;
@@ -87,30 +119,66 @@ type GNode = RawNode & { degree: number; color: string; val: number; bridge?: bo
 type GLink = { source: string; target: string; type: string };
 
 // Structural view (NI-5b) — server-AGGREGATED payloads (the browser never
-// downloads the full 2.7 MB graph; that was the load hang). `clusters` = ~97
-// directory super-nodes; `dir`/`search` = up-to-800 symbols + their edges.
+// downloads the full structural JSON; that was the load hang). `clusters` = one
+// super-node per real directory; `dir`/`search` = a ranked page of symbols.
+//
+// The shapes below MIRROR the route (`app/api/admin/neomatrix/structural`) and
+// deliberately include its honesty fields. `totals`/`layerCounts` exist so the
+// UI can state the real size of the codebase instead of carrying a hardcoded
+// figure that goes stale — the old client shipped "8,587 nodes", "8,589
+// symbols", "2.7 MB" and "~97 directory clusters" as literals while Layer 0 had
+// grown past twice that. `returned`/`total`/`truncated`/`limit` exist because a
+// page cut to 800 with no notice reads as "this is all there is".
+type StructuralTotals = { symbols: number; relations: number; files: number; directories: number };
+type StructuralCluster = { id: string; label: string; count: number; layer: StructuralLayer };
+type StructuralSymbol = {
+  id: string;
+  label: string;
+  file: string;
+  line: number;
+  layer: StructuralLayer;
+  degree: number;
+};
 type StructuralPayload =
-  | { mode: 'clusters'; nodes: Array<{ id: string; label: string; count: number }>; edges: Array<{ from: string; to: string; weight: number }> }
-  | { mode: 'dir' | 'search'; dir?: string; nodes: Array<{ id: string; label: string; file: string; line: number }>; edges: Array<{ from: string; to: string; type: string }>; capped: number };
+  | {
+      mode: 'clusters';
+      nodes: StructuralCluster[];
+      edges: Array<{ from: string; to: string; weight: number }>;
+      totals: StructuralTotals;
+      layerCounts: Record<string, number>;
+    }
+  | {
+      mode: 'dir' | 'search';
+      dir?: string;
+      nodes: StructuralSymbol[];
+      edges: Array<{ from: string; to: string; type: string }>;
+      returned: number;
+      total: number;
+      truncated: boolean;
+      limit: number;
+      maxLimit: number;
+    };
 
-// Top-level dir (e.g. "lib/tax-engine", "app/api") — the structural-view grouping.
-function topDir(file: string | null): string {
-  if (!file) return '';
-  return file.split('/').slice(0, 2).join('/');
+// Structural colour = ARCHITECTURAL LAYER, not a hash of the directory name.
+// Until 2026-07-29 this was `hsl(hash(dirname))` — visually busy and
+// semantically empty: `lib/tax-engine` and `app/api` got unrelated hues, so the
+// picture could not answer "where does the DB become an engine, and where does
+// an engine become a route?". Colouring on the same db → engine → service →
+// route → ui axis the semantic schema uses makes the two views read on ONE
+// dimension, and makes cross-layer wiring the thing the eye actually follows.
+function structuralColor(layer: StructuralLayer | undefined): string {
+  return layer ? LAYER_COLORS[layer] ?? NEUTRAL : NEUTRAL;
 }
-// Deterministic dir → hue, so the 8,587-node structural view colours by codebase
-// area (stable across renders, no palette to maintain).
-function dirColor(file: string | null): string {
-  const d = topDir(file);
-  if (!d) return NEUTRAL;
-  let h = 0;
-  for (let i = 0; i < d.length; i++) h = (h * 31 + d.charCodeAt(i)) % 360;
-  return `hsl(${h}, 68%, 62%)`;
+
+/** 16149 → "16.1k". Used only where a chip is too narrow for the full figure. */
+function compact(n: number): string {
+  if (n < 1000) return String(n);
+  return `${(n / 1000).toFixed(n < 10000 ? 2 : 1).replace(/\.?0+$/, '')}k`;
 }
 
 function nodeColor(n: RawNode): string {
+  if (n.structuralLayer) return structuralColor(n.structuralLayer);
   if (n.domain && DOMAIN_COLORS[n.domain]) return DOMAIN_COLORS[n.domain];
-  if (n.kind === 'structural') return dirColor(n.file);
   return NEUTRAL;
 }
 
@@ -124,13 +192,29 @@ export function NeomatrixExplorer() {
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set([...LAYERS, 'other']));
   // View toggle: 'all' = the verified semantic Neomatrix · 'proven' = only the
   // calc-audit-proven engines + their 1-hop lineage · 'structural' (NI-5b) = the
-  // whole-codebase Graphify structural graph (8,587 nodes, lazy-loaded).
+  // whole-codebase Graphify structural graph, lazy-loaded and server-aggregated.
+  // Its size is READ FROM the payload, never written here.
   const [view, setView] = useState<'all' | 'proven' | 'structural'>('all');
   // Structural view (NI-5b): server-aggregated payload for the current drill /
   // search state. Default = directory clusters; drilling/searching refetches.
   const [structuralData, setStructuralData] = useState<StructuralPayload | null>(null);
   const [structuralLoading, setStructuralLoading] = useState(false);
   const [structuralError, setStructuralError] = useState<string | null>(null);
+  // Whole-codebase totals, captured from the cluster overview (the only payload
+  // that carries them) and kept while drilled in, so the chip and the rail can
+  // state the real scale from a drill-down too.
+  const [structuralTotals, setStructuralTotals] = useState<StructuralTotals | null>(null);
+  const [structuralLayerCounts, setStructuralLayerCounts] = useState<Record<string, number>>({});
+  // Structural layer filter — multi-select, applied CLIENT-side. The server
+  // deliberately has no `?layer=` param: filtering the overview server-side
+  // would drop every cross-layer edge, and the cross-layer wiring is the whole
+  // point of the overview.
+  const [activeStructuralLayers, setActiveStructuralLayers] = useState<Set<string>>(
+    new Set(STRUCTURAL_LAYERS),
+  );
+  // Page size for a drill / search. Raised by the truncation banner, so a capped
+  // view is not just DECLARED — it is escapable from the place it is declared.
+  const [structuralLimit, setStructuralLimit] = useState<number | null>(null);
   // Drill-down: null = directory-cluster overview · a dir = that directory's symbols.
   const [expandedDir, setExpandedDir] = useState<string | null>(null);
   const provenCount = useMemo(() => graph?.nodes.filter((n) => n.proven).length ?? 0, [graph]);
@@ -204,9 +288,12 @@ export function NeomatrixExplorer() {
   useEffect(() => {
     if (view !== 'structural') return;
     const q = search.trim();
-    let url = '/api/admin/neomatrix/structural';
-    if (q) url += `?q=${encodeURIComponent(q)}`;
-    else if (expandedDir) url += `?dir=${encodeURIComponent(expandedDir)}`;
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    else if (expandedDir) params.set('dir', expandedDir);
+    if (structuralLimit) params.set('limit', String(structuralLimit));
+    const qs = params.toString();
+    const url = `/api/admin/neomatrix/structural${qs ? `?${qs}` : ''}`;
 
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 20000);
@@ -223,7 +310,14 @@ export function NeomatrixExplorer() {
           return (json.data ?? json) as StructuralPayload;
         })
         .then((d) => {
-          if (!cancelled) setStructuralData(d);
+          if (cancelled) return;
+          setStructuralData(d);
+          // Only the cluster overview carries the whole-codebase totals; hold on
+          // to them so a drill-down can still say what it is a slice OF.
+          if (d.mode === 'clusters') {
+            setStructuralTotals(d.totals);
+            setStructuralLayerCounts(d.layerCounts ?? {});
+          }
         })
         .catch((e) => {
           if (cancelled) return;
@@ -242,7 +336,14 @@ export function NeomatrixExplorer() {
       clearTimeout(timeout);
       ctrl.abort();
     };
-  }, [view, expandedDir, search, structuralReloadKey]);
+  }, [view, expandedDir, search, structuralLimit, structuralReloadKey]);
+
+  // A raised page size belongs to the view that raised it. Moving to another
+  // directory (or to a search) starts from the default again, so "show all
+  // 3,574" never silently becomes a standing 5,000-row fetch everywhere.
+  useEffect(() => {
+    setStructuralLimit(null);
+  }, [expandedDir, search]);
 
   // ── Size to container ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -257,8 +358,9 @@ export function NeomatrixExplorer() {
   }, []);
 
   // ── Tighten the layout so connected nodes cluster (edges become legible) ────
-  // Structural (8,587 nodes) needs a looser charge + shorter links or the ball
-  // explodes; the semantic graph (~231) reads best tighter.
+  // The structural view draws far more nodes per frame than the semantic one, so
+  // it needs a looser charge + shorter links or the ball explodes; the semantic
+  // graph reads best tighter. (Both counts are payload-driven — no literals.)
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg || !activeGraph) return;
@@ -291,9 +393,10 @@ export function NeomatrixExplorer() {
         for (const n of structuralData.nodes) {
           m.set(n.id, {
             id: n.id, kind: 'structural', label: n.label, file: n.file, line: n.line,
-            layer: null, domain: null, trailStage: null, regime: null, produces: null,
+            layer: n.layer, domain: null, trailStage: null, regime: null,
+            produces: `${n.degree} structural relation${n.degree === 1 ? '' : 's'}`,
             formula: null, authority: null, inputs: [], workedExample: null, verifiedBy: null,
-            verifiedDate: null, status: null,
+            verifiedDate: null, status: null, structuralLayer: n.layer,
           });
         }
       }
@@ -310,18 +413,31 @@ export function NeomatrixExplorer() {
     return m;
   }, [activeGraph]);
 
+  // Cluster id (`dir::lib/tax-engine`) → its architectural layer, so a
+  // cross-directory edge in the overview is tinted by the layer it LEAVES. That
+  // is what makes `db → engine → service → route → ui` visible as a direction
+  // rather than a wall of undifferentiated grey lines.
+  const clusterLayerById = useMemo(() => {
+    const m = new Map<string, StructuralLayer>();
+    if (structuralData?.mode === 'clusters') {
+      for (const c of structuralData.nodes) m.set(c.id, c.layer);
+    }
+    return m;
+  }, [structuralData]);
+
   // A link's source can be a string id (pre-simulation) or a node object (post).
-  // Structural: cluster ids (dir::X) + symbol ids both colour by directory.
+  // Structural: cluster ids (dir::X) and symbol ids both colour by LAYER.
   const linkSourceColor = useCallback(
     (l: { source: string | { id?: string } }) => {
       const id = typeof l.source === 'object' ? l.source?.id : l.source;
       if (!id) return NEUTRAL;
-      if (id.startsWith('dir::')) return dirColor(id.slice('dir::'.length));
+      const cluster = clusterLayerById.get(id);
+      if (cluster) return structuralColor(cluster);
       const n = nodeById.get(id);
-      if (n?.kind === 'structural') return dirColor(n.file);
+      if (n?.structuralLayer) return structuralColor(n.structuralLayer);
       return colorById.get(id) || NEUTRAL;
     },
-    [colorById, nodeById],
+    [colorById, nodeById, clusterLayerById],
   );
 
   // ── Proven view: proven nodes + their 1-hop lineage neighbours ─────────────
@@ -393,29 +509,51 @@ export function NeomatrixExplorer() {
   };
   const structuralView = useMemo(() => {
     if (view !== 'structural' || !structuralData) return { nodes: [] as GNode[], links: [] as GLink[] };
+    // The layer filter runs HERE, on the loaded payload, so an edge between two
+    // still-visible layers survives. Filtering server-side would have cut the
+    // cross-layer edges — the one thing the overview exists to show.
+    const layerOk = (l: StructuralLayer) => activeStructuralLayers.has(l);
+
     if (structuralData.mode === 'clusters') {
-      const nodes: GNode[] = structuralData.nodes.map((c) => ({
-        ...baseRaw, id: c.id, kind: 'cluster', label: c.label, file: c.label, line: null,
-        produces: `${c.count} symbols`, degree: c.count, color: dirColor(c.label),
-        val: 4 + Math.log2(c.count + 1) * 2.2,
-      }));
-      const links: GLink[] = structuralData.edges.map((e) => ({ source: e.from, target: e.to, type: 'depends' }));
+      const nodes: GNode[] = structuralData.nodes
+        .filter((c) => layerOk(c.layer))
+        .map((c) => ({
+          ...baseRaw, id: c.id, kind: 'cluster', label: c.label, file: c.label, line: null,
+          layer: c.layer, structuralLayer: c.layer,
+          produces: `${c.count.toLocaleString()} symbols · ${LAYER_SCOPE[c.layer]}`,
+          degree: c.count, color: structuralColor(c.layer),
+          val: 4 + Math.log2(c.count + 1) * 2.2,
+        }));
+      const visible = new Set(nodes.map((n) => n.id));
+      const links: GLink[] = structuralData.edges
+        .filter((e) => visible.has(e.from) && visible.has(e.to))
+        .map((e) => ({ source: e.from, target: e.to, type: 'depends' }));
       return { nodes, links };
     }
-    // dir / search — symbols. Size by the degree within the returned subset.
+
+    // dir / search — symbols. Size by the degree within the returned subset (the
+    // server's whole-graph `degree` ranks the page; this sizes what is drawn).
+    const kept = structuralData.nodes.filter((n) => layerOk(n.layer));
+    const visible = new Set(kept.map((n) => n.id));
     const deg = new Map<string, number>();
     for (const e of structuralData.edges) {
+      if (!visible.has(e.from) || !visible.has(e.to)) continue;
       deg.set(e.from, (deg.get(e.from) ?? 0) + 1);
       deg.set(e.to, (deg.get(e.to) ?? 0) + 1);
     }
-    const nodes: GNode[] = structuralData.nodes.map((n) => ({
+    const nodes: GNode[] = kept.map((n) => ({
       ...baseRaw, id: n.id, kind: 'structural', label: n.label, file: n.file, line: n.line,
-      degree: deg.get(n.id) ?? 0, color: dirColor(n.file), val: 1 + Math.min(deg.get(n.id) ?? 0, 6) * 0.5,
+      layer: n.layer, structuralLayer: n.layer,
+      produces: `${n.degree} structural relation${n.degree === 1 ? '' : 's'}`,
+      degree: deg.get(n.id) ?? 0, color: structuralColor(n.layer),
+      val: 1 + Math.min(deg.get(n.id) ?? 0, 6) * 0.5,
     }));
-    const links: GLink[] = structuralData.edges.map((e) => ({ source: e.from, target: e.to, type: e.type }));
+    const links: GLink[] = structuralData.edges
+      .filter((e) => visible.has(e.from) && visible.has(e.to))
+      .map((e) => ({ source: e.from, target: e.to, type: e.type }));
     return { nodes, links };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, structuralData]);
+  }, [view, structuralData, activeStructuralLayers]);
 
   // The dataset actually drawn (semantic → filtered · structural → structuralView).
   const rendered = view === 'structural' ? structuralView : filtered;
@@ -518,8 +656,11 @@ export function NeomatrixExplorer() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Financial-logic knowledge graph</p>
         </div>
         <div className="pointer-events-auto flex items-center gap-3">
-          {/* Domain legend (semantic views only — structural colours by directory) */}
-          {view !== 'structural' && (
+          {/* Legend. Semantic views are coloured by DOMAIN; the structural view by
+              ARCHITECTURAL LAYER — the same db → engine → service → route → ui
+              axis the semantic schema uses, which is why both legends belong in
+              the same slot rather than one being hidden behind a tooltip. */}
+          {view !== 'structural' ? (
             <div className="hidden items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-xl lg:flex">
               {DOMAINS.map((d) => (
                 <span key={d} className="flex items-center gap-1.5 text-[11px] capitalize text-slate-300">
@@ -528,16 +669,41 @@ export function NeomatrixExplorer() {
                 </span>
               ))}
             </div>
+          ) : (
+            <div className="hidden items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-xl lg:flex">
+              {STRUCTURAL_LAYERS.map((l) => (
+                <span
+                  key={l}
+                  title={`${LAYER_SCOPE[l]}${structuralLayerCounts[l] ? ` — ${structuralLayerCounts[l].toLocaleString()} symbols` : ''}`}
+                  className={`flex items-center gap-1.5 text-[11px] transition ${
+                    activeStructuralLayers.has(l) ? 'text-slate-300' : 'text-slate-600'
+                  }`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: activeStructuralLayers.has(l) ? LAYER_COLORS[l] : 'transparent', border: `1px solid ${LAYER_COLORS[l]}` }}
+                  />
+                  {l}
+                </span>
+              ))}
+            </div>
           )}
-          {/* View toggle (NI-5): semantic graph ⇄ proven engines only. Labelled
-              "Semantic" (not "All") so it doesn't imply the 8,587-node Graphify
+          {/* View toggle (NI-5): semantic graph ⇄ proven engines ⇄ structural.
+              Labelled "Semantic" (not "All") so it doesn't imply the Graphify
               structural census — this explorer renders the verified SEMANTIC
-              Neomatrix; the structural layer is a separate view (NI-5b). */}
+              Neomatrix; the structural layer is a separate view (NI-5b).
+              Every count here is READ from a payload. The structural chip used
+              to be the literal "Structural (8.6k)" and the tooltip the literal
+              "8,587 symbols across lib/ + app/", both written when Layer 0
+              covered two roots; it now covers nine plus prisma/, so the portal
+              was quoting a codebase Monitrax no longer is. Before the totals
+              land the chip simply says "Structural" — no number is better than
+              a wrong one. */}
           <div className="flex rounded-full border border-white/10 bg-white/[0.04] p-0.5 backdrop-blur-xl">
             {([
               ['all', `Semantic (${graph?.nodes.length ?? 0})`],
               ['proven', `Proven (${provenCount})`],
-              ['structural', `Structural (8.6k)`],
+              ['structural', structuralTotals ? `Structural (${compact(structuralTotals.symbols)})` : 'Structural'],
             ] as const).map(([v, lbl]) => (
               <button
                 key={v}
@@ -546,7 +712,9 @@ export function NeomatrixExplorer() {
                   v === 'proven'
                     ? 'Only the calc-audit-proven engines + their 1-hop lineage'
                     : v === 'structural'
-                      ? 'The whole-codebase Graphify structural graph (8,587 symbols across lib/ + app/), coloured by directory'
+                      ? structuralTotals
+                        ? `The whole-codebase Graphify structural graph — ${structuralTotals.symbols.toLocaleString()} symbols and ${structuralTotals.relations.toLocaleString()} relations across ${structuralTotals.files.toLocaleString()} files in ${structuralTotals.directories.toLocaleString()} directories, coloured by architectural layer`
+                        : 'The whole-codebase Graphify structural graph (Layer 0), coloured by architectural layer'
                       : 'Every node in the verified semantic Neomatrix'
                 }
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
@@ -660,24 +828,125 @@ export function NeomatrixExplorer() {
                 </>
               )}
             </div>
+            {/* Copy reads from the payload. It used to hardcode "all 8,589
+                symbols" and "top 800 by connections" — the first went stale, the
+                second was a lie whenever the page was NOT capped. */}
             <p className="text-[11px] leading-relaxed text-slate-500">
               {search
-                ? 'Searching all 8,589 symbols.'
+                ? `Searching ${structuralTotals ? `all ${structuralTotals.symbols.toLocaleString()}` : 'all'} symbols across the codebase.`
                 : expandedDir
-                  ? 'Symbols in this directory (top 800 by connections). Click a node to inspect its file:line + relations.'
-                  : 'Whole-codebase structural graph (Graphify Layer 0), grouped by top-level directory. Click a directory to drill in, or search to find any symbol.'}
+                  ? 'Symbols in this directory, ranked by connections. Click a node to inspect its file:line + relations.'
+                  : `Whole-codebase structural graph (Graphify Layer 0), grouped by directory${
+                      structuralTotals
+                        ? ` — ${structuralTotals.symbols.toLocaleString()} symbols · ${structuralTotals.relations.toLocaleString()} relations · ${structuralTotals.files.toLocaleString()} files · ${structuralTotals.directories.toLocaleString()} directories`
+                        : ''
+                    }. Click a directory to drill in, or search to find any symbol.`}
             </p>
+
+            {/* Truncation, stated where it happens and escapable from there.
+                `prisma/` holds 3,574 symbols and `app/api/` 1,328; under the old
+                flat 800 cap both drew a confident, wrong subset with no notice
+                anywhere in the UI. */}
+            {structuralData && structuralData.mode !== 'clusters' && structuralData.truncated && (
+              <div className="rounded-[10px] border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-[11px] leading-relaxed text-amber-200">
+                Showing the {structuralData.returned.toLocaleString()} most-connected of{' '}
+                <span className="font-semibold">{structuralData.total.toLocaleString()}</span> symbols — this view is
+                truncated.
+                {structuralData.limit < structuralData.maxLimit && (
+                  <button
+                    onClick={() =>
+                      setStructuralLimit(Math.min(structuralData.total, structuralData.maxLimit))
+                    }
+                    className="mt-1.5 block w-full rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-100 transition hover:bg-amber-400/20"
+                  >
+                    Load all {Math.min(structuralData.total, structuralData.maxLimit).toLocaleString()}
+                  </button>
+                )}
+                {structuralData.total > structuralData.maxLimit && (
+                  <span className="mt-1 block text-amber-300/80">
+                    Ceiling is {structuralData.maxLimit.toLocaleString()} per view — narrow with search to see the rest.
+                  </span>
+                )}
+              </div>
+            )}
+            {structuralData && structuralData.mode !== 'clusters' && !structuralData.truncated && (
+              <p className="text-[11px] text-slate-500">
+                Complete — all {structuralData.total.toLocaleString()} matching symbols are drawn.
+              </p>
+            )}
+
+            {/* Architectural layer filter (client-side, so cross-layer edges live) */}
+            <div className="pt-1">
+              <div className="mb-1.5 flex items-baseline justify-between">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Layer</p>
+                <button
+                  onClick={() =>
+                    setActiveStructuralLayers(
+                      activeStructuralLayers.size === STRUCTURAL_LAYERS.length
+                        ? new Set()
+                        : new Set(STRUCTURAL_LAYERS),
+                    )
+                  }
+                  className="text-[10px] text-slate-500 transition hover:text-slate-300"
+                >
+                  {activeStructuralLayers.size === STRUCTURAL_LAYERS.length ? 'none' : 'all'}
+                </button>
+              </div>
+              <div className="space-y-1">
+                {STRUCTURAL_LAYERS.map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => toggleSet(activeStructuralLayers, l, setActiveStructuralLayers)}
+                    title={LAYER_SCOPE[l]}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs transition ${
+                      activeStructuralLayers.has(l) ? 'text-slate-200' : 'text-slate-600'
+                    }`}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full transition"
+                      style={{
+                        backgroundColor: activeStructuralLayers.has(l) ? LAYER_COLORS[l] : 'transparent',
+                        boxShadow: activeStructuralLayers.has(l) ? `0 0 8px ${LAYER_COLORS[l]}` : 'none',
+                        border: `1px solid ${LAYER_COLORS[l]}`,
+                      }}
+                    />
+                    <span className="flex-1">{l}</span>
+                    {structuralLayerCounts[l] != null && (
+                      <span className="tabular-nums text-[10px] text-slate-500">
+                        {structuralLayerCounts[l].toLocaleString()}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {/* Name what a layer COVERS when exactly one is selected — that is
+                  the moment the mapping is load-bearing and the moment a reader
+                  would otherwise have to guess it. */}
+              <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">
+                {activeStructuralLayers.size === 0
+                  ? 'No layer selected — nothing to draw.'
+                  : activeStructuralLayers.size === 1
+                    ? LAYER_SCOPE[[...activeStructuralLayers][0] as StructuralLayer]
+                    : `${activeStructuralLayers.size} of ${STRUCTURAL_LAYERS.length} layers · cross-layer edges are kept, so db → engine → service → route → ui stays readable.`}
+              </p>
+            </div>
           </div>
         )}
 
+        {/* Drawn / loaded, always as a ratio in the structural view, so a layer
+            filter never looks like the whole picture. */}
         <p className="mt-5 text-[11px] tabular-nums text-slate-500">
-          {rendered.nodes.length}
+          {rendered.nodes.length.toLocaleString()}
           {view === 'structural'
-            ? !expandedDir && !search
-              ? ' directories'
-              : ' symbols'
+            ? structuralData
+              ? structuralData.mode === 'clusters'
+                ? ` / ${structuralData.nodes.length.toLocaleString()} directories`
+                : ` / ${structuralData.nodes.length.toLocaleString()} symbols loaded`
+              : !expandedDir && !search
+                ? ' directories'
+                : ' symbols'
             : ` / ${activeGraph?.nodes.length ?? 0} nodes`}{' '}
-          · {rendered.links.length} edges
+          · {rendered.links.length.toLocaleString()} edges
         </p>
       </div>
 
@@ -692,6 +961,7 @@ export function NeomatrixExplorer() {
               >
                 {selected.kind}
                 {selected.domain ? ` · ${selected.domain}` : ''}
+                {!selected.domain && selected.structuralLayer ? ` · ${selected.structuralLayer}` : ''}
               </p>
               <h2 className="mt-1 break-words font-mono text-sm font-semibold text-slate-100">{selected.label}</h2>
             </div>

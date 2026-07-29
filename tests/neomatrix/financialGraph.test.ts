@@ -11,6 +11,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 // @ts-expect-error — pure ESM helper, no types
 import { validateGraph, auditInvariants, renderMarkdown } from '../../scripts/neomatrix/graphlib.mjs';
+// @ts-expect-error — pure ESM gate, no types
+import { checkBindingCoverage } from '../../scripts/neomatrix/check-binding-coverage.mjs';
 
 const ROOT = process.cwd();
 const graph = JSON.parse(
@@ -27,19 +29,24 @@ describe('Neomatrix — financial-graph.json', () => {
     expect(errors).toEqual([]);
   });
 
-  it('every documented engine/orchestrator node resolves to its file:line in source', () => {
-    const failures: string[] = [];
-    for (const n of graph.nodes) {
-      if ((n.kind !== 'engine' && n.kind !== 'orchestrator') || n.status !== 'documented') continue;
-      if (!n.file || n.line == null) continue;
-      const symbol = String(n.id).split('.').pop()!;
-      const lines = readFileSync(resolve(ROOT, n.file), 'utf8').split('\n');
-      const line = lines[n.line - 1] ?? '';
-      if (!line.includes(symbol)) {
-        failures.push(`${n.id}: ${n.file}:${n.line} does not contain "${symbol}" (got: ${line.trim().slice(0, 80)})`);
-      }
-    }
-    expect(failures).toEqual([]);
+  // ONE definition of anchor truth (2026-07-29). This test used to re-implement
+  // the file:line audit itself, with `line.includes(symbol)` — a SUBSTRING match
+  // over only `status === 'documented'` nodes. Both holes were real: the Decimal
+  // migration renamed four engines (`calculateMaxConcentration` →
+  // `calculateMaxConcentrationDecimal`) and the substring match happily passed,
+  // while `engine.intelligenceEngine.calculateMonthlyProgressNetWorth` was
+  // skipped outright for carrying `status: 'suspected-issue'`. A second, weaker
+  // implementation of a gate is worse than no second gate, because it reports
+  // green. So the test now asserts the SAME resolver the build gate runs
+  // (check-binding-coverage.mjs), which resolves against the Layer-0 symbol
+  // table, honours an explicit `symbol` override, and falls back to a line-text
+  // anchor for object-literal properties graphify does not emit.
+  it('every semantic anchor resolves to mapped code, at the line it claims (same resolver as the build gate)', () => {
+    const r = checkBindingCoverage();
+    expect(r.unresolved).toEqual([]); // file binding — node points at a file Layer 0 does not have
+    expect(r.drifted).toEqual([]); // the symbol moved and the anchor did not follow
+    expect(r.missing).toEqual([]); // the map names code that is not in that file
+    expect(r.anchors.onLine).toBe(r.anchors.checked);
   });
 
   it('the committed generated markdown is fresh (derive-don\'t-hand-maintain)', () => {
