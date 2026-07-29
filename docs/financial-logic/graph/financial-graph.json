@@ -1,10 +1,10 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.56.0",
+  "version": "0.58.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
-  "lastReviewed": "2026-07-08",
+  "lastReviewed": "2026-07-29",
   "nodes": [
     {
       "id": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
@@ -152,7 +152,7 @@
       "kind": "input-field",
       "label": "NetWorthSnapshot (stored monthly)",
       "file": "prisma/schema.prisma",
-      "line": 3426,
+      "line": 3525,
       "layer": "db",
       "domain": "core",
       "trailStage": null,
@@ -683,7 +683,7 @@
       "kind": "input-field",
       "label": "Investment account cash balance",
       "file": "prisma/schema.prisma",
-      "line": 2168,
+      "line": 2267,
       "layer": "db",
       "domain": "core",
       "trailStage": null,
@@ -1199,7 +1199,7 @@
       "kind": "input-field",
       "label": "Low Income Tax Offset (config)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 85,
+      "line": 89,
       "layer": null,
       "domain": "tax",
       "trailStage": null,
@@ -1556,7 +1556,7 @@
       "kind": "input-field",
       "label": "Super guarantee rate (config)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 104,
+      "line": 108,
       "layer": null,
       "domain": "tax",
       "trailStage": null,
@@ -1577,7 +1577,7 @@
       "kind": "input-field",
       "label": "Concessional cap (config)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 106,
+      "line": 110,
       "layer": null,
       "domain": "tax",
       "trailStage": null,
@@ -1598,7 +1598,7 @@
       "kind": "input-field",
       "label": "Non-concessional cap (config)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 107,
+      "line": 111,
       "layer": null,
       "domain": "tax",
       "trailStage": null,
@@ -1619,7 +1619,7 @@
       "kind": "input-field",
       "label": "Div 293 threshold (config)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 108,
+      "line": 112,
       "layer": null,
       "domain": "tax",
       "trailStage": null,
@@ -1640,7 +1640,7 @@
       "kind": "input-field",
       "label": "Taxed-in-fund 15% rate (config)",
       "file": "lib/tax-engine/config/taxYearConfig.ts",
-      "line": 109,
+      "line": 113,
       "layer": null,
       "domain": "tax",
       "trailStage": null,
@@ -4011,7 +4011,8 @@
       "verifiedBy": "calc-audit engine cfo.investmentDecisionSupport.calculateMaxConcentration (proven, Decimal) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:549",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
-      "status": "documented"
+      "status": "documented",
+      "symbol": "calculateMaxConcentrationDecimal"
     },
     {
       "id": "engine.propertyDecisionSupport.calculatePortfolioSummary",
@@ -4032,7 +4033,8 @@
       "verifiedBy": "calc-audit engine cfo.propertyDecisionSupport.portfolioSummary (proven, Decimal) + lib/cfo/decisionSupport/propertyDecisionSupport.ts:248",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
-      "status": "documented"
+      "status": "documented",
+      "symbol": "calculatePortfolioSummaryDecimal"
     },
     {
       "id": "engine.riskRadar.calculateSummary",
@@ -4095,7 +4097,8 @@
       "verifiedBy": "calc-audit engine cfo.intelligenceEngine.calculateProjectedMonthEndBalance (proven, Decimal) + lib/cfo/intelligenceEngine.ts:354",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
-      "status": "documented"
+      "status": "documented",
+      "symbol": "calculateProjectedMonthEndBalanceDecimal"
     },
     {
       "id": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
@@ -4116,7 +4119,8 @@
       "verifiedBy": "calc-audit engine cfo.intelligenceEngine.calculateMonthlyProgressNetWorth (proven, Decimal) + lib/cfo/intelligenceEngine.ts:377",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
-      "status": "suspected-issue"
+      "status": "suspected-issue",
+      "symbol": "calculateMonthlyProgressNetWorthDecimal"
     },
     {
       "id": "engine.tax.payg.calculatePAYG",
@@ -6558,6 +6562,90 @@
       "workedExample": "recurring essential $100/mo + IO loan resolved from linked repayments + $50,000 one-off contributing $0/mo → committed = $100 + canonical loan costs (tests/budget/mon125BudgetGeneratorSsot.test.ts)",
       "verifiedDate": "2026-07-29",
       "status": "documented"
+    },
+    {
+      "kind": "orchestrator",
+      "layer": "service",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "inputs": [],
+      "astHash": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-29",
+      "status": "documented",
+      "id": "orchestrator.cashflow.buildCFEInput",
+      "label": "CFE input builder",
+      "file": "lib/cashflow/buildCFEInput.ts",
+      "line": 37,
+      "domain": "core",
+      "produces": "The canonical CFEInput: account balances (with linked-loan/offset context), the last 90 days of NON-transfer transactions, active recurring payments, income streams normalised to AFTER-tax monthly, loan schedules carrying offset balances, and config { forecastDays, granularity: 'DAILY', includeConfidenceBands: true }.",
+      "formula": "Data assembly — no arithmetic of its own beyond frequency normalisation. One Promise.all over account / unifiedTransaction / recurringPayment / income / loan, then per-row mapping into AccountBalance, TransactionRecord, RecurringPaymentData, IncomeStream and LoanSchedule. Transfers are excluded at the query (`isTransfer: { not: true }`, §19.1 — internal moves are not cashflow). Each income stream is first `toMonthly(amount, frequency)` and then REPLACED by `normalizeIncomeStream(baseStream).netMonthlyAmount` (:106) so the forecast projects after-PAYG money that actually lands.",
+      "authority": "CLAUDE.md §12.2.1 (ONE builder per engine input) + §19.1 (transfers are not cashflow). MON-027: the assembly was previously copy-pasted into app/api/cashflow/route.ts and app/api/cashflow/stress-test/route.ts and the copies had DRIFTED — the stress-test copy counted internal transfers and used PRE-tax income, so the stress-test forecast ran on a different basis than the main forecast.",
+      "verifiedBy": "lib/cashflow/buildCFEInput.ts:37-131 (read 2026-07-29); call sites app/api/cashflow/route.ts:249, app/api/cashflow/stress-test/route.ts:40 and :150"
+    },
+    {
+      "kind": "orchestrator",
+      "layer": "service",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "inputs": [],
+      "astHash": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-29",
+      "status": "documented",
+      "id": "orchestrator.health.buildHealthInput",
+      "label": "Financial-health input builder",
+      "file": "lib/health/buildHealthInput.ts",
+      "line": 50,
+      "domain": "health",
+      "produces": "The canonical FinancialHealthInput: portfolioSnapshot (netWorth, totalAssets, totalLiabilities + the property / loan / account / investment / income / expense arrays) and linkageHealth (orphans, missingLinks, consistencyScore). CAVEAT carried from the source header (:12-16, a separate open correctness question, deliberately preserved): investments are valued at `units × averagePrice` (cost basis) here, NOT the canonical market value the net-worth engine uses.",
+      "formula": "Data assembly. One Promise.all over property / loan / account / income / expense / investmentHolding, then: totalAssets = Σ currentValue(property) + Σ currentBalance(account) + Σ (units × averagePrice); totalLiabilities = Σ principal(loan); netWorth = totalAssets − totalLiabilities. Per-property monthlyIncome/monthlyExpenses are `toMonthly` sums of that property’s linked rows. Loan monthlyRepayment = interest-only ? principal × rate / 12 : minRepayment || interest × 1.2. Income is monthly-normalised through the private getNetMonthlyIncome (:37) — AFTER-PAYG via calculateTakeHomePay for SALARY, gross otherwise (non-salary tax falls at year end). consistencyScore = totalEntities > 0 ? max(0, 100 − orphanCount × 10) : 100, where orphans are loans and RENT/RENTAL income with no propertyId.",
+      "authority": "CLAUDE.md §12.2.1 (ONE builder) + §6.4 (engines stay pure — this service fetches, aggregateEngine scores). MON-030 stage 1: consolidated two verbatim copies in app/api/financial-health/route.ts and app/api/dashboard/insights/route.ts, verified line-by-line equivalent before consolidation.",
+      "verifiedBy": "lib/health/buildHealthInput.ts:37-173 (read 2026-07-29); call sites app/api/financial-health/route.ts:39, app/api/dashboard/insights/route.ts:217, lib/cfo/intelligenceEngine.ts:98 and :329"
+    },
+    {
+      "kind": "orchestrator",
+      "layer": "service",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "inputs": [],
+      "astHash": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-29",
+      "status": "documented",
+      "id": "orchestrator.managedRentalService.buildManagedRentalSuggestion",
+      "label": "Managed-rental suggestion service",
+      "file": "lib/services/managedRentalService.ts",
+      "line": 81,
+      "domain": "tax",
+      "produces": "A ManagedRentalSuggestion card payload — kind 'confirm' (first-time suggest-and-confirm) or 'anomaly' (re-confirm) — carrying grossPerPeriod, netDisbursement, gap, gapAnnual, disbursementFrequency and, for an anomaly, baselineGapAmount + anomalyExcess. Returns null when nothing should fire.",
+      "formula": "NO arithmetic of its own — every figure comes from reconcileManagedRental (:110). This service fetches the stream context (AgentDisbursementRule, up to 12 sibling disbursement dates, any existing derived recurring expense) and applies the fire/silent decision: no rule + no derived expense + material gap → confirm; rule + gap within tolerance → silent (the learn-once promise, the recurring derived row already models the cost); rule + gap outside tolerance → anomaly; derived expense but no rule → silent. Guards: type RENT/RENTAL, rentalMode MANAGED, direction IN, amount > 0. Errors are swallowed to null — the card is an enhancement and never breaks the link flow. Persistence belongs to app/api/rental-reconciliation/route.ts, never here.",
+      "authority": "PHASE_59_MANAGED_RENTAL_INCOME.md §3/§8 + CLAUDE.md §12.2.1 (ONE producer of the arithmetic).",
+      "verifiedBy": "lib/services/managedRentalService.ts:81-166 (read 2026-07-29); call sites app/api/transactions/[id]/link/route.ts:334 and :675"
+    },
+    {
+      "kind": "orchestrator",
+      "layer": "service",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "inputs": [],
+      "astHash": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-29",
+      "status": "documented",
+      "id": "orchestrator.managedRentalService.buildRetroactiveManagedRentalSuggestion",
+      "label": "Retroactive managed-rental suggestion",
+      "file": "lib/services/managedRentalService.ts",
+      "line": 179,
+      "domain": "tax",
+      "produces": "The same ManagedRentalSuggestion payload, for a stream whose disbursements were linked BEFORE it was marked MANAGED — or null when no IN deposit is linked yet.",
+      "formula": "Selects the most recent linked IN unifiedTransaction as the representative disbursement (its siblings supply the cadence evidence) and then delegates wholly to buildManagedRentalSuggestion (:192), so every fire/silent guard — including the existingDerived idempotency guard that prevents double-creating a derived cost — applies unchanged.",
+      "authority": "MON-080 D1 + PHASE_59_MANAGED_RENTAL_INCOME.md §3/§8. Fired by the income PUT when a stream transitions to MANAGED, and by GET /api/rental-reconciliation for the income-page nudge chip.",
+      "verifiedBy": "lib/services/managedRentalService.ts:179-197 (read 2026-07-29); call sites app/api/rental-reconciliation/route.ts:60, app/api/income/[id]/route.ts:250"
     }
   ],
   "edges": [
@@ -9991,6 +10079,46 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "app/api/budget-analysis/generate/route.ts getMasterFinancialSnapshot(userId) — quickMetrics.monthlyIncome for the income sanity flag",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "orchestrator.cashflow.buildCFEInput",
+      "to": "engine.cashflow.forecasting.generateForecast",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "app/api/cashflow/route.ts:249-252 — `const cfeInput = await buildCFEInput(userId, days)` then `const forecast = await generateForecast(cfeInput)`",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "engine.incomeNormalizer.calculateTakeHomePay",
+      "to": "orchestrator.health.buildHealthInput",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/health/buildHealthInput.ts:39 — getNetMonthlyIncome() calls calculateTakeHomePay() for SALARY streams, and :127 uses it for every income row",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "orchestrator.health.buildHealthInput",
+      "to": "engine.aggregateEngine.generateHealthScore",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "app/api/financial-health/route.ts:39 buildHealthInput(userId) → generateHealthReport(input); lib/health/aggregateEngine.ts:347 — generateHealthReport calls generateHealthScore(input, categories, modifiers, metrics)",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "orchestrator.managedRentalService.buildManagedRentalSuggestion",
+      "to": "engine.rentalReconciliation.reconcileManagedRental",
+      "type": "depends-on",
+      "source": "verified",
+      "evidence": "lib/services/managedRentalService.ts:110 — `const reconciliation: ManagedRentalReconciliation = reconcileManagedRental({ … })`",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "orchestrator.managedRentalService.buildRetroactiveManagedRentalSuggestion",
+      "to": "orchestrator.managedRentalService.buildManagedRentalSuggestion",
+      "type": "depends-on",
+      "source": "verified",
+      "evidence": "lib/services/managedRentalService.ts:192 — `return buildManagedRentalSuggestion({ userId, income, transaction: latest })`",
       "verifiedDate": "2026-07-29"
     }
   ]
