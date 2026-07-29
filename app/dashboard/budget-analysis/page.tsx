@@ -82,6 +82,8 @@ interface BudgetAnalysis {
     userReportedTotal: number;
     missingExpenses: number;
   };
+  /** MON-125 §4c — set by the generator; null on legacy analyses. */
+  incomeSanity?: { monthlyNetIncome: number; exceedsIncome: boolean } | null;
   scenarios: {
     minimum: Scenario;
     recommended: Scenario;
@@ -510,6 +512,20 @@ export default function BudgetAnalysisPage() {
           </div>
         )}
 
+        {/* MON-125 §4c — a recommended budget above monthly net income is
+            never silently recommended; the generator flags it and the page
+            states it. */}
+        {analysis.incomeSanity?.exceedsIncome && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm text-amber-900 dark:text-amber-100">
+              This recommended budget is higher than your monthly net income
+              ({formatCurrency(analysis.incomeSanity.monthlyNetIncome)}/month). That usually means
+              some expenses need review — a sustainable budget stays below what you earn.
+            </p>
+          </div>
+        )}
+
         {/* Summary Cards - NEW: Shows Committed, Discretionary, Variable, Total */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Committed Expenses (Essential + Loans) */}
@@ -520,9 +536,13 @@ export default function BudgetAnalysisPage() {
               <div className="text-xs text-muted-foreground">/month</div>
               {analysis.committed?.loanRepayments > 0 && (
                 <div className="text-xs text-blue-500 mt-1">
-                  Incl. {formatCurrency(analysis.committed.loanRepayments)} loans
+                  Incl. {formatCurrency(analysis.committed.loanRepayments)} loans &mdash; actuals-first
+                  (linked repayments, then declared, then interest cost)
                 </div>
               )}
+              <div className="text-xs text-muted-foreground mt-1">
+                Recurring only &mdash; one-offs are counted once, not monthly
+              </div>
             </CardContent>
           </Card>
 

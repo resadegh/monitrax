@@ -950,8 +950,13 @@ function buildExpenseBreakdown(
     targetFrequency
   );
 
+  // MON-126: byCategory shares the RECURRING basis with essential /
+  // discretionary above — a one-off is counted once (nonRecurring), never as
+  // a monthly category run-rate. Pre-fix, ALL rows flowed in and the Spending
+  // Pareto panel read $52,323/mo directly above the expenses page's own
+  // "one-offs — counted once, not monthly" caption.
   const byCategory = aggregateExpensesByCategory(
-    expenses.map(mapExpense),
+    expenses.filter(e => e.isRecurring !== false).map(mapExpense),
     targetFrequency
   );
 

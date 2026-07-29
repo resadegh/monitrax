@@ -4,6 +4,24 @@
  *
  * Phase 28: Realistic Budget Integration
  *
+ * MON-125 (VR-040): this route was the FOURTH uncanonical expense producer —
+ * it annualised one-off expenses forever (raw `toMonthly`, no one-off gate)
+ * and costed interest-only loans at $0 (raw `minRepayment`), recommending a
+ * budget of $62,530/mo against $41,303/mo income. All money now flows through
+ * the canonical producers:
+ *   - expenses: `monthlyRunRate()` (the MON-082 one-off gate) over RECURRING
+ *     rows only — the same basis the /dashboard/expenses page prints as
+ *     "Total outgoings" (one-offs are counted once, never as a run-rate);
+ *   - loans: `resolveLoanCostsForUser()` → the ONE actuals-first resolver
+ *     (linked repayments → declared minRepayment → interest floor; an
+ *     interest-only loan can never silently cost $0);
+ *   - income sanity: `quickMetrics.monthlyIncome` from the master snapshot —
+ *     a recommended budget above net income carries an explicit flag rather
+ *     than being silently recommended.
+ * Each loan line carries its resolution `basis` so the surface can label it
+ * (the Expenses-page pattern). GENERATOR_VERSION invalidates pre-fix cached
+ * analyses (their AI estimate was anchored on the contaminated committed).
+ *
  * This endpoint:
  * 1. Fetches user's household profile
  * 2. Fetches user's recurring expenses
@@ -14,7 +32,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
-import { toMonthly } from '@/lib/utils/frequencies';
+import { monthlyRunRate } from '@/lib/utils/frequencies';
+import { resolveLoanCostsForUser, type ResolvedLoanCost } from '@/lib/services/loanCosts';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import {
   isGeminiConfigured,
   generateGeminiJSONCompletion,
@@ -28,6 +48,18 @@ import {
   calculateBenchmarkExpenses,
 } from '@/lib/budget-analysis/aiPrompt';
 import { VariableExpenseResponse } from '@/lib/budget-analysis/types';
+
+// MON-125: bump when the money basis changes — a cached analysis generated
+// under an older basis is invalid (its AI estimate was anchored on the old
+// committed figure) and must be regenerated, never served.
+const GENERATOR_VERSION = 2;
+
+/** The Expenses-page basis label for a resolved loan cost (MON-125 §4e). */
+function loanBasisLabel(cost: ResolvedLoanCost): string {
+  if (cost.usedActuals) return 'from linked repayments';
+  if (cost.flooredToInterest) return 'interest cost (no repayment linked or set)';
+  return 'declared repayment';
+}
 
 // =============================================================================
 // API Handler
@@ -54,7 +86,15 @@ export const POST = withPermission('expense.write', async (request, auth) => {
           orderBy: { analysisDate: 'desc' },
         });
 
-        if (existingAnalysis) {
+        // MON-125 §4d: a cached analysis from an older generator was computed
+        // on the contaminated basis (one-offs annualised, IO loans at $0) and
+        // its AI variable estimate is anchored on that wrong number —
+        // regenerate instead of serving it.
+        const cachedVersion =
+          (existingAnalysis?.recurringBreakdown as { generatorVersion?: number } | null)
+            ?.generatorVersion ?? 1;
+
+        if (existingAnalysis && cachedVersion >= GENERATOR_VERSION) {
           return NextResponse.json({
             success: true,
             data: formatAnalysisResponse(existingAnalysis),
@@ -79,52 +119,64 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         );
       }
 
-      // 3. Fetch ALL expenses and properly categorize them
+      // 3. Fetch expenses on the RECURRING basis (MON-125): a budget is a
+      // forward-looking run-rate; a one-off is counted once on /dashboard/
+      // expenses, never annualised into "must pay forever". `monthlyRunRate`
+      // is the ONE gated converter — it returns 0 for a one-off — and the
+      // row filter keeps zero-cost one-off lines out of the breakdown lists.
       const allExpenses = await prisma.expense.findMany({
         where: { userId },
       });
+      const recurringRows = allExpenses.filter(
+        (e: typeof allExpenses[0]) => e.isRecurring !== false,
+      );
 
-      // 3a. Fetch loans for committed expense calculation
+      // 3a. Loans through THE canonical actuals-first resolver (MON-125):
+      // linked repayments → declared minRepayment → interest floor. Raw
+      // `minRepayment` printed $0/mo for interest-only loans ($3,709/mo of
+      // real interest missing from "Committed").
       const loans = await prisma.loan.findMany({
         where: { userId },
         select: {
           id: true,
           name: true,
+          principal: true,
+          interestRateAnnual: true,
           minRepayment: true,
           repaymentFrequency: true,
         },
       });
+      const loanCosts = await resolveLoanCostsForUser(userId, loans);
+      const loanRepaymentsMonthly = loans.reduce( // @source-lock-allowed: sums the CANONICAL resolver's outputs (resolveLoanCostsForUser), never raw rows — the same reduce totalLoanMonthlyCost() performs
 
-      // Calculate loan repayments (monthly)
-      const loanRepaymentsMonthly = loans.reduce((sum: number, loan: typeof loans[0]) => {
-        if (loan.minRepayment && loan.repaymentFrequency) {
-          return sum + toMonthly(loan.minRepayment, loan.repaymentFrequency);
-        }
-        return sum;
-      }, 0);
+        (sum: number, loan: typeof loans[0]) => sum + (loanCosts.get(loan.id)?.monthly ?? 0),
+        0,
+      );
 
       // 3b. Separate ESSENTIAL (committed) vs DISCRETIONARY expenses
       // Essential = isEssential === true (bills, utilities, insurance - MUST pay)
       // Discretionary = isEssential === false (optional spending - can adjust)
-      const essentialExpenses = allExpenses.filter((e: typeof allExpenses[0]) => e.isEssential === true);
-      const discretionaryExpenses = allExpenses.filter((e: typeof allExpenses[0]) => e.isEssential !== true);
+      const essentialExpenses = recurringRows.filter((e: typeof allExpenses[0]) => e.isEssential === true);
+      const discretionaryExpenses = recurringRows.filter((e: typeof allExpenses[0]) => e.isEssential !== true);
 
-      // Map expenses for AI prompt (still need all tracked expenses for AI context)
-      const recurringExpenses = allExpenses.map((e: typeof allExpenses[0]) => ({
+      // Map expenses for AI prompt (recurring rows only — the AI's variable
+      // estimate must be anchored on the real run-rate, not the contaminated
+      // one-offs-annualised figure; MON-125 §4d)
+      const recurringExpenses = recurringRows.map((e: typeof allExpenses[0]) => ({
         name: e.name,
         category: e.category,
-        monthlyAmount: toMonthly(e.amount, e.frequency),
+        monthlyAmount: monthlyRunRate(e),
         vendorName: e.vendorName,
         isEssential: e.isEssential,
       }));
 
-      // Calculate totals
+      // Calculate totals — canonical one-off-gated run-rate only
       const essentialMonthly = essentialExpenses.reduce(
-        (sum: number, e: typeof essentialExpenses[0]) => sum + toMonthly(e.amount, e.frequency),
+        (sum: number, e: typeof essentialExpenses[0]) => sum + monthlyRunRate(e),
         0
       );
       const discretionaryTrackedMonthly = discretionaryExpenses.reduce(
-        (sum: number, e: typeof discretionaryExpenses[0]) => sum + toMonthly(e.amount, e.frequency),
+        (sum: number, e: typeof discretionaryExpenses[0]) => sum + monthlyRunRate(e),
         0
       );
 
@@ -134,8 +186,10 @@ export const POST = withPermission('expense.write', async (request, auth) => {
       // Total tracked (for AI context - what we already know about)
       const totalTrackedMonthly = essentialMonthly + discretionaryTrackedMonthly;
 
-      // Group expenses by category AND type for breakdown
-      const committedBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number; type: 'expense' | 'loan' }> }> = {};
+      // Group expenses by category AND type for breakdown (canonical basis:
+      // recurring rows, monthlyRunRate amounts; loans carry their resolution
+      // basis label — the Expenses-page pattern, MON-125 §4e)
+      const committedBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number; type: 'expense' | 'loan'; basis?: string }> }> = {};
       const discretionaryBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number }> }> = {};
 
       // Add essential expenses to committed breakdown
@@ -143,7 +197,7 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         if (!committedBreakdown[e.category]) {
           committedBreakdown[e.category] = { total: 0, items: [] };
         }
-        const monthlyAmount = toMonthly(e.amount, e.frequency);
+        const monthlyAmount = monthlyRunRate(e);
         committedBreakdown[e.category].items.push({
           name: e.name,
           amount: e.amount,
@@ -154,21 +208,22 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         committedBreakdown[e.category].total += monthlyAmount;
       });
 
-      // Add loans to committed breakdown under "Loan Repayments"
+      // Add loans to committed breakdown under "Loan Repayments" — every loan
+      // contributes its resolved cost (never silently $0 for interest-only).
       if (loans.length > 0) {
         committedBreakdown['Loan Repayments'] = { total: 0, items: [] };
         loans.forEach((loan: typeof loans[0]) => {
-          if (loan.minRepayment && loan.repaymentFrequency) {
-            const monthlyAmount = toMonthly(loan.minRepayment, loan.repaymentFrequency);
-            committedBreakdown['Loan Repayments'].items.push({
-              name: loan.name,
-              amount: loan.minRepayment,
-              frequency: loan.repaymentFrequency,
-              monthlyAmount,
-              type: 'loan',
-            });
-            committedBreakdown['Loan Repayments'].total += monthlyAmount;
-          }
+          const cost = loanCosts.get(loan.id);
+          if (!cost) return;
+          committedBreakdown['Loan Repayments'].items.push({
+            name: loan.name,
+            amount: cost.monthly,
+            frequency: 'MONTHLY',
+            monthlyAmount: cost.monthly,
+            type: 'loan',
+            basis: loanBasisLabel(cost),
+          });
+          committedBreakdown['Loan Repayments'].total += cost.monthly;
         });
       }
 
@@ -177,7 +232,7 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         if (!discretionaryBreakdown[e.category]) {
           discretionaryBreakdown[e.category] = { total: 0, items: [] };
         }
-        const monthlyAmount = toMonthly(e.amount, e.frequency);
+        const monthlyAmount = monthlyRunRate(e);
         discretionaryBreakdown[e.category].items.push({
           name: e.name,
           amount: e.amount,
@@ -187,13 +242,14 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         discretionaryBreakdown[e.category].total += monthlyAmount;
       });
 
-      // Legacy recurringBreakdown for backwards compatibility (all expenses grouped)
+      // Legacy recurringBreakdown for backwards compatibility (recurring rows
+      // grouped — same canonical basis as everything above)
       const recurringBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number }> }> = {};
-      allExpenses.forEach((e: typeof allExpenses[0]) => {
+      recurringRows.forEach((e: typeof allExpenses[0]) => {
         if (!recurringBreakdown[e.category]) {
           recurringBreakdown[e.category] = { total: 0, items: [] };
         }
-        const monthlyAmount = toMonthly(e.amount, e.frequency);
+        const monthlyAmount = monthlyRunRate(e);
         recurringBreakdown[e.category].items.push({
           name: e.name,
           amount: e.amount,
@@ -201,6 +257,39 @@ export const POST = withPermission('expense.write', async (request, auth) => {
           monthlyAmount,
         });
         recurringBreakdown[e.category].total += monthlyAmount;
+      });
+
+      // MON-125 §4c: income sanity — the canonical monthly NET income from
+      // the master snapshot. A recommended budget above net income is never
+      // silently recommended; the response carries an explicit flag and the
+      // surface states it.
+      const snapshot = await getMasterFinancialSnapshot(userId);
+      const monthlyNetIncome = snapshot.quickMetrics.monthlyIncome;
+      const budgetExceedsIncome = (total: number) =>
+        monthlyNetIncome > 0 && total > monthlyNetIncome;
+
+      // The ONE breakdown blob builder (three persistence sites share it).
+      // `finalTotal` null = the pending record, before the variable estimate
+      // exists; the income flag is stamped once the total is known.
+      const buildBreakdownBlob = (finalTotal: number | null) => ({
+        generatorVersion: GENERATOR_VERSION,
+        committedTotal: committedMonthly,
+        committedBreakdown: { categories: committedBreakdown, total: committedMonthly },
+        discretionaryTrackedTotal: discretionaryTrackedMonthly,
+        discretionaryBreakdown: { categories: discretionaryBreakdown, total: discretionaryTrackedMonthly },
+        loanRepaymentsTotal: loanRepaymentsMonthly,
+        essentialExpensesTotal: essentialMonthly,
+        ...(finalTotal !== null
+          ? {
+              incomeContext: {
+                monthlyNetIncome,
+                exceedsIncome: budgetExceedsIncome(finalTotal),
+              },
+            }
+          : {}),
+        // Legacy format for backwards compatibility
+        categories: recurringBreakdown,
+        total: totalTrackedMonthly,
       });
 
       // 4. Generate variable expense estimates
@@ -221,18 +310,7 @@ export const POST = withPermission('expense.write', async (request, auth) => {
               householdProfileId: householdProfile.id,
               status: 'ANALYZING',
               recurringExpensesTotal: committedMonthly, // Now stores COMMITTED (essential + loans)
-              recurringBreakdown: {
-                // New structure with proper separation
-                committedTotal: committedMonthly,
-                committedBreakdown: { categories: committedBreakdown, total: committedMonthly },
-                discretionaryTrackedTotal: discretionaryTrackedMonthly,
-                discretionaryBreakdown: { categories: discretionaryBreakdown, total: discretionaryTrackedMonthly },
-                loanRepaymentsTotal: loanRepaymentsMonthly,
-                essentialExpensesTotal: essentialMonthly,
-                // Legacy format for backwards compatibility
-                categories: recurringBreakdown,
-                total: totalTrackedMonthly,
-              } as any,
+              recurringBreakdown: buildBreakdownBlob(null) as any,
               aiVariableEstimate: 0,
               variableBreakdown: {} as any,
               totalRealisticBudget: committedMonthly, // Base is committed only
@@ -309,6 +387,11 @@ export const POST = withPermission('expense.write', async (request, auth) => {
               status: 'READY',
               aiVariableEstimate: variableResponse.total,
               variableBreakdown: variableResponse as unknown as any,
+              // MON-125 §4c: re-stamp the blob with the income flag now the
+              // final total is known.
+              recurringBreakdown: buildBreakdownBlob(
+                committedMonthly + discretionaryTrackedMonthly + variableResponse.total,
+              ) as any,
               // Total realistic = committed + tracked discretionary + AI variable
               totalRealisticBudget: committedMonthly + discretionaryTrackedMonthly + variableResponse.total,
               missingVariableExpenses: variableResponse.total,
@@ -383,18 +466,9 @@ export const POST = withPermission('expense.write', async (request, auth) => {
           householdProfileId: householdProfile.id,
           status: 'READY',
           recurringExpensesTotal: committedMonthly, // Now stores COMMITTED (essential + loans)
-          recurringBreakdown: {
-            // New structure with proper separation
-            committedTotal: committedMonthly,
-            committedBreakdown: { categories: committedBreakdown, total: committedMonthly },
-            discretionaryTrackedTotal: discretionaryTrackedMonthly,
-            discretionaryBreakdown: { categories: discretionaryBreakdown, total: discretionaryTrackedMonthly },
-            loanRepaymentsTotal: loanRepaymentsMonthly,
-            essentialExpensesTotal: essentialMonthly,
-            // Legacy format for backwards compatibility
-            categories: recurringBreakdown,
-            total: totalTrackedMonthly,
-          } as any,
+          recurringBreakdown: buildBreakdownBlob(
+            committedMonthly + discretionaryTrackedMonthly + variableResponse.total,
+          ) as any,
           aiVariableEstimate: variableResponse.total,
           variableBreakdown: variableResponse as unknown as any,
           // Total realistic = committed + tracked discretionary + AI variable
@@ -473,6 +547,10 @@ function formatAnalysisResponse(analysis: any) {
       total: breakdown.discretionaryTrackedTotal || 0,
       breakdown: breakdown.discretionaryBreakdown || null,
     },
+
+    // MON-125 §4c — a recommended budget above monthly net income announces
+    // itself; null on pre-fix analyses (which the version gate regenerates).
+    incomeSanity: breakdown.incomeContext || null,
 
     variable: {
       total: analysis.aiVariableEstimate,

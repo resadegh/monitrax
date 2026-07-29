@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**111 total** · 52 open · 🔵 22 · 🟡 3 · 🟠 27 · 🟢 0 · ✅ 58
+**113 total** · 54 open · 🔵 24 · 🟡 3 · 🟠 27 · 🟢 0 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -118,6 +118,8 @@
 | MON-109 | 🟠 FIXING | 🟡 | no | Legislated tax thresholds re-typed as literals outside the tax engine — 0.8 one-client test (classifier inline + PSI card), 180 months, $6M / $2M / $500k display copy on the Div 152 card | #1519 | ✅ |
 | MON-110 | 🟠 FIXING | 🟡 | no | Div152Result exposes no gainBeforeConcessions — the card reconstructs it from steps[0].runningGain + steps[0].reduction (surface arithmetic on engine values, Calc-SSOT wall breach) | #1519 | ✅ |
 | MON-111 | 🔵 OPEN | 🟡 | yes | s86-15 PSI attribution reaches only the entity surface — the household position never receives the legislated attribution to the individual (tracked Phase 41e.6/41e.7 company-dispatch deferral) | — | — |
+| MON-125 | 🔵 OPEN | 🔴 | yes | Budget generator is a fourth uncanonical expense producer — one-offs annualised forever + interest-only loans cost $0 → recommended budget $62,530/mo vs $41,303/mo income (151%) | — | — |
+| MON-126 | 🔵 OPEN | 🟠 | yes | expenses.monthly.byCategory has no isRecurring basis — master feeds ALL rows to aggregateExpensesByCategory, so the Spending Pareto panel reads $52,323/mo directly above the page’s own "132 one-offs — counted once, not monthly" | — | — |
 
 ---
 
@@ -2063,4 +2065,30 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/t
 - **Detail:** `neoaudit-run:VR-037`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine/divisions/psiClassifier.ts:261. Evidence/run: VR-037.
+
+### MON-125 — Budget generator is a fourth uncanonical expense producer — one-offs annualised forever + interest-only loans cost $0 → recommended budget $62,530/mo vs $41,303/mo income (151%)
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: budget · opened 2026-07-29
+
+> **What was wrong:** The recommended budget was about four times too high: one-off purchases were treated as if they repeat every month forever, and interest-only loans were counted as costing nothing.
+>
+- **Root cause:** `app/api/budget-analysis/generate/route.ts:83`, `app/api/budget-analysis/generate/route.ts:99`, `app/api/budget-analysis/generate/route.ts:122`
+- **Neomatrix:** `engine.frequencies.monthlyRunRate`, `engine.propertyCashflow.resolveLoanMonthlyCost`, `orchestrator.loanCosts.resolveLoanCostsForUser`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-040`
+
+Raised from the Matrix MON-125 code brief (traced at HEAD 2f4ac8cc; VR-040 pending merge from the Matrix session). Three bypasses in one route: (1) prisma.expense.findMany with no isRecurring basis → 132 one-offs ($50,840) annualised into committed; (2) toMonthly instead of monthlyRunRate in both reducers; (3) raw loan.minRepayment instead of resolveLoanMonthlyCost → Broadbeach + Thornland Lot 2 IO loans ($3,709/mo real interest) + HECS absent from Must Pay ($8,817 vs canonical $12,779). All three bypasses were GRANDFATHERED debt in .audit/source-lock-exceptions.json (seeded 2026-07-17) — the wall detected them and passed the build; paying the debt is part of the fix. Arithmetic corroboration: committed $51,034 − loans $8,817 + discretionary $10,105 = $52,322 = one-offs $50,840 + recurring $1,482 exactly. Registered with a PINNED id from the Matrix ledger (not issues:raise auto-numbering) to preserve cross-references.
+
+### MON-126 — expenses.monthly.byCategory has no isRecurring basis — master feeds ALL rows to aggregateExpensesByCategory, so the Spending Pareto panel reads $52,323/mo directly above the page’s own "132 one-offs — counted once, not monthly"
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: expenses · opened 2026-07-29
+
+> **What was wrong:** The "where 80% of your spending goes" panel counts one-off purchases as if they repeat monthly, so it shows a monthly spending figure about 35 times too high — contradicting the correct total printed just above it on the same page.
+>
+- **Root cause:** `lib/services/masterFinancialService.ts:953`, `lib/calculations/expenseAggregator.ts:133`
+- **Neomatrix:** `engine.expenseAggregator.aggregateExpenses`, `engine.frequencies.monthlyRunRate`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-040`
+
+Raised from the Matrix MON-125 code brief §4f, which referenced this finding as "MON-115" — that id COLLIDES with the merged NEO_ALIGNMENT_SWEEP_2026_07_29 allocation (F4 duplicate-orchestrator-identity = MON-115), so it is registered here as MON-126; the Matrix should reconcile its ledger. Root: master gates recurring/essential/discretionary at the call site (isRecurring !== false) but passes ALL expense rows to aggregateExpensesByCategory at :953 — same contamination class as MON-125, different producer. Consumers: expenses.monthly.byCategory → /api/dashboard/spending-pareto:68 → SpendingParetoLens on /dashboard/expenses. NOTE for the sweep reconciliation: the sweep doc §"filed as MON-112…120, registry 120 valid" does not match the registry at HEAD 4ae03705 (111 issues, max MON-111) — the sweep’s registry filing never landed.
 

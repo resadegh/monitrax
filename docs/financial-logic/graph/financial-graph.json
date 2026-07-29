@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1792,
+      "line": 1797,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -6347,7 +6347,7 @@
       "kind": "engine",
       "label": "Emergency fund metrics (consumer of canonical liquid)",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1375,
+      "line": 1380,
       "layer": "service",
       "domain": "core",
       "trailStage": "A",
@@ -6536,6 +6536,27 @@
       "verifiedBy": "lib/services/entityTaxFactsAssembler.ts:264 + tests/tax/mon103Div152Capture.test.ts",
       "workedExample": "gain $120,000, MNAV $4.2M, active, 64 months, reduction + retirement exemption with $400k used → AAR −$60,000 → exemption −$60,000 (cap remaining $100k) → assessable $0 (locked in the ratchet)",
       "verifiedDate": "2026-07-27",
+      "status": "documented"
+    },
+    {
+      "id": "orchestrator.budgetAnalysisGenerate.POST",
+      "kind": "orchestrator",
+      "label": "Budget analysis generator",
+      "file": "app/api/budget-analysis/generate/route.ts",
+      "line": 68,
+      "layer": "route",
+      "domain": "core",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The realistic-budget analysis (committed / discretionary tracked / AI variable / total) persisted to BudgetAnalysis and rendered on /dashboard/budget-analysis. MON-125: consumes the canonical producers only — monthlyRunRate over recurring rows (one-off gate), resolveLoanCostsForUser (actuals-first loan costs, basis-labelled), quickMetrics.monthlyIncome for the exceeds-income sanity flag. Pre-fix it was the fourth uncanonical expense producer (one-offs annualised, IO loans at $0 → $62,530/mo vs $41,303/mo income).",
+      "formula": "committed = Σ monthlyRunRate(recurring essential rows) + Σ resolveLoanMonthlyCost(loan, linked repayments); discretionary = Σ monthlyRunRate(recurring non-essential); totalRealisticBudget = committed + discretionary + AI/benchmark variable estimate; incomeContext.exceedsIncome = total > quickMetrics.monthlyIncome.",
+      "authority": "CLAUDE.md §12.2.1 (one producer per formula) + CALC_SSOT_WALL Mechanisms B1/B2 — the route composes canonical producers, no inline money math (MON-125 fix)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/api/budget-analysis/generate/route.ts:68,149,175,179 (read 2026-07-29)",
+      "workedExample": "recurring essential $100/mo + IO loan resolved from linked repayments + $50,000 one-off contributing $0/mo → committed = $100 + canonical loan costs (tests/budget/mon125BudgetGeneratorSsot.test.ts)",
+      "verifiedDate": "2026-07-29",
       "status": "documented"
     }
   ],
@@ -9941,6 +9962,36 @@
       "source": "verified",
       "evidence": "app/api/tax/entity/[entityId]/route.ts:107 — assembleDiv152Input → div152ByEntity → buildMasterTaxPositionDecimal step 3.8 → applyDiv152Decimal (MON-103)",
       "verifiedDate": "2026-07-27"
+    },
+    {
+      "from": "engine.frequencies.monthlyRunRate",
+      "to": "orchestrator.budgetAnalysisGenerate.POST",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/budget-analysis/generate/route.ts:175 monthlyRunRate(e) in both reducers + every breakdown item",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "orchestrator.loanCosts.resolveLoanCostsForUser",
+      "to": "orchestrator.budgetAnalysisGenerate.POST",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/budget-analysis/generate/route.ts:149 resolveLoanCostsForUser(userId, loans)",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "orchestrator.budgetAnalysisGenerate.POST",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/budget-analysis/generate/route.ts getMasterFinancialSnapshot(userId) — quickMetrics.monthlyIncome for the income sanity flag",
+      "verifiedDate": "2026-07-29"
     }
   ]
 }
