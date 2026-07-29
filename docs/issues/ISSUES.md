@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**121 total** · 62 open · 🔵 29 · 🟡 3 · 🟠 28 · 🟢 2 · ✅ 58
+**123 total** · 64 open · 🔵 31 · 🟡 3 · 🟠 28 · 🟢 2 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -128,6 +128,8 @@
 | MON-132 | 🔵 OPEN | 🟠 | yes | Emergency fund must be a SURVIVAL RUNWAY — liquid cash / (essential expenses - salary-independent income), answering 'if I lose my salary, how long do I last' (Reza decision 2026-07-29) | — | — |
 | MON-133 | 🔵 OPEN | 🟠 | yes | Legislated tax constants hardcoded outside TAX_YEAR_CONFIGS in ~12 production files — including a STALE Super Guarantee rate of 11.5% in two live paths (the legislated rate is 12%) | — | — |
 | MON-134 | 🟠 FIXING | 🟠 | yes | Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise | ##1530 (schema), ##PR-3 (read path — this PR) | ✅ |
+| MON-135 | 🔵 OPEN | 🔴 | no | AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3) | — | n/a |
+| MON-136 | 🔵 OPEN | 🔴 | yes | Reference Numbers, wave 2 — apply the one-producer law to every remaining quantity the complete census found beyond MON-131's 23 | — | — |
 
 ---
 
@@ -2215,4 +2217,29 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 - **Detail:** `neoaudit-run:relay-A3-c9a464c2`
 
 Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 15 moved — all under healthScore.trend/evidence.historicalTrend). Root cause verified at source: calculateTrend(currentScore) synthesises history as currentScore + (Math.random()-0.5)*5 and derives direction/changePercent from the invented series; the code comment admits it. Tranche-blocking for MON-131: a producer whose output differs on every call makes every golden-baseline diff STOP on noise. D15 (Reza 2026-07-29): score monthly from stored real snapshots (HealthScoreSnapshot, netWorthHistory pattern, formula-versioned); <2 snapshots → INSUFFICIENT_HISTORY, never a number; version-spanning trends show the break. Coverage boundary: grep of app/+components/ for historicalTrend/trend.history/changePercent found NO rendering surface — emitted by the canonical engine, served by /api/financial-health, consumed by cfo/intelligenceEngine; whether any screen renders it is established during the build, not assumed. | [2026-07-29] FIXING: schema #1530 (write-once HealthScoreSnapshot + formulaVersion) + read-path PR (calculateTrend(snapshots), INSUFFICIENT_HISTORY <2, D15 formula breaks, deterministic engine via injectable asOf + stable risk ids, Math.random ratchet-down allowlist under lib/). Ring-3 gate: relay A3 self-diff CLEAN on real data.
+
+### MON-135 — AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3)
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **no** · area: intake · opened 2026-07-29
+
+> **What was wrong:** When the app auto-categorises your bank transactions, it marks every one of them as a one-off rather than recurring. Today that is mostly invisible — but the moment the recurring-only rule is applied to expense totals (the MON-131 expense fix), every auto-categorised expense would silently drop to zero, and the safety net that compares before/after numbers would read the loss as an expected decrease. The categoriser must stop stamping everything non-recurring BEFORE that fix lands.
+>
+- **Root cause:** `lib/bank/aiCategorisation.ts:90`, `lib/bank/aiCategorisation.ts:203`, `lib/bank/aiCategorisation.ts:249`, `lib/bank/aiCategorisation.ts:365`
+- **Neomatrix:** `engine.frequencies.monthlyRunRate`
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `code-brief:MON-131-PHASE-A §6 (precondition on Tranche 3)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bank/aiCategorisation.ts.
+
+### MON-136 — Reference Numbers, wave 2 — apply the one-producer law to every remaining quantity the complete census found beyond MON-131's 23
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: cross-surface · opened 2026-07-29
+
+> **What was wrong:** The first Reference Numbers wave (MON-131) fixes the 23 core money quantities. The complete census found more quantities beyond those — stamp duty, GST, CGT, loan amortisation, investment returns, projections and others — that live under the same law: one producer per number, everything else reads from it. This wave applies the same machinery to all of them, immediately after MON-131 is fixed and verified, followed by the complete Matrix sweep. Blocked by MON-131.
+>
+- **Neomatrix:** `engine.incomeAggregator.aggregateIncome`, `number.netWorth`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `code-brief:MON-131-PHASE-A §2 (D16)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/ + app/api/ + app/dashboard/ + components/ (complete-census remainder).
 

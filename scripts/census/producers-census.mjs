@@ -66,15 +66,58 @@ const QUANTITIES = [
   { key: 'incomeTax', context: /\btax\b|bracket|marginal/i, patterns: [/(bracket|marginal|threshold)[\s\S]{0,80}[*\-]|\*\s*0\.(19|30|32|325|37|45)\b/] },
   { key: 'propertyEquity', patterns: [/([cC]urrent)?[vV]alue\w*\s*-\s*\w*([lL]oan|[dD]ebt|[mM]ortgage|[bB]alance)/] },
   { key: 'cashflow', patterns: [/\w*([iI]ncome|[iI]nflow)s?\w*\s*-\s*\w*([eE]xpense|[oO]utflow|[oO]utgoing|[sS]pend)\w*/] },
+
+  // ── Phase A0 (MON-131 PHASE A brief §2.1) — the 11 previously-UNMEASURED
+  // MON-131 quantities, now under the ratchet. Same v1 method + honest scope.
+  { key: 'taxableIncome', patterns: [nearArith('taxableIncome|assessableIncome')] },
+  { key: 'netIncome', patterns: [nearArith('netIncome|afterTax|takeHome|netMonthly|netAnnual')] },
+  { key: 'grossIncome', patterns: [nearArith('grossIncome|grossAnnual|grossMonthly|grossSalary|grossAmount')] },
+  { key: 'assetsLiabilitiesBreakdown', patterns: [nearArith('totalAssets|totalLiabilities|assetTotal|liabilityTotal')] },
+  { key: 'forecastFlows', context: /forecast|projection|projected/i, patterns: [nearArith('projected|forecast'), FREQ_ARITH] },
+  { key: 'propertyCashflowYield', patterns: [/\byield\w*\s*[=:][^;\n]{0,80}\/|\w*([aA]nnual)?[rR]ent\w*\s*\/\s*\w*([vV]alue|[pP]rice)\w*/] },
+  { key: 'liquidCash', patterns: [nearArith('liquid')] },
+  { key: 'deductions', patterns: [nearArith('deduction|deductible')] },
+  { key: 'healthScore', context: /health|safety|score/i, patterns: [nearArith('healthScore|safetyScore|overallScore|aggregateScore|categoryScore')] },
+  { key: 'landTax', context: /landTax|land[ _-]tax/i, patterns: [nearArith('landTax')] },
+  { key: 'negativeGearing', patterns: [nearArith('negativeGear|gearingLoss|rentalLoss|negGear')] },
+
+  // ── Phase A0 (brief §2.2) — the sixteen blind-spot families, each censused
+  // as its own candidate quantity (fold onto an existing key only on an
+  // IDENTICAL semantic — a near-match stays separate). Zero hits for a family
+  // is a FINDING (documented capability never built), not an empty result.
+  { key: 'stampDuty', patterns: [nearArith('stampDuty|transferDuty')] },
+  { key: 'gst', context: /\bgst\b/i, patterns: [nearArith('gst'), /\*\s*0\.1\b|\/\s*11\b/] },
+  { key: 'cgt', context: /cgt|capital[ _-]?gain/i, patterns: [nearArith('capitalGain|cgt|costBase'), /\*\s*0\.5\b/] },
+  { key: 'psiAttribution', context: /\bpsi\b|personalServices/i, patterns: [nearArith('psi|attributed|personalServices')] },
+  { key: 'div293', patterns: [nearArith('div293')] },
+  { key: 'taxOffsetsFranking', patterns: [nearArith('franking|taxOffset|rebateAmount|imputation')] },
+  { key: 'fteIeeElections', context: /familyTrustElection|interposedEntity|\bFTE\b|\bIEE\b/, patterns: [nearArith('fte|iee|election')] },
+  { key: 'loanAmortisation', context: /loan|repay|amort|mortgage/i, patterns: [/Math\.pow\s*\(\s*1\s*\+|\(\s*1\s*\+\s*\w*[rR]ate\w*\s*\)\s*\*\*|toPower\s*\(/] },
+  { key: 'investmentReturns', patterns: [nearArith('totalReturn|annualReturn|ytdReturn|capitalGrowth|returnPercent|gainPercent')] },
+  { key: 'superProjection', context: /super/i, patterns: [/Math\.pow|compound|\*\*\s*\w*year/i] },
+  { key: 'propertyValuationGrowth', context: /propert|valuation/i, patterns: [nearArith('growthRate|appreciation|capitalGrowth')] },
+  { key: 'insuranceAdequacy', context: /insurance|cover/i, patterns: [nearArith('coverage|adequacy|coverGap|sumInsured')] },
+  { key: 'budgetVariance', context: /budget/i, patterns: [nearArith('variance|overspend|underspend|overBudget')] },
+  { key: 'lvrGearing', patterns: [/\b(lvr|loanToValue|gearingRatio|debtToAsset)\b[^;\n]{0,60}[=:*/+\-]|\w*([lL]oan|[dD]ebt)\w*\s*\/\s*\w*([vV]alue|[aA]sset)\w*/] },
+  { key: 'freedomHorizon', context: /freedom|retire/i, patterns: [nearArith('freedomAge|freedomHorizon|yearsToFreedom|yearsToRetire|retirementAge')] },
+  { key: 'moneyStoryMargin', context: /moneyStory|money[ _-]story/i, patterns: [nearArith('margin')] },
 ];
 
-// Quantities from the §1 census with NO stable v1 signature yet — visible, not
-// silently dropped (§22.2.4). Each gains a signature via its Phase A contract.
-const UNMEASURED = [
-  'taxableIncome', 'netIncome', 'grossIncome', 'assetsLiabilitiesBreakdown',
-  'forecastFlows', 'propertyCashflowYield', 'liquidCash', 'deductions',
-  'healthScore', 'landTax', 'negativeGearing',
-];
+// Phase A0 §2.1 complete: every previously-unmeasured MON-131 quantity now
+// carries a v1 signature above. The list stays as the honest record of WHAT
+// was unmeasured before this extension; it must remain EMPTY going forward —
+// a new quantity ships with its signature or it does not ship (§22.2.4).
+const UNMEASURED = [];
+
+// ── Phase A0 §2.3 — the unattributed-money sweep ────────────────────────────
+// A function that performs arithmetic on money-shaped identifiers but matches
+// NO quantity signature above is a candidate UNNAMED quantity. Counted (and
+// listable via --list) so the Phase A sweep can classify every one: each maps
+// to a named quantity or becomes a new one. This is what makes "nothing is
+// out of scope" true rather than aspirational (brief §2.3).
+const MONEY_ARITH = new RegExp(
+  String.raw`\b\w*(?:amount|balance|total|cost|price|income|expense|rent|tax|fee|repayment|value|salary|wage|contribution|dividend|premium|surplus|deficit)\w*[^;\n]{0,60}${ARITH}[^;\n]{0,60}\d|\b\w*(?:amount|balance|total|cost|price|income|expense|rent|repayment)\w*\s*${ARITH}\s*\w*(?:amount|balance|total|cost|price|income|expense|rent|repayment)\w*`,
+  'i');
 
 // ── function splitting (self-contained; no parser dep) ──────────────────────
 const FN_START = /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+(\w+)|^\s*(?:export\s+)?const\s+(\w+)\s*(?::[^=]{0,120})?=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*(?::[^=]{0,120})?=>|^\s*(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?function\b|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::[^{;]{0,120})?\{\s*$/;
@@ -108,6 +151,7 @@ function* walk(dir) {
 export function censusProducers() {
   const perQuantity = {}; // key -> Map(file:function -> line)
   for (const q of QUANTITIES) perQuantity[q.key] = new Map();
+  const unattributed = new Map(); // file:function -> line (money arith, no signature)
 
   for (const root of SCAN_ROOTS) {
     const abs = resolve(ROOT, root);
@@ -117,35 +161,44 @@ export function censusProducers() {
       if (SKIP.test(rel)) continue;
       const src = readFileSync(file, 'utf8');
       const units = functionUnits(src);
-      for (const q of QUANTITIES) {
-        for (const u of units) {
+      for (const u of units) {
+        let matchedAny = false;
+        for (const q of QUANTITIES) {
           if (q.context && !q.context.test(u.body)) continue;
-          if (q.patterns.some((p) => p.test(u.body))) perQuantity[q.key].set(`${rel}:${u.name}`, u.line);
+          if (q.patterns.some((p) => p.test(u.body))) {
+            perQuantity[q.key].set(`${rel}:${u.name}`, u.line);
+            matchedAny = true;
+          }
         }
+        // Phase A0 §2.3: money-shaped arithmetic attributable to NO quantity.
+        if (!matchedAny && MONEY_ARITH.test(u.body)) unattributed.set(`${rel}:${u.name}`, u.line);
       }
     }
   }
 
   const counts = {};
   for (const q of QUANTITIES) counts[q.key] = perQuantity[q.key].size;
-  return { counts, sites: perQuantity, unmeasured: UNMEASURED };
+  return { counts, sites: perQuantity, unmeasured: UNMEASURED, unattributed };
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
 const mode = process.argv[2];
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { counts, sites, unmeasured } = censusProducers();
+  const { counts, sites, unmeasured, unattributed } = censusProducers();
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   console.log('producer census (formula-shape sites, v1 method — see file header):');
-  for (const [k, n] of Object.entries(counts)) console.log(`  ${k.padEnd(20)} ${n}`);
-  console.log(`  ${'TOTAL'.padEnd(20)} ${total}`);
-  console.log(`  unmeasured (no v1 signature yet): ${unmeasured.join(', ')}`);
+  for (const [k, n] of Object.entries(counts)) console.log(`  ${k.padEnd(26)} ${n}`);
+  console.log(`  ${'TOTAL'.padEnd(26)} ${total}`);
+  console.log(`  ${'UNATTRIBUTED (sweep §2.3)'.padEnd(26)} ${unattributed.size}`);
+  console.log(`  unmeasured (no v1 signature yet): ${unmeasured.length ? unmeasured.join(', ') : 'NONE — every catalogued quantity carries a signature'}`);
 
   if (mode === '--list') {
     for (const [k, m] of Object.entries(sites)) {
       console.log(`\n## ${k}`);
       for (const [site, line] of [...m.entries()].sort()) console.log(`  ${site} (line ${line})`);
     }
+    console.log('\n## UNATTRIBUTED (money arithmetic matching no quantity signature — Phase A0 §2.3)');
+    for (const [site, line] of [...unattributed.entries()].sort()) console.log(`  ${site} (line ${line})`);
   }
 
   if (mode === '--seed') {
