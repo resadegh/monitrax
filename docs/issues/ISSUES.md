@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**121 total** · 62 open · 🔵 30 · 🟡 3 · 🟠 27 · 🟢 2 · ✅ 58
+**121 total** · 62 open · 🔵 29 · 🟡 3 · 🟠 28 · 🟢 2 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -127,7 +127,7 @@
 | MON-131 | 🔵 OPEN | 🔴 | yes | Reference Numbers — every canonical financial quantity has multiple producers (~336 across 23 quantities); one calc engine per named number, enforced | — | — |
 | MON-132 | 🔵 OPEN | 🟠 | yes | Emergency fund must be a SURVIVAL RUNWAY — liquid cash / (essential expenses - salary-independent income), answering 'if I lose my salary, how long do I last' (Reza decision 2026-07-29) | — | — |
 | MON-133 | 🔵 OPEN | 🟠 | yes | Legislated tax constants hardcoded outside TAX_YEAR_CONFIGS in ~12 production files — including a STALE Super Guarantee rate of 11.5% in two live paths (the legislated rate is 12%) | — | — |
-| MON-134 | 🔵 OPEN | 🟠 | yes | Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise | — | — |
+| MON-134 | 🟠 FIXING | 🟠 | yes | Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise | ##1530 (schema), ##PR-3 (read path — this PR) | ✅ |
 
 ---
 
@@ -2199,14 +2199,20 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 
 ### MON-134 — Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: health · opened 2026-07-29
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: health · opened 2026-07-29
 
 > **What was wrong:** The health score's trend — the up/down verdict, the percentage change, and the 7-month history chart data — is not based on any stored history. It is generated fresh on every request from today's score plus random noise, so it changes every time you look at it and can claim you are improving or declining based on nothing. Found by the Matrix Relay's first self-diff: 15 leaves moved between two captures of an unchanged database, all in this subtree.
 >
+> **What changed:** The invented 7-month history is deleted. The app now freezes one real health score per month (write-once), and the trend — the up/down verdict and percentage — is computed only from those stored real scores. With fewer than 2 months stored it says INSUFFICIENT_HISTORY instead of showing a number, and a change in the scoring formula shows as a break in the chart.
+>
+> **What you should see:** Open the health API twice on an unchanged book: identical output every time (no more shifting history). Until 2 monthly snapshots exist, the trend reports INSUFFICIENT_HISTORY with no percentage. The Matrix relay A3 self-diff must return verdict CLEAN — that is the acceptance test.
+
 - **Root cause:** `lib/health/aggregateEngine.ts:157`
 - **Neomatrix:** `engine.aggregateEngine.generateHealthReport`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Downstream consumers (§19.4):** `app/api/financial-health/route.ts (serves healthScore.trend verbatim)`, `lib/health/aggregateEngine.ts generateEvidencePack → evidence.historicalTrend`, `lib/cfo/intelligenceEngine.ts (consumes generateHealthReport; does not read trend fields — verified by tsc after the ScoreTrend type change)`, `NO app/ or components/ .tsx renders historicalTrend / trend.history / trend.direction / changePercent (targeted grep, 2026-07-29 — the fabricated values were API-served but not established as rendered)`
+- **Fix PR(s):** ##1530 (schema), ##PR-3 (read path — this PR)
+- **Holistic test (§19.4):** `tests/health/mon134TrendFromSnapshots.test.ts`
 - **Detail:** `neoaudit-run:relay-A3-c9a464c2`
 
-Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 15 moved — all under healthScore.trend/evidence.historicalTrend). Root cause verified at source: calculateTrend(currentScore) synthesises history as currentScore + (Math.random()-0.5)*5 and derives direction/changePercent from the invented series; the code comment admits it. Tranche-blocking for MON-131: a producer whose output differs on every call makes every golden-baseline diff STOP on noise. D15 (Reza 2026-07-29): score monthly from stored real snapshots (HealthScoreSnapshot, netWorthHistory pattern, formula-versioned); <2 snapshots → INSUFFICIENT_HISTORY, never a number; version-spanning trends show the break. Coverage boundary: grep of app/+components/ for historicalTrend/trend.history/changePercent found NO rendering surface — emitted by the canonical engine, served by /api/financial-health, consumed by cfo/intelligenceEngine; whether any screen renders it is established during the build, not assumed.
+Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 15 moved — all under healthScore.trend/evidence.historicalTrend). Root cause verified at source: calculateTrend(currentScore) synthesises history as currentScore + (Math.random()-0.5)*5 and derives direction/changePercent from the invented series; the code comment admits it. Tranche-blocking for MON-131: a producer whose output differs on every call makes every golden-baseline diff STOP on noise. D15 (Reza 2026-07-29): score monthly from stored real snapshots (HealthScoreSnapshot, netWorthHistory pattern, formula-versioned); <2 snapshots → INSUFFICIENT_HISTORY, never a number; version-spanning trends show the break. Coverage boundary: grep of app/+components/ for historicalTrend/trend.history/changePercent found NO rendering surface — emitted by the canonical engine, served by /api/financial-health, consumed by cfo/intelligenceEngine; whether any screen renders it is established during the build, not assumed. | [2026-07-29] FIXING: schema #1530 (write-once HealthScoreSnapshot + formulaVersion) + read-path PR (calculateTrend(snapshots), INSUFFICIENT_HISTORY <2, D15 formula breaks, deterministic engine via injectable asOf + stable risk ids, Math.random ratchet-down allowlist under lib/). Ring-3 gate: relay A3 self-diff CLEAN on real data.
 

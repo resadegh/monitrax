@@ -19,6 +19,7 @@ import {
   scoreToRiskBand,
   buildHealthInput,
 } from '@/lib/health';
+import { recordHealthScoreSnapshot } from '@/lib/services/healthScoreSnapshotRecorder';
 
 /**
  * GET /api/financial-health
@@ -54,6 +55,15 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       // Generate full report
       const report = generateHealthReport(input);
+
+      // MON-134: freeze this month's real score once (write-once per month;
+      // P2002 no-op afterwards). Fire-and-forget — never blocks the response
+      // (§12.10). The trend reads these stored rows on future requests.
+      recordHealthScoreSnapshot({
+        userId,
+        score: report.healthScore.score,
+        riskBand: scoreToRiskBand(report.healthScore.score),
+      }).catch(() => {});
 
       return NextResponse.json({
         success: true,

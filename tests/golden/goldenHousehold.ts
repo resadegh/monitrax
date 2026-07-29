@@ -100,6 +100,7 @@ export const GOLDEN_DB = {
     { id: 'as-oldcar', ownerEntityId: null, currentValue: 9999, status: 'SOLD' },
   ],
   unifiedTransaction: [] as never[], // declared basis — no actuals
+  healthScoreSnapshot: [] as never[], // MON-134: no stored score history → trend is INSUFFICIENT_HISTORY, honestly
   recurringPayment: [] as never[], // zero tracked bills — MON-017: scores 0, not full marks
   investmentTransaction: [] as never[], // include-shaped routes read this; none for the golden book
   spendingProfile: [] as never[], // cashflow full-mode reads via findUnique(userId) → null → declared-basis branch

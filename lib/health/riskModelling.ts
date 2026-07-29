@@ -71,7 +71,10 @@ const RISK_THRESHOLDS = {
 // =============================================================================
 
 function generateRiskId(category: RiskSignalCategory, suffix: string): string {
-  return `risk_${category.toLowerCase()}_${suffix}_${Date.now()}`;
+  // MON-134 §4.4: STABLE id — (category, suffix) is already unique per report
+  // (one signal per metric), and a Date.now() component made every report
+  // byte-different for identical input, breaking engine determinism.
+  return `risk_${category.toLowerCase()}_${suffix}`;
 }
 
 function determineSeverity(value: number, concerningThreshold: number, criticalThreshold: number, lowerIsBetter: boolean): RiskSeverity {

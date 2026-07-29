@@ -270,10 +270,28 @@ export interface FinancialHealthScore {
 }
 
 export interface ScoreTrend {
-  direction: 'IMPROVING' | 'STABLE' | 'DECLINING';
-  changePercent: number;
+  /** MON-134 / D15: 'INSUFFICIENT_HISTORY' when fewer than 2 stored monthly
+   *  snapshots exist — the UI says so rather than showing a number. Never a
+   *  'STABLE' fallback: a confident-looking zero is the same defect in a new
+   *  costume (brief §4.3). */
+  direction: 'IMPROVING' | 'STABLE' | 'DECLINING' | 'INSUFFICIENT_HISTORY';
+  /** ABSENT (undefined) when direction is INSUFFICIENT_HISTORY — the absent
+   *  case is representable by the type; never 0-faked (D15). */
+  changePercent?: number;
   periodMonths: number;
   history: TrendPoint[];
+  /** ISO dates of snapshots whose formulaVersion differs from the previous
+   *  snapshot's — a trend spanning two scoring formulas must show the break,
+   *  never smooth over it (D15). Absent when no break exists. */
+  formulaBreaks?: string[];
+}
+
+/** MON-134: one stored monthly snapshot of the real health score — the ONLY
+ *  input `calculateTrend` accepts (was: a scalar + Math.random fabrication). */
+export interface HealthScoreHistoryPoint {
+  snapshotDate: Date;
+  score: number;
+  formulaVersion: number;
 }
 
 /**
@@ -393,6 +411,16 @@ export interface FinancialHealthInput {
     missingLinks: string[];
     consistencyScore: number;
   };
+
+  /** MON-134: stored monthly HealthScoreSnapshot rows (oldest first), fetched
+   *  by buildHealthInput — the engine stays pure (§6.4) and derives the trend
+   *  from these real rows only. Absent/empty → INSUFFICIENT_HISTORY. */
+  healthScoreHistory?: HealthScoreHistoryPoint[];
+
+  /** MON-134 §4.4 determinism: injectable clock for report timestamps. The
+   *  engine must be byte-identical for identical input — pass a fixed value in
+   *  tests/captures; defaults to `new Date()` at the engine boundary. */
+  asOf?: Date;
 
   // User goals
   userGoals?: {
