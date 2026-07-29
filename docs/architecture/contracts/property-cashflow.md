@@ -101,8 +101,10 @@ Checkable properties (several already locked by tests — `tests/calculations/pr
 
 **Arithmetic identity** (invariants 1–4) — checkable without reading another screen. For the rent leg,
 the worked example of record: Broadbeach loan floor `228,000 × 0.0669 / 12 = 1,271.10`; linked
-repayments `(2,426 / 62) × 30.4375 = 1,190.97/mo` actuals win (CHANGELOG_2026_07_17, Ring-2 test
-`tests/golden/ring2.calcSsotWall.test.ts:78`). The actuals-first *policy* itself (trailing-12,
+repayments `(2,426 / 62) × 30.4375 ≈ 1,190.99/mo` actuals win (the "1,190.97" label used by the
+test comment + CHANGELOG_2026_07_17 is ~2c low — exact value 1,190.9899…; the test's
+`toBeCloseTo(1190.97, 0)` ±0.5 tolerance absorbs it; Ring-2 test
+`tests/golden/ring2.calcSsotWall.test.ts:77-80`). The actuals-first *policy* itself (trailing-12,
 advance/arrears handling) is a Reza decision (MON-035 DECISION 2), not independently derivable — the
 window choice is verified against the decision record, not against legislation.
 
