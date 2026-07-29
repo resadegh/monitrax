@@ -62,7 +62,7 @@ declared formula per slice; totals must re-sum to the household figure.
 
 | route | label |
 |---|---|
-| `/dashboard` (Home) | Entity Cashflow widget (`EntityCashflowSummary`, incl. its hardcoded `0.37` marginal-rate flag at :693 — MON-133/D12 overlap) |
+| `/dashboard` (Home) | Entity Cashflow widget (`EntityCashflowSummary`, incl. its hardcoded `0.37` marginal-rate default at :642 — MON-133/D12 overlap; the design record's `:693` anchor has DRIFTED, now the interest-portion estimate) |
 | entity/tax surfaces consuming `calculateCashflow(input, ownerEntityId)` | per-entity positions (not exhaustively enumerated — boundary) |
 
 ## expectedMoves
