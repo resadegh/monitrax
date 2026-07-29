@@ -2075,7 +2075,7 @@
       "kind": "engine",
       "label": "Health aggregate score",
       "file": "lib/health/aggregateEngine.ts",
-      "line": 106,
+      "line": 107,
       "layer": "engine",
       "domain": "health",
       "trailStage": "A",
@@ -2096,7 +2096,7 @@
       "kind": "engine",
       "label": "Health score (with trend/band)",
       "file": "lib/health/aggregateEngine.ts",
-      "line": 315,
+      "line": 346,
       "layer": "engine",
       "domain": "health",
       "trailStage": "A",
@@ -2117,7 +2117,7 @@
       "kind": "engine",
       "label": "Financial health report (SSOT)",
       "file": "lib/health/aggregateEngine.ts",
-      "line": 338,
+      "line": 373,
       "layer": "service",
       "domain": "health",
       "trailStage": "A",
@@ -2138,7 +2138,7 @@
       "kind": "law",
       "label": "Monitrax health-score methodology",
       "file": "lib/health/aggregateEngine.ts",
-      "line": 106,
+      "line": 107,
       "layer": null,
       "domain": "health",
       "trailStage": "A",
@@ -5114,7 +5114,7 @@
       "kind": "engine",
       "label": "Health: spending risk signals",
       "file": "lib/health/riskModelling.ts",
-      "line": 119,
+      "line": 122,
       "layer": "engine",
       "domain": "health",
       "trailStage": null,
@@ -6646,6 +6646,24 @@
       "formula": "Selects the most recent linked IN unifiedTransaction as the representative disbursement (its siblings supply the cadence evidence) and then delegates wholly to buildManagedRentalSuggestion (:192), so every fire/silent guard — including the existingDerived idempotency guard that prevents double-creating a derived cost — applies unchanged.",
       "authority": "MON-080 D1 + PHASE_59_MANAGED_RENTAL_INCOME.md §3/§8. Fired by the income PUT when a stream transitions to MANAGED, and by GET /api/rental-reconciliation for the income-page nudge chip.",
       "verifiedBy": "lib/services/managedRentalService.ts:179-197 (read 2026-07-29); call sites app/api/rental-reconciliation/route.ts:60, app/api/income/[id]/route.ts:250"
+    },
+    {
+      "kind": "orchestrator",
+      "layer": "service",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "inputs": [],
+      "astHash": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-29",
+      "status": "documented",
+      "id": "orchestrator.healthScoreSnapshotRecorder.recordHealthScoreSnapshot",
+      "label": "Health-score monthly snapshot recorder (MON-134 / D15)",
+      "file": "lib/services/healthScoreSnapshotRecorder.ts",
+      "line": 39,
+      "domain": "health",
+      "produces": "One WRITE-ONCE HealthScoreSnapshot row per (userId, month-anchor UTC): the canonical generateHealthReport score + riskBand + HEALTH_FORMULA_VERSION. Create-only (P2002 duplicate = no-op — brief §4.2); NEVER read back as the live value (§3.2 audit-snapshot exception). calculateTrend derives the trend from these stored rows — the deleted fabricated-history path can no longer exist."
     }
   ],
   "edges": [
@@ -10119,6 +10137,14 @@
       "type": "depends-on",
       "source": "verified",
       "evidence": "lib/services/managedRentalService.ts:192 — `return buildManagedRentalSuggestion({ userId, income, transaction: latest })`",
+      "verifiedDate": "2026-07-29"
+    },
+    {
+      "from": "engine.aggregateEngine.generateHealthReport",
+      "to": "orchestrator.healthScoreSnapshotRecorder.recordHealthScoreSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "app/api/financial-health/route.ts — after generateHealthReport, the route fire-and-forgets recordHealthScoreSnapshot({userId, score: report.healthScore.score, riskBand}) (§12.10); lib/services/healthScoreSnapshotRecorder.ts:40 create-only writer",
       "verifiedDate": "2026-07-29"
     }
   ]
