@@ -10,9 +10,9 @@
 
 ### 0·REF. MON-131 "Reference Numbers" — one canonical producer per quantity (THE FIRST-PRIORITY PROGRAMME)
 
-- **Status:** 🟡 **Tranches −1 + 0 BUILT (one draft PR, moves NO numbers)** — golden-baseline script + producer-census ratchet + source-lock extended to `lib/` + `REFERENCE_NUMBERS{_DESIGN,}.md` published. Awaiting merge, then the Matrix-side baseline capture, then Tranche 1 (income, MON-128) behind its Phase A contract + Reza gate.
-- **Started:** 2026-07-29 · **Owner:** Claude (Code, Fable 5) build · Reza (per-tranche merge — every tranche after 0 is changesNumbers) · the Matrix (census of record, Ring-3 per tranche, golden-baseline capture).
-- **Last touched:** 2026-07-29 — Tranche −1 + 0 PR.
+- **Status:** 🟡 **PHASE A COMPLETE (READ-ONLY, one draft PR)** — the Number Inventory (`docs/architecture/NUMBER_INVENTORY.md`, the decision artefact) + 49 adversarially-reviewed Quantity Contracts (`docs/architecture/contracts/`) are in. **Waiting on Reza's §5.1 calls (28 decisions) — Phase B writes nothing until then.** Earlier today: Tranches −1/0 + relay + MON-134 stack all MERGED and deploy-verified.
+- **Started:** 2026-07-29 · **Owner:** Claude (Code, Fable 5) build · Reza (per-tranche merge — every tranche after 0 is changesNumbers; NOW: the §5.1 decision pack) · the Matrix (census of record, Ring-3 per tranche, golden-baseline capture, MON-134 A3 acceptance).
+- **Last touched:** 2026-07-29 — Phase A inventory PR.
 - **Spec of record:** [`docs/architecture/REFERENCE_NUMBERS_DESIGN.md`](../architecture/REFERENCE_NUMBERS_DESIGN.md) (living decisions register — D1/D2/D6/D7 NOT RECOVERED, Matrix to supply) + [`docs/architecture/REFERENCE_NUMBERS.md`](../architecture/REFERENCE_NUMBERS.md) (the quantity register).
 - **Why this matters:** ~336 producers across 23 quantities (22 MULTIPLE); fixing one place has only ever changed which screens disagree. Medicare (single-sourced) is the proof the architecture works. Everything on Monitrax rides on this fix (Reza, 2026-07-29).
 - **Checklist:**
@@ -23,6 +23,9 @@
   - [x] **T0 census** — `npm run census:producers[:check]`, 13 quantities measured (564 sites), 11 UNMEASURED listed; seed `.audit/producer-census.json`; in `vercel-build` + vitest, ratchet-down-only.
   - [x] **T0 source-lock → lib/** — 3 producer rules over `lib/**/*.ts`; minimal canonical-home exemptions; comment-stripping; debt reseeded app 68 + lib 155 = 223.
   - [x] **T0 REFERENCE_NUMBERS.md** — FACT/DERIVED register, 23 quantities, canonical homes where established, 🅰 Phase A forks marked (D5/D8/D9/D10/D11/D13, MON-132 runway).
+  - [x] **PHASE A0 complete census (2026-07-29, D16)** — census extended to 40 quantities · 1,307 sites + a 424-function unattributed sweep bucket; previously-unmeasured list structurally EMPTY; MON-135 (AI categoriser one-off poisoning, LIVE precondition) + MON-136 (everything-else wave) raised.
+  - [x] **PHASE A1 contracts (2026-07-29)** — 13 parallel read-only agents → 49 Quantity Contracts (full depth for MON-131; register depth for the 16 MON-136 families + the sweep). Then **5 adversarial refutation agents** re-verified ~200 anchors, recomputed every worked example, re-ran every negative claim: 8 contracts materially corrected, 2 verdicts changed (property-cashflow CLEAN→MULTIPLE; loan-monthly-interest → MULTIPLE+WRONG with a LIVE 100× bug on Home found at `EntityCashflowSummary:693`).
+  - [x] **PHASE A GATE — `NUMBER_INVENTORY.md` (2026-07-29)** — 68 named quantities, one verdict each (5 WRONG · 13 UNNAMED · 26 MULTIPLE · 7 UNVERIFIABLE · 6 CLEAN across MON-131); **28 decisions for Reza (§5.1) · 12 preconditions (§5.2) · 14 wrong-inputs (§5.3)**; honest coverage boundary (Part 4). ⏳ **BLOCKED ON REZA: the §5.1 decision pack.**
   - [ ] **Tranche 1 income (MON-128)** — Phase A contract → Reza gate → migrate `incomeAggregator` (+Decimal twin) onto `monthlyRunRate` + D9 net semantics; `netTotal ≤ grossTotal` invariant; expectedMoves pre-declared; golden-baseline diff.
   - [ ] **Tranche 2 loan cost (MON-130)** — 12 raw-`minRepayment` producers → `resolveLoanMonthlyCost`; `moneyFlowService:385` skip-continue is the Activity $106K/yr root.
   - [ ] **Tranche 3 expense run-rate (MON-129)** — 23 reducers / 12 files → `monthlyRunRate`/`annualRunRate`, Float + Decimal.
