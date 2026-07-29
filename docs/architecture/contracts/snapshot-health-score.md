@@ -105,3 +105,12 @@ Verifies producer, formula, consumers; does NOT verify the upstream snapshot agg
 
 *Drifted anchor:* D13's `masterFinancialService:1434` → function starts `:1404` at HEAD
 (weighted sum `:1431–1436`).
+
+## Adversarial review (§7) — 2026-07-29
+- Claims checked: 22 (anchors 13 · arithmetic 6 · negative-claims 3)
+- REFUTED / CORRECTED: **none.**
+- Verified intact at HEAD (696ec349; commits since pinned 2f9f2e16 are docs-only): `buildHealthScore` :1404, all four component formulas EXACT against source :1412–1428 (savingsRate = (net − recurring − loanRepayments)/net×100 then clamp(×5, 0, 100) · EF = min(months/6×100, 100) · DTI score = max(100 − totalDebt/(income×12)×100, 0) · netWorthScore = nw>0 ? min(50+nw/10000, 100) : 25); weighted sum :1431–1436 with 0.30/0.30/0.25/0.15 EXACT; grade bands 80/65/50/35 :1440–1444 EXACT; component weight fields 30/30/25/15 :1450–1453 self-consistent with the multipliers (invariant 3 confirmed true today); input call site :2044–2051 EXACT (all six args are canonical snapshot aggregates, incl. `monthlyExpenses.recurring.total` MON-011 and `emergencyFund.monthsCovered`); `getHealthScore` re-export :2177–2180 EXACT. Consumers: portal card :66–75 ✓ (score + Grade badge + 4 component rows — the D13 cross-surface note is real), sweepRunner :88 EXACT, aiAdvisor :336/:352/:488–489 ✓, chat route :113/:115 ✓, insights :359 (DTI-value-only read) ✓, insights :362–364/:510 DUPLICATE ✓ (same component math re-typed around the OTHER engine's score), selfAuditInvariants headline/I7 ✓.
+- Negative claims attacked and SURVIVED: (1) **`getHealthScore` barrel export has no caller** — independent grep over lib/app/components finds only the `lib/services/index.ts:32` export itself; dead-export claim CONFIRMED. (2) **"NONE FOUND" independentExpectation** — agreed; ×5 multiplier, 6-month norm and /10000 curve have no external authority. (3) netWorthScore range {25} ∪ [50,100] — recomputed: nw≤0 → 25; nw>0 → 50+nw/10000 ∈ (50,100] capped. Holds (open at 50, immaterial).
+- expectedMoves arithmetic recomputed: min(11.6/6×100, 100) = 100 and min(72.6/6×100, 100) = 100 — saturated, no move. The zero-burn caveat is real: `buildEmergencyFundMetrics` :1385 yields 0 on burn ≤ 0 today; any INDEFINITE/∞ change alters this component's input type exactly as flagged.
+- Could not verify: portal sweepRunner full logic and aiAdvisor prompt assembly beyond cited lines (disclosed); the rendered portal grade (Ring-3).
+- Verdict impact: **none. PASS.**

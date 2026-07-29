@@ -25,8 +25,8 @@ availability, bring-forward cap) are separate derived quantities with their own 
 
 ## canonicalHome
 
-- `lib/tax-engine/config/taxYearConfig.ts` — `concessionalCap` (:110 FY24-25, :196 FY25-26, :299 FY26-27, :401 FY23-24),
-  `nonConcessionalCap` (:111/:197/:300/:402), `superGuaranteeRate` (:108/:193/:297/:399),
+- `lib/tax-engine/config/taxYearConfig.ts` — `concessionalCap` (:110 FY24-25, :195 FY25-26, :299 FY26-27, :401 FY23-24),
+  `nonConcessionalCap` (:111/:196/:300/:402), `superGuaranteeRate` (:108/:193/:297/:399),
   `bringForwardThresholds` (:116-120/:205-209/:307/:410-414). Access via `getTaxYearConfig(fy)` / `getCurrentTaxYearConfig()`.
 - **Decimal twin: NOT APPLICABLE / NOT ESTABLISHED** — the constant is a plain number; Decimal
   consumers (`trackContributionCapsDecimal`, `concessionalCapHeadroomDecimal`) Decimal-ify at the
@@ -43,7 +43,8 @@ availability, bring-forward cap) are separate derived quantities with their own 
 | `app/dashboard/cfo/what-if/[lever]/page.tsx:buildRequest` (326) | **DUPLICATE (hardcode)** | unit spans :419-425 — `const sgRate = 0.12; const concessionalCap = 30_000;` headroom = cap − proposed; over-cap flag. Values currently correct, but typed into a page (D12 violation; the brief's ":419-ish 30000 + 0.12" claim VERIFIED at :419-420, plus Decimal `'0.12'` at :469). |
 | `app/dashboard/cfo/what-if/[lever]/page.tsx:ResultPills` (1081) | **DUPLICATE (hardcode)** | :1095 `Math.round((totalConcessional.after / 30_000) * 100)` — cap-used % against a literal. |
 | `app/api/cashflow/intelligence/route.ts:buildTaxOptimization` (431) | **DUPLICATE (STALE hardcode)** | :464 `Math.min(27500, annualGrossIncome * 0.05) * 0.34` — potential-saving recommendation caps at **$27,500, the FY21-22..23-24 cap** (current $30,000) with an invented 34% rate. WRONG-INPUT live path. |
-| `lib/tax-engine/super/capTracker.ts` (via `getConcessionalCap`) | — | see row 1; also `BRING_FORWARD_THRESHOLDS` fallback (:81-85) holds STALE FY24-25 tiers ($1.66M/$1.78M/$1.9M) — config (preferred at :162 via `??`) has FY25-26+ $1.76M/$1.88M/$2.0M. Fallback fires only if `config.bringForwardThresholds` is absent (all 4 configs have it → dormant, but a drift trap). |
+| `lib/tax-engine/super/capTracker.ts` (via `getConcessionalCap`) | — | see row 1; also `BRING_FORWARD_THRESHOLDS` fallback (:80-85) holds STALE FY24-25 tiers ($1.66M/$1.78M/$1.9M) — config (preferred at :162 via `??`) has FY25-26+ $1.76M/$1.88M/$2.0M. Fallback fires only if `config.bringForwardThresholds` is absent (all 4 configs have it → dormant, but a drift trap). |
+| `lib/tax-engine/super/capTracker.ts:242` | **DUPLICATE (invented rate — found by adversarial pass 2026-07-29)** | `excessContributionsTax += concessionalExcess * 0.32; // Approximate additional tax` — excess concessional contributions are actually taxed at the individual's MARGINAL rate (less 15% offset); 0.32 is an invented proxy typed into the derived-quantity producer this contract's own canonicalHome covers. D12-class hardcode. |
 | `components/DashboardLayout.tsx:DashboardLayout` (53) | FALSE POSITIVE | :284 `pollingInterval: 30000` — milliseconds, not a cap. Census pattern `\b30[_,]?000\b` noise. |
 | `lib/services/accountDeletion.ts:deleteUserAccount` (73) | FALSE POSITIVE | :135 `{ timeout: 30_000 }` — ms. |
 | `lib/calc-audit/engines/decimal-cfo-decision-support.ts:makeProperty` (80) | FALSE POSITIVE | :90 fixture `annualRentalIncome: 30_000`. |
@@ -112,7 +113,7 @@ Written BEFORE any Phase B migration (T4 / MON-133):
 
 | pathPrefix | Why | Arithmetic |
 |---|---|---|
-| `/cashflow` saving-opportunities salary-sacrifice benefit | SG proxy 11.5% → 12% shrinks the estimated wedge | wedge = 30,000 − min(gross × **0.12**, 30,000); e.g. gross $150k: wedge falls $18,750 → $12,000 (−$6,750); benefit at 15pp falls ~$1,012/yr |
+| `/cashflow` saving-opportunities salary-sacrifice benefit | SG proxy 11.5% → 12% shrinks the estimated wedge | wedge = 30,000 − min(gross × **0.12**, 30,000); e.g. gross $150k: wedge falls **$12,750 → $12,000 (−$750)**; benefit at 15pp falls **~$112.50/yr** *(adversarial correction 2026-07-29 — the original "$18,750 → $12,000 (−$6,750), ~$1,012/yr" was internally impossible: 30,000 − 150,000×0.115 = 12,750)* |
 | `/cashflow` intelligence potential saving | 27,500 → 30,000 raises the `Math.min` ceiling ONLY when gross × 0.05 > 27,500 (gross > $550k) | for typical incomes: **NO movement** (min binds on gross × 0.05) — state that prediction explicitly |
 | `/dashboard/income` SG figures | 11.5% → 12% on salary rows | SG = annual × 0.12 (was ×0.115): +4.35% relative rise |
 | `/dashboard/cfo/what-if/[lever]` super lever | hardcode → config | **NO movement** while FY config says 0.12/$30,000 — pure re-sourcing |
@@ -153,3 +154,43 @@ income-page SG figures can converge. A correct formula over bad stored data is s
 - **Stale-anchor report:** brief's `lever.ts:88 CONCESSIONAL_CAP_ANNUAL` → moved to
   `lib/marketing/benchmarks.ts:122` (lever imports at :22, uses :89). Brief's `what-if/[lever]/page.tsx:422`
   → the hardcodes sit at **:419-420** at HEAD (near-match). All other cited anchors resolve exactly.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 38** (anchors 27 · arithmetic 7 · negative-claims 4)
+- **REFUTED / CORRECTED: 3**
+  1. **expectedMoves arithmetic REFUTED (saving-opportunities row).** The stated
+     "gross $150k: wedge falls $18,750 → $12,000 (−$6,750); benefit ~$1,012/yr" is impossible
+     under the code's own formula (`savingOpportunities.ts:162-164`): wedge(11.5%) =
+     30,000 − min(150,000 × 0.115, 30,000) = 30,000 − 17,250 = **$12,750**; wedge(12%) = $12,000;
+     delta **−$750**, benefit delta at 15pp **≈ $112.50/yr**. No gross produces the original pair
+     (a −$6,750 delta needs gross ≈ $1.35M, where the cap binds and the delta is $0). Direction
+     of the prediction (SG fix shrinks the wedge) is correct; magnitude was ~9× overstated.
+     Corrected inline.
+  2. Anchor drift: FY25-26 `concessionalCap` is at `taxYearConfig.ts:195` (not :196) and FY25-26
+     `nonConcessionalCap` at `:196` (not :197). Fixed inline. All other config anchors
+     (:110/:299/:401, :111/:300/:402, SG :108/:193/:297/:399, bring-forward :116/:205/:307/:410)
+     resolve exactly.
+  3. **Missed hardcode inside the contract's own producer:** `capTracker.ts:242`
+     `excessContributionsTax += concessionalExcess * 0.32` — an invented "approximate additional
+     tax" rate (the law taxes excess concessional at the marginal rate less a 15% offset).
+     The contract audited capTracker's cap tables and bring-forward fallback but not this rate.
+     Added to callSites.
+- **Verified intact (attack failed):** `CONCESSIONAL_CAPS` table `:59-68` stops at '2025-26' and
+  `getConcessionalCap:373` `|| 30000` / `getNonConcessionalCap:381` `|| 120000` byte-exact
+  (the '2026-27' silent-fallback finding holds); what-if hardcodes `:419-420` (`sgRate = 0.12`,
+  `concessionalCap = 30_000`), Decimal `'0.12'` `:468-469`, `ResultPills:1081` + `/30_000` `:1095`
+  all exact; `benchmarks.ts:122` + `lever.ts:22/:89/:166/:190` exact (the contract's own
+  brief-correction re lever.ts:88 → benchmarks.ts:122 is CONFIRMED); `savingOpportunities.ts:56`
+  + `:162` (0.115) exact; income page `:357/:566/:1988/:2407` exact; intelligence `:464`
+  ($27,500 × 0.34) exact; `contributionCalculator` 0.15 at `:173/:186/:261` all three exact,
+  SG-from-config `:92` exact; FY25-26 bring-forward config tiers $1.76M/$1.88M/$2.0M `:205-209`
+  confirmed; 4× invariant holds on all four configs (incl. FY23-24 110,000 = 4 × 27,500).
+  Independent repo-wide hunts for `27,500` and `0.115` found NOTHING beyond the contract's list.
+- **Could not verify:** the MON-133 registry entry text (not re-read); ATO/AWOTE figures against
+  the legislation itself (config citations are the trail); AI-tool Decimal-consistency
+  (contract's own stated gap).
+- **Verdict impact:** the MULTIPLE/WRONG verdict is UNCHANGED in kind and slightly WORSE in
+  degree (one more invented-rate hardcode inside capTracker). One expectedMoves magnitude
+  corrected — Phase B's golden-diff prediction for the /cashflow saving-opportunities tile
+  must use −$750 / ~$112.50, or the diff gate would wrongly accept a ~$1,012 move.

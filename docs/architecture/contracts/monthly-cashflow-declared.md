@@ -65,8 +65,13 @@ Anchors re-verified at HEAD `fa392b9a`.
 
 ## invariants
 
-1. `monthlyCashflow === monthlyNetIncome − monthlyExpenses − monthlyLoanRepayments` exactly.
-2. `annual* === monthly* × 12` for every pair (holds by construction; pin it).
+1. `monthlyCashflow === monthlyNetIncome − monthlyExpenses − monthlyLoanRepayments` — *(§7
+   correction)* exact pre-rounding only; the returned fields are each independently rounded to 2 dp
+   (`cashflowOrchestrator.ts:386-396`), so the identity over the RETURNED fields can be off by ≤2¢.
+   Pin with tolerance. (Decimal twin is exact — no rounding.)
+2. `annual* === monthly* × 12` — *(§7 correction)* NOT strict on the returned Float fields:
+   `annualCashflow = round(monthly_unrounded × 12)` vs `monthlyCashflow = round(monthly_unrounded)`
+   → `annual − monthly×12` can differ by up to ~6¢. Pin with tolerance; exact on the Decimal twin.
 3. `netTotal ≤ grossTotal` on the income side (the T1/D9 day-one test) — currently NOT guaranteed
    (non-salary income passes through un-netted).
 4. D8: an IO loan with `minRepayment = 0` must still contribute its real interest cost —
@@ -97,7 +102,11 @@ Computable without any other screen. (Golden Household fixture form: Ring 2.)
 - **D8 relabel: NO numeric movement** on any declared figure — already full-repayment.
 - Fixing the `:1927` IO-loan drop (T2): `quickMetrics.monthlyCashflow` moves DOWN by the dropped
   IO interest (≈$3,709/mo at census data); `pathPrefix: quickMetrics.monthlyCashflow`,
-  `cashflow.monthly*`, and every CFO scenario baseline.
+  `cashflow.monthly*`, and every CFO scenario baseline. *(§7 mechanism correction: removing the
+  `:1927` filter ALONE moves $0 for IO loans with `minRepayment = 0` — the orchestrator's raw sum
+  yields `toMonthly(0) = 0` either way. The ≈$3,709 move requires the loan feed to adopt the
+  resolved producer's interest floor. The filter also silently drops a second class: loans with
+  `minRepayment > 0` but NULL `repaymentFrequency` — real declared money, not just IO interest.)*
 - Migrating `metricAggregation` surplus to D8 basis: `health.cashflow.surplus` moves DOWN by
   monthly loan repayments (≈$12,779/mo census); dependent risk bands shift.
 - Migrating scoreCalculator/riskRadar reduces onto orchestrator output: score components move
@@ -127,3 +136,40 @@ Same examined set as `monthly-cashflow-canonical.md` §coverageBoundary. Additio
 (:34 entry read only), `lib/strategy/analyzers/cashflowAnalyzer.ts:373`, `lib/bank/budgetComparison.ts`,
 what populates `StrategyDataPacket.cashflowSummary` for the forecast engine, onboarding wizard
 declared previews, and all `calc-audit` fixture engines (test infra). Unexamined ≠ cleared.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 31** (anchors 21 · arithmetic 9 · negative-claims 1). At HEAD `72b15268`
+  (production identical to `fa392b9a`). Verified exactly: `calculateCashflow :302` + entity filter
+  `:308-316`; Decimal twin `:533` + filter `:537-545` + loan sum `:590-595` + rate `:599-601`; SALARY
+  netting via `calculateTakeHomePay` `:143-168` (both NET and GROSS salaryType branches; non-salary
+  passes through un-netted — the D9/T1 exposure as stated); internal twin Float path confirmed
+  (`calculateMonthlyCashflow :187` has its OWN loops, no delegation; `:237`/`:256` build on it;
+  `portfolioEngine.ts:371` consumes the simple path); NO one-off gate in the orchestrator (`:348`
+  converts every expense — confirmed); master assembler `:1919-1920` recurring filter, `:1927` loan
+  filter verbatim, `:1933` call, quickMetrics `:2106,:2111`; snapshot hybrid `:688-701,:996-998`
+  (`totalLoanMonthlyCost` is indeed the actuals-first resolver — the "third basis" claim is correct);
+  summary hybrid `:35,~54-82`; intelligence fallback `:598-609`; scoreCalculator `:125` (+`:423`)
+  gross-`i.amount`/ungated/raw-`minRepayment` reduces confirmed; riskRadar `:192,:200-207` same
+  pattern; metricAggregation `:219,:225` surplus omits loans — confirmed; master `:1404,:1413-1414`
+  inline re-derive + ×5 clamp at `:1416`; incomeExpense `:8,:17-19` loans omitted; forecastEngine
+  `:182,:217-221`; insights `:452`; scenario baselines spot-verified (`refinanceLoan.ts:47,:172`,
+  `aiAdvisor.ts:326,349,447` read `quickMetrics.monthlyCashflow`).
+- **REFUTED / CORRECTED:**
+  1. *Invariants 1–2* — "exactly"/"holds by construction" refuted at the cent level: the Float result
+     rounds every field independently (`:386-396`), so both identities hold only within ~2–6¢ on
+     returned fields. Corrected inline (exact on the Decimal twin).
+  2. *expectedMoves `:1927` mechanism* — un-filtering alone is arithmetically inert for IO
+     `minRepayment=0` loans (raw sum gives $0 regardless); the predicted ≈$3,709/mo move requires
+     floor adoption. A second dropped class (minRepayment>0, null frequency) was unrecorded.
+     Corrected inline. The callSites row's wording ("DROPS interest-only loans ... declared outflow
+     understates IO interest") survives — the understatement is real relative to the true carrying
+     cost; only the causal attribution to the filter needed tightening.
+- **Could not verify:** `buildCFEInput`/COE-CFE internals, `cashflowAnalyzer:373`, `budgetComparison`,
+  `StrategyDataPacket.cashflowSummary` population, wizard previews, calc-audit fixtures — all
+  boundary-stated by the contract itself. Note from the sibling review: `buildCFEInput.ts:115`
+  assigns raw `minRepayment` as `monthlyRepayment` (no cadence conversion, IO → $0) — inside this
+  contract's declared NOT-EXAMINED zone but now catalogued in `loan-monthly-cost-resolved.md`.
+- **Verdict impact: none.** The load-bearing findings all reproduce: caller-defined one-off gate
+  (DR-5), the internal Float twin (DR-4), the hybrid third basis (DR-6), the loans-omitted health
+  surplus (DR-1), the `:1927` drop (with mechanism corrected). Canonical home stands.

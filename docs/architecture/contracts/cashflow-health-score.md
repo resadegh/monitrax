@@ -36,7 +36,7 @@ Under D13 this quantity keeps its own home — never reconciled with the other t
 
 | Site | Tag |
 |---|---|
-| `app/api/cashflow/intelligence/route.ts` (~`:650`, input assembly upstream; also `:168` computes the `emergencyBuffer` months input as `totalBalance/monthlyOutflow`) | CONSUMER (sole runtime caller) — note its `:168` months division is registered as a producer in `survival-runway-months.md` |
+| `app/api/cashflow/intelligence/route.ts` (input assembly `:613–629`, call `:631` — §7 corrected from "~:650"; the `emergencyBuffer` months input comes from the route's own helper `:162–169`, division `:168`, called at `:610` with `canonical.outflow`) | CONSUMER (sole runtime caller) — note its `:168` months division is registered as a producer in `survival-runway-months.md` |
 | `tests/neomatrix/financialAudit.test.ts:34, :486–500, :1051` | CONSUMER (verification fixtures) |
 | `healthScoreAggregator.ts:229–239` internal `calculateTrend` (previous-period compare, 'STABLE' default) | DIFFERENT-QUANTITY (a per-category trend verdict; note it defaults to 'STABLE' when no history — the exact pattern D15 banned for the health-score trend; see decisions) |
 
@@ -62,7 +62,7 @@ only (already partially held by `tests/neomatrix/financialAudit.test.ts`).
 
 | Route | Label |
 |---|---|
-| `/cashflow` (Cashflow Intelligence) | half-arc gauge — `app/(dashboard)/cashflow/page.tsx:627` `intelligence.healthScore.overallScore` → `components/intelligence/CashflowHealthScore.tsx:191` + 5-category breakdown |
+| `/cashflow` (Cashflow Intelligence) | half-arc gauge — `app/(dashboard)/cashflow/page.tsx:627` `intelligence.healthScore.overallScore` → `app/(dashboard)/cashflow/components/intelligence/CashflowHealthScore.tsx:191` (§7: full path corrected — the component lives under the route group, not `components/`) + 5-category breakdown |
 | `/dashboard/plan` | fetches `/api/cashflow/intelligence` (`plan/page.tsx:458`) but consumes `forecast.current` hero numbers, **not** this score — listed to close the surface sweep honestly |
 
 ## expectedMoves
@@ -96,4 +96,15 @@ fields onto `HealthScoreInput` (which basis feeds `monthlyIncome`/`monthlyExpens
 verified** here; flag for the Phase B file-owner agent. Verifies formula + single-producer status;
 does NOT verify input basis correctness.
 
-*Drift:* none found — `:248` anchor exact at HEAD.
+*Drift:* `:248` anchor exact at HEAD; §7 review corrected two secondary anchors (route call `:631`, component path under the route group) — see below.
+
+## Adversarial review (§7) — 2026-07-29
+- Claims checked: 21 (anchors 12 · arithmetic 6 · negative-claims 3)
+- REFUTED / CORRECTED:
+  - **Anchor: sole runtime call is `route.ts:631`** (input assembly `:613–629`), not "~:650" — corrected inline. The Neomatrix-edge-derived ":598 → :650" is drifted; the `emergencyBuffer` input is confirmed to be the route's OWN helper (`calculateEmergencyBuffer` :162–169, division `:168` EXACT, called `:610` with `totalBalance` / `canonical.outflow`) — NOT `snapshot.emergencyFund.monthsCovered`, exactly as the expectedMoves prediction requires.
+  - **Path: the gauge component is `app/(dashboard)/cashflow/components/intelligence/CashflowHealthScore.tsx`**, not `components/intelligence/…` — corrected inline; `:191` renders `{overallScore}` EXACT at the real path.
+- Verified intact (no drift): `calculateCashflowHealthScore` :248 EXACT; `CATEGORY_WEIGHTS` :26–32 = 0.25+0.25+0.20+0.15+0.15 = **1.00 ✓**; `HealthScoreInput` :38–67 EXACT; every category step-function verified in source — liquidity ≥6→100/≥3→75/≥1→50/else 25 with `availableCash/burnRate` fallback :88–90 and burnRate≤0 ⇒ monthsOfRunway 0 ⇒ score-0 branch (divide-by-zero-safe claim confirmed), withdrawable-ratio ±30% adjust :100–102; clamps at **:105/:137/:167/:223 all EXACT**; stability surplus-ratio bands + volatility penalty + savings bonus :112–135; budget bands return exactly {100,90,80,70,50,30,10} + neutral-50 :174–193; debt DTI 28/43 bands :199–221; `calculateTrend` :229–239 with **'STABLE' default at :233 EXACT** (the D15-pattern finding is real); weighted sum :257–263; confidence :312–323 with floor `max(50, …)` — worst case 100−10−10−15−10−20 = 35 → 50, so [50,100] holds.
+- Negative claims attacked and SURVIVED: (1) **single-producer** — independent grep for `calculateCashflowHealthScore` callers finds only the intelligence route + `tests/neomatrix/financialAudit.test.ts` (:34/:486–500/:1051 all EXACT); (2) **`/dashboard/plan` does not consume this score** — grep for `healthScore` in `plan/page.tsx` returns zero hits (it fetches the endpoint at :458 for forecast data only); (3) **"NONE FOUND" independentExpectation** — agreed; the 28/36/43 DTI echo has no in-repo citation.
+- expectedMoves arithmetic recomputed: at 11.6 months the ≥6 branch already returns 100; 72.6 → 100. No move — sound, and doubly so since the input is the route's own :168 months, not the canonical EF producer.
+- Could not verify: the route's full input assembly basis (~600 lines — which income/expense basis feeds `monthlyIncome`/`monthlyExpenses`), exactly as the contract's coverageBoundary discloses; partially narrowed by this review: `:598–629` shows `canonical.inflow`/`canonical.outflow` from `getCanonicalMonthlyCashflow(masterSnapshot)` with declared fallback — the deeper trace stays with the Phase B file-owner.
+- Verdict impact: **none** — single-sourced verdict and the D13 four-questions separation stand. Two anchors corrected (above).

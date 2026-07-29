@@ -115,3 +115,36 @@ formula identity established by inspection. **Does NOT verify:** scenario/what-i
 own interest math (`lib/cfo/scenarioEngine`-class files — not read; census families
 `loanAmortisation`/`forecastFlows`), tax-engine deductible-interest consumers (negative
 gearing family), or any live figure against a statement.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 18** (anchors 10 · arithmetic 6 · negative-claims 2). At HEAD `72b15268`
+  (production identical to `2f9f2e16`): producer 1 `propertyCashflow.ts:199` verbatim
+  (`Math.max(0, principal × rate) / 12`); producer 2 `debtPlanner.ts:106-110` offset-netted verbatim;
+  `loanAggregator.ts:99-101` Float and `:240-242` Decimal aggregate arithmetic verbatim (P0-fix comments
+  in place); `buildHealthInput.ts:102` re-typed formula confirmed at the corrected anchor;
+  `debtPlanner.ts:157,344,360` consumers confirmed; `:128-136` daily-accrual placeholder confirmed
+  disabled ("TODO: Enable in Phase 3", no callers). Worked example recomputed: 480,000 × 0.0625 / 12
+  = **$2,500.00** ✓. Invariant 3 by-construction confirmed (`propertyCashflow.ts:304` sums
+  `monthlyInterest × 12`). Negative claim re-run: per-loan Decimal twin — no hits; NOT ESTABLISHED confirmed.
+- **REFUTED / CORRECTED:**
+  1. *callSites completeness / invariant 2* — an independent `principal × rate` sweep found a live
+     producer the contract missed: **`components/dashboard/EntityCashflowSummary.tsx:693`** computes
+     `principal × (interestRate / 100) / 12` while its feed (`portfolio/snapshot:852`) passes the schema
+     **decimal** rate → interest estimate + tax-benefit 100× TOO LOW at HEAD, on the Home Entity Cashflow
+     widget. This is exactly the 100×-trap class invariant 2 declares impossible "on any path" — the
+     invariant is currently violated on an unlisted path. The site is a dashboard widget, NOT covered by
+     the boundary's "scenario/what-if engines" exclusion. Row added; invariant annotated.
+  2. *callSites completeness (minor)* — `loanDecisionSupport.ts:713` (and `:420`; audit mirror
+     `decimal-cfo-decision-support.ts:168`) compute gross monthly interest and were unlisted; arguably
+     inside the "scenario engines" boundary but that boundary named `lib/cfo/scenarioEngine`-class files,
+     not decision support. Row added.
+- **Could not verify:** the "$3,709/mo reads $0" magnitude (design-record figure, Ring-3 per the
+  contract's own statement); scenario/what-if engines' interest math (boundary-stated); daily-accrual
+  exactness against a statement.
+- **Verdict impact: YES — strengthened, not overturned.** The canonicalHome verdict "MULTIPLE, no
+  single canonical home" now counts at least THREE live per-loan semantics (gross `P×r/12`, offset-netted,
+  and the percent-unit-defective `:693` variant) instead of two. Invariant 2 moves from "guard to keep"
+  to "currently violated — fix authorised target for Phase B". expectedMoves gains an implied mover the
+  contract predicted flat by omission: the Entity Cashflow widget's tax-benefit line RISES ~100× (or the
+  site is deleted) when migrated to the canonical producer.

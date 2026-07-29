@@ -57,7 +57,7 @@ invented 30% — show different PAYG for the same user.
 | `lib/cashflow/incomeNormalizer.ts:49` `calculateNetSalary` (+Decimal `:313`) | C (schedule) | legacy-row fallback: annual PAYG + Medicare via engines → net monthly, when no stored net exists |
 | `lib/cashflow/incomeNormalizer.ts:221` `calculateTakeHomePay` (+Decimal `:468`) | C (schedule) | PAYG + Medicare − LITO → net; used by cashflow orchestrator |
 | `lib/calculations/incomeAggregator.ts:119` `getPaygAmount` (+Decimal `:271`) | C (withheld) | stored annual figure, /12 for monthly, **0 when null** |
-| `app/api/portfolio/snapshot/route.ts:65` `getPaygWithholding` | **D** | stored payg **else `gross − net`** — a SECOND fallback rule diverging from `incomeAggregator`'s (0 when null). Same row, two answers when `paygWithholding` is null and gross/net differ |
+| `app/api/portfolio/snapshot/route.ts:65` `getPaygWithholding` | **D** | stored payg **else `Math.max(0, gross − net)`** (`:80-83`) — a SECOND fallback rule diverging from `incomeAggregator`'s (0 when null). Same row, two answers when `paygWithholding` is null and gross/net differ |
 | `app/dashboard/income/page.tsx:356` | **D** | **VERIFIED AT HEAD:** `const estimatedTax = annualAmount * 0.30; // Rough 30% estimate` — catch-fallback of the salary preview invents PAYG as a flat 30%. Companion lines `:357` SG `× 0.115` (STALE — legislated 12%), `:359-360` `/0.7`,`×0.7`. D12 violation trifecta |
 | `lib/services/moneyFlowService.ts:219` `getMoneyFlow` | C (withheld) | reads stored `paygWithholding` rows for the entity money-flow tax leg |
 | `lib/calculations/cashflowOrchestrator.ts:131,302` | C (schedule+withheld) | via `incomeNormalizer` / stored fields — monthly PAYG legs of cashflow |
@@ -155,3 +155,37 @@ PAYG legs, `incomeAggregator.ts:76-145`, `portfolio/snapshot/route.ts:25-110`,
 Scale 1 coefficient verification against NAT 1004 (only Scale 2 boundary spot-checked via
 the in-file audit notes), the ~44 unexamined census sites, `calc-audit` PAYG fixtures'
 expected values (not re-verified against NAT 1004 this pass).
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 30** (anchors 21 · arithmetic 6 · negative-claims 3)
+- **REFUTED / CORRECTED: 1 minor precision fix**
+  1. Snapshot fallback is `Math.max(0, gross − net)` (`portfolio/snapshot/route.ts:80-83`), not
+     a bare `gross − net` — the floor matters when net > gross (bad data): the snapshot rule
+     then AGREES with incomeAggregator's 0. Fixed inline. The two-fallback-rules finding itself
+     stands (null-PAYG + gross>net still yields two different answers).
+- **Verified intact (attack failed):**
+  - `PAYG_SCALE_2/1_2024_25` hardcoded at `:62-84`; `calculatePAYG(input)` takes NO config;
+    `calculateGrossFromNet` config param at `:241` and its body calls `calculatePAYG` without it
+    (dead param confirmed in source, Float and Decimal `:419`).
+  - Whole-dollar weekly rounding (`:195`), `annual = weekly × 52` exact (`:210`),
+    `x = floor + 0.99` (`:174-178` region), $361.99 → $0 boundary (both by band-gap and by the
+    documented ≈$0.07-rounds-to-0 path) — invariants hold as written.
+  - `income/page.tsx:356` `annualAmount * 0.30 // Rough 30% estimate` — byte-exact at HEAD;
+    `:357` `× 0.115`, `:359-360` `/0.7`,`×0.7` all exact.
+  - `incomeAggregator.ts:119` (0-when-null, annual-figure contract per JSDoc `:109-118`) and
+    Decimal `:271`; `moneyFlowService.ts:219` (stored rows, proportional allocation `:403-405`);
+    `salaryProcessor.ts:46/:435`; `/api/tax/salary` route `:60/:72`; orchestrator `:131/:302`
+    legs — all resolve.
+  - Golden PAYG $11,129 confirmed at `lib/matrix/goldenBaseline.ts:77`;
+    refund identity −$26,657 recomputed.
+  - Independent hunt for a third fallback/producer: `lib/services/entityTaxFactsAssembler.ts:1032`
+    (stored payg × ownership weight — a per-entity apportionment pass-through, not a new rule),
+    `lib/cashflow/buildCFEInput.ts:104` and `app/api/cashflow/summary/route.ts:65` (pure
+    pass-throughs). No third derivation rule found; the two-quantity split (schedule vs declared)
+    survives.
+- **Could not verify:** FY24-25 Scale 1/2 coefficient values against ATO NAT 1004 itself (the
+  in-file citation block `:1-37`, retrieved 2026-06-07, is the evidence trail — same boundary
+  the contract declared); calc-audit PAYG fixture expected values (contract's own stated gap).
+- **Verdict impact: none.** The two-named-quantities structure, the canonicalHome FY-staleness
+  caveat (P1 precondition), and both D findings survive the hostile pass unchanged. PASS.

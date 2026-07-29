@@ -153,3 +153,36 @@ defect in that tranche, full stop. `pathPrefixes` expected to move: `[]`.
   no NAT 1005 half-levy path; that is a documented capability gap, not a wrong number).
 - **Stale-anchor report:** none — every census anchor for this quantity resolves at HEAD (unit-name
   artifacts noted per-row above are census method quirks, not drift).
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 41** (anchors 30 · arithmetic 6 · negative-claims 5)
+- **REFUTED / CORRECTED: none.** Every load-bearing claim survived a hostile re-check:
+  - Producer + twin anchors exact: `calculateMedicareLevy:55`, `calculateMedicareLevyDecimal:334`,
+    `mlsTierRate:207`, `calculateMedicareSurcharge:239`/Decimal `:303`, `getMedicareSummary:412`
+    (wrapper calling the producer at `:423/:428`); file is 443 lines as stated.
+  - Consumer anchors spot-verified in source: position `:319/:861`, quick `:604` + dollar-round
+    `:613`, quickDecimal `:958/:971`; normalizer `:64/:244/:325/:487` (and the frequency divisor
+    at `:262-266` is output unit-conversion, as claimed); salaryProcessor `:139/:435`
+    (`annualizeDecimal:410` unit-artifact confirmed — real call inside `processSalaryDecimal:396`);
+    orchestrator `:164/:521`; intelligence `:438`; taxIntegration `:158`; cfo page `:901`;
+    tax page `:344/:349/:522`; factPack `:116-117/:340-345`; grounding `:151/:162`.
+  - Independent second-producer hunt (beyond the census 26): repo-wide `0.02` sweep, Decimal-string
+    `'0.02'` sweep, and a full enumeration of every medicare-mentioning file in `lib/`, `app/`,
+    `components/` — the only extra hits are display/type/pass-through files plus ONE additional
+    canonical-producer CONSUMER the census misses: `app/api/tax/super/optimize/route.ts:255,:260`
+    (base/reduced scenarios call `calculateMedicareLevy` on GROSS salary — the same estimate-level
+    input caveat as incomeNormalizer; a consumer, not a producer). **DUPLICATE count stays 0.**
+  - Invariant recompute re-done independently: 27,222 × 1.25 = 34,027.50; 145,426 × 0.02 = 2,908.52
+    → $2,909 (golden `lib/matrix/goldenBaseline.ts:77`). Shade-continuity claim verified
+    algebraically against the apportionment code (`ownShare` at the producer's shade branch:
+    0.10 × 0.25T × ownShare == 0.02 × (ownShare × 1.25T)). Config lines all exact
+    (`medicareRate:61/183/286/361`, thresholds `:62-67`, MLS tiers `:74-81`, family `:83`,
+    NAT 1005 citation block `:51-60`).
+- **Could not verify:** the FY24-25 threshold figures against ATO NAT 1005 itself (the in-file
+  citation retrieved 2026-06-07 is the trail — same boundary the contract declares); runtime
+  rendered values (Ring 3, out of scope by rule).
+- **Verdict impact: none. PASS — the CLEAN verdict (0 duplicates, 0 different-quantity producers)
+  survives the adversarial pass unchanged**, including the "expectedMoves: NONE" prediction.
+  One census-coverage note added for the gate pack: the super/optimize route consumer sits outside
+  the census's 26 sites — a census-signature gap, not a contract error.

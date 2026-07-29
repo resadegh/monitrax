@@ -137,3 +137,40 @@ body NOT line-by-line audited — its worked-example verification belongs to the
 NOT read: `lib/depreciation/*` engine bodies (own contract, D11), ExpenseWizard/Dialog
 writers (FACT intake), the ~80 unexamined census sites above, `entityTaxFactsAssembler.ts`,
 `rentalReconciliation.ts:303` context, per-property tax card assembly.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 26** (anchors 17 · arithmetic 5 · negative-claims 4)
+- **REFUTED / CORRECTED: 3 additions + 1 clarification** (no existing claim was arithmetically wrong)
+  1. **Missed DUPLICATE:** `app/api/portfolio/snapshot/route.ts:968-970` — Σ deductible-flagged
+     × toAnnual, feeding `estimatedTaxableIncome` at `:1090-1091`. A live parallel deductions
+     aggregate in `SnapshotV2` that neither this contract nor the census remainder note caught.
+     Added to callSites.
+  2. **Missed DUPLICATE:** `lib/reports/generators/incomeExpense.ts:21` — a SECOND report
+     generator re-deriving deductibleExpenses (the contract lists only `taxTime.ts`). Added.
+  3. **Missed D-shape surface:** `app/dashboard/tax/page.tsx:749` inline
+     `deductions.total × marginalRate/100` ("Tax savings at X%") — linear approximation typed
+     into the surface while `calculateDeductionSavings` (two-bracket-walk delta) is canonical.
+     Added.
+  4. Clarification: `negativeGearing.ts:152,346` row tagged C — the consumer is DORMANT
+     (zero production callers; verified by grep, matches the negative-gearing contract).
+     Noted inline.
+- **Verified intact (attack failed):** aggregation block Float `:238-307` / Decimal `:791-853`
+  including the MON-045 de-dup (`if (expense.loanId && autoDerivedLoanIds.has(expense.loanId))
+  continue`) and MON-037 one-off gate (`isRecurring === false → amount once`) — both read in
+  source; `propertyLoanInterest.ts:71` signature + `:1-20` header (incl. the $157,746-vs-$39,554
+  history) exact; `userTaxPosition.ts:220` MON-026 depreciation consumption exact; taxTime D
+  `:21-30` exact; `expenseAggregator.ts:105`/Decimal `:239` exact (arithmetic wording
+  "toMonthly/toAnnual(amount)" is accurate — `amount` is the converter output);
+  EntityCashflowSummary second deductibility rule (`loan.type === 'INVESTMENT' || 'BUSINESS'`,
+  `:687`) exact; total identity + golden reconcile (172,325 = 317,751 − 145,426) verified against
+  `goldenBaseline.ts:76-77`; `identifyMissedDeductions:361` returns `string[]` (prompts, not
+  amounts) — verified.
+- **Could not verify:** `lib/depreciation/*` engine bodies (own contract, D11 — but note the
+  adversarial income-tax pass found `lib/depreciation/schedule.ts:72,145` hardcodes a STALE
+  32.5% rate for `taxSavingAt32_5Percent`, relevant to that contract); `propertyLoanInterest.ts`
+  body line-by-line (§19.2 worked example still owed); the ~80 unexamined census sites beyond
+  the hits my hunts surfaced.
+- **Verdict impact: YES — duplicate count rises by 2 producers + 1 surface re-derivation.**
+  The canonical home stands, but Phase B's deletion list and the taxable-income contract's
+  Phase B consumer-repointing must include the snapshot-route and incomeExpense-report sites.

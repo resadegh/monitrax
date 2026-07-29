@@ -68,7 +68,7 @@ DQ=DIFFERENT-QUANTITY):
 | `lib/cashflow-intelligence/healthScoreAggregator.ts:88–89` | availableCash ÷ burnRate (fallback path) | D (re-derivation inside a score engine; should receive the canonical months) |
 | `app/api/cashflow/intelligence/route.ts:168` | totalBalance ÷ monthlyOutflow | D (route-level re-derivation) |
 | `app/api/cashflow/summary/route.ts:112` | totalBalance ÷ monthlyOutflow | D |
-| `lib/intelligence/insightsEngine.ts:650` | totalCash ÷ monthlyExpenses | D |
+| `lib/intelligence/insightsEngine.ts:649` (§7: was cited :650 — division is at :649, reads :647–648) | totalCash ÷ monthlyExpenses | D |
 | `lib/strategy/analyzers/cashflowAnalyzer.ts:383` | availableCash ÷ monthlyExpenses | D |
 | `lib/reports/contextBuilder.ts:236` | liquidAssets ÷ monthlyBurn; **burn ≤ 0 ⇒ 999** | D (999 sentinel is a fabricated number on a report surface) |
 | `app/(dashboard)/cashflow/components/LiquidityHealth.tsx:186` | totalLiquidity ÷ monthlyExpenses **in a component** | D (§12.2.1 violation — UI-side derivation) |
@@ -162,3 +162,15 @@ the gate.
 *Drift:* brief's "~:1380" exact at HEAD (`:1380`). Census regex count 14 vs 19 enumerated rows here:
 the regex misses reads-via-snapshot consumers and the days/pattern DQ variants — the table above is
 the fuller map.
+
+## Adversarial review (§7) — 2026-07-29
+- Claims checked: 38 (anchors 22 · arithmetic 11 · negative-claims 5)
+- REFUTED / CORRECTED:
+  - **Minor anchor:** `insightsEngine.ts:650` → the division is at **:649** (`monthsOfBuffer = totalCash / monthlyExpenses`; reads at :647–648) — corrected inline. One-line drift; the D-tag and arithmetic description were already correct.
+- **The decision-critical worked example recomputed and its inputs traced — HOLDS:**
+  - Inputs are SOURCED, not invented: `lib/matrix/goldenBaseline.ts:74–79` `RENDERED_PART_C` pins `liquid: 301808`, `committed: 14261`, `loansMonthly: 12779`, `rentalMonthly: 10102`; D4's decomposition is recorded verbatim in `REFERENCE_NUMBERS_DESIGN.md:152`.
+  - Arithmetic: 1,482 + 12,779 = **14,261** ✓ (matches `RENDERED_PART_C.committed`); 14,261 − 10,102 = **4,159** ✓; 301,808 ÷ 4,159 = **72.567… ≈ 72.57** ✓; 6 × 4,159 = **24,954** ✓ < 301,808 ⇒ gap → 0 ✓; the as-is 11.6 cross-checks as 301,808 ÷ 25,973 = **11.62** ✓ (liquidCash.ts header worked example).
+- Verified intact (no drift): canonical `buildEmergencyFundMetrics` :1380/:1385 EXACT (`burn > 0 ? liquid/burn : 0`, target 6, gap `max(0, 6×burn − liquid)`, status bands 1/3/6); burn selection :2035–2037 EXACT (actual `avgMonthlyOutflow` when `hasActualData`, else `recurring.total` MON-011); call :2038–2041. Every producer row re-opened: metricAggregation **:171 zero-burn→12 sentinel EXACT** and **:450 intra-file re-type EXACT** (same formula + same 12 sentinel inside `calculateRiskMetrics`); scoreCalculator :204–206 essential-only (loans excluded — the D4 conflict is real), **:208 zero-essential→100/50 sentinel EXACT**, :210 months, Decimal :499/:512; healthScoreAggregator :88–90 fallback; intelligence route :168 EXACT; summary route :112 EXACT; cashflowAnalyzer :382–383; **contextBuilder :236 burn≤0→999 sentinel EXACT**; LiquidityHealth.tsx :186 component-side division EXACT; forecasting.ts :757 days-unit DQ EXACT; link route :1771 `daysCovered/30.44` DQ EXACT; safety-net route DQ scenarios :103/:109/:115 EXACT; cutSpendCategory :47–48 EXACT. Surfaces: safety-net page months hero ✓; Home `GlassEmergencyFund`/`InsightWidgets` ✓ (GlassInsightTiles lives at `components/dashboard/tiles/…` — the contract's short filename cite resolves; :107/:155 verified); TrailStageIndicator **:181 `monthsCovered < 3` gates stage 2 EXACT**; portal card :199+ ✓.
+- The four-score no-move prediction verified in each engine independently (see the four score contracts' §7 reviews): overall — decoupled input (metricAggregation :171) + createMetric saturation at benchmark 6; snapshot — min(months/6×100,100) saturated; cashflow — route's own :168 months + ≥6 branch saturated; safety — min(months/6×40,40) saturated. **Strongest prediction survives on all four.**
+- Could not verify: `actualCashflow.ts` window mechanics, deep context of the tagged-from-formula-line rows, and the MON-001 FACT-input trust (all disclosed in coverageBoundary). The ±1–2-month tolerance on 72.57 is honest — live rental/essential figures will drift from the pinned Part-C snapshot. Design-record nuance: D3/D4 are Reza-DECIDED (`REFERENCE_NUMBERS_DESIGN.md:151–152`) as claimed; D5 is Matrix-RECOMMENDED, treated as settled per brief §3.1(5).
+- Verdict impact: **none** — canonical home, the D/DQ partition, all three sentinel findings (12 / 999 / 100-50), and the 11.6 → ≈72.6 expectedMove all stand. One anchor corrected (:649).

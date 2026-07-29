@@ -99,3 +99,13 @@ question outside this contract). Verifies producer, formula, single surface; doe
 canonical cashflow/emergency-fund inputs themselves (other contracts).
 
 *Drift:* none — `:59` exact at HEAD.
+
+## Adversarial review (§7) — 2026-07-29
+- Claims checked: 19 (anchors 11 · arithmetic 6 · negative-claims 2)
+- REFUTED / CORRECTED: **none.**
+- Verified intact at HEAD (696ec349; commits since pinned 2f9f2e16 are docs-only): `computeSafetyScore` :59 EXACT and every dimension formula matches source :59–90 — EF `min(months/target×40, 40)` with `targetMonths ≤ 0 ⇒ 0` :61–62; bills `totalBills > 0 ? ratio×30 : 0` :66 (MON-017); `noNewDebtScore = 15` flat placeholder :70 with the header's own "optimistic default / not a measured value" disclosure :68–69; cashflow `>0 ⇒ 15 · >−200 ⇒ 8 · else 0` :75; `total = round(Σ)` :77; grades 80/60/40 :80. Route: import :21, `qm.liquidCash` :42, EF reads :50–54, `getCanonicalMonthlyCashflow(snapshot).net` :63 EXACT (actuals-first input claim confirmed), engine call with the five inputs :88–94 EXACT, months render :152. Tests: deficit −6073 ⇒ 0 at `safetyScore.test.ts:41–42` ✓; zero-bills ⇒ 0 at :63–64 ✓; `vr001Ratchet.test.ts` :10 import + :26–40 Ring-0 deficit ✓; `ring2.safetyNetRoute.test.ts` exists ✓.
+- Negative claims attacked and SURVIVED: (1) **single surface** — independent grep for `/api/safety-net` fetchers finds only `app/dashboard/safety-net/page.tsx:107`; grep for other `computeSafetyScore` callers finds only the route + tests. Single-sourced and single-surfaced CONFIRMED. (2) **"NONE FOUND" independentExpectation** — agreed; 40/30/15/15, the −200 band and grade cut-offs are product policy.
+- expectedMoves arithmetic recomputed: min(11.6/6 × 40, 40) = 40 (saturated); min(72.6/6 × 40, 40) = 40. The other three dimensions read no runway input. **No-move prediction sound.** The ∞/INSUFFICIENT caveat is real — :62 divides `monthsCovered/targetMonths` with no non-finite guard today, so an ∞ input would propagate without the fixture the contract demands.
+- Honest-range check: "max honest measured range 0–85 + 15 assumed" — dimensions 40+30+15 = 85 measured + 15 placeholder ✓.
+- Could not verify: recurringPayment data quality (bills counts — FACT-intake, disclosed); the rendered "63" (Ring-3).
+- Verdict impact: **none. PASS** — survives the hostile read unchanged.

@@ -64,7 +64,7 @@ lines, so **neither is counted** — the seed's `negativeGearing: 6` under-state
 | Site | Tag | Actual arithmetic (in words) |
 |---|---|---|
 | `lib/cfo/decisionSupport/taxIntegration.ts:114-116` (inside `calculateCFOTaxInsights`) | **DUPLICATE (formula)** | `max(0, taxPosition.deductions.property − taxPosition.income.rental) × (taxPosition.tax.marginalRate / 100)` → CFO `keyTaxMetrics.negativeGearingBenefit`, rendered `/dashboard/cfo` :888-891. Inputs canonical (MON-045's fix), formula inlined. NO `rental > 0` gate — benefit shows even with zero rental income. |
-| `lib/tax-engine/position/taxPositionCalculator.ts:483` (inside `generateTaxInsights`) | **DUPLICATE (formula)** | `taxBenefit = (deductions.property − income.rental) × mr` (mr = marginalRate/100, MON-040) → "Negative Gearing Active" recommendation `potentialSavings`, gated `rental > 0`. |
+| `lib/tax-engine/position/taxPositionCalculator.ts:483` (inside `generateRecommendations:446` — function name corrected 2026-07-29; no `generateTaxInsights` exists) | **DUPLICATE (formula)** | `taxBenefit = (deductions.property − income.rental) × mr` (mr = marginalRate/100, MON-040) → "Negative Gearing Active" recommendation `potentialSavings`, gated `rental > 0`. |
 
 **Same semantic, same formula, two inline sites, one edge divergence** (zero-rental gating: property
 deductions with no rental income → CFO shows a benefit, tax-page insight does not). §12.2.1: the

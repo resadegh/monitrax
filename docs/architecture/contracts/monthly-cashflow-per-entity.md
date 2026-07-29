@@ -48,8 +48,12 @@ Decimal twin: exists only for mechanism 1.
 
 ## invariants
 
-1. Partition: `Σ_entities cashflow(slice) === cashflow(all rows)` on the same basis
-   (holds by construction for mechanism 1; UNVERIFIED across mechanisms).
+1. Partition: `Σ_entities cashflow(slice) === cashflow(all rows)` on the same basis —
+   *(§7 correction)* NOT by construction for mechanism 1: `calculateCashflow(input, entityId)`
+   filters `row.ownerEntityId === entityId` (`cashflowOrchestrator.ts:308-316`), so a row with a
+   NULL/unmapped `ownerEntityId` falls into NO slice and Σ slices < household. The invariant holds
+   for mechanism 1 only if the caller adds an explicit unattributed slice (mechanism 2,
+   `entityBreakdown`, does bucket unattributed; the orchestrator filter does not).
 2. Every row lands in exactly one slice (unattributed included) — no row double-counted.
 3. Mechanism-parity (the missing test): 1 and 3 must agree per entity or one must be renamed.
 
@@ -62,7 +66,7 @@ declared formula per slice; totals must re-sum to the household figure.
 
 | route | label |
 |---|---|
-| `/dashboard` (Home) | Entity Cashflow widget (`EntityCashflowSummary`, incl. its hardcoded `0.37` marginal-rate default at :642 — MON-133/D12 overlap; the design record's `:693` anchor has DRIFTED, now the interest-portion estimate) |
+| `/dashboard` (Home) | Entity Cashflow widget (`EntityCashflowSummary`, incl. its hardcoded `0.37` marginal-rate default at :642 — MON-133/D12 overlap; the design record's `:693` anchor has DRIFTED, now the interest-portion estimate). *(§7 addition: that `:693` estimate is `principal × (interestRate/100)/12` fed a DECIMAL rate by `portfolio/snapshot:852` → interest + taxBenefit 100× too low at HEAD — hard evidence the client composition diverges from every server mechanism; catalogued in `loan-monthly-interest.md` §7)* |
 | entity/tax surfaces consuming `calculateCashflow(input, ownerEntityId)` | per-entity positions (not exhaustively enumerated — boundary) |
 
 ## expectedMoves

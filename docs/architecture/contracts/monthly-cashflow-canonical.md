@@ -67,7 +67,7 @@ All anchors re-verified at HEAD `fa392b9a` (no drift found in the sites below).
 | `lib/services/masterFinancialService.ts:2131-2136` | CONSUMER (assembler) | copies `computeActualCashflow` fields onto `quickMetrics.actual*` verbatim ("no arithmetic here") |
 | `lib/calculations/moneyStoryTrend.ts:88` | DIFFERENT-QUANTITY | **trailing-12-month actuals** (`avgMonthlyNet`, `annualNet`) — 12-mo window, not current-month; survives with its own name |
 | `app/api/dashboard/margin-trend/route.ts:95` | DIFFERENT-QUANTITY | per-month income/expense series, UTC month keys, **also excludes `isInvestmentContribution`** (a third exclusion rule no other producer applies) |
-| `lib/tie/analytics.ts:95` | DIFFERENT-QUANTITY (reference impl) | spending summary over its own window; pattern `actualCashflow.ts` was extracted from |
+| `lib/tie/analytics.ts:96` *(§7: anchor +1 — `calculateSpendingSummary` declares at `:96`)* | DIFFERENT-QUANTITY (reference impl) | spending summary over its own window; pattern `actualCashflow.ts` was extracted from |
 | `lib/calculations/propertyCashflow.ts` (`computePropertyCashflow`) | DIFFERENT-QUANTITY | per-property cashflow (register row, T5 — not this contract) |
 | `lib/intelligence/portfolioEngine.ts:366` | DIFFERENT-QUANTITY | stress-test cashflow: expenses + **interest-only loan cost** (deliberate, documented at 360-365) — NOT the D8 full-repayment basis; needs its own name (see decisionsRequired) |
 | `lib/cashflow/forecasting.ts:447,672,734` | DIFFERENT-QUANTITY | event-level forward projections (scheduled items), not the monthly headline |
@@ -76,7 +76,11 @@ All anchors re-verified at HEAD `fa392b9a` (no drift found in the sites below).
 
 ## invariants
 
-1. `net === inflow − outflow` exactly, both bases (currently by construction — keep as a test).
+1. `net === inflow − outflow` — exact on the ACTUAL branch (computeActualCashflow returns
+   `currentMonthNet = inflow − outflow`); on the DECLARED branch *(§7 correction)* it holds only
+   to within ~2¢: the orchestrator rounds each field independently
+   (`round(netIncome) − [round(expenses) + round(loanRepayments)] ≠ round(netIncome − expenses − loans)`
+   in general, `cashflowOrchestrator.ts:386-396`). Pin as a tolerance test, not strict equality.
 2. Actual branch: `outflow === Σ |amount| of non-transfer OUT in current month`, uncategorised
    INCLUDED; a transfer contributes 0 to both sides.
 3. **D8:** a loan-repayment transaction (actual) / declared repayment (fallback) contributes its
@@ -146,3 +150,32 @@ heuristic census cashflow list (59): onboarding-wizard files, `companionGateway`
 `cashflowAnalyzer` (:373), `negativeGearing` (:152), `exporter`, `debt-analysis` route,
 `cutSpendCategory` internals, `forecasting.ts` internals, Sankey internals — classified by entry
 signature only or left uncounted. The census list is formula-shape heuristic; unexamined ≠ cleared.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 36** (anchors 24 · arithmetic 9 · negative-claims 3). At HEAD `72b15268`
+  (production identical to the contract's `fa392b9a` — diff empty). Verified exactly:
+  `resolveCanonicalCashflow :78` / `getCanonicalMonthlyCashflow :114` / declared inputs `:127-131` /
+  sparse-history fallback `:90` / `projectBalanceForward :189`; `computeActualCashflow :104` with
+  transfers-excluded, direction-decided, `Math.abs` magnitudes, uncategorised-OUT bucketed, local-time
+  `monthKey` (`:93-95`), trailing-3-full-months data-driven divisor (`:127-135,:172-190`);
+  every CONSUMER anchor (`insights:201`, `safety-net:63`, `intelligence:597` + guarded fallback
+  `:598-609` + `monthlyLoanRepayments: 0` at `:616`, `activity:630`, `intelligenceEngine:260`,
+  `selfAuditInvariants:127,207,225-226`, `masterFinancialService:1985,2131-2136` "no arithmetic" —
+  confirmed verbatim field copies); every DIFFERENT-QUANTITY row (moneyStoryTrend `:88`; margin-trend
+  UTC keys + `isInvestmentContribution: false` filter at `:123`; portfolioEngine `:366` interest-only
+  stress documented at `:355-365`; forecasting `:447,:672,:734`). Negative claims re-run: no `Decimal`
+  import in either canonical file (confirmed); drift-guard tests exist on disk (all three). VR-041
+  quote verified verbatim: `docs/verification/runs/VR-041.md:94` "Home monthly cashflow | −$6,073
+  (−$72,880/yr) | identical | **PASS**".
+- **REFUTED / CORRECTED:**
+  1. *Invariant 1* — "net === inflow − outflow exactly, both bases" corrected: exact only on the actual
+     branch; the declared branch carries independent 2-dp rounding per field
+     (`cashflowOrchestrator.ts:386-396`) → strict equality can fail by cents. Corrected inline.
+  2. *Anchor* — `lib/tie/analytics.ts:95` → `:96` (1-line drift). Fixed inline.
+- **Could not verify:** `ConsumerMoneyFlowSankey` internals beyond the `:75` entry (the contract
+  says so itself); what populates `StrategyDataPacket.cashflowSummary`; the NOT-EXAMINED census
+  remainder (boundary-stated). These stand as disclosed gaps, not defects.
+- **Verdict impact: none.** Canonical home, basis-selection semantic, all tags, and the "D8 relabel →
+  NO numeric movement" prediction survive intact. This contract PASSES adversarial review with two
+  cent-level/one-line corrections.

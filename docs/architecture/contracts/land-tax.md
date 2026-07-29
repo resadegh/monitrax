@@ -139,3 +139,35 @@ diff is a defect. `pathPrefixes` expected to move: `[]`.
   engine cannot see); the ACT's rates-vs-land-tax split nuance; runtime AI-tool rendering (Ring 3).
 - **Stale-anchor report:** none — all census anchors resolve at HEAD (two unit-name artifacts and one
   false positive documented per-row above are census-method quirks, not drift).
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 32** (anchors 24 · arithmetic 4 · negative-claims 4)
+- **REFUTED / CORRECTED: none.** Every claim survived:
+  - Producer anchors exact: `calculateLandTax:374`, `calculateLandTaxDecimal:576`,
+    `applyBrackets:342`, `applyBracketsDecimal:553`; the bracket formula in source is
+    `b.baseAmount + (value − b.min + 1) × b.rate` — invariant 2's shape confirmed verbatim.
+  - All 8 state config anchors exact (`NSW:138`, `VIC:158`, `QLD:188`, `SA:211`, `WA:230`,
+    `TAS:251`, `ACT:269`, `NT:299`), with the Act citations present per state
+    (`lastReviewed: '2026-05-05'`). NSW figures in source match the contract: threshold
+    $1,075,000, $100 + 1.6% band, top $88,036 + 2% over $6,571,000 (`:141-145`).
+  - NSW trust-surcharge inline literal confirmed: Float `Math.min(taxableLandValue, 1_075_000)
+    * 0.015` at `:420` and Decimal mirror at `:614-615` (decisionsRequired 3 stands, with the
+    exact anchors now known).
+  - Cross-state aggregator exact: `:105/:255`, `citationKey:167` (+ Decimal-side sibling `:311`).
+  - Orchestrator consumption exact: Float `:259`, Decimal `:603`, ingest `:420-422`.
+  - AI tools exact: `getLandTaxPosition.ts:49`, `runLandTaxScenario.ts:93/:99`.
+  - **Dormant-wiring negative claim independently re-tested:** repo-wide grep for `landTax:`
+    input construction across `lib/`, `app/`, `components/` finds no production constructor;
+    `app/api/tax/entity/[entityId]/route.ts:110/:530` pass only `entities: [facts]` to
+    `buildMasterTaxPositionDecimal` — the `crossCutting.landTax` path is confirmed INERT.
+  - **Properties-page false positive independently re-tested:** all 9 `landTax` matches in
+    `app/dashboard/properties/page.tsx` are `landTaxDueDate` (a date FACT); `calculateAnnualInterest`
+    is at `:489` exactly as the census unit-name artifact note says. No dollar figure.
+  - `stateLandTax.ts` is 715 lines as stated. No rogue land-tax producer found in an independent
+    `calculateLandTax|CrossStateLandTax` sweep (calc-audit fixtures only, correct silo).
+- **Could not verify:** each state's CURRENT-year statutory figures against the revenue offices
+  (the contract's own declared boundary — decision 2's review-schedule gap stands);
+  runtime AI-tool rendering (Ring 3, out of scope by rule).
+- **Verdict impact: none. PASS — the CLEAN verdict (two named quantities, one producer + twin
+  each, zero duplicates) and the "expectedMoves: NONE" prediction survive unchanged.**
