@@ -41,9 +41,14 @@ they are NOT duplicates of each other.
 
 1. `< 2` months history → `predictedSpend == 0 && confidence == 0` (never an invented number).
 2. Weighted average bounds: `min(monthlySpends) ≤ baseline ≤ max(monthlySpends)`.
-3. Transfers/IN excluded — only `direction === 'OUT'` enters (breakdown verified at `:416`;
-   whether the monthly totals leg also excludes transfers depends on `calculateMonthlyTotals`,
-   not read — see coverageBoundary).
+3. Transfers/IN excluded — **CORRECTED (adversarial review 2026-07-29), the contract had it
+   inverted**: the HEADLINE leg is clean — `calculateMonthlyTotals` (`analytics.ts:168-174`)
+   filters `!tx.isTransfer` and buckets only `direction === 'OUT'` into `spend` (the flagged
+   unknown resolves PASS). The **BREAKDOWN leg leaks transfers**: the `:413-417` filter checks
+   only `direction === 'OUT'` with NO `isTransfer` exclusion, so an internal transfer OUT enters
+   the per-category breakdown while being excluded from the headline — Σ breakdown basis ≠
+   headline basis. Latent inconsistency; becomes user-visible only if the breakdown is ever
+   rendered.
 
 ## independentExpectation
 
@@ -54,7 +59,7 @@ arithmetic itself is a checkable identity (invariant 2 + hand-computable weights
 
 | Route | Label |
 |---|---|
-| `/dashboard/activity` (fetches `/api/unified-transactions/analytics`) | forecast block of the analytics payload (exact rendered label not traced — page fetch verified at `activity/page.tsx:624`) |
+| ~~`/dashboard/activity` … forecast block of the analytics payload~~ | **CORRECTED (adversarial review 2026-07-29): NONE FOUND.** The sole fetcher (`activity/page.tsx:624`) consumes ONLY `data.summary.transactionCount` (`:634-641`) — the `forecast` field is computed by the route and discarded; no other fetcher of `/api/unified-transactions/analytics` exists in `app/`+`components/`+`hooks/`+`mobile-app/`. Worse: that fetch passes `from=<start of current month>`, so the route feeds the forecaster ≤ 1 partial month of history → the returned forecast is virtually always the `0 / 0` refuse-to-compute state anyway. The quantity is route-live but render-dead at HEAD |
 
 ## expectedMoves
 
@@ -79,3 +84,38 @@ READ: `analytics.ts:360-430`, consumer grep, `activity/page.tsx:624` fetch line.
 `calculateMonthlyTotals` + `analyseTrend` internals (whether transfers are excluded from monthly
 totals is UNVERIFIED — flag for the adversarial pass), the activity page's render mapping of the
 forecast field. Anchors verified at HEAD `2f9f2e16`; no drift.
+
+## Adversarial review (§7) — 2026-07-29
+
+Production code identical between cited audit HEAD `2f9f2e16` and review HEAD `696ec349`.
+
+- Claims checked: 14 (anchors 6 · arithmetic 5 · negative-claims 3)
+  - Anchors exact: `forecastMonthlySpending:378`, `<2 months → 0/0` + "Insufficient data"
+    (`:385-392`), linear weights newest=N (`:398-403`), trend adjustment
+    `baseline × changePercent/100/12` (`:409`), breakdown = last-3-months per-category average
+    (`:413-431`), OUT filter `:416`, `detectCategoryDrift:279`, route consumer
+    `analytics/route.ts:89`, page fetch `activity/page.tsx:624`.
+  - Negative claims held: no second producer of predicted next-month spend (independent grep of
+    `predictedSpend|forecastMonthly` across lib/app/components) — single-producer claim SURVIVES.
+    Invariant 2 (weighted-mean bounds on the baseline) is mathematically sound as stated.
+- REFUTED / CORRECTED:
+  1. **Surface claim REFUTED.** "/dashboard/activity … forecast block" → the only fetcher reads
+     ONLY `summary.transactionCount` and discards `forecast`; AND its `from=startOfMonth` param
+     truncates history so the forecaster returns the 0/0 refuse-to-compute state for that caller
+     regardless. Surfaces: NONE FOUND. Fixed inline. (This flips expectedMoves' framing: nothing
+     rendered can move; the quantity joins the CFE in the "producer without a surface" class,
+     though here the producing ROUTE is live and cheap.)
+  2. **Invariant 3 INVERTED and resolved.** The contract trusted the breakdown leg and flagged the
+     headline leg as unverified — source shows the opposite: `calculateMonthlyTotals`
+     (`:168-174`) DOES exclude transfers (headline clean, flagged unknown resolves PASS), while
+     the breakdown filter (`:413-417`) does NOT exclude transfers (transfer OUT leaks into
+     per-category predictions). Fixed inline.
+- Could not verify: `analyseTrend` internals (whether the trend leg also excludes transfers — it
+  operates on the same `calculateMonthlyTotals`-style pipeline but was not read line-by-line;
+  narrow residual).
+- Verdict impact: **YES — moderate.** Canonical home, single-producer status and the semantic all
+  survive; but the quantity's only claimed surface does not exist (NONE FOUND), and invariant 3
+  as written was wrong (headline clean / breakdown leaks — the inverse of the contract's guess).
+  Phase B: no migration needed, but the discard-and-recompute pattern (route computes a forecast
+  nobody renders, off a window that guarantees 0/0) is a dead-weight candidate for D-F3-style
+  disposition.

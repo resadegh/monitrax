@@ -13,12 +13,13 @@ balances and historical transaction patterns; never stored.
 - **Definition:** a day-by-day predicted balance per account and globally:
   `predictedBalance[d] = predictedBalance[d−1] + scheduledIncome[d] − scheduledOutflows[d] −
   patternedDailySpend[d]`, with confidence bands.
-- **Horizon:** `config.forecastDays`, default **90 days** (`forecasting.ts:30`).
+- **Horizon:** `config.forecastDays`, default **90 days** (`forecasting.ts:29`).
 - **Assumptions:** recurring payments recur on schedule (`generateRecurringTimeline:305`); income
   streams recur (`generateIncomeTimeline:344`); loan repayments per schedule
   (`generateLoanTimeline:412`); non-scheduled spend follows historical weekday averages
-  (`calculateSpendingPatterns:128`); confidence decays `0.002/day` from `0.95` base, weighted by
-  volatility (`:31-33`).
+  (`calculateSpendingPatterns:128`); confidence decays EXPONENTIALLY at rate `0.002/day`
+  (`exp(−0.002·d)`, `calculateDayConfidence:554-558`) from `0.95` base, weighted by volatility,
+  floored at `0.1` (constants `:29-32`).
 - **Units:** AUD per day; plus derived `shortfallAnalysis`, `volatilityIndex`, `summary`.
 - **Relationship to `projectedBalanceLinear`:** a genuinely DIFFERENT quantity answering the same
   user question ("where will my balance be?") by simulation instead of linear roll-forward. The two
@@ -37,7 +38,7 @@ Input assembler: `lib/cashflow/buildCFEInput.ts:37` (CONSUMER-side service).
 
 | Site | Tag | Notes |
 |---|---|---|
-| `lib/cashflow/forecasting.ts:42` + internal units (`generateRecurringTimeline:305`, `generateIncomeTimeline:344`, `generateLoanTimeline:412`, `generateAccountForecast:447`, `calculateDayConfidence:554`, `generateGlobalForecast:564`, `calculateVolatilityIndex:718`) | **CANONICAL (one producer cluster, one file)** | the census counts 7 sites here; they are internal decomposition of one producer, not 7 producers |
+| `lib/cashflow/forecasting.ts:42` + internal units (`generateRecurringTimeline:305`, `generateIncomeTimeline:344`, `generateLoanTimeline:412`, `generateAccountForecast:447`, `calculateDayConfidence:554`, `generateGlobalForecast:564`, `calculateVolatilityIndex:718`) | **CANONICAL (one producer cluster, one file)** | the census counts **8** sites here (corrected from "7", adversarial review 2026-07-29 — `generateForecast` + 7 internals); they are internal decomposition of one producer, not 8 producers |
 | `app/api/cashflow/route.ts:252` | CONSUMER | `type=forecast|full` modes serialize `CFEOutput` |
 | `lib/cashflow/stressTesting.ts:136,144,176,178` (`runStressTests:128`, `calculateSurvivalTime:350`) | CONSUMER + **DIFFERENT-QUANTITY** | re-runs the engine under stressed inputs; `survivalTime` (days until stressed balance < 0) is its own small named quantity built on this one |
 | `lib/cashflow/insightGenerator.ts:36,75` | CONSUMER | narrates `CFEOutput` into insights |
@@ -108,3 +109,41 @@ READ: `forecasting.ts:1-130` (+unit signatures), `stressTesting.ts` (imports/cal
 `optimisation.ts` (4 census units — counted, not examined), `insightGenerator.ts` beyond imports,
 `lib/cashflow/types.ts`, `geminiSummary.ts` (3 census units — presentation-layer, not examined in
 depth). Anchors verified at HEAD `2f9f2e16`; no drift found.
+
+## Adversarial review (§7) — 2026-07-29
+
+Production code identical between cited audit HEAD `2f9f2e16` and review HEAD `696ec349`.
+
+- Claims checked: 21 (anchors 14 · arithmetic 3 · negative-claims 4)
+  - Anchors: `forecasting.ts:42` (pure — no prisma/fetch imports, "async but no I/O" confirmed),
+    `:128/:305/:344/:412/:447/:554/:564/:718` all exact; default-90 constant at `:29` (cited :30) and
+    confidence constants `:29-32` (cited :31-33) — one-line drift, within tolerance, tightened
+    inline; `buildCFEInput.ts:37`; `cashflow/route.ts:237/:249-252`; `stressTesting.ts:128/136/144/
+    176/178/350`; `optimisation.ts:319/389/454/754`; `stress-test/route.ts:40/53`;
+    `insightGenerator.ts:36` (+`cfe: CFEOutput` params `:77/:192`).
+  - **THE DEAD-ROUTE CLAIM — attacked hard, SURVIVES.** Independent hunts: literal + template +
+    query-string greps for `/api/cashflow` and `/api/cashflow/stress-test` across `app/`,
+    `components/`, `hooks/`, `contexts/`, `lib/`, AND `mobile-app/` (which the contract did not
+    claim to cover); `fetch(\`/api/${var}\`)` dynamic-construction pattern; axios/apiClient/useSWR/
+    useQuery wrappers; `'cashflow'` string constants. Zero fetchers. The `/cashflow` page fetches
+    only `/api/cashflow/intelligence` + `/api/cashflow/summary` (`(dashboard)/cashflow/page.tsx:
+    488/516/544`); plan page only intelligence (`plan/page.tsx:458`). Confirmed 0 surfaces.
+- REFUTED / CORRECTED:
+  1. Minor count: "the census counts 7 sites here" → **8** `forecasting.ts` units in the census
+     listing. Fixed inline.
+  2. Minor precision: confidence decay is exponential (`exp(−0.002·d)`), not a linear
+     0.002/day subtraction. Fixed inline.
+- Additions (strengthen, not refute):
+  - `tests/golden/ring2.cashflowRoute.test.ts` exercises `GET /api/cashflow` end-to-end on the
+    Golden Household (lite exact / full runs+identity). NOT a UI consumer — the 0-surfaces claim
+    stands — but D-F3 option (a) "delete as dead code" must also retire this Ring-2 test.
+  - The dead stack is wider than the two routes named: `generateCashflowInsights` is invoked ONLY
+    from the dead `/api/cashflow` route (`route.ts:305`), so `cashflowInsight` rows are never
+    produced; the sibling DB-read routes `/api/cashflow/insights` and `/api/cashflow/strategies`
+    also have no found fetchers. Relevant to D-F3 scoping.
+- Could not verify: `forecasting.ts:130-750` line-by-line internals, `optimisation.ts` /
+  `geminiSummary.ts` depth (same NOT-READ boundary the contract states); runtime unreachability
+  (static claim only — the contract already hedges this correctly).
+- Verdict impact: **NO.** The load-bearing DEAD-ROUTE / 0-surfaces finding survives a hostile hunt,
+  and is slightly STRONGER than stated (insights/strategies siblings also orphaned). PASS with two
+  minor numeric/wording corrections.

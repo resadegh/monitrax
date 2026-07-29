@@ -73,8 +73,10 @@ error.
 ## expectedMoves
 
 - **NO movement** for the rendered 30/90-day and month-end figures from consolidating the stale
-  Decimal twin — the twin is not on any rendered path found (exported but only imported by the
-  calc-audit shadow; verified by grep). Deleting/re-founding it changes fixtures, not screens.
+  Decimal twin — the twin is not on any rendered path found (exported; imported only by the
+  calc-audit shadow AND `tests/cfo/actions-ai-intel.decimal.test.ts:23` — the latter added by the
+  adversarial review 2026-07-29; verified by grep). Deleting/re-founding it changes fixtures + that
+  contract test, not screens.
 - If the break-even duplicate (`/api/cashflow/route.ts:237` lite mode) is collapsed onto the
   intelligence-route loop semantics: break-even day may shift ±1 day on `/cashflow`-family surfaces
   IF anything renders the lite-mode value — no fetcher of `/api/cashflow` was found (see
@@ -106,3 +108,36 @@ cashflow contract), the /cashflow page render code, plan-page hero mapping beyon
 Anchors verified at HEAD `2f9f2e16`. **Drift found:** the calc-audit shadow's `sourcePath` comment
 (`intelligenceEngine.ts:240-265`) describes code that now uses `projectBalanceForward` — stale
 documentation anchor inside the fixture.
+
+## Adversarial review (§7) — 2026-07-29
+
+Production code identical between cited audit HEAD `2f9f2e16` and review HEAD `696ec349`.
+
+- Claims checked: 18 (anchors 10 · arithmetic 5 · negative-claims 3)
+  - Anchors exact: `canonicalCashflow.ts:189-196` (`balance + net/30 × days` verbatim),
+    `intelligenceEngine.ts:239` (`calculateQuickStats`) with the `projectBalanceForward` call at
+    `:261` off `getCanonicalMonthlyCashflow(snapshot).net` + Σ `Account.currentBalance`,
+    `intelligenceEngine.ts:365-374` (Decimal twin), `intelligence/route.ts:495` /
+    `:505-506` (`balance30/90`) / `:508-521` (break-even loop — cumulative-income ≥
+    cumulative-expense semantics confirmed), `cashflow/route.ts:237` (lite
+    `ceil(monthlyExpenses/(monthlyIncome/30))` — different arithmetic confirmed),
+    `decimal-cfo-actions-ai-intel.ts:45-54`, linearity test `coreEngines.test.ts:198-211`
+    (cited :205 — inside), `monthEndForecastConvergence.test.ts` exists.
+  - **The STALE-TWIN finding CONFIRMED by source diff** (the decision-critical check):
+    Float path = `projectBalanceForward` (income-aware canonical net); Decimal twin
+    `:371-373` = `lb.minus(db.times(daysRemaining))` — the pre-MON-021 expenses-only formula.
+    Its own JSDoc (`:359-360` "Used by the dashboard quick-stats tile") is likewise stale. The
+    calc-audit shadow's `sourcePath` comment `intelligenceEngine.ts:240-265` (`decimal…ts:45`)
+    points at code that now calls `projectBalanceForward` — stale anchor confirmed.
+  - Negative claims held under independent hunt: no other production consumer of
+    `projectBalanceForward`; no other linear-projection producer outside the (dead) CFE
+    (`forecasting.ts:741` is inside contract 2's unreachable stack); no `dailyBurn` producer
+    outside the twin + its shadow.
+- REFUTED / CORRECTED:
+  1. Minor: "exported but only imported by the calc-audit shadow" — incomplete; also imported by
+     `tests/cfo/actions-ai-intel.decimal.test.ts:23`. Fixed inline (verdict unchanged — still no
+     rendered path; D-F1 option (a) must also delete that test).
+- Could not verify: the /cashflow page's render mapping of `forecast.*` fields and the plan-page
+  hero mapping (same NOT-READ boundary the contract states) — surface labels taken on trust.
+- Verdict impact: **NO.** The contract survives; the precondition-class stale-twin finding is
+  confirmed verbatim in source. PASS.

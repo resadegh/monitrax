@@ -73,6 +73,17 @@ substantially **already done** (MON-002/009/035/036 lineage). Verified:
 | `app/api/properties/[id]/route.ts:69` (comment; route passes `linkedTransactions` through) | CONSUMER (feed) | detail route serializes engine inputs incl. transactions (MON-028 fix) |
 | `lib/calculations/propertyCashflow.ts:195` `resolveLoanMonthlyCost` | DIFFERENT-QUANTITY | the loan-cost quantity's canonical producer, co-located in this file; consumed by the loan loop. Owned by the loan-cost contract (T2/MON-130) — do not treat as a duplicate of cashflow |
 
+**⚠️ ADVERSARIAL ADDITION (2026-07-29) — non-engine producers of this quantity found at HEAD**
+(the table above is complete for *engine call sites*, but the quantity has surviving inline
+producers that never call the engine):
+
+| Site | Tag | What it does |
+|---|---|---|
+| `app/dashboard/properties/page.tsx:1196-1216` (list page's detail DIALOG, "Details" tab — LIVE: opened by table-view row click `:641` + Eye button `:672`) | **DUPLICATE (divergent)** | renders "Annual Cashflow" Budget/Actual: `cashflowBudget = Σ convertToAnnual(income) − Σ convertToAnnual(expenses) − calculateAnnualLoanRepayments()` (declared sums — no `isRecurring` exclusion, no stream pooling, no managed gross-up) and `cashflowActual = Σ monthlyAverageActual × 12` (per-row average, not `resolveMonthly`) |
+| `app/dashboard/properties/page.tsx:1407-1430` (same dialog, "Cashflow" tab) | **DUPLICATE (divergent)** | monthly Budget/Actual re-derivation; the loan **budget** leg reads RAW `minRepayment` (`normalizeAmount(loan.minRepayment ‖ 0, …)`) — the interest-only-$0 class the engine exists to prevent (contradicts invariant 5 on this rendered surface) |
+| `lib/intelligence/portfolioEngine.ts:783-784` (`generatePortfolioIntelligence` → `PropertyAnalysis.annualProfit`/`monthlyProfit`/`cashflowPositive`) | **DUPLICATE (divergent)** | `Σ toAnnual(income) − Σ toAnnual(expenses) − Σ effectivePrincipal × rate` — declared-basis, interest-only. Reachable: strategy `dataCollector.ts:73` → `generatePortfolioSnapshot` (`portfolioEngine.ts:638`) and `app/api/debug/intelligence/route.ts:115`. No strategy analyzer consumes the fields (grep), but it is a live producer feeding `data.snapshot.properties` |
+| `lib/testing/exporter.ts:408` (`annualNetCashflow`) | DUPLICATE (dev-only) | declared-only, raw `toAnnual(minRepayment)`; reachable only via `/api/testing`, which is production-blocked (`app/api/testing/route.ts:23`) |
+
 **Sibling inline aggregates on the same pages (NOT this quantity, noted so Phase B doesn't collide):**
 `properties/page.tsx:452-465` (per-property LVR/equity — `propertyEquity` + `lvrGearing` quantities;
 equity already delegates to `calculateEquity`), `properties/[id]/page.tsx:154-163` (`computeEquity`,
@@ -121,9 +132,15 @@ window choice is verified against the decision record, not against legislation.
 ## expectedMoves
 
 - **NO MOVEMENT predicted** for list/detail/Home/master/riskRadar cashflow numbers from this
-  contract: all sites are already consumers of the one engine over the one window. The strongest
+  contract: all sites are already consumers of the one engine over the one window. ~~The strongest
   prediction this contract makes is that Phase B has nothing to migrate for the cashflow number
-  itself.
+  itself.~~ **CORRECTED by adversarial review (2026-07-29): Phase B DOES have migrations left** —
+  the list page's detail-dialog Budget/Actual blocks (`properties/page.tsx:1196-1216`,
+  `:1407-1430`) and `portfolioEngine.ts:783-784` are surviving divergent producers (see the
+  adversarial addition in callSites). Migrating the dialog to the engine WILL move its rendered
+  "Annual Cashflow"/monthly cashflow figures wherever declared sums ≠ engine resolution (one-off
+  expenses currently included in budget; interest-only loans currently $0 in the monthly budget
+  leg; actuals via per-row `monthlyAverageActual` vs `resolveMonthly`).
 - Movement WILL occur on these numbers if **MON-001** (fortnightly rent stored as monthly, FIXING) is
   fixed at the FACT layer: declared-fallback properties (no reconciled rent transactions) will see
   rent roughly ×2.17 (fortnightly→monthly correction). `pathPrefix`:
@@ -157,3 +174,44 @@ READ: `propertyCashflow.ts` (full), `propertyActualsWindow.ts` (full), `property
 `propertyMetrics` (reports, balances), tax-position consumers of `annualTaxCashflow`. Anchors: all
 cited lines verified at HEAD `2f9f2e16`; **no drift found** against the register row
 (`REFERENCE_NUMBERS.md:56`).
+
+## Adversarial review (§7) — 2026-07-29
+
+Production code identical between cited audit HEAD `2f9f2e16` and review HEAD `696ec349` (docs-only
+commits between) — all anchors checked against the same tree.
+
+- Claims checked: 31 (anchors 22 · arithmetic/formula 6 · negative-claims 3)
+  - Anchors all resolve exactly: `propertyCashflow.ts:74/195/219/232-242/254-271/282/313-349`,
+    `propertyActualsWindow.ts:21/28`, `propertyActuals.ts:121/132`,
+    `masterFinancialService.ts:776/1087/1256`, `portfolio/snapshot/route.ts:723`,
+    `properties/page.tsx:471-472/452-465`, `properties/[id]/page.tsx:168-169/154-163`,
+    `riskRadar.ts:410`, `PropertyExpensesCard.tsx:112`, `properties/[id]/route.ts:68-74`,
+    `loanCosts.ts:45`, ring-2 test `:77-80` (cited :78 — fine).
+  - Formulas confirmed in source: `annualCashflow = annualRent − annualExpenses −
+    annualLoanRepayment` (`:348`), `annualTaxCashflow` interest-only (`:349`), loan resolution
+    order + interest floor (`:195-217`), one-off exclusion (`:282`), managed gross-up gated on
+    `rent.usedActuals` (`:259-269`), basis derivation (`:318-319`), `rentCadenceSuspect` (`:328-339`).
+  - Negative claims held: no Decimal twin of `computePropertyCashflow` anywhere (independent grep);
+    "equity already delegates" verified (list-page `calculateEquity:462-465` → canonical
+    `lib/utils/calculations.calculateEquity` via `calcPropertyEquity` alias, import `:37`).
+- REFUTED / CORRECTED:
+  1. Worked example: "(2,426 / 62) × 30.4375 **= 1,190.97**" → recomputed **1,190.9899… ≈ 1,190.99**
+     (the 1,190.97 label is the test comment's rounding; `toBeCloseTo(…, 0)` absorbs it). Fixed inline.
+  2. **"All engine call sites are CONSUMER … migration substantially already done / Phase B has
+     nothing to migrate" — REFUTED as a conclusion.** Literally true of `computePropertyCashflow`
+     call sites, but three surviving NON-engine producers of the per-property cashflow quantity
+     were found (now added inline): the LIVE list-page detail-dialog Budget/Actual blocks
+     (`app/dashboard/properties/page.tsx:1196-1216` "Details" tab and `:1407-1430` "Cashflow" tab —
+     dialog opened from table-view rows `:641` and Eye button `:672`; the monthly loan budget leg
+     reads raw `minRepayment`, the interest-only-$0 class), and
+     `lib/intelligence/portfolioEngine.ts:783-784` (`annualProfit`/`monthlyProfit`, declared-basis
+     interest-only, live via `lib/strategy/core/dataCollector.ts:73` +
+     `app/api/debug/intelligence/route.ts:115`). Plus a dev-only fourth at
+     `lib/testing/exporter.ts:408` (production-blocked route). expectedMoves corrected inline.
+- Could not verify: renderers of master `propertyMetrics` beyond the routes read (same boundary the
+  contract states); whether the detail-dialog's `monthlyAverageActual` fields use the canonical
+  trailing-12 window (API serialization not traced — flag for Phase B).
+- Verdict impact: **YES — material.** The quantity is NOT single-sourced at HEAD: one canonical
+  engine + 3 surviving divergent producers (1 dev-only). The "NO MOVEMENT / nothing to migrate"
+  prediction is withdrawn for the list-page dialog surface; parity invariant 8 does not currently
+  cover the dialog's cashflow figures. All other claims survived.

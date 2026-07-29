@@ -23,8 +23,13 @@
   rate-unit contract (the D11 class); one producer of the divergent fraction form survives today —
   see callSites.
 - **Window/inclusions:** inherited entirely from the property-cashflow contract (trailing-12
-  actuals-first rent; gross rent — expenses are NOT netted; this is gross yield, not net yield. No
-  net-yield quantity exists in the code today — if one is ever rendered it is a NEW named quantity).
+  actuals-first rent; gross rent — expenses are NOT netted; this is gross yield, not net yield.
+  ~~No net-yield quantity exists in the code today~~ **CORRECTED (adversarial review 2026-07-29):
+  a `netYield` producer exists at `lib/testing/exporter.ts:407` —
+  `(annualIncome − annualExpenses − annualInterest) / marketValue`, a FRACTION on declared inputs —
+  but it is dev-only (its sole route `/api/testing` is production-blocked,
+  `app/api/testing/route.ts:23`) and never rendered. If a net yield is ever rendered it is a NEW
+  named quantity).
 
 ## canonicalHome
 
@@ -53,9 +58,20 @@ Calc-audit fixture exists: `lib/calc-audit/engines/property.ts:80` exercises the
 | `lib/cfo/decisionSupport/investmentDecisionSupport.ts:169` (census attribution; real yield code at `:450` `calculateDividendYield`) | **DIFFERENT-QUANTITY / census false positive here** | `:169` `calculateAllocationAnalysis` is allocation-percent arithmetic (regex matched "cur-RENT"). The file's real yield producer, `calculateDividendYield:450-459`, is DIVIDEND yield — a different quantity (investmentReturns family) — and it **invents** its estimate (assume 4% franked / 2% unfranked). Flagged for the invented-number register; not a rental-yield producer |
 | `lib/strategy/analyzers/investmentAnalyzer.ts:129` (`analyzeRebalancing:154`) | **FALSE POSITIVE** | `currentValue / totalValue` allocation percent — "cur-RENT-Value / total-VALUE" matched the census regex. No yield computed |
 
-Producer count for the per-property gross-rental-yield semantic at HEAD: **1 canonical + 3 duplicates**
-(2 same-arithmetic inline, 1 divergent-basis) — census count 6 decomposes as 4 real + 1
-different-quantity-in-file + 1 false positive.
+**⚠️ ADVERSARIAL ADDITION (2026-07-29) — a 4th duplicate producer, outside the census's 6 sites:**
+
+| Site | Tag | Actual arithmetic in words |
+|---|---|---|
+| `lib/intelligence/portfolioEngine.ts:784` (inside `generatePortfolioIntelligence` property loop) | **DUPLICATE (divergent basis)** | `(Σ toAnnual(ALL income rows with propertyId — any type, not just RENT/RENTAL) ÷ currentValue) × 100` — percent, declared basis, no actuals, no stream distinction, `> 0` guard. LIVE: strategy `dataCollector.ts:73` → `generatePortfolioSnapshot` (`portfolioEngine.ts:638`) and `app/api/debug/intelligence/route.ts:115`. Output lands in `data.snapshot.properties[].rentalYield`; no strategy analyzer consumes the field (grep) — a producer whose value is currently computed-and-discarded on the strategy path but serialized by the debug route |
+
+(A 5th, dev-only: `lib/testing/exporter.ts:406` `grossYield = annualIncome / marketValue` — FRACTION,
+declared all-income basis; production-blocked route.)
+
+Producer count for the per-property gross-rental-yield semantic at HEAD: ~~1 canonical + 3
+duplicates~~ **CORRECTED: 1 canonical + 4 duplicates** (2 same-arithmetic inline, 2 divergent-basis
+— `propertyAnalyzer.ts:61` and `portfolioEngine.ts:784`; +1 dev-only fraction in the testing
+exporter). Census count 6 decomposes as 4 real + 1 different-quantity-in-file + 1 false positive;
+the census regex missed `portfolioEngine.ts:784` entirely.
 
 ## invariants
 
@@ -85,7 +101,7 @@ definition, not derivable — recorded here as the named semantic.
 | `/dashboard/properties/[id]` | MiniKpi "Yield" (`page.tsx:476`, violet tint, gated `isInvestment`) |
 | `/` Home dashboard property tile (via `/api/portfolio/snapshot` `propertySnapshots[].rentalYield`) | property yield on Home |
 | `/dashboard/cfo` | risk radar "Low yield: {name} … gross yield of X%" copy |
-| Strategy findings (`/strategy` page via analyzers) | "Low Rental Yield: {address} … only X%" — currently produced by the DIVERGENT propertyAnalyzer producer |
+| Strategy findings (`/strategy` page via analyzers) | "Low Rental Yield: {address} … only X%" — ~~currently produced by the DIVERGENT propertyAnalyzer producer~~ **CORRECTED (adversarial review 2026-07-29): this finding CANNOT fire at HEAD.** The gate `property.isInvestment && property.rentalIncome` (`propertyAnalyzer.ts:39`) runs over `data.snapshot.properties`, whose ONLY feed (`dataCollector.ts:73` → `PropertyAnalysis` rows, `portfolioEngine.ts:786-796`) supplies NEITHER field — the gate is always false, `analyzeRentalYield` is dead-gated, the surface renders nothing today |
 | Health (LONG-TERM/property category, internal) | `rentalYieldPerformance` metric — currently the `portfolioAverageRentalYield` different-quantity |
 
 ## expectedMoves
@@ -93,11 +109,11 @@ definition, not derivable — recorded here as the named semantic.
 - Migrating `properties/page.tsx:479` and `properties/[id]/page.tsx:289` to import
   `calculateRentalYield`: **NO movement** (identical arithmetic + guard). Strongest prediction here.
 - Migrating `propertyAnalyzer.ts:61` to canonical (engine rent, currentValue-only, percent):
-  **MOVES** — `pathPrefix: strategy.findings[PROPERTY_LOW_YIELD]`. Arithmetic: declared
-  `rentalIncome×12` → actuals-first `annualRent` (delta = whatever the resolver corrects, incl. the
-  MON-001 fortnightly class); properties with `currentValue == 0` but a `purchasePrice` flip from a
-  yield-on-cost figure to `0` (or the finding disappears) — this specific flip needs the D-Y2
-  decision below before Phase B.
+  ~~**MOVES** — `pathPrefix: strategy.findings[PROPERTY_LOW_YIELD]`~~ **CORRECTED (adversarial
+  review 2026-07-29): the current state is NO findings (dead-gated — see surfaces). Migration
+  therefore does not *shift* numbers; it would CREATE `PROPERTY_LOW_YIELD` findings from none**
+  (still a behavioural move to record: `pathPrefix: strategy.findings[PROPERTY_LOW_YIELD]`, from
+  absent → present). The D-Y2 fallback question still binds before any such wiring.
 - Re-founding `metricAggregation.ts:411` `averageYield` on Σ engine `annualRent`: **MOVES** the
   health `rentalYieldPerformance` metric wherever declared `monthlyIncome` ≠ actuals rent.
 - MON-001 fix at the FACT layer: declared-basis yields move ~×2.17 on affected rentals (same
@@ -137,3 +153,41 @@ health-report UI path for `rentalYieldPerformance`, `PropertyTile.tsx` yield dis
 Anchors: verified at HEAD `2f9f2e16`; census attribution drift noted for
 `properties/[id]/page.tsx` (unit start 195 vs arithmetic 289) and `investmentDecisionSupport.ts`
 (169 vs real yield code 450) — regex artefacts, not registry drift.
+
+## Adversarial review (§7) — 2026-07-29
+
+Production code identical between cited audit HEAD `2f9f2e16` and review HEAD `696ec349`.
+
+- Claims checked: 24 (anchors 15 · arithmetic 6 · negative-claims 3)
+  - Anchors exact: `calculations.ts:43-48` (formula + `<= 0` guard), `masterFinancialService.ts:1275`,
+    `snapshot/route.ts:742/769`, `riskRadar.ts:416-417` (÷100 fraction), `properties/page.tsx:479-482`
+    (guard confirmed at :480), `properties/[id]/page.tsx:289` + census-attribution note (:195 unit
+    start), `propertyAnalyzer.ts:61-65` (declared `rentalIncome×12`, `currentValue ‖ purchasePrice`,
+    fraction — all three divergence axes confirmed), `metricAggregation.ts:390` + yield block
+    :408-413 (Σ `monthlyIncome×12` over INVESTMENT ÷ Σ value × 100 — confirmed),
+    `investmentDecisionSupport.ts:169` (allocation %, false-positive confirmed) + `:450-459`
+    (4%/2% invented dividend estimate — confirmed verbatim), `investmentAnalyzer.ts:129/:154`
+    (allocation %, false positive confirmed), `loanAggregator.ts:305`, `calc-audit property.ts:80`,
+    detail-page gate `[id]/page.tsx:475-476` (`isInvestment` gates the Yield MiniKpi — invariant 5
+    mechanism confirmed).
+  - Negative claims: no `calculateRentalYieldDecimal` anywhere (independent grep) — HOLDS. Census
+    count 6 reproduces (`producers-census.mjs --list`).
+- REFUTED / CORRECTED:
+  1. **Producer count "1 canonical + 3 duplicates" → 1 canonical + 4 duplicates.** Independent grep
+     found `lib/intelligence/portfolioEngine.ts:784` — a live divergent producer (declared
+     ALL-income-types basis, percent) missed by both the census and the contract. Added inline.
+  2. **"Strategy findings … currently produced by the DIVERGENT propertyAnalyzer producer" —
+     REFUTED.** The finding cannot fire at HEAD: `propertyAnalyzer.ts:39` gates on
+     `isInvestment && rentalIncome`, fields the only feed (`PropertyAnalysis`,
+     `portfolioEngine.ts:786-796` via `dataCollector.ts:73`) never supplies. Dead-gated. The
+     matching expectedMoves bullet corrected from "MOVES" to "CREATES findings from none".
+  3. **"No net-yield quantity exists in the code today" — REFUTED as written.**
+     `lib/testing/exporter.ts:407` computes `netYield` (fraction, declared). Dev-only
+     (production-blocked route) — corrected inline with that characterization.
+- Could not verify: health-report render path of `rentalYieldPerformance` and strategy-findings
+  renderer (same boundary the contract states); whether `portfolioSnapshot.properties[].monthlyIncome`
+  feeding P-avg yield is rent-only or all-income (health input assembly not traced).
+- Verdict impact: **YES — moderate.** The one-producer gap is wider than stated (a 4th live
+  divergent producer + a dead-gated "current producer" claim). D-Y1/D-Y2/D-Y3 stand unchanged;
+  D-Y2's urgency drops slightly (the propertyAnalyzer producer currently emits nothing). Canonical
+  home, semantic, units, invariants and the two same-arithmetic duplicates all survived.

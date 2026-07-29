@@ -3,8 +3,11 @@
 > MON-131 Phase A Quantity Contract. Census key: `forecastFlows` (split 3 of 4) — plus overlap with
 > the MON-136 keys `superProjection`, `freedomHorizon`, `investmentReturns`.
 > READ-ONLY audit at HEAD `2f9f2e16`, 2026-07-29.
-> **Verdict: MULTIPLE + UNNAMED.** Three unreconciled baseline producers + one legitimately
-> different scenario-delta producer + one dead generic primitive. No canonical home exists.
+> **Verdict: MULTIPLE + UNNAMED.** ~~Three~~ **FOUR** unreconciled baseline producers (adversarial
+> review 2026-07-29 added P6 — an LLM-invented projections producer at
+> `lib/ai/services/financialAdvisor.ts:356`, live via `POST /api/ai/advisor`, no found UI fetcher)
+> + one legitimately different scenario-delta producer + one dead generic primitive. No canonical
+> home exists.
 
 ## classification
 
@@ -16,10 +19,11 @@ today's position by hardcoded growth constants. Never stored (correct).
 | # | Producer | Horizon | Assumptions (hardcoded) | Question answered |
 |---|---|---|---|---|
 | P1 | `lib/strategy/forecasting/forecastEngine.ts:101` `generateForecast` | to life expectancy (default 90) | property 5%, stocks 8%, inflation 3%, salary 4%, ±30% scenario; 4% withdrawal rule; 70% replacement = "comfortable" (`:137-141`) | "can I retire?" — yearly netWorth/assets/liabilities/cashflow path |
-| P2 | `lib/health/metricAggregation.ts:483` `calculateForecastMetrics` | 5/10/20 yr | growth 5%, inflation 2.5%; `netWorth × 1.05^y + annualSavings × y` (**savings NOT compounded — internally inconsistent**); runway = netWorth20yr ÷ annualExpenses; 4% rule | health LONG_TERM_OUTLOOK score inputs |
+| P2 | `lib/health/metricAggregation.ts:483` `calculateForecastMetrics` | 5/10/20 yr | growth 5%; inflation 2.5% **declared but NEVER USED** (`:491` — the constant is inert; adversarial review 2026-07-29); `netWorth × 1.05^y + annualSavings × y` (**savings NOT compounded — internally inconsistent**); runway = netWorth20yr ÷ annualExpenses; 4% rule | health LONG_TERM_OUTLOOK score inputs |
 | P3 | `lib/strategy/analyzers/timeHorizonAnalyzer.ts:40` `analyzeRetirementRunway` | to retirement age | growth **7%**; required NW = 25× annual expenses; loop `(NW + savings) × 1.07` | "on track for retirement?" finding |
 | P4 | `lib/cfo/scenarios/tenYearProjection.ts:43` `tenYearProjection` (Decimal) | 10 yr | real terms: assets 4%, super 6%, wage-index 2.5% (ASIC MoneySmart-aligned); prints its `assumptions[]` honestly | "what does THIS what-if lever change over 10 years?" — a DELTA trajectory |
 | P5 | `lib/utils/timeSeries.ts:249` `generateProjection` (+ `projectValue:235`, `generateScenarios:287`) | arbitrary | caller-supplied growth − inflation | generic compound primitive — **no non-test consumer found: dead code candidate** |
+| P6 | `lib/ai/services/financialAdvisor.ts:356` `generateProjections` **(ADVERSARIAL ADDITION 2026-07-29 — the missed producer)** | caller `timeHorizon` (default 10 yr) | **LLM-INVENTED**: Gemini generates the projection numbers; assumptions live in the prompt string (`:373-374` "property growth ~5%, investments ~7-8% for moderate risk") | "project Net Worth / Investment Portfolio / Property Equity / Debt Payoff" — same baseline-projection semantic, produced by generative invention (MON-134 class). Wired: `generateAIAdvice:83` when `options.includeProjections` → `POST /api/ai/advisor` (`route.ts:41,87`, default false). No UI fetcher of `/api/ai/advisor` found (`AiAdvisorPanel` uses `/api/ai/ask` only) — live route, no found surface |
 
 P1/P2/P3 are three producers of the same **unnamed** quantity ("projected future net worth /
 retirement adequacy") with contradictory assumptions (8% vs 5% vs 7% growth; 4%-rule vs 25×-rule —
@@ -49,7 +53,7 @@ unnamed problem).
 | `components/strategy/ForecastChart.tsx:93-124` (`fetchForecasts`, `chartData`; `getMetricLabel:175` label helper) | CONSUMER of P1 (3 census units, presentation) |
 | `metricAggregation.ts:483` | UNNAMED-PRODUCER P2 (feeds health categories; `aggregateEngine.ts:38 calculateModifiers` is a downstream score-modifier CONSUMER, census false-positive as a flow producer) |
 | `timeHorizonAnalyzer.ts:40` | UNNAMED-PRODUCER P3 |
-| `tenYearProjection.ts:43` (+`projectScenarioForward:144`) | DIFFERENT-QUANTITY P4 (canonical for the scenario-delta quantity) |
+| `tenYearProjection.ts:43` (+`projectScenarioForward:135` — corrected from :144, adversarial review 2026-07-29) | DIFFERENT-QUANTITY P4 (canonical for the scenario-delta quantity) |
 | `app/dashboard/cfo/what-if/[lever]/page.tsx:456,471` (`buildRequest:326`, `GenericLeverProjection:1665`) | CONSUMER of P4 |
 | `lib/cfo/scenarios/addInvestment.ts:20,124` (Float + Decimal pair) | DIFFERENT-QUANTITY (what-if scenario year-1 engine, scenario family — not examined in depth) |
 | `timeSeries.ts:235/249/287` | DUPLICATE-primitive, DEAD (no importer outside its own file/tests — grep verified) |
@@ -136,3 +140,52 @@ render path, strategy findings render path, `wealthCheck/lever.ts`. Prior-art an
 2026-06-25 Neomatrix coverage-gap audit already flagged P1-vs-tenYearProjection as a likely SSOT
 divergence (`docs/audits/NEOMATRIX_COVERAGE_GAP_AUDIT_2026_06_25.md:108`) — this contract confirms
 and extends it to P2/P3. All cited anchors verified at HEAD `2f9f2e16`.
+
+## Adversarial review (§7) — 2026-07-29
+
+Production code identical between cited audit HEAD `2f9f2e16` and review HEAD `696ec349`.
+
+- Claims checked: 34 (anchors 24 · arithmetic/constants 7 · negative-claims 3)
+  - P1 verified: `generateForecast:101`, constants 5%/8%/3%/4% (`:79-82`), ±30% (`:91-92`), 4% rule
+    + 70% replacement (`:137-141`), fabricated defaults 35/$100k/$60k (`:199-212` inside
+    `extractCurrentState:182`), `cashValue = monthlySurplus × 12` (`:217`), income/expense $100k/$60k
+    inline fallbacks (`:220-221` — fabrication is per-field, not only the no-snapshot branch),
+    `currentAge = retirementAge − timeHorizon` (`:224`), `generateAllScenarios:317`. File is 330
+    lines by `wc -l` (contract said 331 — trailing-newline counting; immaterial); the
+    `PHASE_11_REFERENCE.md:87` "516 lines" doc-drift claim CONFIRMED.
+  - P2 verified: `calculateForecastMetrics:483`, 5% growth (`:490`), non-compounded
+    `+ annualSavings × y` (`:495-497`), runway `netWorth20Year / annualExpenses` (`:501`), 4% rule
+    (`:504`). Numeric check: `(1.05^20 − 1)/0.05 − 20 = 13.066 ≈ 13.1` ✓.
+  - P3 verified: `analyzeRetirementRunway:40`, 7% (`:68`), 25× (`:61`), loop
+    `(NW + savings) × 1.07` (`:71-73`).
+  - P4 verified: `tenYearProjection:43`, 4%/6%/2.5% (`:38-40`), ASIC-anchored JSDoc.
+  - P5 verified dead: `projectValue:235` / `generateProjection:249` / `generateScenarios:287`; no
+    importer outside the file (independent grep) ✓.
+  - Consumers verified: `strategy/forecast/route.ts:63/111`, `ForecastChart.tsx:93/124/175`,
+    strategy page `:584`, what-if `:456/:471`, `buildRequest:326`, `GenericLeverProjection:1665`,
+    `addInvestment.ts:20/124`, `wealthCheck/calculator.ts:98` + `lever.ts:54`,
+    `aggregateEngine.ts:38`. `ForecastSection.tsx` marketing promise confirmed verbatim (`:12`
+    "month-by-month for up to 30 years", `:50` "30-year forecast", no producer). Prior-art anchor
+    `NEOMATRIX_COVERAGE_GAP_AUDIT_2026_06_25.md` item confirmed (~:108).
+- REFUTED / CORRECTED:
+  1. **"Three unreconciled baseline producers" → FOUR.** The commissioned fourth-producer hunt
+     found **P6**: `lib/ai/services/financialAdvisor.ts:356` `generateProjections` — Gemini
+     LLM-generated multi-year Net-Worth/Investment/Property-Equity/Debt-Payoff projections with
+     prompt-embedded assumptions ("property ~5%, investments ~7-8%"), invoked from
+     `generateAIAdvice:83` behind `options.includeProjections`, wired to `POST /api/ai/advisor`
+     (`app/api/ai/advisor/route.ts:41,87`). No UI fetcher of that route found (`AiAdvisorPanel`
+     posts to `/api/ai/ask` only) — so no found surface, but a live authenticated route producer,
+     and a pure MON-134-class invention (worse than P1's fabricated *inputs*: the *outputs* are
+     invented). Added inline as P6; verdict header corrected. D-F4 must dispose of P6 too
+     (candidate: delete, or gate behind the same survivor engine with disclosed assumptions).
+  2. Anchor drift: `projectScenarioForward:144` → **:135**. Fixed inline.
+  3. P2's "inflation 2.5%" is a DECLARED-BUT-UNUSED constant (`metricAggregation.ts:491` — sole
+     reference). Sharpen: P2's inconsistency is growth-compounded-savings-not, with a dead inflation
+     knob. Fixed inline.
+- Could not verify: health render path of LONG_TERM_OUTLOOK and strategy-findings renderer (same
+  boundary the contract states); `addInvestment.ts` internals (not examined, as declared); whether
+  `/api/ai/scenario`'s LLM output constitutes a further projection producer (context-built, not
+  examined in depth — flag for MON-136's AI family).
+- Verdict impact: **YES — count strengthens the verdict.** MULTIPLE + UNNAMED stands, with four
+  (not three) unreconciled baseline producers; D-F4/D-F5/D-F6 all still required, D-F4's option
+  list must now include P6's disposal. No claim of the original three was overturned.
