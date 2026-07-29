@@ -165,3 +165,51 @@ them from the tax-position producer (both existing sites become consumers):
   point at the deleted producer (expected — the fix removed it; tombstone now at :459). Census
   `negativeGearing: 6` seed is **misleadingly composed** (3 comment artifacts in, 2 live producers
   out) — report to the census owner; do NOT re-seed in this phase (read-only).
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 34** (anchors 25 · arithmetic 5 · negative-claims 4)
+- **REFUTED / CORRECTED: 1 (function name only)**
+  1. `taxPositionCalculator.ts:483` sits inside `generateRecommendations` (`:446`) — the
+     contract named a non-existent `generateTaxInsights`. Line + arithmetic + `rental > 0`
+     gate all verified byte-exact (`const taxBenefit = (deductions.property - income.rental)
+     * mr; // MON-040: decimal rate`). Fixed inline.
+- **The brief's specific challenge, executed:**
+  - **Both claimed LIVE producers verified byte-exact:** `taxIntegration.ts:114-116` —
+    `Math.max(0, taxPosition.deductions.property - taxPosition.income.rental) *
+    (taxPosition.tax.marginalRate / 100)`, UNGATED (renders on `/dashboard/cfo` via
+    `keyTaxMetrics.negativeGearingBenefit`, cfo/page.tsx `:888-891`); and
+    `taxPositionCalculator.ts:483`, GATED `income.rental > 0` (`:481`). **The zero-rental
+    edge divergence is REAL** — CFO shows a benefit on deductions with $0 rental, the tax-page
+    insight does not. decisionsRequired 1 stands as the genuine product fork.
+  - **Third-producer hunt (repo-wide, patterns `deductions.property − income.rental`,
+    `× marginalRate/100`, and all `negativeGearing` mentions): NO third benefit producer
+    exists.** Nearest neighbours, all accounted for: `taxPositionCalculator.ts:389` (the
+    unnamed netRentalLoss warning — already catalogued, gate + arithmetic verified);
+    `app/dashboard/tax/page.tsx:749` (`deductions.total × mr` — a deduction-savings display,
+    DIFFERENT quantity, reported to the deductions/income-tax contracts);
+    `taxIntegration.ts:227/:241/:250/:290` (CGT/cap-headroom × mr — different quantities);
+    `lighthouseDataset`/marketing (copy only). The census-miss finding (2 live producers
+    absent from its 6 sites) is CONFIRMED, not weakened.
+  - **MON-045 tombstones all four re-verified:** `portfolioEngine.ts:187/:240/:483/:796`
+    (`:483` confirmed — the "simplified benefit block deleted" comment), `taxIntegration.ts:459-464`,
+    `decimal-cfo-decision-support.ts:490-493`. `propertyLoanInterest.ts:1-11` header carries the
+    $157,746-vs-$39,554 history as claimed.
+  - **Dormancy re-tested:** `applyNegativeGearing{,Decimal}` imported ONLY by
+    `lib/calc-audit/engines/decimal-tax-engine-loss.ts`; not called in `taxPositionCalculator`,
+    `userTaxPosition`, `entityTaxRouter`, or `masterTaxPosition` (`:254` comment verified).
+    Reform flag `negativeGearingReformCommencementVerified: false` on all four configs
+    (`taxYearConfig.ts:139/:232/:331/:433`) — FW-2 claim exact.
+  - Regime consumers exact (`TaxTreatmentBadge.tsx:140`, reform tools `:185/:111`);
+    portfolioEngine per-property declared-only interest at `:778-783` verified (correctly
+    deferred to the property-cashflow contract); worked example 12,000 × 0.37 = 4,440
+    recomputed; marginalRate-is-a-percent contract verified at `incomeTaxCalculator.ts:118`
+    and `taxPositionCalculator.ts:455-460`.
+  - One cross-contract fix exported: taxable-income.md described `applyNegativeGearing` as a
+    live "entity router path" step — corrected THERE to match this contract's (verified)
+    dormancy finding.
+- **Could not verify:** trust/company loss flows at runtime (not wired — the contract says so);
+  `deductions.property` composition (deferred to the deductions contract, correctly).
+- **Verdict impact: none.** The four-quantity split, both UNNAMED+MULTIPLE verdicts, the
+  census-composition complaint, and the expectedMoves table (including the edge-direction
+  decision) all survive. PASS with one function-name correction.

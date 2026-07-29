@@ -91,3 +91,31 @@ Examined: orchestrator filter param, entityBreakdown bucketing (net-worth side),
 composition entry + component reduces (:664-786 skimmed, not line-audited). NOT EXAMINED: all
 consumers of `calculateCashflow(…, ownerEntityId)` beyond grep-level, entity tax surfaces,
 `EntityCashflowSummary` sub-calculations per asset class. Unexamined ≠ cleared.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 12** (anchors 7 · arithmetic 3 · negative-claims 2). At HEAD `72b15268`
+  (production identical to `fa392b9a`). Verified: orchestrator entity-filter param `:302,:308-316`
+  and Decimal twin `:533,:537-545` (filter-then-household-math, exactly as stated);
+  `entityBreakdown.ts:104` (`bucket`) + canonical `calculateNetWorth` per slice at `~:140`;
+  `EntityCashflowSummary.tsx:588` (`calculateEntityCashflow`) + `0.37` default at `:642` + callers
+  `app/dashboard/page.tsx:996,:1012` (feeds raw snapshot arrays — confirming the client-side
+  composition claim). Negative claim independently re-run: NO per-entity actuals producer —
+  `UnifiedTransaction` carries no `ownerEntityId`/entity column (schema grep), confirming the
+  documented capability gap.
+- **REFUTED / CORRECTED:**
+  1. *Invariant 1* — "holds by construction for mechanism 1" refuted: rows with NULL/unmapped
+     `ownerEntityId` fall out of EVERY filtered slice, so Σ slices < household whenever unattributed
+     rows exist. Only mechanism 2 buckets unattributed. Corrected inline.
+  2. *Surfaces note strengthened* — the `:693` interest-portion estimate is not merely a drifted
+     anchor: it divides an already-decimal rate by 100 (feed: `portfolio/snapshot:852`), making the
+     widget's interest/taxBenefit 100× too low at HEAD. This converts "whether it equals the
+     orchestrator ... is UNVERIFIED" into a PROVEN divergence on at least one component — sharpening
+     DR-10's stakes without resolving it (still Reza's mechanism pick).
+- **Could not verify:** `EntityCashflowSummary` sub-calculations per asset class (:664-786 —
+  contract discloses skim-only); consumers of `calculateCashflow(…, ownerEntityId)` beyond grep
+  level; entity tax surfaces (boundary-stated).
+- **Verdict impact: minor.** canonicalHome stays NOT ESTABLISHED (unchanged). Invariant 1's basis
+  weakens from "by construction" to "conditional on unattributed handling" — Phase B's partition
+  test must include the unattributed slice explicitly. DR-10 is now supported by a concrete
+  divergence, not just an unverified suspicion.
