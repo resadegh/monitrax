@@ -160,6 +160,7 @@ Do not close any without its own live verification.**
 | D12 | Every legislated constant (caps, SG rate, thresholds, marginal rates) reads from `TAX_YEAR_CONFIGS` — **never typed into a page or component** | Matrix | 29 Jul | ✅ **RECOMMENDED** |
 | D13 | The four health scores (`aggregateEngine`, `masterFinancialService:1434`, `healthScoreAggregator`, `safetyScore`) are **four different questions** — name them separately; do not reconcile to one number | Matrix | 29 Jul | ✅ **RECOMMENDED** |
 | D14 | The fix is executed by **dedicated agents per calc engine**, partitioned by **FILE ownership** (never by quantity — files host many quantities and would collide). Phase A specs → **Reza gate** → Phase B migration → Phase C adversarial verification (§9) | Reza | 29 Jul | ✅ **DECIDED** |
+| D15 | The health-score trend is built from **stored monthly snapshots of the real score** (`HealthScoreSnapshot`, the `netWorthHistory` audit-snapshot pattern §3.2), **never generated**. Where history is insufficient (<2 snapshots) the UI says so (`INSUFFICIENT_HISTORY`) rather than showing a number — no `changePercent`, no `'STABLE'` fallback. Snapshots carry the formula version; a trend spanning a version change shows the break, never smooths over it. (*"let's score monthly based on a real number and formula. not invention."* — MON-134) | Reza | 29 Jul | ✅ **DECIDED** |
 
 New decisions land here as new rows, with date + rationale, in the PR that implements them.
 
