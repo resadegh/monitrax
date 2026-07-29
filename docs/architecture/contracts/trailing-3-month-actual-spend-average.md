@@ -100,3 +100,13 @@ Examined: the producer fully; the master emergency-fund path; canonicalCashflow;
 `emergencyMonths` census family sweep; health-score transitive consumers; safety-net components.
 Verifies the producer, window coupling, and named consumers; does NOT verify every runway
 renderer.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 17 (anchors 10 · arithmetic 4 · negative-claims 3)
+  - Anchors re-verified at HEAD `72b15268`: actualCashflow.ts:127-137 (the 3 full months immediately before the current month), :163-190 (Σ trailing OUT ÷ populated count), :176-179 (divisor counts months with ANY non-transfer tx, floored at 1); masterFinancialService.ts:800-804 (4-month fetch — window coupling as claimed, `getMonth() − 3, 1`), :2035-2037 (emergency burn = `avgMonthlyOutflow` when `hasActualData`, else `monthlyExpenses.recurring.total` — MON-011 fallback, verbatim in code), :2134 (`actualAvgMonthlyOutflow` passthrough); canonicalCashflow.ts:90 (fallback to current-month outflow when average is 0) /:125; cashflow/summary :107-110 (`monthlyOutflow = hasActualData ? actualAvgMonthlyOutflow : declared`); reports contextBuilder :233-235 (same rule).
+  - Arithmetic recomputed: 301,808 ÷ 25,973 = 11.62 ✓; D4: 14,261 − 10,102 = 4,159 ✓ and 301,808 ÷ 4,159 ≈ 72.6 → "~72 months" ✓ (corroborated at `REFERENCE_NUMBERS_DESIGN.md:152`).
+  - Divisor nuance cross-checked against the sibling: this engine's populated-month test is in-OR-out (:176-178); the 12-month engine's is per-series (`spent > 0`). The contract's invariant 1 ("a populated low-spend month still counts") is correct for THIS engine.
+- REFUTED / CORRECTED: **none**.
+- Could not verify: the 14-site `emergencyMonths` family sweep, health-score transitive consumers (declared boundary); runtime values.
+- Verdict impact: none. The FIFTH-semantic finding, the window-coupling hazard, and the MON-132 pre-declared move all stand. **PASS — contract survives unchanged.**

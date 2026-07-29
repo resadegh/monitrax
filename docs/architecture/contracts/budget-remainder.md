@@ -101,7 +101,7 @@ Routes that would render it / today render the stand-in. (The remainder itself r
 |---|---|---|
 | `/dashboard/budget-analysis` | "Variable (AI Est.)" card (`page.tsx:562`) | **The mislabel.** The card shows the AI or ABS-benchmark variable estimate — an income-blind reference — standing where a remainder-derived allocation belongs. The page never reads the generate route's `usedAI`/`fallbackReason` (returned at `generate/route.ts:438` and :510-511), so a benchmark fallback still displays as "AI Est."; the only disclosure is buried in `aiExplanation` free text. |
 | `/dashboard/budget-analysis` | "Total Realistic" / scenario cards | committed + discretionary + variable — would become committed + allocated-remainder under the target semantic. |
-| `/dashboard/debt-planner` | "Available for Debt" card (`page.tsx:626-627`), "Income − budget − loans" band | renders the DIFFERENT-QUANTITY neighbours above, currently with the loan double-subtraction. |
+| `/dashboard/debt-planner` | "Available for Extra Payments" card (`page.tsx:626-629`; rendered label corrected §7 — state field is `availableForDebt`), "Income − budget − loans" band | renders the DIFFERENT-QUANTITY neighbours above, currently with the loan double-subtraction. |
 
 ## expectedMoves
 
@@ -170,3 +170,15 @@ is proven from code composition, not from a rendered number; magnitude ~$12,779/
 VR-041 figure, not re-measured); `/api/calculate/cashflow`'s internal income semantics beyond
 its orchestrator field names; mobile-app consumers (docs-only at HEAD); whether any historical
 BudgetAnalysis rows in prod are v1 vs v2.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 21 (anchors 12 · arithmetic 3 · negative-claims 6)
+  - **The core NOT-ESTABLISHED claim survived an independent attack.** Fresh greps at HEAD `72b15268` over `lib/`, `app/`, `components/` for (a) every `committed*` symbol consumer, (b) every `netIncome/monthlyIncome − X` subtraction shape: the only "income minus" producers are surplus shapes (`income − expenses[ − loans]`) whose subtrahend is the ALL-recurring or budget total, never `monthlyCommitted` (essential-recurring + loans). No producer of `monthlyNetIncome − monthlyCommitted` exists. Claim CONFIRMED.
+  - Anchors re-verified: debt-planner :341-344 (`totalBudget = userFinalBudget ?? totalRealisticBudget`; `remainingCashflow = monthlyIncome − totalBudget`; `availableForDebt = remainingCashflow − totalLoanRepayments`), income side `/api/calculate/cashflow` POST confirmed at :327-334, :466 (`availableForExtraRepayments` passed to the AI); ai/debt-analysis :166-184 (local net-income producer — a real third implementation, confirmed line-by-line), :189-194, :206 (`max(0, …)` clamp — deficit-hiding claim confirmed); generate route :266-269 (`incomeSanity` boolean only); scenarios :401-423/:481-503.
+  - **The loan double-subtraction is proven from code composition:** generate :184 puts loans inside `committedMonthly`; :396/:475 puts `committedMonthly` inside `totalRealisticBudget`; save-choice/scenario totals inherit it; then :344 (page) and :206 (route) subtract `totalLoanRepayments` again. CONFIRMED.
+  - **Both preconditions verified:** save-choice :93 `minimum = recurringExpensesTotal + minimumScenario.total` where BOTH terms are `committedMonthly` at HEAD (generate :312/:468 store `recurringExpensesTotal: committedMonthly`; :401-402 store `minimumScenario.total = committedMonthly`) → 2× committed ✓; :99 comfortable double-counts the same way (committed + [committed + discretionary + variable]) ✓; :136 custom = committed + adjusted variable, discretionary dropped ✓. Stale-analysis serve: latest route has **zero** `generatorVersion` occurrences (grep) — the v<2 gate lives only in POST /generate ✓.
+  - Arithmetic: $317,751/12 = $26,479.25 ✓; VR-041 figures corroborated at `REFERENCE_NUMBERS_DESIGN.md:223` (committed $14,261 · loans $12,779).
+- REFUTED / CORRECTED: 1 cosmetic — the debt-planner card's rendered label is "Available for Extra Payments" (page.tsx:626-629), not "Available for Debt" (that is the state field name). Fixed inline in surfaces.
+- Could not verify: runtime values and prod v1-vs-v2 analysis rows (declared boundary); `/api/calculate/cashflow` internals beyond field names.
+- Verdict impact: none. Capability-gap verdict (NOT ESTABLISHED), both WRONG-INPUT tags, both preconditions, and the three-mode decision space all stand. **PASS with 1 cosmetic label correction.**

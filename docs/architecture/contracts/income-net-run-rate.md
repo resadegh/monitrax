@@ -152,3 +152,18 @@ intelligence/summary routes (:30-75/:105-135), canonicalCashflow (:155-185). NOT
 behaviour; EntityCashflowSummary; plan page; forecastEngine; moneyFlowService; Xero puller;
 trust-distribution "net" hits (likely a different quantity — distributable income). Rendered
 values ($41,303/mo, $317,751/yr) not reproducible read-only; mechanisms verified in code only.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 30 (anchors 24 · arithmetic 2 · negative-claims 4)
+  - The five-variant table verified line-by-line at HEAD `72b15268`:
+    - **A** incomeAggregator :92 — GROSS+netAmount → netAmount/12; NET → amount×freq; GROSS-without-netAmount AND all non-salary fall through to gross passthrough (":105-106 tax calculated at year end" comment confirmed); no gate (loop :161, `isRecurring` not in `IncomeInput`). Decimal :255. ✓
+    - **B** netIncomeCalculator :59 — gate at :64 (`isRecurring === false → 0`), netAmount/12 at :69, engine fallback :73; **no Decimal twin in the file** (read end-to-end). ✓
+    - **C** orchestrator :131 — GROSS branch ALWAYS calls `calculateTakeHomePay` (:158-163), never reads stored `netAmount` — confirmed; :147/:505 units bug confirmed. Decimal :491. ✓
+    - **D** incomeNormalizer :87 — NET → netAmount/12 else amount; GROSS+netAmount → netAmount/12; legacy fallback `calculateNetSalary` (:133, no LITO). Decimal :340/:383. ✓
+    - **E** buildHealthInput :37 — take-home applied to EVERY salary; the row type doesn't even carry `salaryType`, so a NET-entered salary is re-taxed. ✓
+  - Consumers verified: master :2100 (`quickMetrics.monthlyIncome = monthlyIncome.all.netTotal`), :354 label "monthly NET income (after PAYG)" verbatim, :1413-1423 (savingsRate/debtToIncome); canonicalCashflow :168; generate route :267; insights :282/:626; cutSpendCategory :37/:154; aiAdvisor :327/:444; factPack :245 ("Monthly net income"); intelligence :112 and summary :54-70 (both Σ over variant D — confirmed); income page :737-745 (uses B → the page-vs-quickMetrics one-off disagreement mechanism is real). buildCFEInput :37 resolves.
+  - Inversion enablers verified in code (no gate in A; no net≤gross clamp anywhere in the aggregator; GROSS-without-netAmount counted at gross inside "net") — the mechanisms are proven; the $495,636 vs $317,751 values are data claims, correctly declared unverifiable read-only.
+- REFUTED / CORRECTED: **none**.
+- Could not verify: rendered values; the ~25 NOT-EXAMINED `netIncome` census candidates (declared boundary).
+- Verdict impact: none. FIVE variants confirmed distinct; canonicalHome NOT ESTABLISHED stands; D9 execution fork remains a genuine Reza decision. **PASS — contract survives unchanged.**

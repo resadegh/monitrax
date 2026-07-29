@@ -149,3 +149,15 @@ exact.
 **Does NOT verify:** the external truth of any `BASE_COSTS` figure (declared UNVERIFIABLE);
 Gemini's actual runtime behaviour on the AI sibling path; whether real stored analyses in
 prod carry benchmark or AI provenance (needs DB/Ring-3); mobile consumers.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 20 (anchors 11 · arithmetic 5 · negative-claims 4)
+  - Anchors re-verified at HEAD `72b15268`: `aiPrompt.ts:289-302` BASE_COSTS (values read constant-by-constant), :305-309 LIFESTYLE_MULT (0.7/1.0/1.35), :311 `calculateBenchmarkExpenses` (exact line — as the contract claims), :471-494 scenarios (0.75/1.0/1.3 — asymmetry with LIFESTYLE_MULT confirmed) + the honest fallback `explanation` string; generate route :355/:449 (both fallback call sites), :388-397/:472-477 (persistence into `aiVariableEstimate`/`variableBreakdown`/`missingVariableExpenses`/`totalRealisticBudget` — laundering point confirmed; `aiConfidence` 0.75/0.5 is the only structured provenance residue), :438/:510-511 (`usedAI`/`fallbackReason` returned); page :562 "Variable (AI Est.)" card, :590-607 missing-expenses warning, :835-849 "How We Calculated This"; grep confirms the page reads NEITHER `usedAI` NOR `fallbackReason` (zero hits) — the mislabel mechanism is proven; cashflow summary :181-182; intelligence :267-283; debt-analysis :190-193.
+  - Gating claims verified against the full function body: exactly FOUR keys gated (FOOD, TRANSPORT, ENTERTAINMENT, PERSONAL); DINING_OUT/CLOTHING/MEDICAL/GIFTS/HOME_MAINTENANCE/MISCELLANEOUS unconditional; PET_COSTS/KIDS_ACTIVITIES composition-conditional. Invariant 3's precise statement is correct.
+  - Worked example recomputed from the constants: 2 adults/0 children/0 pets/2 cars/MODERATE/no tracked → 800+500+300+200+160+160+80+100+100+150 = **$2,550/mo** ✓ (MEDICAL = 40 × 2 people ✓, FUEL = 250 × 2 cars ✓).
+  - `NONE FOUND` for external verification attacked: the BASE_COSTS block carries only the one-line "ABS … (2023-24)" comment — no series ID, no retrieval date, no mapping doc anywhere in `docs/` (grep). UNVERIFIABLE stands.
+  - One sharpening note (does not change any tag): the intelligence route's `buildBudgetComparison` (:267-283) does not read `variableBreakdown.categories[*].estimate` — it `Object.entries()` the WHOLE stored blob (which is the full `VariableExpenseResponse` object at generate :389/:473). So the "laundered per-category budget side" is additionally a shape-mismatched read at HEAD. Detailed in `budget-variance.md` §7 (V3).
+- REFUTED / CORRECTED: **none**.
+- Could not verify: Gemini runtime behaviour; prod provenance of stored analyses (declared boundary).
+- Verdict impact: none. CLEAN single producer, laundering paths, and all three decisions stand. **PASS — contract survives unchanged.**

@@ -47,6 +47,8 @@ aggregate, not of the per-loan producer. **Per-loan Decimal twin: NOT ESTABLISHE
 | `lib/planning/debtPlanner.ts:106-110` | DIFFERENT-QUANTITY (offset-netted) | `(principal − offset) × rate / 12` — the true carrying interest for a borrower WITH an offset; a distinct, legitimate number that needs its own name (candidate: `loanMonthlyInterestOffsetNet`) |
 | `lib/planning/debtPlanner.ts:157,344,360` | CONSUMER of the offset-netted variant | IO required minimum + per-month simulation interest |
 | `lib/health/buildHealthInput.ts:102` | DUPLICATE of producer 1 | `(principal × rate) / 12` re-typed locally (the health builder's own floor; brief anchor `:95` drifted → `:102`) |
+| `components/dashboard/EntityCashflowSummary.tsx:693` | **DUPLICATE + UNIT DEFECT** *(added §7)* | `loan.principal × (loan.interestRate / 100) / 12` — treats the rate as a PERCENT, but its feed (`app/api/portfolio/snapshot/route.ts:852` `interestRate: loan.interestRateAnnual`) supplies the schema DECIMAL → the interest-portion estimate (and the widget's `taxBenefit = interest × 0.37`) is **100× too low at HEAD**. Live violation of invariant 2 on the Home Entity Cashflow widget |
+| `lib/cfo/decisionSupport/loanDecisionSupport.ts:713` (+ `:420`; audit mirror `lib/calc-audit/engines/decimal-cfo-decision-support.ts:168`) | DUPLICATE of producer 1 *(added §7)* | `monthlyInterest = principal × (annualRate/12)` inside `calculatePayoffMonths` (never-amortises guard) and the rate-differential `/12` at `:420` — gross basis, correct decimal unit |
 | `lib/cfo/aiAdvisor.ts` / scenario views | not re-derived here | rate passed through as a FACT; interest computed downstream by scenario engines (not read in this pass — see boundary) |
 
 ## invariants
@@ -54,6 +56,7 @@ aggregate, not of the per-loan producer. **Per-loan Decimal twin: NOT ESTABLISHE
 1. `monthlyInterest ≥ 0`; zero only when `principal = 0` or `rate = 0`.
 2. **100× guard:** for `principal=480,000`, `rate=0.0625` → `monthlyInterest = 2,500.00`
    exactly — never 25.00 (rate treated as percent) on any path, Float or Decimal.
+   *(§7: currently VIOLATED at `EntityCashflowSummary.tsx:693` — see callSites row added above.)*
 3. `annualLoanInterest == monthlyInterest × 12` (propertyCashflow, by construction).
 4. Offset-netted variant ≤ gross variant, always; equal iff `offsetBalance ≤ 0`.
 5. D8 split: `repayment − interest = principal component ≥ 0` for a P&I loan on the declared

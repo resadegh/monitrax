@@ -24,13 +24,13 @@ Four genuinely different quantities currently answering to "budget variance":
 |---|---|---|---|---|---|
 | **V1** | `declaredEntryVariance` (expense + income twins) | each `Expense`/`Income` row's **declared amount** (`toMonthly(entry.amount)`) — "budget = what the user expects" | current-calendar-month **linked transactions** where present, else the declared amount (zero-variance filler) | `variance = budgeted − actual`; **positive = under budget** | current calendar month |
 | **V2** | `realisticBudgetTotalVariance` | the BudgetAnalysis `totalRealisticBudget` (committed + discretionary + AI/benchmark variable) | declared expense **run-rate** (`monthlyRunRate` over all Expense rows) — NOT transactions | `variance = actual − budgeted`; **positive = over budget** | run-rate vs static plan (no window) |
-| **V3** | `perCategoryBudgetComparison` | per-category amounts from the BudgetAnalysis `variableBreakdown` + `recurringBreakdown` blobs | per-category **actual outflow** from the canonical actuals engine | `variance = actual − budgeted`; positive = over; status OVER/WARNING/ON_TRACK/UNDER | current period of the intelligence engine |
+| **V3** | `perCategoryBudgetComparison` | per-category amounts read from the BudgetAnalysis `variableBreakdown` + `recurringBreakdown` blobs (see §7 review: the read is shape-mismatched at HEAD — `Object.entries` over the whole blob treats TOP-LEVEL blob keys as categories) | per-category **actual outflow** from the canonical actuals engine | `variance = actual − budgeted`; positive = over; status OVER/ON_TRACK/UNDER at ±10% (no WARNING tier — corrected §7) | current period of the intelligence engine (month start → now) |
 | **V4** | `bankBudgetTargetComparison` | `BudgetTarget` rows (Phase 18 bank module) | categorised `UnifiedTransaction` OUT rows for a YYYY-MM month, transfers excluded | `percentUsed` thresholds; variance −actual when no budget | selected month |
 
 V1's status thresholds: ±5% → under/over/on_track. V1 counts every entry as "having a
 budget" (`entriesWithBudget++` unconditionally) — the declared amount doubles as the budget;
-`Expense.budgetedAmount` / `Income.budgetedAmount` (schema :1953/:2052) are **not read** by
-V1 at HEAD. V2 and V3 both treat a possibly-benchmark-contaminated "budget" as authoritative
+`Income.budgetedAmount` (schema :1953) / `Expense.budgetedAmount` (schema :2052) are **not read** by
+V1 at HEAD (anchor pairing corrected §7 — :1953 is inside `model Income`, :2052 inside `model Expense`). V2 and V3 both treat a possibly-benchmark-contaminated "budget" as authoritative
 (see `abs-benchmark-variable-expense-estimate.md` — laundering).
 
 ## canonicalHome
@@ -61,7 +61,7 @@ All anchors verified at HEAD 2026-07-29.
 | `lib/services/masterFinancialService.ts:1653,1660` | V1 CONSUMER (internal) | `blankBudgetVariance()` empty states. |
 | `app/api/cashflow/summary/route.ts:181-182` | **DIFFERENT-QUANTITY (V2)** | `monthlyExpenses − totalRealisticBudget`; opposite sign to V1; run-rate actuals not transactions. |
 | `lib/cashflow-intelligence/geminiSummary.ts:58,156-158,297` | V2 CONSUMER | renders V2 into the Gemini narrative as "Budget Status: $X over/under budget" — an AI-grounding surface. |
-| `app/api/cashflow/intelligence/route.ts:260-330` | **DIFFERENT-QUANTITY (V3)** | per-category actual−budgeted; own OVER/WARNING/UNDER status scale. |
+| `app/api/cashflow/intelligence/route.ts:260-330` | **DIFFERENT-QUANTITY (V3)** | per-category actual−budgeted; own OVER/UNDER/ON_TRACK (±10%) status scale (:310/:322 — no WARNING; corrected §7). |
 | `app/api/cashflow/intelligence/route.ts:386-409` | V3 CONSUMER | 'BUDGET'-source insights ("over budget in {category}"), actionUrl `/dashboard/budget-analysis`. |
 | `app/(dashboard)/cashflow/page.tsx:651-658` | V3 CONSUMER (surface) | `GlassBudgetTile` — totalBudgeted / totalActual / totalVariance / overallStatus rendered to the user. |
 | `lib/bank/budgetComparison.ts:37-46,142,197,338` | **DIFFERENT-QUANTITY (V4)** | Phase 18 engine against `BudgetTarget` rows. |
@@ -140,7 +140,7 @@ quantity — the expectation is therefore identity + side-provenance, never a ba
 2. **One sign convention** — "positive = over" (V2/V3, matches user intuition of
    "overspend") vs "positive = under" (V1, accounting-style favourable variance). Pick one
    app-wide; the other renames.
-3. **Should `Expense.budgetedAmount`/`Income.budgetedAmount` (schema :1953/:2052) become
+3. **Should `Income.budgetedAmount`/`Expense.budgetedAmount` (schema :1953/:2052) become
    V1's budgeted side** where set, instead of the declared amount? Consequence: "budget"
    stops meaning "declared amount" for entries the user explicitly budgeted — closer to the
    field's documented intent, but changes V1 wherever budgetedAmount ≠ amount.
@@ -155,3 +155,16 @@ excluding tests/docs); sign conventions from the code, not comments alone.
 census is regex-based; adjacent anomaly-detection hits were classified out by family, not
 individually); runtime variance values (no DB); mobile app code (out of repo); whether
 `cashflowSummary` cache rows in prod hold stale V2 values.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 24 (anchors 16 · arithmetic 3 · negative-claims 5)
+  - Anchors re-verified at HEAD `72b15268`: V1 master :983 (`calculateExpenseBudgetVariance` — budget = `toMonthly(entry.amount)`, actuals-map else zero-variance filler, `variance = budgeted − actual`, ±5% thresholds, `entriesWithBudget++` unconditional — all confirmed line-by-line) + :1160 income twin (def ≈:1156) + interface :109-119 ("positive = under budget" comment confirmed) + :1653/:1660 blanks; V2 summary route :181-182 (`monthlyExpenses − totalRealisticBudget`, actual side = the gated `monthlyRunRate` reduce at :71-75 — declared run-rate, NOT transactions ✓); V3 intelligence :260-330 (union-of-categories, one-side rows kept, `totalVariance = totalActual − totalBudgeted` :314 → invariant 3 holds by construction); V4 `lib/bank/budgetComparison.ts` :37-46 (OVER/WARNING/ON_TRACK/UNDER thresholds — the WARNING tier lives HERE) /:142 (`variance: -actual` no-budget rows) /:197/:338; geminiSummary :58 ("positive = over budget") /:156-158/:297 — the V1-vs-V2 sign-convention contradiction is real and verbatim in both comments; budget/health :161. Census `budgetVariance: 21` confirmed at `.audit/producer-census.json:41` (exact line).
+  - **Dead-code claims independently re-attacked, all three CONFIRMED at HEAD:** (a) `reconciliation.ts:387/:422` — repo-wide grep (`lib/`, `app/`, `components/`, `tests/`, `scripts/`) finds zero callers outside the defining file; (b) `/api/budget/health` — zero fetches outside the route itself; (c) master's `budgetVariance` — zero reads in `components/` or any dashboard page (mobile contract doc only).
+  - V1 does NOT read `budgetedAmount` — confirmed (the columns are selected into RawExpense/RawIncome but never touched by the variance functions).
+- REFUTED / CORRECTED: 3 —
+  1. **V3 status scale (semantic table + callSites row): REFUTED as written.** The contract claimed "status OVER/WARNING/ON_TRACK/UNDER" for V3; `buildBudgetComparison` has **no WARNING tier** — per-category and overall statuses are `OVER / UNDER / ON_TRACK` at ±10% (route :310/:322). The four-tier scale belongs to V4 only. Fixed inline.
+  2. **V3 budgeted side is a shape-mismatched read (new finding, wrong-input class):** the contract described it as "per-category amounts from the `variableBreakdown` + `recurringBreakdown` blobs", but at HEAD those blobs are NOT flat category→number maps — `variableBreakdown` stores the whole `VariableExpenseResponse` (`{categories:{…}, total, scenarios, assumptions, explanation}`, generate :389/:473) and `recurringBreakdown` stores `buildBreakdownBlob` (`{generatorVersion, committedTotal, committedBreakdown, …, categories, total}`, generate :274-293). `buildBudgetComparison` runs `Object.entries()` over each blob and treats **top-level blob keys as category names**, adding non-numeric values as if they were amounts (route :268-283). The intended semantic and the executing code diverge; the rendered GlassBudgetTile budget side is therefore built from blob metadata keys, not expense categories. Noted inline in the semantic table; tag unchanged (still DIFFERENT-QUANTITY) — but Phase B must treat V3's budgeted side as broken input, not merely laundered input.
+  3. **Schema anchor pairing swapped:** :1953 is `Income.budgetedAmount` (model Income :1902) and :2052 is `Expense.budgetedAmount` (model Expense :2021) — the contract paired them the other way. Fixed inline in both places.
+- Could not verify: runtime variance values; the 21 census sites item-by-item (family-level classification accepted, as the contract itself discloses); mobile consumers.
+- Verdict impact: **the four-semantics split, all V1-V4 tags, and the dead-code deletion candidates stand unchanged.** The V3 refutation narrows V3's status vocabulary and adds a wrong-input finding on its budgeted side; decision #1's "fold V2 into V3" option should now also weigh that V3's budgeted side needs re-plumbing regardless. No DUPLICATE↔DIFFERENT-QUANTITY reclassification.

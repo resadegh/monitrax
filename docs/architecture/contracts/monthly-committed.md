@@ -117,3 +117,14 @@ not budget — T7 scope); whether safety-net / CFO / health code re-composes ess
 (the 84-site census family and the `emergencyMonths` family were not swept for this composition);
 Decimal paths. Verifies the named anchors and the semantic fork; does NOT verify absence of an
 inline re-composition elsewhere.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 22 (anchors 16 · arithmetic 3 · negative-claims 3)
+  - Anchors re-verified at HEAD `72b15268`: generate route :130-132 (recurring filter), :150 (loan reduce over `resolveLoanCostsForUser` outputs), :174-178 (essential reduce), :184 (`committedMonthly = essentialMonthly + loanRepaymentsMonthly` — exact line), :266-269 (`incomeSanity` flag, not clamp), :276-282 (blob stores committedTotal + essentialExpensesTotal + loanRepaymentsTotal → invariant 1 checkable), :312/:316, :393-423 (minimum scenario total = committedMonthly at :401-402), :468-503; latest route :26-32 (newest analysis, **no `generatorVersion` check** — grep confirms zero occurrences in the file) and :86/:98 (stored `committedTotal` read-back); budget page :173/:245/:351; plan page :364; loanCosts.ts:16/≈:45 window header; aiCategorisation :90/:203/:249/:365 (MON-135 LIVE-today exposure — confirmed, the :130 filter excludes mis-stamped rows now).
+  - The D-A semantic fork is REAL and verified on both sides: implementation = essential-recurring + loans (:174/:184); `REFERENCE_NUMBERS.md:50` reads "recurring run-rate + canonical loan cost" (all-recurring), and `REFERENCE_NUMBERS_DESIGN.md:152` (D4) says "essential = $1,482 bills + $12,779 loans" while §3.1 names $1,482 the full recurring run-rate — the tension is exactly as the contract states.
+  - Arithmetic: 1,482 + 12,779 = 14,261 ✓ (recomputed); `Loan` model carries no `isRecurring` (schema grep) ✓.
+  - Negative claims attacked: independent grep for any other `essential + loan` composition across `lib/` + `app/` → **only the generate route** (plus its own comments); no CFO/safety-net re-composition found in the greppable surface (the contract's coverageBoundary caveat remains fair).
+- REFUTED / CORRECTED: **none**.
+- Could not verify: whether prod `BudgetAnalysis` rows are v1 vs v2; runtime values.
+- Verdict impact: none. "NOT ESTABLISHED as a named engine / single inline producer" stands; D-A and D-B remain genuine Reza decisions. **PASS — contract survives unchanged.**

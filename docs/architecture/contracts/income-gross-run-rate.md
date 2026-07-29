@@ -133,3 +133,13 @@ anywhere** for the gross quantity.
   writes `Income.grossAmount` at non-annual basis.
 - Rendered dollar values ($317,751 declared gross) could NOT be reproduced read-only (no DB
   access) — code mechanics verified, data values not.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 26 (anchors 20 · arithmetic 3 · negative-claims 3)
+  - Anchors re-verified at HEAD `72b15268`: incomeAggregator.ts:72 `getGrossAmount` (grossAmount/12 for NET salary; else amount×freq — exact), :143 `aggregateIncome`, :160 loop, Decimal :239/:286; `IncomeInput` (:19-39) carries **no `isRecurring`** — confirmed field-by-field; masterFinancialService.ts:1119-1130 (`mapIncome` drops `isRecurring` — confirmed) /:1858-1865 (`adjustPropertyRentalIncome` pooling); portfolio snapshot :37 `getGrossIncomeAmount` (annual-only re-implementation — confirmed DUPLICATE); income page :741 `totalGrossMonthly = convertToMonthly(i.amount, i.frequency)` (ignores `grossAmount` — confirmed divergent DUPLICATE); cashflowOrchestrator :131/:147 — **the WRONG-INPUT claim is exactly right**: NET-salary branch runs `toMonthly(item.grossAmount, item.frequency)`, treating the already-annual FACT as per-frequency; Decimal twin :505 (`toMonthlyDecimal(item.grossAmount, …)`) same bug; incomeNormalizer :87/:96-98 (`grossAmount/12` — annual convention honoured) + Decimal :340; buildHealthInput :37; taxPositionCalculator :180-184; unmatchedDeclaredIncome :30; rentalReconciliation :141/:192/:243; schema :1932-1934 (payg column comment says "(annual)"; gross/net annual basis proven via the writer path — page :327-348 posts annual to /api/tax/salary, :561-565 submits preview values); surfaces :1347/:1977/:2386-2389 all resolve.
+  - Arithmetic recomputed: FORTNIGHTLY mis-read = ×26/12 ≈ 2.167× annual per month ✓; $317,751/yr = $26,479.25/mo ✓.
+  - Negative claims attacked: no one-off gate anywhere on this path — confirmed (`isRecurring` absent from `IncomeInput` and from `mapIncome`); register row `REFERENCE_NUMBERS.md:53` reads "declared recurring income, one-off gated, pre-tax … after T1" as claimed.
+- REFUTED / CORRECTED: **none**.
+- Could not verify: rendered dollar values (no DB); the ~30 NOT-EXAMINED census sites; `app/api/income` PUT re-sync (declared boundary).
+- Verdict impact: none. The :147/:505 WRONG-INPUT class, the two-semantics gross split, and all DUPLICATE tags stand. **PASS — contract survives unchanged.**

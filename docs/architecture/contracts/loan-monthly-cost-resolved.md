@@ -76,16 +76,24 @@ flagged "census anchor imprecise" with the real line.
 | `app/dashboard/properties/page.tsx:1420-1421` | DUPLICATE | `loanBudget` = Σ normalised raw `minRepayment`, feeds a page-local `cashflowBudget = income − expenses − loanBudget` (census anchor `:1281 findUrgency` imprecise) |
 | `app/dashboard/properties/page.tsx:1364-1367,1677` | FACT display | "Budget" column prints declared minRepayment labelled as budget — see Decisions D-b |
 | `lib/calc-audit/engines/decimal-cfo-score-risk.ts:71,88,192` | DUPLICATE-BY-DESIGN (audit mirror) | intentional Float shadows of `scoreCalculator` for fixture parity — must migrate in lockstep with `scoreCalculator`, never independently (§22.2.2) |
-| `lib/testing/normalizer.ts:399,410` | DUPLICATE (test-only) | `monthlyRepayment ?? minRepayment ?? 0` — treats declared min as monthly regardless of cadence |
+| `lib/testing/normalizer.ts:399,410` | DUPLICATE (test-only) | *(§7 corrected)* stores `monthlyRepayment ?? minRepayment ?? 0` into the `minRepayment` field while PRESERVING the declared frequency (`:411`) — a scenario-supplied MONTHLY figure is silently re-labelled at the declared cadence (the "calculate from frequency" comment at `:398` does nothing); a raw `minRepayment` + matching frequency passes through correctly |
 | `components/onboarding/wizard/types.ts:933,940-942` | DIFFERENT-QUANTITY | annualised **declared commitment at intake** (no transactions exist yet; HECS excluded because income-contingent) — see `loan-declared-min-repayment.md`. Inherits the IO=$0 hole (census anchor `:876 frequencyToAnnual` imprecise) |
 | `components/transactions/TransactionLinkDialog.tsx:1389-1404` | DIFFERENT-QUANTITY | declared `minRepayment` used as a **match heuristic** (|tx − min| < $1 or <10%) — a FACT read, not a cost (census anchor `:855 formatDate` imprecise) |
 | `lib/planning/debtPlanner.ts:156,306` | DIFFERENT-QUANTITY | amortised required minimum + simulation schedule — own contract `loan-required-minimum-repayment.md` |
 | `app/api/transactions/[id]/link/route.ts:51` | FALSE-POSITIVE | `learnCanonicalFromLink` is category-KB learning; the census signature matched a comment mentioning "loan repayments". No loan-cost arithmetic in this function |
+| `app/api/budget-analysis/generate/route.ts:149-150` | CONSUMER *(added §7)* | `resolveLoanCostsForUser` → reduce over the resolver's outputs (source-lock-allowed); missed by the census's 32 sites |
+| `app/api/ai/debt-analysis/route.ts:198` | CONSUMER *(added §7)* | `totalLoanMonthlyCost` for the AI debt-analysis context (`:506` additionally prints declared minRepayment WITH its cadence label — a FACT display) |
+| `lib/cashflow/buildCFEInput.ts:115` | DUPLICATE (feeder) *(added §7)* | `monthlyRepayment: Number(l.minRepayment)` — raw declared amount labelled MONTHLY with NO cadence conversion, IO → $0, feeding the CFE forecast engine behind `/api/cashflow`. Same class as `transformLoanData` (:100-107 row) which WAS catalogued |
+| `components/dashboard/DebtQualityWidget.tsx:364` | CONSUMER of the `:846` DUPLICATE *(added §7)* | `monthlyRepayment = (loan.annualRepayment ?? 0) / 12` — Home Debt Quality widget consumes the portfolio-snapshot per-loan raw-declared annualRepayment; moves when `:846` migrates (unlisted in expectedMoves/surfaces) |
+| `lib/services/propertyActuals.ts:190` | CONSUMER (actuals feed) *(added §7)* | attaches `monthlyAverageActual` per loan via the SHARED `calculateMonthlyAverage` producer (same one `resolveMonthly` uses, same trailing-12-mo window) — the properties-page "Actual" column path, unlisted though its surface row was |
 
 ## invariants
 
-1. **An interest-only loan is never $0:** `minRepayment = 0 ∧ principal > 0 ∧ rate > 0 ⇒
-   monthly ≥ principal × rate / 12` (`flooredToInterest = true`).
+1. **An interest-only loan is never $0:** `minRepayment = 0 ∧ principal > 0 ∧ rate > 0 ∧ NO
+   reconciled actuals ⇒ monthly ≥ principal × rate / 12` (`flooredToInterest = true`).
+   *(§7 correction: the floor fires only when `resolveMonthly` returns 0 —
+   `propertyCashflow.ts:210`. A loan with `minRepayment = 0` AND actuals below interest
+   yields `monthly = actuals mean < P×r/12`, legitimately.)*
 2. `flooredToInterest = true ⇒ monthly == monthlyInterest` exactly.
 3. **Σ per-loan rows == stated aggregate:** Σ `loanLines[].monthly` == `monthlyLoanRepayment`
    (propertyCashflow, by construction — lock with a test); Σ `resolveLoanCostsForUser` values ==
@@ -137,8 +145,12 @@ Golden-baseline pathPrefixes (`lib/matrix/goldenBaseline.ts` keys verified:
   interest (the skipped `$3,709/mo ≈ $44,508/yr` class) and by cadence-normalisation deltas;
   per-entity surplus falls by the same amount. Direction: loans ↑, surplus ↓.
 - **`lib/services/masterFinancialService.ts` (cashflow, quickMetrics, debtSummary, debtMetrics)
-  — MOVES:** monthly cashflow ↓ ~$3,709/mo (IO loans stop being dropped);
-  `debtSummary.totalRepayments` ↑ by the same; savings rate ↓; DSR ↑.
+  — MOVES:** monthly cashflow ↓ ~$3,709/mo; `debtSummary.totalRepayments` ↑ by the same;
+  savings rate ↓; DSR ↑. *(§7 mechanism correction: merely REMOVING the `:1927` filter moves
+  $0 for IO loans with `minRepayment = 0` — the orchestrator's raw sum yields `toMonthly(0) = 0`
+  either way. The ≈$3,709/mo move materialises only when the loan feed migrates to the resolved
+  producer's interest floor. Note also the filter drops a second class: loans with
+  `minRepayment > 0` but NULL `repaymentFrequency`.)*
 - **CFO trees (`lib/cfo/scoreCalculator.ts`, `riskRadar.ts`, `aiAdvisor.ts`,
   `loanDecisionSupport.ts`) — MOVE:** cashflowStrength / savingsRate ↓, debtCoverage DSR ↑,
   shortfall-risk severity may cross a threshold. Audit mirrors in
@@ -182,3 +194,38 @@ call contract, not re-derived); what-if levers, wealthCheck, forecast engines (s
 families `loanAmortisation`/`forecastFlows`); any live number against Reza's data (Phase A is
 read-only — expectedMoves magnitudes use the design-record figures $3,709/mo · $12,779/mo ·
 $106K/yr, not fresh captures); Neomatrix node reconciliation for these sites.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 46** (anchors 34 · arithmetic 9 · negative-claims 3). Every producer/feed/callSite
+  anchor opened at HEAD `72b15268` (production dirs byte-identical to the contract's `2f9f2e16` —
+  `git diff --stat` empty). Verbatim checks passed: `moneyFlowService.ts:385` skip-line exact;
+  `masterFinancialService.ts:1927` filter exact; `propertyCashflow.ts:195,199,203-216,301-311` exact;
+  `loanCosts.ts:45,89`; goldenBaseline keys `:97,:103`; $3,709×12 = $44,508 ✓. Negative claims
+  independently re-run: `resolveLoanMonthlyCostDecimal` — zero hits across `lib/app/components`
+  (NOT ESTABLISHED confirmed); `Loan.isRecurring` absent from schema (confirmed); `:51`
+  FALSE-POSITIVE confirmed (category-KB learning only).
+- **REFUTED / CORRECTED:**
+  1. *callSites completeness* — original claim "all 32 census loanCost sites" ≠ all sites. An
+     independent `minRepayment` sweep found five uncatalogued sites, now added inline:
+     `app/api/budget-analysis/generate/route.ts:149-150` (CONSUMER), `app/api/ai/debt-analysis/route.ts:198`
+     (CONSUMER), `lib/cashflow/buildCFEInput.ts:115` (DUPLICATE feeder, raw minRepayment as monthly, IO→$0),
+     `components/dashboard/DebtQualityWidget.tsx:364` (consumer of the `:846` duplicate — a surface that
+     MOVES with `:846` but was in neither surfaces[] nor expectedMoves), `lib/services/propertyActuals.ts:190`
+     (the "Actual"-column feed). The census, not just the contract, missed them.
+  2. *Invariant 1* — "IO never $0 ⇒ monthly ≥ P×r/12" corrected: guarantee holds only when NO
+     reconciled actuals exist (`propertyCashflow.ts:210` floors only on `r.monthly ≤ 0`); actuals below
+     interest legitimately produce monthly < floor.
+  3. *normalizer.ts:399,410 arithmetic description* — corrected direction: declared frequency IS
+     preserved (`:411`); the defect is a monthly figure re-labelled at declared cadence, not "declared
+     treated as monthly regardless of cadence".
+  4. *expectedMoves mechanism* — "IO loans stop being dropped" corrected: un-filtering `:1927` alone is
+     arithmetically inert for IO `minRepayment=0` loans; the move requires floor adoption. Second
+     dropped class (minRepayment>0, null frequency) added.
+- **Could not verify:** the $3,709/mo · $12,779/mo · $106K/yr magnitudes (design-record figures; Ring-3
+  scope, per the contract's own boundary — consistent); `monthlyResolver.ts` internals (boundary-stated);
+  whether `buildCFEInput.ts:115` was intended to sit in the `forecastFlows` census family — the contract's
+  boundary names "forecast engines" but not their input builders, so it is treated as an omission.
+- **Verdict impact: none.** Canonical home, DUPLICATE/DIFFERENT-QUANTITY tags, and NO-movement
+  predictions all survive. The coverage-boundary sentence "all 32 census loanCost sites" is now
+  qualified by finding 1; the callSites table is the corrected register.

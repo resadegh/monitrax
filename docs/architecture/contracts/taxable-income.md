@@ -44,14 +44,18 @@ Phase B option: whether to extract it as a named export or leave it internal to
 | `lib/tax-engine/income/salaryProcessor.ts:46` | DQ | `taxable = annualGross − salarySacrifice` — salary-only preview quantity for `/api/tax/salary`; legitimate, needs its own name ("salary taxable estimate") |
 | `app/api/tax/super/optimize/route.ts:85-260` | DQ | `taxable = grossSalary − sacrifice` scenario basis (see income-tax contract decision #1) |
 | `lib/tax-engine/core/*` (medicare, offsets, incomeTax) | C | take taxableIncome as an INPUT parameter — consumers |
-| `lib/tax-engine/super/contributionCalculator.ts:243,272` / `capTracker.ts:297` | C | Div 293 / co-contribution take taxable income as input |
-| `lib/tax-engine/divisions/negativeGearing.ts:152,346` | C/DQ | adjusts taxable income for regime-gated rental-loss offset — a transformation step in the entity router path, not a second base derivation |
+| `lib/tax-engine/super/contributionCalculator.ts:243,272` | C | Div 293 (`:243-248`) / co-contribution (`:272-273`) take taxable income as input. ⚠ adversarial correction 2026-07-29: the previously co-cited `capTracker.ts:297` (`getOptimalContributionStrategy`) takes **gross salary + marginal rate**, NOT taxable income — cite removed |
+| `lib/tax-engine/divisions/negativeGearing.ts:152,346` | C/DQ | adjusts taxable income for regime-gated rental-loss offset — **DORMANT at HEAD: zero production callers** (calc-audit fixtures only; see negative-gearing contract). NOT wired into the entity-router path today; a second base derivation it is not, a live transformation step it is not either |
+| `app/api/portfolio/snapshot/route.ts:964-970` (+`:1089-1091`) | **D/DQ (found by adversarial pass 2026-07-29)** | the snapshot "TAX EXPOSURE" block re-derives BOTH sides: `taxableIncome = Σ isTaxable toAnnual(amount)` (:964-966), `deductibleExpenses = Σ isTaxDeductible toAnnual(amount)` (:968-970), and serializes `estimatedTaxableIncome = taxableIncome − deductibleExpenses` (:1091) — no taxability engine, no franking gross-up, no one-off gate, no auto loan interest, **no ≥0 floor**. A live parallel taxable-income derivation in `SnapshotV2` |
+| `lib/reports/generators/incomeExpense.ts:20-21` | **D (found by adversarial pass 2026-07-29)** | second report generator re-deriving `taxableIncome` (Σ isTaxable annualAmount) + `deductibleExpenses` — same shape as the taxTime DUPLICATE, rendered in the Income & Expense report (`:65`) |
 
 **Census remainder NOT EXAMINED:** census `taxableIncome` section = 38 heuristic sites;
 ~20 examined/classified above (incl. the whole canonical family). Remainder (~18: calc-audit
-adapters, `portfolio/snapshot:calculateLinkageHealth` (census false positive — linkage math),
-`salarySacrificeToSuper` scenario, `getMedicareSummary`, `testing/exporter`) not individually
-audited.
+adapters, `salarySacrificeToSuper` scenario, `getMedicareSummary`, `testing/exporter`) not
+individually audited. ⚠ adversarial correction 2026-07-29: the earlier spot-classification of
+the `portfolio/snapshot` census hit as "census false positive — linkage math" was WRONG — the
+flagged unit (`calculateLinkageHealth`) is indeed linkage math, but the same file hosts the
+live TAX EXPOSURE producer now tabled above.
 
 ## invariants
 
@@ -117,3 +121,39 @@ READ: both derivation blocks in `taxPositionCalculator.ts` (Float+Decimal, full 
 (taxability classification trusted per MON-094 comments — flag for the adversarial pass),
 `negativeGearing.ts` bodies, super contribution calculators beyond grep, calc-audit adapters,
 the ~18 unexamined census sites listed above, `entityTaxRouter.ts` per-entity assembly.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 24** (anchors 15 · arithmetic 4 · negative-claims 5)
+- **REFUTED / CORRECTED: 4**
+  1. **Missed LIVE duplicate producer — the contract's highest-value miss.**
+     `app/api/portfolio/snapshot/route.ts:964-970` + `:1089-1091` re-derives taxable income
+     end-to-end (`taxableIncome`, `deductibleExpenses`, `estimatedTaxableIncome = difference`,
+     unfloored) inside the snapshot "TAX EXPOSURE" block. The contract's census-remainder note
+     had dismissed the `portfolio/snapshot` hit as "census false positive — linkage math"; the
+     flagged UNIT was linkage math, but the file hosts this producer. Corrected inline
+     (callSites row added, remainder note rewritten).
+  2. **Second missed report duplicate:** `lib/reports/generators/incomeExpense.ts:20-21`
+     (Σ isTaxable / Σ isDeductible, rendered at `:65`) — same class as the taxTime D the
+     contract did catch. Added inline.
+  3. **`negativeGearing.ts:152,346` described as "a transformation step in the entity router
+     path" — REFUTED.** `applyNegativeGearing` has zero production callers at HEAD (independent
+     grep: only `lib/calc-audit/engines/decimal-tax-engine-loss.ts` imports it); it is dormant,
+     consistent with the negative-gearing contract. Cross-contract inconsistency resolved in
+     favour of the code. Corrected inline.
+  4. **`capTracker.ts:297` mis-described:** `getOptimalContributionStrategy(grossSalary,
+     currentConcessional, marginalRate, …)` takes gross salary, not taxable income
+     (`capTracker.ts:297-301` verified). Cite removed from the Div293/co-contribution row;
+     the `contributionCalculator.ts:243-244/:272-273` half of that row is correct.
+- **Could not verify:** `taxabilityRules.ts` internals (the contract itself flagged this as
+  trusted-not-read; unchanged — franking gross-up behaviour is still asserted from MON-094
+  comments, not re-derived); the ~16 remaining unexamined census sites beyond the two the
+  hunt surfaced.
+- **Verdict impact: YES — material.** The canonical derivation (`taxPositionCalculator.ts:311`
+  Float / `:855-856` Decimal, verified byte-exact) stands, and the golden identity
+  317,751 − 172,325 = 145,426 reconciles against `goldenBaseline.ts:76-77` and
+  REFERENCE_NUMBERS_DESIGN.md §10 (:224). But the quantity is MORE multiple than the contract
+  stated: beyond the orchestrator mislabel (verified at `:333`/`:560`) and the taxTime report D
+  (verified at `:21-29`), there are TWO further live re-derivations (snapshot route, incomeExpense
+  report). Phase B's consumer-repointing list must include both, and the Number Ledger's surface
+  list gains the Home/portfolio snapshot consumers and the Income & Expense report.

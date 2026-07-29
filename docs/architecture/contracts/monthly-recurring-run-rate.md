@@ -115,3 +115,13 @@ NOT examined: ~70 of the 84 census sites (incl. all of `lib/cfo/*`, `lib/health/
 `lib/intelligence/*`, `lib/reports/*`, `lib/strategy/*`, onboarding wizard, and component-level
 hits); Decimal consumers; tests other than those cited. This contract verifies the semantic and
 the named anchors; it does NOT verify that every unexamined site conforms.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 31 (anchors 21 · arithmetic 8 · negative-claims 2)
+  - Anchors re-verified at HEAD `72b15268`: frequencies.ts:45/:55 (`monthlyRunRate`/`annualRunRate`, gate `isRecurring === false → 0`), :21-22 default-branch hazard, :34-44 header, :115/:143 Decimal converters; expenseAggregator.ts:76/:124/:212 (Decimal byCategory :257 ≈ :261, within tolerance) + :67-74 contract note; masterFinancialService.ts:906/:922/:924-927/:929-932/:938-946/:958-961/:1919-1925/:2105; cashflowOrchestrator.ts:187 (raw `toMonthly` loop at ≈:205, ungated)/:302; app/api/cashflow/route.ts:177 (confirmed: `expenses.reduce(toMonthly…)`, no gate, `isRecurring` not even selected — in the `type='lite'` branch); cashflow/summary:73 (`monthlyRunRate` per row); budget-analysis generate :168/:175/:179/:200/:235/:252; expenses page :569; aiCategorisation.ts:90/:203/:249/:365 (`isRecurring: false` stamps) + :390 (learned passthrough).
+  - Arithmetic: per-row formula matches `toAnnual`'s table exactly (52/26/12/4/2/1, ÷12); MON-023/MON-126 filter bases confirmed in code comments + filters; annual = 12 × monthly exact (:60).
+  - Negative claims independently attacked: `monthlyRunRateDecimal` — repo-wide grep over `lib/`, `app/`, `scripts/`: **zero hits** (claim holds); census family `expenseRunRate` = **84** confirmed at `.audit/producer-census.json:5`.
+- REFUTED / CORRECTED: **none**.
+- Could not verify: the ~70 unexamined census sites (contract already declares this boundary); runtime dollar values (no DB access, per phase rules).
+- Verdict impact: none. Canonical-home, DUPLICATE (:177 wrong basis), DIFFERENT-QUANTITY (`all`/`nonRecurring` slices, actuals engines) and the MON-135 block all stand. **PASS — contract survives unchanged.**

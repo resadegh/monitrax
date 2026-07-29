@@ -65,7 +65,7 @@ may call "taxable income" (decisionsRequired #1).
 | lib/calculations/incomeAggregator.ts:169-173 (+:311-315) | DIFFERENT-QUANTITY (T-B) | gross split by legacy `isTaxable`; no gate, no gross-up |
 | lib/calculations/cashflowOrchestrator.ts:333 (+:560) | DIFFERENT-QUANTITY (T-B′) / DUPLICATE of T-B | monthlyGross×12 under legacy flag; inherits :147 units bug |
 | lib/intelligence/insightsEngine.ts:749/:759 | CONSUMER (of a snapshot `taxExposure.taxableIncome` — producer NOT EXAMINED; likely T-B lineage via portfolio snapshot) | tax-optimisation insight trigger at >$100k |
-| app/api/tax/position/route.ts:43 | CONSUMER | serves T-A to the tax page |
+| app/api/tax/position/route.ts:35 (`getUserTaxPosition` call; import :18 — anchor corrected §7, was :43) | CONSUMER | serves T-A to the tax page |
 | lib/tax-engine/income/salaryProcessor.ts:46 | DIFFERENT-QUANTITY (per-salary taxable) | tax agent's scope |
 | lib/tax-engine/orchestrator/masterTaxPosition.ts:245/:588 | CONSUMER/orchestrator | tax agent's scope |
 | lib/services/entityTaxFactsAssembler.ts (census hits :82/:120/:1011) | NOT EXAMINED | entity-partitioned tax facts |
@@ -98,7 +98,7 @@ is UNVERIFIABLE as "taxable income" and must be renamed.
 
 | route | label |
 |---|---|
-| /dashboard/tax | tax position assessable-income breakdown (via /api/tax/position :43 → T-A) |
+| /dashboard/tax | tax position assessable-income breakdown (via /api/tax/position :35 → T-A; anchor corrected §7) |
 | /dashboard (Home) / CFO tiles | estimated taxable income in master snapshot tax summary (masterFinancialService :1370) |
 | /dashboard/cashflow, /api/cashflow | `taxableIncome` field in orchestrator result (T-B′) — any surface rendering it shows the WRONG quantity under the "taxable" label |
 | insights surfaces | tax-optimisation insight thresholded on taxExposure.taxableIncome (insightsEngine :749) |
@@ -141,3 +141,13 @@ insightsEngine grep only. NOT examined: `determineTaxability` internals; taxExpo
 producer in the portfolio snapshot; entityTaxFactsAssembler; salaryProcessor;
 masterTaxPosition orchestrator; all downstream tax math (tax agent's scope); the 38-hit
 census list beyond the rows tabled above.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 21 (anchors 15 · arithmetic 1 · negative-claims 3)
+  - Anchors re-verified at HEAD `72b15268`: taxPositionCalculator :177-227 income loop, resolution :180-184 verbatim (`grossAmount ? grossAmount : isRecurring === false ? amount : annualize(...)` — Float truthy-check, so the decision-#3 note "a stored grossAmount bypasses the one-off check" is exactly right); Decimal :714 with resolution :739-743 (note: Decimal uses `!= null` where Float uses truthiness — a $0 grossAmount behaves differently across twins; recorded as a parity nit for the Ring-0 fixture, not a contract error since the contract's :741-743 quote is accurate); userTaxPosition :86, `isRecurring` at :192, `taxCategory` at ≈:200; master :1370 (`estimatedTaxableIncome = Math.round(result.tax.taxableIncome)`); T-B incomeAggregator :169-173 + Decimal :311-315 (legacy `isTaxable !== false`, gross basis, no gate — confirmed); T-B′ orchestrator :331-333 (`taxableIncome += monthlyGross * 12`) + Decimal :550/:560, output :421/:637; insightsEngine :749-760 ($100k threshold on `taxExposure.taxableIncome`); schema :1941-1950 (taxCategory "replaces isTaxable" comment + legacy boolean); salaryProcessor :46; masterTaxPosition :245/:588.
+  - **Corrected anchor:** `app/api/tax/position/route.ts:43` → the `getUserTaxPosition` call is at **:35** (import :18). Fixed inline in the callSites table.
+  - Negative claim attacked: T-B "corresponds to no legislative concept / NONE FOUND" — fair: it is a declared-flag split with no FY window, no gross-up, no taxCategory; nothing in ITAA maps to it.
+- REFUTED / CORRECTED: 1 minor anchor drift (route :43 → :35), fixed inline.
+- Could not verify: `determineTaxability` internals, `taxExposure` producer lineage, entityTaxFactsAssembler (declared boundary); the VR-041 $145,426 figure (data claim).
+- Verdict impact: none. T-A canonical, T-B/T-B′ NOT-ESTABLISHED/rename-or-retire, and decision #1-#3 all stand. **PASS with 1 anchor correction.**

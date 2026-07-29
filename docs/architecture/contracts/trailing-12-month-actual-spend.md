@@ -65,8 +65,8 @@ NOT EXAMINED: full consumer sweep of `MoneyStoryTrendResult` fields across `comp
 
 ## invariants
 
-1. `annualOutgoings === round(avgMonthlyOutgoings) × 12` up to the engine's own rounding
-   (`round(avg × 12)`, :236) and `avgMonthlyNet === round(annualNet / 12)` (:238).
+1. `annualOutgoings === round(avgMonthlyOutgoings × 12)` (the exact code form at :236 —
+   prose corrected §7; NOT `round(avg) × 12`) and `avgMonthlyNet === round(annualNet / 12)` (:238).
 2. `annualNet === annualIncome − annualOutgoings` (:237).
 3. The in-progress current month NEVER enters the average (`slice(0, -1)`, :202-204).
 4. A month with zero transactions is excluded from sum AND divisor (:218-227).
@@ -115,3 +115,16 @@ window logic, tie/analytics summary+forecast signatures, propertyActuals/loanCos
 CHANGELOG_2026_07_19 worked example. NOT examined: component-level consumers of the trend result;
 `moneyStoryMargin` census family; dashboard insights route line-by-line. Verifies the two-producer
 split and the $25,973 traceback; does NOT verify every renderer of the KPI tiles.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 20 (anchors 13 · arithmetic 3 · negative-claims 4)
+  - Anchors re-verified at HEAD `72b15268`: moneyStoryTrend.ts:88/:104 (Prisma fetch — NOT pure, confirmed)/:108 (transfer filter)/:131-137 (bucket loop, `Math.abs` on OUT :136)/:202-204 (`slice(0,-1)` current-month drop)/:218-227 (populated averages)/:236-238 (annualisation); canonicalCashflow.ts:157-171 (`getCanonicalSavingsRate`, basis `'actual-ttm'` :166); actualCashflow.ts:176-190 (trailing-3, DIFFERENT-QUANTITY); tie/analytics.ts:95/:113 (**signed** `tx.amount` sum confirmed — no `Math.abs`)/:378; loanCosts.ts:16 + propertyActuals ≈:132 window notes; insights route consumes `annualOutgoings`/`savingsRateTrailing` (route.ts:494-495/:612/:619-620).
+  - The $25,973 traceback verified: CHANGELOG_2026_07_19.md:10 computes `301,808 ÷ 25,973 = 11.62` explicitly on `avgMonthlyOutflow` (the trailing-3 engine); `REFERENCE_NUMBERS.md:51` indeed anchors the 12-month NAME to `actualCashflow.ts`, which contains **no 12-month window** (file read end-to-end) — the naming discrepancy is real.
+  - Arithmetic recomputed: 301,808 ÷ 25,973 = 11.620… ✓.
+  - Negative claims attacked: independent sweep for any fixed-divisor Σ-12-months÷12 spend producer (`monthsBack`/12-month averages over transactions) → only `moneyStoryTrend` (populated-month divisor) and `netWorthHistory` (snapshots, not spend). D-D's "NONE FOUND for the fixed-divisor semantic" holds.
+- REFUTED / CORRECTED: 2 minor —
+  1. Invariant 1 prose said `round(avgMonthlyOutgoings) × 12`; code is `Math.round(avg × 12)` (:236). Fixed inline (the parenthetical already had the right form).
+  2. Precision gap in the semantic: "populated" is **per-series** — the outgoings average divides by months with `spent > 0` (:219), so a complete month with income but zero spend is excluded from the OUTGOINGS average even though it has transactions. This differs from the trailing-3 engine's divisor (any non-transfer transaction, in OR out — actualCashflow.ts:176-178). Not fixed inline (semantic section remains broadly correct); recorded here because it further separates this quantity from the trailing-3 sibling and matters for any future convergence test.
+- Could not verify: component-level renderers of the trend result (declared boundary); runtime values.
+- Verdict impact: none. The two-producer split, the D-C re-anchor recommendation, and the register-row imprecision finding all stand — if anything the per-series divisor strengthens the DIFFERENT-QUANTITY case. **PASS with 2 minor corrections.**

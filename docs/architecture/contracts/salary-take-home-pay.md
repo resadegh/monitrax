@@ -117,3 +117,14 @@ calculateTakeHomePay); paygCalculator internals; TAX_YEAR_CONFIGS values; calc-a
 fixtures covering these functions; whether LITO's FY cap is $700 at current config (stated
 from the FY24+ legislated figure — re-verify against `TAX_YEAR_CONFIGS` before writing the
 Ring-0 fixture, per the never-from-memory rule).
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 19 (anchors 12 · arithmetic 4 · negative-claims 3)
+  - Anchors re-verified at HEAD `72b15268`: incomeNormalizer.ts:221 `calculateTakeHomePay` — formula verified line-by-line: annualise (:232), PAYG with `hasTaxFreeThreshold: true` (:237-241), Medicare (:244-246), LITO via `calculateAllOffsets` (:248-252), `netTax = max(0, grossTax − lito)` (:256), ÷ `periodsPerYear` back (:260-268), `effectiveTaxRate = netTax/annualGross × 100`; :49-76 `calculateNetSalary` — PAYG + Medicare, **no LITO call** (confirmed by reading the whole function); Decimal twins :313/:468 (Decimal LITO note in header :463-465); consumers netIncomeCalculator :73, orchestrator :158 (+ :515 Decimal), buildHealthInput :39 (applied to every SALARY, salaryType not in the row type — "misused" tag fair); legacy fallbacks :133 (Float) /:383 (Decimal); income page preview :1965-1989 (Gross/PAYG/Net/Super card) fed by `/api/tax/salary` (:328 fetch), not by `calculateTakeHomePay` — as claimed.
+  - The FY-config caveat the contract flagged is now CLOSED by this review: `lib/tax-engine/config/taxYearConfig.ts:89-100` (and the FY26-27 block :382-393) confirm `lito.maxOffset: 700`, full to $37,500, cutoff $66,667 — the "$700 LITO / < $66,667" expectedMoves arithmetic is config-verified, not memory. 700/12 = $58.33/mo ✓.
+  - Negative claim attacked: "the master snapshot path never calls either take-home function" — grep of masterFinancialService.ts for `calculateTakeHomePay|calculateNetSalary`: **zero hits** ✓. `calculateNetSalary` callers repo-wide: only incomeNormalizer itself (+ a calc-audit engine) ✓.
+  - Invariant 1 identity re-derived from the code: with `litoApplied = min(lito, payg+medicare)`, net + payg + medicare − litoApplied = gross at annual basis ✓.
+- REFUTED / CORRECTED: **none**.
+- Could not verify: `/api/tax/salary` + `salaryProcessor` formula equivalence (declared out of scope, tax agent); calc-audit fixtures individually.
+- Verdict impact: none. The LITO fork (two take-home formulas in one module), the stored-FACT desync risk (page :356-364 invented fallbacks confirmed in code), and the no-movement predictions all stand. **PASS — contract survives unchanged.**

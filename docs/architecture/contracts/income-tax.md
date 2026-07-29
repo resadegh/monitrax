@@ -14,7 +14,7 @@ Three named layers, one lineage — do NOT collapse them to one scalar (D6):
 |---|---|---|
 | `taxOnIncome` | `TaxCalculation.taxOnIncome` | bracket walk on taxable income, PRE-offsets, PRE-Medicare |
 | `grossTax` | `TaxCalculation.grossTax` | `taxOnIncome + medicareLevy + medicareSurcharge` |
-| `netTax` | `TaxCalculation.netTax` | `grossTax − offsets (LITO + franking credits)`, floored ≥ 0 |
+| `netTax` | `TaxCalculation.netTax` | `grossTax − offsets`; NON-refundable offsets (LITO/SAPTO) capped at grossTax, but REFUNDABLE franking credits subtract WITHOUT a floor (`taxOffsets.ts:434-450`) — netTax CAN be negative when franking credits exceed remaining tax |
 
 ## semantic
 
@@ -51,11 +51,11 @@ DQ = DIFFERENT-QUANTITY (survives under its own name).
 |---|---|---|
 | `app/api/tax/position/route.ts:35-37` | C | `getUserTaxPosition` bundle; Decimal twin on `bundle.engineInputs` (same inputs by construction) |
 | `lib/cfo/decisionSupport/taxIntegration.ts:101` | C | CFO/My Guide reads `getUserTaxPosition` (post-MON-020) |
-| `app/api/cashflow/intelligence/route.ts:697` + `buildTaxOptimization:431` | C | reads bundle; `estimatedTax = round(netTax)` — but recommendation heuristics hardcode `27500` and `× 0.34` (`route.ts:465`) — D12 debt inside a consumer |
+| `app/api/cashflow/intelligence/route.ts:697` + `buildTaxOptimization:431` | C | reads bundle; `estimatedTax = round(netTax)` (`:437`) — but recommendation heuristics hardcode `27500` and `× 0.34` (`route.ts:464`) — D12 debt inside a consumer |
 | `lib/services/masterFinancialService.ts:1966` | C | master snapshot `taxSummary` = adapter over `getUserTaxPosition` (feeds Activity Sankey + portal dashboard) |
 | `lib/tax-engine/entity/entityTaxRouter.ts:332,762` | DQ | **per-entity tax position** (PERSONAL/SOLE_TRADER wraps the engine; SMSF 15%, company rates differ) — a legitimately different quantity: "entity X's tax", not "the user's personal tax" |
 | `lib/tax-engine/orchestrator/masterTaxPosition.ts:245,588` | DQ | household-wide multi-entity roll-up + land tax/stamp duty/GST — different quantity ("master tax position across entities") |
-| `app/api/tax/super/optimize/route.ts:85,99,121,255,260` | C⚠ | calls canonical `calculateIncomeTax` but feeds it **gross salary** as taxable income (no deductions) — right formula, wrong-input scenario basis. See decisionsRequired #1 |
+| `app/api/tax/super/optimize/route.ts:85,99,121,254,259` | C⚠ | calls canonical `calculateIncomeTax` but feeds it **gross salary** as taxable income (no deductions) — right formula, wrong-input scenario basis. See decisionsRequired #1 |
 | `lib/tax-engine/core/incomeTaxCalculator.ts:127,144` (+Decimal `:245,:266`) | C | `calculateMarginalTax` / `calculateDeductionSavings` = deltas of two canonical calls — consumers, not producers |
 | `lib/tax-engine/config/taxYearConfig.ts:531,545` | C | `getMarginalRate`/`getTaxBracket` — bracket LOOKUP from config, no tax derivation. ⚠ default `config = TAX_YEAR_2024_25`, not current FY |
 | `components/dashboard/EntityCashflowSummary.tsx:642,693` | **D** | `marginalTaxRate: number = 0.37` default; `taxBenefit = principal × (rate/100) / 12 × 0.37`. Both callers (`app/dashboard/page.tsx:996,1012`) omit the arg → **every user gets a hardcoded 37% marginal rate** on the Home entity-cashflow tile. D12 violation, verified at HEAD |
@@ -92,7 +92,10 @@ Matches `tests/tax/mon106Fy2026_27Config.test.ts:66` (Ring-0 lock) and the golde
 
 Permanent-test properties: tax(≤18,200)=0 · monotonic non-decreasing in taxable income ·
 continuous at every bracket boundary (P0 2026-06-23 regression class: strict `<`, never `<=`) ·
-`netTax ≥ 0` · `netTax ≤ grossTax` · Float ≡ Decimal within cent tolerance ·
+`netTax ≥ −frankingCredits` and `netTax ≥ 0` whenever franking credits are 0 (adversarial
+correction 2026-07-29: refundable franking credits subtract UNFLOORED in `applyOffsets`,
+`taxOffsets.ts:449-450` — a negative netTax is the refund mechanism, not a bug) ·
+`netTax ≤ grossTax` · Float ≡ Decimal within cent tolerance ·
 same engine + same inputs on every surface (A3 convergence).
 
 ## independentExpectation
@@ -152,3 +155,48 @@ dashboard page (985-1023), super/optimize (grep only — NOT read end-to-end). N
 `lib/neobrain/*` prompt builders, `entityTaxRouter.ts` full body, `masterTaxPosition.ts`
 below line 60, all `lib/calc-audit/*` adapters (test infrastructure), portal/practice files.
 Per-entity tax and CGT get their own contracts (other agents / MON-136).
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 43** (anchors 31 · arithmetic 8 · negative-claims 4)
+- **REFUTED / CORRECTED: 4**
+  1. **`netTax` "floored ≥ 0" — REFUTED** (semantic + invariant). `applyOffsets`
+     (`lib/tax-engine/core/taxOffsets.ts:434-450`) caps only NON-refundable offsets at grossTax
+     (`Math.min(nonRefundableOffsets, grossTax)` :444); refundable franking credits then subtract
+     with NO floor (`netTax = taxAfterNonRefundable - refundableOffsets` :450), and
+     `calculateTaxPosition` takes the result unfloored (`taxPositionCalculator.ts:351`). netTax
+     is negative whenever franking credits exceed remaining tax — that IS the refundable-credit
+     mechanism. Layer table + invariant corrected inline. (Golden worked example unaffected:
+     franking = 0 on the live data; $37,786.14 recomputation verified against
+     `taxYearConfig.ts:277-283`, `tests/tax/mon106Fy2026_27Config.test.ts:66`, and
+     `lib/matrix/goldenBaseline.ts:76-77`.)
+  2. Anchor drift: the $27,500/×0.34 hardcode is at `app/api/cashflow/intelligence/route.ts:464`,
+     not `:465`. Fixed inline (super-cap contract already had :464).
+  3. Anchor drift: super/optimize scenario-3 `calculateIncomeTax` calls are at `:254,:259`
+     (`:255,:260` are the adjacent `calculateMedicareLevy` calls). Fixed inline. The load-bearing
+     claim (gross salary fed as taxable income, no deductions) is VERIFIED (`:85` +
+     `taxableIncome: grossSalary` at `:89`).
+  4. **callSites under-count — three same-class hardcoded-rate sites the contract missed**,
+     found by independent rate-grep:
+     - `lib/cfo/decisionSupport/investmentDecisionSupport.ts:297` — `unrealisedCGT += taxableGain * 0.37`
+       (invented marginal rate inside the CFO CGT estimate; CGT is a DQ but the RATE input is the
+       same invented-0.37 class as the EntityCashflowSummary D).
+     - `lib/depreciation/schedule.ts:72` `TAX_RATE_32_5 = 0.325` used at `:145`
+       (`taxSavingAt32_5Percent = totalDepreciation × 0.325`) — a STALE rate: the 32.5% band was
+       abolished from FY24-25 (config has no 0.325 bracket). Sibling consts `TAX_RATE_37/45`
+       (:73-74) are unused/dead. Belongs to the depreciation contract's file scope but is an
+       income-tax-rate hardcode; flagged to both.
+     - `app/dashboard/tax/page.tsx:749` — inline `deductions.total × (marginalRate/100)` rendered
+       as "Tax savings at X% marginal rate" — a linear re-derivation on a surface where the
+       canonical `calculateDeductionSavings` (two-bracket-walk delta, `incomeTaxCalculator.ts:144`)
+       exists. A DUPLICATE-shape surface site.
+- **Could not verify:** the ~54 unexamined census sites (contract's own stated boundary — spot
+  hunts above found the three sites listed; no exhaustive audit of the remainder); registry
+  MON-020/060/076 entry texts (registry not re-read); FY26-27 Act name against the legislation
+  itself (config citation trusted per §19.2 source rule).
+- **Verdict impact:** classification/producer map UNCHANGED (canonical home, DQ set, and both
+  D findings all verified exact — EntityCashflowSummary `:642` default 0.37 with both callers
+  `app/dashboard/page.tsx:996,1012` omitting the arg, and income-page `:359-360` confirmed
+  byte-exact at HEAD). The netTax semantic is materially corrected: any Phase B invariant suite
+  asserting `netTax ≥ 0` unconditionally would reject legitimate franking refunds. Duplicate
+  register grows by the three rate-hardcode sites above.

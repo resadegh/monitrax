@@ -94,3 +94,13 @@ canonicalCashflow fully; the two API routes' usage lines; tie/analytics summary 
 NOT examined: 59-site `cashflow` census family sweep; UI components; the inflow sibling's
 consumers. Verifies the producer, the resolver, and the named consumers; does NOT verify that
 no page re-reduces current-month transactions inline somewhere unexamined.
+
+## Adversarial review (§7) — 2026-07-29
+
+- Claims checked: 19 (anchors 14 · arithmetic 2 · negative-claims 3)
+  - Anchors re-verified at HEAD `72b15268`: actualCashflow.ts read end-to-end — :94-96 (`monthKey`, local time), :104 (`computeActualCashflow`, PURE, injectable `now`), :111 (transfer filter), :113-123 (empty result + `hasActualData:false`), :149-151 (magnitude via `Math.abs`, OUT/IN by `direction`), :153-158 (current-month accumulation + `'Uncategorised'` bucket), header :29-31; masterFinancialService.ts:800-804 (4-month fetch window comment + query), :1985 (the one `computeActualCashflow` call), :2128-2136 ("no arithmetic here" comment + `actualMonthlyOutflow`/`actualOutflowByCategory`/`hasActualData` passthroughs); canonicalCashflow.ts:78/:114-133 (resolver, actuals-win rule); insights route :465 (`kept = income − actualMonthlyOutflow`)/:474 (net passthrough); intelligence route :675-684 (waterfall from `actualOutflowByCategory`) + :225 (totals re-summed from the same breakdown); tie/analytics.ts:95/:113 (signed-sum divergence confirmed — the canonical engine uses `Math.abs`, analytics sums raw `tx.amount`); moneyStoryTrend.ts:131-137 (DIFFERENT-QUANTITY, own buckets).
+  - Test anchors verified: `tests/regression/invariants/trustEngine.invariants.test.ts` ≈:138-144 (Σ outflowByCategory === currentMonthOutflow, Uncategorised never dropped) and `trustEngine.reconciliation.test.ts` ≈:120-132 (statement sum + net tie-out) — both exist as claimed.
+  - `currentMonthNet = inflow − outflow` confirmed at :195.
+- REFUTED / CORRECTED: **none**.
+- Could not verify: the 59-site `cashflow` census family sweep and UI components (declared boundary); runtime values.
+- Verdict impact: none. Canonical producer, resolver, consumers, and the D-E sign-convention flag on `lib/tie/analytics.ts` all stand. **PASS — contract survives unchanged.**

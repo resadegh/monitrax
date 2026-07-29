@@ -19,9 +19,10 @@
   gate never applies.** `minRepayment = 0` is a legitimate stored state for interest-only
   loans — the FACT is honest; treating it as a *cost* is the defect (that conversion belongs
   to `loanMonthlyCostResolved`).
-- **units:** AUD per `repaymentFrequency` period (WEEKLY | FORTNIGHTLY | MONTHLY | … —
-  UPPERCASE `RepaymentFrequency` enum; lowercase strings fall through `toAnnual`'s default
-  branch unchanged, per the `loanAggregator.ts:59-68` contract note).
+- **units:** AUD per `repaymentFrequency` period (exactly WEEKLY | FORTNIGHTLY | MONTHLY —
+  the UPPERCASE `RepaymentFrequency` enum has only these three members, schema-verified (§7);
+  lowercase strings fall through `toAnnual`'s default branch unchanged, per the
+  `loanAggregator.ts:59-68` contract note).
 - **The load-bearing rule:** the raw value is only meaningful WITH its frequency. Any read that
   uses `minRepayment` as a monthly number without `toMonthly` is a wrong-input defect, not a
   different quantity.
@@ -44,6 +45,9 @@ Legitimate FACT reads (display / heuristic / input-feed — these survive Phase 
 | `components/transactions/TransactionLinkDialog.tsx:1389-1404` | CONSUMER (match heuristic) | suggests a loan link when the transaction amount is within $1 or 10% of the declared repayment — a signal, not a cost |
 | `components/onboarding/wizard/types.ts:933,940-942` | CONSUMER (intake preview) | annualises declared commitments pre-persist (`frequencyToAnnual`); HECS/STUDENT excluded because income-contingent (no fixed minimum). Inherits IO=$0 — Decision D-e |
 | `lib/planning/debtPlanner.ts:164` | CONSUMER (input to validation) | `validateMinRepayment` reads the FACT then floors it against the amortised minimum — the output is the DIFFERENT-QUANTITY in `loan-required-minimum-repayment.md` |
+| `app/api/ai/debt-analysis/route.ts:506` | CONSUMER (labelled display) *(added §7)* | prints declared amount WITH `repaymentFrequency` label inside the AI analysis prompt — a FACT read |
+| `app/dashboard/balances/page.tsx:492-493` | CONSUMER (pass-through) *(added §7)* | copies `minRepayment` + `repaymentFrequency` verbatim into the loan-detail object — no arithmetic |
+| `components/ExpenseDialog.tsx:36-42` | CONSUMER (type/display) *(added §7)* | linked-loan interface carries the FACT; dialog renders name/principal only — no arithmetic |
 | every DUPLICATE row in `loan-monthly-cost-resolved.md` | — | reads this FACT but *presents the result as the loan's cost* — those are defects of the DERIVED quantity, catalogued there, not here |
 
 ## invariants
@@ -100,3 +104,27 @@ concrete mis-declared loan row was verified in this read-only pass.
 legitimate-FACT-read sites listed were read in source at HEAD. **Does NOT verify:** intake
 write paths line-by-line (`LoanFormDialog`, wizard persist), the dedup guard's actual
 behaviour, or any live row's correctness against a real loan statement.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 16** (anchors 9 · arithmetic 3 · negative-claims 4). Verified at HEAD `72b15268`
+  (production dirs identical to `2f9f2e16`): schema fields `Loan.minRepayment` / `repaymentFrequency` /
+  `interestRateAnnual // e.g., 0.0625` present; **no `isRecurring` on `Loan`** (independent schema grep —
+  confirmed); `RepaymentFrequency` enum members; properties `[id]` page `:866-874` cadence-labelled
+  declared branch; properties page `:1364-1367,:1677`; TransactionLinkDialog `:1389-1390` ($1 / 10%
+  match arithmetic exact); wizard types `:933,:940-942` incl. `!debt.isHecsHelp` guard; debtPlanner
+  `:163-179` incl. the 5% tolerance (`requiredMin × 0.95` at `:174`). Negative claims re-run: no
+  cadence-plausibility guard on loans confirmed — `rentCadenceSuspect` is set only from the RENT
+  resolution (`propertyCashflow.ts:328,357`); the loan loop produces no cadence-suspect signal.
+- **REFUTED / CORRECTED:**
+  1. *units row* — the enum ellipsis ("| …") implied more members; the enum is exactly
+     `WEEKLY | FORTNIGHTLY | MONTHLY`. Corrected inline.
+  2. *FACT-read catalogue incomplete* — an independent `minRepayment` sweep found three legitimate
+     FACT-read sites absent from the table (`ai/debt-analysis:506`, `balances/page.tsx:492-493`,
+     `ExpenseDialog.tsx:36-42`), now added. None is a hidden cost producer — the FACT verdict is
+     unaffected — but the table was presented as the catalogue of surviving FACT reads.
+- **Could not verify:** intake write paths line-by-line (`LoanFormDialog`, `applyWizardDelta`/
+  `debtsSync`/`propertiesSync`, `documents/analyze/confirm`) — the contract's own stated boundary;
+  the dedup guard's runtime behaviour; any live row against a loan statement (Ring-3 scope).
+- **Verdict impact: none.** FACT classification, "NO movement anywhere" prediction, and the
+  input-trust statement (no loan cadence guard at HEAD) all survive.
