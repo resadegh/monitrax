@@ -66,9 +66,10 @@ aggregate, not of the per-loan producer. **Per-loan Decimal twin: NOT ESTABLISHE
 
 Standard bank monthly-compounding approximation: `interest ≈ balance × annualRate / 12`
 (offset-netted: `(balance − offset) × rate / 12`), verifiable against a loan statement's
-monthly interest charge line. Worked example: $712,000 × 0.0625 / 12 = $3,708.33/mo — the
-design record's "$3,709/mo of real interest reads $0" figure for the two IO loans is this
-arithmetic. For exact-to-the-cent verification the daily-accrual formula
+monthly interest charge line. Illustrative worked example: $480,000 × 0.0625 / 12 =
+$2,500.00/mo. The design record's "$3,709/mo of real interest reads $0" for the two IO loans
+is this same arithmetic on their real principals/rates (not re-derived here — Phase A is
+read-only; verify at Ring 3). For exact-to-the-cent verification the daily-accrual formula
 (`balance × rate/365 × days`) applies (`debtPlanner.ts:128-136` has it, disabled); the /12
 approximation is the app's stated convention.
 
