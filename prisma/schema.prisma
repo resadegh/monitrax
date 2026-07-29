@@ -1364,6 +1364,10 @@ model User {
   // chart shows a quiet empty state until ≥2 months of snapshots accrue.
   netWorthSnapshots NetWorthSnapshot[]
 
+  // MON-134 / D15: monthly write-once health-score audit snapshots. The trend
+  // is derived from these real stored rows — never generated (was Math.random).
+  healthScoreSnapshots HealthScoreSnapshot[]
+
   // Phase 28: Realistic Budget Integration
   householdProfile HouseholdProfile?
   budgetAnalyses   BudgetAnalysis[]
@@ -3540,6 +3544,38 @@ model NetWorthSnapshot {
   @@unique([userId, snapshotDate])
   @@index([userId])
   @@map("net_worth_snapshots")
+}
+
+/// MON-134 / D15 — monthly audit snapshot of the canonical health score
+/// (`generateHealthReport().healthScore.score`). The §3.2 audit-snapshot
+/// exception (the NetWorthSnapshot pattern): written once per (userId, month),
+/// NEVER read back as the live value — only the trend reads history from here.
+/// WRITE-ONCE, stricter than the net-worth recorder's current-month refresh:
+/// per the MON-134 brief §4.2, re-running the writer must not change an
+/// existing row (first capture of the month freezes it). `formulaVersion`
+/// pins the scoring formula that produced the row — MON-131 will change the
+/// score's inputs, and a trend spanning two formulas must show the break,
+/// never smooth over it (D15).
+model HealthScoreSnapshot {
+  id             String   @id @default(uuid())
+  userId         String
+  /// First day of the calendar month this snapshot represents (UTC).
+  snapshotDate   DateTime
+  /// The canonical health score (0-100) at capture time.
+  score          Float
+  /// RiskBand at capture time (LOW / MODERATE / ELEVATED / HIGH / CRITICAL).
+  riskBand       String
+  /// Version of the scoring formula that produced this score. Bump when the
+  /// formula's inputs/weights change (MON-131 tranches); the trend marks a
+  /// break where consecutive snapshots differ in version.
+  formulaVersion Int
+  capturedAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, snapshotDate])
+  @@index([userId])
+  @@map("health_score_snapshots")
 }
 
 // =============================================================================

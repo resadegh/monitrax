@@ -4332,3 +4332,15 @@ One rule per managed stream (`incomeStreamId @unique`). After the user confirms 
 | `hasPrivateHospitalCover` | `Boolean?` (nullable, no default) | Per-member private HOSPITAL cover (extras never count) — the input to the Medicare levy surcharge. **`null` = "not sure / not entered"**: the tax engine treats it conservatively as NO cover (the surcharge applies when income is over the threshold) while the UI shows it honestly as "Not sure" — a blank never silently asserts cover. Written only by the My Household member dialog (tri-state Yes/No/Not-sure control, Stitch `16e80455…`). |
 
 Consumption path (one producer, §12.2.1): `getUserTaxPosition` fetches the profile+members once and derives `medicareContext` — `familyStatus` (2+ adults or a SPOUSE member), `dependentChildren`, and `familyCovered` under the ATO all-or-nothing rule (every adult answered Yes; a child's explicit No breaks cover; a blank adult = uncovered). The context threads through `calculateTaxPosition` (Float + Decimal) into `calculateMedicareLevy`; family MLS tiers are config-driven (`TaxYearConfig.medicareSurchargeFamily`). Migration: `20260723000000_mon088_private_hospital_cover` (additive, no backfill).
+
+## HealthScoreSnapshot — monthly write-once health-score audit rows (MON-134 / D15, 2026-07-29)
+
+| Field | Type | Semantics |
+|---|---|---|
+| `snapshotDate` | `DateTime` | First day of the calendar month (UTC) — the month anchor. `@@unique([userId, snapshotDate])`. |
+| `score` | `Float` | The canonical health score (0-100) from `generateHealthReport().healthScore.score` at capture time. |
+| `riskBand` | `String` | RiskBand at capture time. |
+| `formulaVersion` | `Int` | Version of the scoring formula that produced the row. Bumped when MON-131 tranches change the score's inputs/weights; a trend spanning two versions must show the break (D15), never smooth over it. |
+| `capturedAt` | `DateTime` | `@default(now())`. |
+
+The `REFERENCE_NUMBERS_DESIGN.md` §3.2 **audit-snapshot exception** (the `NetWorthSnapshot` pattern): an immutable point-in-time snapshot, **never read back as the live value** — only the trend (`calculateTrend`, MON-134 read-path PR) reads history from here. **WRITE-ONCE per (user, month)** — stricter than the net-worth recorder's current-month refresh, per the MON-134 brief §4.2: re-running the monthly writer must not create a second row or change an existing one; the first capture of a month freezes it. Replaces the fabricated `Math.random()` trend (`lib/health/aggregateEngine.ts:157`, found by the Matrix Relay's first A3 self-diff). Migration: `20260729133413_mon134_health_score_snapshot` (additive `CREATE TABLE`, no backfill — history accrues from deployment forward; until 2 months accrue the trend reads `INSUFFICIENT_HISTORY`).
