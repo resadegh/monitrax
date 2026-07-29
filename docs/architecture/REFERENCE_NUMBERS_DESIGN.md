@@ -162,6 +162,8 @@ Do not close any without its own live verification.**
 | D14 | The fix is executed by **dedicated agents per calc engine**, partitioned by **FILE ownership** (never by quantity — files host many quantities and would collide). Phase A specs → **Reza gate** → Phase B migration → Phase C adversarial verification (§9) | Reza | 29 Jul | ✅ **DECIDED** |
 | D15 | The health-score trend is built from **stored monthly snapshots of the real score** (`HealthScoreSnapshot`, the `netWorthHistory` audit-snapshot pattern §3.2), **never generated**. Where history is insufficient (<2 snapshots) the UI says so (`INSUFFICIENT_HISTORY`) rather than showing a number — no `changePercent`, no `'STABLE'` fallback. Snapshots carry the formula version; a trend spanning a version change shows the break, never smooths over it. (*"let's score monthly based on a real number and formula. not invention."* — MON-134) | Reza | 29 Jul | ✅ **DECIDED** |
 
+| D16 | The reference-number law applies to **every** number in the app; **nothing is out of scope.** Remediation is sequenced — MON-131's quantities first, fully verified, then **MON-136** for the remainder, then a **complete Matrix sweep**. No unrelated issue is worked before that sweep passes. (*"I want to cover all numbers. nothing is out of scope … a complete and full sweep by the Matrix … before we move to fixing any other issues."*) | Reza | 29 Jul | ✅ **DECIDED** |
+
 New decisions land here as new rows, with date + rationale, in the PR that implements them.
 
 ## §7 Standing rules (verbatim from the brief §6)
