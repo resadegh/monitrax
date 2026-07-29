@@ -126,6 +126,9 @@ export const RESET_DELETE_MODELS = [
   'ReminderState',
   'Reminder',
   'NetWorthSnapshot',
+  // MON-134: monthly health-score audit rows — derived from the financial data
+  // a reset wipes, so they are wiped with it (same call as NetWorthSnapshot).
+  'HealthScoreSnapshot',
   'SpendingProfile',
   'StrategyRecommendation',
   'StrategySession',
