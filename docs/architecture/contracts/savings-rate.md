@@ -69,7 +69,12 @@ Census heuristic list (30) contains known false-positive attributions — e.g. `
 1. On any single basis: `rate === (inflow − outflow) / inflow × 100` exactly, with `rate === 0`
    when `inflow === 0` (never NaN/∞).
 2. `savingsRateDeclared === quickMetrics.monthlyCashflow / quickMetrics.monthlyIncome × 100`
-   (ties this contract to `monthly-cashflow-declared.md`).
+   (ties this contract to `monthly-cashflow-declared.md`). *(§7 correction: NOT an identity at
+   HEAD — `quickMetrics.savingsRate` is computed against the ORCHESTRATOR's `monthlyNetIncome`
+   (`cashflowOrchestrator.ts:376-377`, then 2-dp rounded), while `quickMetrics.monthlyIncome` is
+   `buildIncomeBreakdown(...).all.netTotal` (`masterFinancialService.ts:1865,:2100`) — a different
+   income producer. The identity holds only once income is single-sourced (T1/T6); pin it as a
+   POST-migration invariant, with tolerance for the 2-dp rounding.)*
 3. D8: full loan repayment in the numerator's outflow on every conformant variant; an IO loan
    never contributes $0 (post-T2).
 4. Headline: `basis === 'actual-ttm'` ⟺ `trailingMonthsWithData > 0` and (annualIncome > 0 or
@@ -134,3 +139,33 @@ NOT EXAMINED from the census savingsRate list (30): `leakDetector` internals, `b
 (pct helper — shape match), Sankey internals, tax-engine shape-matches (spot-classified as
 false positives at entry level only), `calc-audit` fixture engines (test infra), `exporter`.
 Unexamined ≠ cleared.
+
+## Adversarial review (§7) — 2026-07-29
+
+- **Claims checked: 26** (anchors 17 · arithmetic 6 · negative-claims 3). At HEAD `72b15268`
+  (production identical to `fa392b9a`). Verified exactly: all five variant producers —
+  `getCanonicalSavingsRate :157` (selection rule incl. the exact `hasTrailing` condition of
+  invariant 4), current-month rate `:87`, TTM producer `moneyStoryTrend.ts:75-77,:88`
+  (`savingsRateTrailing = annualNet / annualIncome × 100` per the interface contract), declared
+  `cashflowOrchestrator.ts:376-377` + Decimal `:599-601`, CFO score `scoreCalculator.ts:326-341` +
+  Decimal `:628` with gross-`i.amount`/ungated/raw-`minRepayment` reduces confirmed (loan reduce at
+  `:334`/`:642`). Consumers: `insights:358,:621,:638` (all through the ONE accessor — MON-029 intact),
+  `intelligenceEngine:191`, `selfAuditInvariants:128,:227`, `masterFinancialService:2111` +
+  `:1413-1416` (inline re-derive + ×5 clamp), `portfolio/snapshot:996-998` hybrid,
+  `incomeExpense:41`, dashboard `page.tsx:458,:828-837` (+ insight copy `:489-498`),
+  `intelligence:602-608` fallback, `portfolioEngine ~:418` stress rate. DR-3 collision confirmed in
+  source (two `savingsRate` meanings in one file, `:43` vs `:157`). Arithmetic re-run:
+  12,779/41,303 = 30.9 ≈ 31 points ✓. VR-001 three-rates figures match the in-source comment
+  (`canonicalCashflow.ts:146-149`) verbatim. Negative claims: score-mapping `NONE FOUND` stands
+  (piecewise policy, no external authority); headline/TTM Decimal twins absent — confirmed.
+- **REFUTED / CORRECTED:**
+  1. *Invariant 2* — stated as a current identity; refuted: numerator's rate uses the orchestrator's
+     `monthlyNetIncome` while `quickMetrics.monthlyIncome` is `buildIncomeBreakdown` netTotal
+     (`masterFinancialService.ts:1865,:2100`) — two income producers, plus 2-dp rounding. Re-scoped
+     inline as a post-migration invariant. (This is itself evidence FOR the contract's thesis that
+     the family collapses only once income is single-sourced.)
+- **Could not verify:** the census-list false-positive spot-checks beyond entry level (contract
+  discloses this); `leakDetector`/`budgetComparison`/`loanAggregator:131`/Sankey internals
+  (boundary-stated); live rates (Ring-3).
+- **Verdict impact: none.** Variant naming, canonical accessor status, DUPLICATE tags, and all
+  expectedMoves survive; invariant 2 re-scoped from "current" to "post-migration target".
