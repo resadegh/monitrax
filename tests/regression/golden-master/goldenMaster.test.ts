@@ -29,7 +29,8 @@ import {
   type PropertyDisposalCgtResult,
 } from '@/lib/cfo/scenarios/propertyDisposalCgt';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
-import { ARCHETYPES, type Archetype } from './archetypes';
+import { bankedMonthlyPerRow } from '@/lib/income/banked/assembly';
+import { ARCHETYPES, bankedIncomeFixture, type Archetype } from './archetypes';
 
 const CONFIG = getCurrentTaxYearConfig();
 const DISPOSAL_DATE = new Date('2026-06-15T00:00:00Z'); // fixed → deterministic monthsHeld
@@ -49,8 +50,11 @@ function netWorthSnapshot(a: Archetype) {
   return { whole, perEntity };
 }
 
-/** Map the archetype rows into the buildEntityBreakdown input contract. */
+/** Map the archetype rows into the buildEntityBreakdown input contract.
+ *  MON-131 T1-B: per-entity income comes from the banked per-row attribution
+ *  (the ONE producer) — rows get ids and the map from `bankedMonthlyPerRow`. */
 function entityBreakdownSnapshot(a: Archetype) {
+  const { rows, banked } = bankedIncomeFixture(a, CONFIG);
   return buildEntityBreakdown({
     entities: a.entities,
     properties: a.properties.map((p) => ({ currentValue: p.currentValue, ownerEntityId: p.ownerEntityId })),
@@ -64,7 +68,8 @@ function entityBreakdownSnapshot(a: Archetype) {
     loans: a.loans.map((l) => ({ principal: l.principal, type: l.type ?? '', propertyId: l.propertyId ?? null, ownerEntityId: l.ownerEntityId })),
     superannuation: a.superannuation.map((s) => ({ currentBalance: s.balance, fundType: s.fundType ?? undefined, ownerEntityId: s.ownerEntityId })),
     assets: a.personalAssets.map((as) => ({ currentValue: as.currentValue, ownerEntityId: as.ownerEntityId })),
-    income: a.income.map((i) => ({ amount: i.amount, frequency: i.frequency, ownerEntityId: i.ownerEntityId })),
+    income: rows.map((i) => ({ id: i.id, amount: i.amount, frequency: i.frequency, ownerEntityId: i.ownerEntityId })),
+    bankedPerRowMonthly: bankedMonthlyPerRow(banked, rows),
     expenses: a.expenses.map((e) => ({ amount: e.amount, frequency: e.frequency, ownerEntityId: e.ownerEntityId })),
   });
 }
@@ -119,7 +124,9 @@ describe('golden-master regression — canonical engine outputs per archetype', 
         expect(netWorthSnapshot(a)).toMatchSnapshot();
       });
       it('cashflow matches the golden master', () => {
-        expect(calculateCashflow({ income: a.income, expenses: a.expenses, loans: a.cashflowLoans }))
+        // MON-131 T1-B: income enters as banked totals from the ONE engine.
+        const { incomeTotals } = bankedIncomeFixture(a, CONFIG);
+        expect(calculateCashflow({ incomeTotals, expenses: a.expenses, loans: a.cashflowLoans }))
           .toMatchSnapshot();
       });
       it('per-entity breakdown matches the golden master', () => {

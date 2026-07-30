@@ -85,11 +85,16 @@ describe('MON-010: the tax summary reads the deduped source (§19.4 convergence 
     expect(src).not.toContain('buildTaxSummary(data.income');
   });
 
-  it('income breakdown and tax read the SAME deduped array (adjustPropertyRentalIncome)', () => {
-    // Both the aggregate breakdown and the tax summary must source from the one
-    // deduped array so the passive-rental total and taxable-rental basis converge.
-    expect(src).toContain('adjustPropertyRentalIncome(');
-    expect(src).toContain('buildIncomeBreakdown(data.income');
-    expect(src).toContain('adjustedIncome');
+  it('income breakdown reads the ONE pooled rental source (banked engine)', () => {
+    // MON-131 T1-B: `adjustPropertyRentalIncome` (the synthetic-record dedup)
+    // is DELETED. The income breakdown now reads the banked-income result,
+    // whose rental leg pools each property's fragmented rows through the SAME
+    // canonical `computePropertyCashflow` (lib/income/banked/rentalBanked.ts)
+    // — one stream per property by construction, so the MON-010 over-count
+    // class cannot recur via a second dedup path.
+    // (name may survive in history comments — the CALL must be gone)
+    expect(src).not.toContain('adjustPropertyRentalIncome(');
+    expect(src).toContain('buildBankedIncomeFromData(');
+    expect(src).toContain('buildIncomeBreakdown(banked');
   });
 });

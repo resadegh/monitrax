@@ -48,6 +48,9 @@ import {
   type EntityBreakdownInput,
 } from '@/lib/calculations/entityBreakdown';
 import { calculateLITO, applyOffsets } from '@/lib/tax-engine/core/taxOffsets';
+import { buildBankedIncome } from '@/lib/income/banked/aggregator';
+import { bankedMonthlyPerRow } from '@/lib/income/banked/assembly';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { calculateStampDuty, NSW_STAMP_DUTY_FY2024_25 } from '@/lib/tax-engine/stampDuty/stateStampDuty';
 import { calculateLandTax, NSW_LAND_TAX_CY2025 } from '@/lib/tax-engine/landTax/stateLandTax';
 import { calculateCrossStateLandTax } from '@/lib/tax-engine/landTax/crossStateAggregator';
@@ -720,8 +723,8 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.entityBreakdown.buildEntityBreakdown',
-    law: 'Per-entity monthlyCashflow = Σ toMonthly(income) − Σ toMonthly(expenses) on that partition',
-    derivation: 'e1 income $10,000/mo − expenses $3,000/mo = $7,000/mo',
+    law: 'Per-entity monthlyCashflow = Σ bankedPerRowMonthly(income rows) − Σ toMonthly(expenses) on that partition (MON-131 T1-B: income slices read the ONE banked producer)',
+    derivation: 'e1 OTHER income $10,000/mo banked (received run-rate = declared) − expenses $3,000/mo = $7,000/mo',
     actual: () => ebPosition('e1').monthlyCashflow,
     expected: 7000,
   },
@@ -1053,7 +1056,19 @@ function stabilityScore(input: never): number {
 
 // Entity-breakdown fixture: e1 (property − loan + income/expenses), e2 (cash),
 // and a null-owner property that must land in the unattributed bucket.
+// MON-131 T1-B: per-entity income reads the banked per-row attribution (the
+// ONE producer) — the fixture runs the REAL banked engine to build the map.
 function ebInput(): EntityBreakdownInput {
+  const incomeRows = [
+    { id: 'inc-1', type: 'OTHER', amount: 10000, frequency: 'MONTHLY', isTaxable: true, ownerEntityId: 'e1' },
+  ];
+  const banked = buildBankedIncome({
+    income: incomeRows,
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+  });
   return {
     entities: [
       { id: 'e1', name: 'Reza', type: 'PERSONAL' },
@@ -1068,7 +1083,8 @@ function ebInput(): EntityBreakdownInput {
     loans: [{ principal: 600000, type: 'MORTGAGE', ownerEntityId: 'e1' }],
     superannuation: [],
     assets: [],
-    income: [{ amount: 10000, frequency: 'MONTHLY', ownerEntityId: 'e1' }],
+    income: incomeRows.map((r) => ({ id: r.id, amount: r.amount, frequency: r.frequency, ownerEntityId: r.ownerEntityId })),
+    bankedPerRowMonthly: bankedMonthlyPerRow(banked, incomeRows),
     expenses: [{ amount: 3000, frequency: 'MONTHLY', ownerEntityId: 'e1' }],
   };
 }

@@ -42,7 +42,7 @@ import {
 import { computePropertyDisposalCgt } from '@/lib/cfo/scenarios/propertyDisposalCgt';
 import { calculateCgtDiscountDecimal } from '@/lib/tax-engine/divisions/cgtDiscount';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
-import { ARCHETYPES } from '../golden-master/archetypes';
+import { ARCHETYPES, bankedIncomeFixture } from '../golden-master/archetypes';
 
 const CONFIG = getCurrentTaxYearConfig();
 const DISPOSAL_DATE = new Date('2026-06-15T00:00:00Z');
@@ -199,9 +199,11 @@ describe('Invariant 2b — ownership shares sum to 100% (attributeAsset)', () =>
 
 describe('Invariant 3 — Float / Decimal cashflow agree at the boundary', () => {
   it.each(ARCHETYPES.map((a) => [a.key, a] as const))('%s — monthly figures agree', (_k, a) => {
-    const input = { income: a.income, expenses: a.expenses, loans: a.cashflowLoans };
-    const f = calculateCashflow(input);
-    const d = calculateCashflowDecimal(input);
+    // MON-131 T1-B: income enters as banked totals — the Float and Decimal
+    // paths run the SAME rows through their sibling banked engines end-to-end.
+    const { incomeTotals, incomeTotalsDecimal } = bankedIncomeFixture(a, CONFIG);
+    const f = calculateCashflow({ incomeTotals, expenses: a.expenses, loans: a.cashflowLoans });
+    const d = calculateCashflowDecimal({ incomeTotals: incomeTotalsDecimal, expenses: a.expenses, loans: a.cashflowLoans });
     // MONTHLY-frequency sums carry no division → exact agreement.
     expect(d.monthlyExpenses.toNumber()).toBeCloseTo(f.monthlyExpenses, 6);
     expect(d.monthlyLoanRepayments.toNumber()).toBeCloseTo(f.monthlyLoanRepayments, 6);

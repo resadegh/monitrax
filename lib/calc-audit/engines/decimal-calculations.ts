@@ -227,7 +227,7 @@ export const cashflowOrchestratorShadow: ShadowEngine<
     }),
   // Every cashflow output field is pre-rounded by Float's `round()` to 2 dp,
   // so they all behave like currency at the shadow boundary — including the
-  // ratio fields (savingsRate / expenseRatio / debtServiceRatio).
+  // ratio fields (savingsRate, expenseRatio, debtServiceRatio).
   fieldPolicy: {},
   fixtures: [
     {

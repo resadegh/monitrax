@@ -19,6 +19,12 @@ import {
   calculateTotalAssets,
   calculateTotalLiabilities,
 } from '@/lib/calculations/netWorthCalculator';
+import {
+  buildBankedIncome,
+  bankedTotalsFromResult,
+} from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { TAX_YEAR_2026_27 } from '@/lib/tax-engine/config/taxYearConfig';
 
 describe('aggregator entity-scoping (audit C-3 fix)', () => {
   describe('incomeAggregator.aggregateIncome', () => {
@@ -134,23 +140,45 @@ describe('aggregator entity-scoping (audit C-3 fix)', () => {
   });
 
   describe('cashflowOrchestrator.calculateCashflow', () => {
-    const input = {
-      income: [
-        {
-          amount: 10000,
-          frequency: 'MONTHLY',
-          isTaxable: true,
-          type: 'SALARY',
-          ownerEntityId: 'e1',
-        },
-        {
-          amount: 600,
-          frequency: 'WEEKLY',
-          isTaxable: true,
-          type: 'RENTAL',
-          ownerEntityId: 'e2',
-        },
-      ],
+    // MON-131 T1-B: the orchestrator no longer computes income — it takes
+    // pre-computed BANKED totals (MON-137 culprit removed). Entity scoping
+    // for income is therefore the CALLER's job: filter the rows, run them
+    // through the ONE banked engine, hand the totals in. The orchestrator's
+    // ownerEntityId param still scopes expenses/loans.
+    const incomeRows: BankedIncomeRow[] = [
+      {
+        amount: 10000,
+        frequency: 'MONTHLY',
+        isTaxable: true,
+        type: 'SALARY',
+        ownerEntityId: 'e1',
+      },
+      {
+        amount: 600,
+        frequency: 'WEEKLY',
+        isTaxable: true,
+        type: 'RENTAL',
+        ownerEntityId: 'e2',
+      },
+    ];
+
+    const bankedTotals = (rows: BankedIncomeRow[]) =>
+      bankedTotalsFromResult(
+        buildBankedIncome({
+          income: rows,
+          properties: [],
+          derivedAgentExpenses: [],
+          transactions: [],
+          ctx: { config: TAX_YEAR_2026_27, repaymentIncome: null },
+        }),
+      );
+
+    const scopedInput = (ownerEntityId?: string) => ({
+      incomeTotals: bankedTotals(
+        ownerEntityId
+          ? incomeRows.filter((r) => r.ownerEntityId === ownerEntityId)
+          : incomeRows,
+      ),
       expenses: [
         { amount: 4000, frequency: 'MONTHLY', isEssential: true, ownerEntityId: 'e1' },
         { amount: 1200, frequency: 'MONTHLY', isEssential: false, ownerEntityId: 'e2' },
@@ -162,16 +190,16 @@ describe('aggregator entity-scoping (audit C-3 fix)', () => {
           ownerEntityId: 'e1',
         },
       ],
-    };
+    });
 
     it('no filter → household totals', () => {
-      const result = calculateCashflow(input);
+      const result = calculateCashflow(scopedInput());
       expect(result.monthlyExpenses).toBe(5200);
       expect(result.monthlyLoanRepayments).toBe(2500);
     });
 
     it('e1 filter → only e1 income/expenses/loans', () => {
-      const result = calculateCashflow(input, 'e1');
+      const result = calculateCashflow(scopedInput('e1'), 'e1');
       expect(result.monthlyExpenses).toBe(4000);
       expect(result.monthlyLoanRepayments).toBe(2500);
       // No e2 rental income → only salary (gross $10k/month)
@@ -179,17 +207,19 @@ describe('aggregator entity-scoping (audit C-3 fix)', () => {
     });
 
     it('e2 filter → only e2 rows (no loans)', () => {
-      const result = calculateCashflow(input, 'e2');
+      const result = calculateCashflow(scopedInput('e2'), 'e2');
       expect(result.monthlyExpenses).toBe(1200);
       expect(result.monthlyLoanRepayments).toBe(0);
     });
 
     it('household total = e1 + e2 (proves no double-counting)', () => {
-      const all = calculateCashflow(input);
-      const e1 = calculateCashflow(input, 'e1');
-      const e2 = calculateCashflow(input, 'e2');
+      const all = calculateCashflow(scopedInput());
+      const e1 = calculateCashflow(scopedInput('e1'), 'e1');
+      const e2 = calculateCashflow(scopedInput('e2'), 'e2');
       expect(e1.monthlyExpenses + e2.monthlyExpenses).toBe(all.monthlyExpenses);
       expect(e1.monthlyLoanRepayments + e2.monthlyLoanRepayments).toBe(all.monthlyLoanRepayments);
+      // Income scoping is the caller's pre-filter: banked e1 + e2 = household.
+      expect(e1.monthlyGrossIncome + e2.monthlyGrossIncome).toBeCloseTo(all.monthlyGrossIncome, 2);
     });
   });
 

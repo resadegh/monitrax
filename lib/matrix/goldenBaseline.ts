@@ -124,7 +124,7 @@ export function hashBaseline(captures: BaselineTree): BaselineHashSummary {
   numericLeaves(captures, '', all);
   // T1-B §1.4: calendar-derived numeric leaves are excluded from the hash
   // (they'd emit a false STOP at every day boundary). perTree counts below
-  // stay raw so a tree's coverage is still visible.
+  // stay raw so every tree's full leaf tally stays visible.
   const lines = [...all.entries()]
     .filter(([p]) => !isVolatileLeaf(p))
     .map(([p, v]) => `${p}=${v}`)

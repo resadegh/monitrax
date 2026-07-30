@@ -15,6 +15,28 @@ import {
   type EntityBreakdownInput,
 } from '@/lib/calculations/entityBreakdown';
 import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
+import { buildBankedIncome } from '@/lib/income/banked/aggregator';
+import { bankedMonthlyPerRow } from '@/lib/income/banked/assembly';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+
+// MON-131 T1-B: per-entity income reads the banked per-row attribution (the
+// ONE producer). The fixture runs the REAL banked engine to build the map —
+// OTHER-type rows bank at their declared run-rate, so the arithmetic the
+// tests assert is unchanged.
+const INCOME_ROWS = [
+  { id: 'inc-you', type: 'OTHER', amount: 5_000, frequency: 'MONTHLY', isTaxable: true, ownerEntityId: 'you' },
+  { id: 'inc-trust', type: 'OTHER', amount: 600, frequency: 'WEEKLY', isTaxable: true, ownerEntityId: 'trust' },
+];
+const bankedMap = () => {
+  const banked = buildBankedIncome({
+    income: INCOME_ROWS,
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+  });
+  return bankedMonthlyPerRow(banked, INCOME_ROWS);
+};
 
 const input = (): EntityBreakdownInput => ({
   entities: [
@@ -39,10 +61,8 @@ const input = (): EntityBreakdownInput => ({
     { ownerEntityId: 'you', currentBalance: 200_000, fundType: 'INDUSTRY' },
   ],
   assets: [{ ownerEntityId: 'you', currentValue: 35_000 }],
-  income: [
-    { ownerEntityId: 'you', amount: 5_000, frequency: 'MONTHLY' },
-    { ownerEntityId: 'trust', amount: 600, frequency: 'WEEKLY' },
-  ],
+  income: INCOME_ROWS.map(r => ({ id: r.id, amount: r.amount, frequency: r.frequency, ownerEntityId: r.ownerEntityId })),
+  bankedPerRowMonthly: bankedMap(),
   expenses: [
     { ownerEntityId: 'you', amount: 3_000, frequency: 'MONTHLY' },
     { ownerEntityId: 'trust', amount: 200, frequency: 'WEEKLY' },
@@ -83,10 +103,11 @@ describe('Phase 47 C1 — buildEntityBreakdown', () => {
     expect(trust.counts.holdings).toBe(3);
   });
 
-  it('converts income/expense streams via the canonical toMonthly', () => {
+  it('income via the banked per-row map; expenses via the canonical toMonthly', () => {
     const positions = buildEntityBreakdown(input());
     const trust = positions.find(p => p.entityId === 'trust')!;
-    // 600/wk and 200/wk via toMonthly (annual/12 semantics)
+    // Income: OTHER 600/wk banks at its declared run-rate (600×52/12) via the
+    // banked engine's per-row attribution. Expenses: 200/wk via toMonthly.
     expect(trust.monthlyIncome).toBeCloseTo((600 * 52) / 12, 6);
     expect(trust.monthlyCashflow).toBeCloseTo(((600 - 200) * 52) / 12, 6);
   });

@@ -1054,8 +1054,8 @@ function calculateExpenseBudgetVariance(
 }
 
 /**
- * MON-131 T1-B: the income breakdown is a PROJECTION of the ONE banked-income
- * result (D17/D20) — the legacy `aggregateIncome` producer is deleted
+ * MON-131 T1-B: the income breakdown is a pure re-shaping of the ONE
+ * banked-income result (D17/D20) — the legacy `aggregateIncome` producer is deleted
  * (income-net-run-rate + income-gross-run-rate contracts). `netTotal` carries
  * BANKED (field name survives this tranche for baseline path continuity).
  * Budget variance still reads the raw records (per-record actual matching).

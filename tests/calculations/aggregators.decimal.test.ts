@@ -39,6 +39,12 @@ import {
 import {
   calculateCashflowDecimal,
 } from '@/lib/calculations/cashflowOrchestrator';
+import {
+  buildBankedIncomeDecimal,
+  bankedTotalsFromResultDecimal,
+} from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { TAX_YEAR_2026_27 } from '@/lib/tax-engine/config/taxYearConfig';
 
 // ---------------------------------------------------------------------------
 // Shadow comparison runs — per-engine, per-fixture
@@ -154,8 +160,21 @@ describe('cashflowOrchestrator Decimal — no mid-computation rounding', () => {
   it('values are not pre-rounded to 2 dp (Float path uses Math.round; Decimal preserves precision)', () => {
     // Inputs chosen to exercise non-clean division: WEEKLY → MONTHLY divides
     // by 12, so 250/week × 52 / 12 = 1083.333… with full precision.
+    // MON-131 T1-B: income enters as banked totals from the ONE engine —
+    // the Decimal banked path must preserve the recurring digits end-to-end.
+    const rows: BankedIncomeRow[] = [
+      { amount: 250, frequency: 'WEEKLY', type: 'OTHER', isTaxable: true },
+    ];
     const result = calculateCashflowDecimal({
-      income: [{ amount: 250, frequency: 'WEEKLY' }],
+      incomeTotals: bankedTotalsFromResultDecimal(
+        buildBankedIncomeDecimal({
+          income: rows,
+          properties: [],
+          derivedAgentExpenses: [],
+          transactions: [],
+          ctx: { config: TAX_YEAR_2026_27, repaymentIncome: null },
+        }),
+      ),
       expenses: [],
       loans: [],
     });
