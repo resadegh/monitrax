@@ -380,7 +380,12 @@ export const POST = withPermission<RouteContext>('account.write', async (request
             categoryLevel2: pred.categoryLevel2,
             subcategory: pred.subcategory,
             isEssential: pred.isEssential,
-            isRecurring: pred.isRecurring,
+            // MON-135: UnifiedTransaction.isRecurring is a VIEW flag (feeds the
+            // Recurring tab filter; never a run-rate — verified: monthlyRunRate
+            // reads declared rows only). Undetermined (null) renders as
+            // not-flagged; the honest null is preserved on the queue/learning
+            // rows. Declared rows always classify through classifyIntake.
+            isRecurring: pred.isRecurring ?? false,
             confidenceScore: result.adjustedConfidence,
             source: TransactionSource.QIF,
             importBatchId: importBatch.id,

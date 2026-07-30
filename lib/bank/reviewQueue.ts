@@ -122,7 +122,9 @@ export interface ReviewItemValues {
   categoryLevel2?: string | null;
   subcategory?: string | null;
   isEssential?: boolean;
-  isRecurring?: boolean;
+  /** MON-135: null = the AI made no recurrence determination (CONFIRM path
+   *  carries the queue row's nullable aiIsRecurring through). */
+  isRecurring?: boolean | null;
   /** Phase 49.9 — file the item as a transfer between own accounts. */
   isTransfer?: boolean;
 }
@@ -205,7 +207,9 @@ export async function confirmReviewItem(
       categoryLevel2: finalValues.categoryLevel2,
       subcategory: finalValues.subcategory,
       isEssential: finalValues.isEssential || false,
-      isRecurring: finalValues.isRecurring || false,
+      // MON-135: view flag — undetermined (null) renders not-flagged; the
+      // honest null is retained on the queue row's aiIsRecurring/userIsRecurring.
+      isRecurring: finalValues.isRecurring ?? false,
       userCorrectedCategory: wasEdited,
       isTransfer: finalValues.isTransfer ?? false,
       // Confirming = user validated → promote to 1.0 (same convention the
@@ -272,7 +276,11 @@ export async function confirmReviewItem(
     categoryLevel2: finalValues.categoryLevel2 || null,
     subcategory: finalValues.subcategory || null,
     isEssential: finalValues.isEssential || false,
-    isRecurring: finalValues.isRecurring || false,
+    // MON-135: the learning write needs a boolean; null (undetermined) maps to
+    // false in MerchantMapping where it means "no recurrence learned" (only
+    // isRecurring:true rows feed getRecurringPatterns) — never a one-off
+    // assertion the T3 gate reads.
+    isRecurring: finalValues.isRecurring ?? false,
     suggestedFrequency: null,
     confidence: wasEdited ? 1.0 : item.aiConfidence,
     wasEdited,

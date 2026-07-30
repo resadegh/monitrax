@@ -12,12 +12,27 @@
  * ledger without a human confirm (echo-chamber breach + wrong-number risk).
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// MON-135: mock ONLY the DB-backed learning fetchers so categoriseWithLearning
+// can run its REAL pipeline (transfer detection → cascade → recurring-pattern
+// overlay) without a database. Everything else stays the real module.
+vi.mock('@/lib/bank/aiLearning', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/bank/aiLearning')>();
+  return {
+    ...real,
+    getMerchantLearnings: vi.fn(async () => new Map()),
+    getRecurringPatterns: vi.fn(async () => [
+      { merchant: 'Netflix Australia', amount: 22.99, frequency: 'MONTHLY' },
+    ]),
+  };
+});
 
 import {
   classifyByConfidence,
   cascadeResultToAIResult,
   mapNormalisedToUnified,
+  categoriseWithLearning,
   type AICategorizationResult,
 } from '@/lib/bank/aiCategorisation';
 import { categoriseTransactionBatch } from '@/lib/tie/categorisation';
@@ -96,7 +111,7 @@ describe('classifyByConfidence — AI never auto-files (Phase 54.2)', () => {
 });
 
 describe('cascadeResultToAIResult — adapter', () => {
-  it('maps category + confidence + source, defaults isEssential/isRecurring false', () => {
+  it('maps category + confidence + source; isEssential false; isRecurring NULL (MON-135)', () => {
     const cr: CategorisationResult = {
       categoryLevel1: 'Food & Dining',
       categoryLevel2: 'Fast Food',
@@ -110,7 +125,9 @@ describe('cascadeResultToAIResult — adapter', () => {
     expect(out.adjustedConfidence).toBe(0.82);
     expect(out.source).toBe('AI');
     expect(out.prediction.isEssential).toBe(false);
-    expect(out.prediction.isRecurring).toBe(false);
+    // MON-135: no recurrence determination → null, NEVER false (a false here
+    // becomes a one-off assertion the T3 gate zeroes).
+    expect(out.prediction.isRecurring).toBeNull();
     expect(out.prediction.direction).toBe('EXPENSE');
   });
   it('derives INCOME direction for an IN transaction', () => {
@@ -126,6 +143,73 @@ describe('cascadeResultToAIResult — adapter', () => {
     expect(out.prediction.categoryLevel2).toBe('Uncategorised');
     expect(out.source).toBe('FALLBACK');
     expect(out.adjustedConfidence).toBeLessThan(0.7); // → requiresManual
+  });
+});
+
+// =============================================================================
+// MON-135 — the categoriser NEVER emits isRecurring:false (the T3 precondition)
+// =============================================================================
+//
+// §19.2 grounding: `false` is an assertion the row is a ONE-OFF. The canonical
+// one-off gate (lib/utils/frequencies.ts monthlyRunRate, strictly `=== false`)
+// zeroes such a row's contribution to every migrated run-rate. The categoriser
+// never attempts a recurrence judgement on these paths, so its output must be
+// null (no determination) — the moment T3 lands, a default `false` here would
+// silently remove every AI-categorised recurring cost from every run-rate at
+// once, and the golden baseline would absorb it as an expected downward move
+// (brief §2). These assertions run on the REAL prediction paths, not mocks.
+describe('MON-135 — prediction paths never assert one-off', () => {
+  it('cascade adapter emits null for every source, including FALLBACK', () => {
+    const sources: CategorisationResult['source'][] = ['RULE', 'KB', 'AI', 'USER', 'FALLBACK'];
+    for (const source of sources) {
+      const out = cascadeResultToAIResult(tx(), {
+        categoryLevel1: 'Shopping',
+        categoryLevel2: null,
+        subcategory: null,
+        confidence: 0.8,
+        source,
+      });
+      expect(out.prediction.isRecurring).toBeNull();
+    }
+    // undefined result (fallback synthesis inside the adapter)
+    expect(cascadeResultToAIResult(tx(), undefined).prediction.isRecurring).toBeNull();
+  });
+
+  it('the whole-batch cascade path (real categoriseTransactionBatch, known + unknown merchants) emits no false', async () => {
+    const { categoriseUnknownsViaCascade } = await import('@/lib/bank/aiCategorisation');
+    const { results } = await categoriseUnknownsViaCascade('user-1', [
+      tx({ id: 'known', description: 'Hungry Jacks', merchantStandardised: 'Hungry Jacks' }),
+      tx({ id: 'unknown', description: 'Zzq Obscure Merchant 999', merchantStandardised: 'Zzq Obscure Merchant 999' }),
+    ]);
+    expect(results).toHaveLength(2);
+    for (const r of results) {
+      expect(r.prediction.isRecurring).not.toBe(false);
+      expect(r.prediction.isRecurring).toBeNull();
+    }
+  });
+
+  it('§3.2 — recurrence IS determined where the learned evidence exists (pattern merchant + similar amount → true + cadence)', async () => {
+    const { results } = await categoriseWithLearning('user-1', [
+      // matches the mocked pattern (same merchant, amount within the ONE ≤10% tolerance)
+      tx({ id: 'match', description: 'NETFLIX', merchantStandardised: 'Netflix Australia', amount: 22.99 }),
+      // same merchant, wildly different amount → NOT similar → stays undetermined
+      tx({ id: 'amount-off', description: 'NETFLIX', merchantStandardised: 'Netflix Australia', amount: 500 }),
+      // no pattern at all → undetermined
+      tx({ id: 'no-pattern', description: 'Zzq Obscure Merchant 999', merchantStandardised: 'Zzq Obscure Merchant 999', amount: 80 }),
+    ]);
+    const byId = new Map(results.map((r) => [r.transaction.id, r]));
+    expect(byId.get('match')!.prediction.isRecurring).toBe(true);
+    expect(byId.get('match')!.prediction.suggestedFrequency).toBe('MONTHLY');
+    expect(byId.get('amount-off')!.prediction.isRecurring).toBeNull();
+    expect(byId.get('no-pattern')!.prediction.isRecurring).toBeNull();
+  });
+
+  it('the transfer-detection branch emits null too (real path through categoriseWithLearning)', async () => {
+    const { results } = await categoriseWithLearning('user-1', [
+      tx({ id: 'tr', description: 'Transfer To Reza Sadegh', merchantStandardised: 'Transfer To Reza Sadegh' }),
+    ]);
+    expect(results[0].prediction.categoryLevel1).toBe('Transfer');
+    expect(results[0].prediction.isRecurring).toBeNull();
   });
 });
 
