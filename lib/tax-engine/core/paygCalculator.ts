@@ -255,13 +255,18 @@ export function calculateGrossFromNet(
 
   while (iterations < maxIterations) {
     const mid = (low + high) / 2;
-    // MON-131 T1: the `config` param is now LIVE (it was accepted and ignored
-    // — the payg-withholding contract's "dead parameter" finding).
+    // MON-131 T1-A: `config` stays DELIBERATELY UNUSED here (the
+    // payg-withholding contract's "dead parameter" finding) — wiring it live
+    // now would reverse-solve gross under one FY while composers'
+    // forward-PAYG legs (processSalary) still run the legacy default: mixed
+    // FYs inside one result (caught by composers.decimal gross−payg≈net).
+    // The WHOLE composer flips to explicit config in ONE declared step at
+    // T1-B. Until then this function is byte-identical to pre-T1.
     const payg = calculatePAYG({
       grossIncome: mid,
       frequency,
       hasTaxFreeThreshold,
-    }, config);
+    });
 
     // Calculate what net would be at this gross
     const calculatedNet = mid - fromWeeklyAmount(payg.weeklyWithholding, frequency);
@@ -289,7 +294,7 @@ export function calculateGrossFromNet(
     grossIncome: finalGross,
     frequency,
     hasTaxFreeThreshold,
-  }, config);
+  });
 
   return {
     gross: Math.round(finalGross * 100) / 100,
@@ -460,7 +465,8 @@ export function calculateGrossFromNetDecimal(
 
   while (iterations < maxIterations) {
     const mid = low.plus(high).div(2);
-    const payg = calculatePAYGDecimal({ grossIncome: mid, frequency, hasTaxFreeThreshold }, config);
+    // T1-A: config deliberately unused — see the Float sibling's comment.
+    const payg = calculatePAYGDecimal({ grossIncome: mid, frequency, hasTaxFreeThreshold });
     const taxAtFrequency = fromWeeklyDecimal(payg.weeklyWithholding);
     const calculatedNet = mid.minus(taxAtFrequency);
 
@@ -480,7 +486,7 @@ export function calculateGrossFromNetDecimal(
   }
 
   const finalGross = low.plus(high).div(2);
-  const finalPayg = calculatePAYGDecimal({ grossIncome: finalGross, frequency, hasTaxFreeThreshold }, config);
+  const finalPayg = calculatePAYGDecimal({ grossIncome: finalGross, frequency, hasTaxFreeThreshold });
   return {
     gross: finalGross.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
     tax: fromWeeklyDecimal(finalPayg.weeklyWithholding),
