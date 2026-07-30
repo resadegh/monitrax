@@ -80,8 +80,8 @@ gate would zero every AI-categorised expense.
 | G2 contract / brief | ✅ | PR #1531 brief |
 | Build | ✅ | **PR #1538 (draft, open)** @ `1f80286c` — tri-state prediction (null = no determination) · evidence-based recurrence via `getRecurringPatterns` + the ONE ≤10% tolerance · two `aiIsRecurring` columns nullable · Wall-B2 Float+Decimal tri-state fixtures + never-emits-false guards (vitest 434/434; all seven `=== false` gates in `lib/` verified strict). Migration incident CLOSED: v1 used model names not `@@map`'ped tables (lesson in the migration file); v2 pushed; Reza ran the dev-DB `migrate resolve --rolled-back` 2026-07-30 ~06:21 (output: "marked as rolled back", host `35.189.31.209`); preview REBUILT GREEN at `68dcd899` (deploy `7s94FmhV…` READY — v2 applied cleanly) |
 | G3 expectedMoves | ✅ | **Declares NO movement.** This PR changes what a default means, not what a number is |
-| G6 merged | — | |
-| G8 Ring-3 | — | Acceptance: recurring expenses on `/dashboard/expenses` **unchanged**. Any movement is itself the finding |
+| G6 merged | ✅ | PR #1538 merged 2026-07-30; prod deploy `dpl_48fktuyb…` READY at `b1af5021` (migration v2 applied to PROD cleanly) |
+| G8 Ring-3 | — | Acceptance: recurring expenses on `/dashboard/expenses` **unchanged**. Any movement is itself the finding. **Merged before a pre-capture existed** — accepted paths: (a) the Matrix persists its in-session `4e6cdd5c` capture if still held (STILL a valid BEFORE — no code-touching merge landed between `4e6cdd5c` and #1538) and diffs against a fresh capture; or (b) fresh capture NOW + compare the Part-C money surfaces against the committed `rendered-baseline-8700b1d7.json` + VR-041 figures. Either way the fresh capture becomes T1's baseline of record |
 
 ### Tranche 1 — income (MON-128) — BLOCKED
 
