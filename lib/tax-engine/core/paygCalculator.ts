@@ -37,7 +37,7 @@
  */
 
 import { TaxYearConfig, PAYGScale, PAYGScheduleConfig, CalculationStep } from '../types';
-import { getCurrentTaxYearConfig, PAYG_SCHEDULE_2024_26 } from '../config/taxYearConfig';
+import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
@@ -72,16 +72,15 @@ export class PaygScheduleUnavailableError extends Error {
 /**
  * Resolve the coefficient set for a call.
  *
- * LEGACY DEFAULT (dies at the T1-B flip): when no config is passed, this
- * returns the 2024-26 schedule — byte-identical to the pre-T1 hardcoded
- * behaviour, so the golden baseline does not move in the T1-A scaffold PR.
- * Every NEW caller (the banked-income engines) passes its config explicitly;
- * T1-B repoints the remaining legacy callers and this default is removed.
+ * T1-B: the T1-A legacy pin (FY24-26 when no config) is DEAD. No config →
+ * the CURRENT FY's schedule (`getCurrentTaxYearConfig()`), matching every
+ * other engine's default. A config whose FY has no verified schedule
+ * throws — never borrow another FY (D35).
  */
 function resolveSchedule(config?: TaxYearConfig): PAYGScheduleConfig {
-  if (!config) return PAYG_SCHEDULE_2024_26;
-  if (!config.paygSchedule) throw new PaygScheduleUnavailableError(config.financialYear);
-  return config.paygSchedule;
+  const resolved = config ?? getCurrentTaxYearConfig();
+  if (!resolved.paygSchedule) throw new PaygScheduleUnavailableError(resolved.financialYear);
+  return resolved.paygSchedule;
 }
 
 export interface PAYGResult {
@@ -174,16 +173,20 @@ export function calculatePAYG(input: PAYGInput, config?: TaxYearConfig): PAYGRes
   const scale = hasTaxFreeThreshold ? schedule.scale2 : schedule.scale1;
 
   // ATO Schedule 1 §4: x = (whole dollars of weekly earnings) + 0.99.
-  // Audit MA.1-005 (2026-06-07): see file header for the literal ATO
-  // formula. Bracket selection still uses raw `weeklyEarnings` against
-  // the integer band bounds (MA.1-002 boundary-equivalence applies).
-  const xWhole = Math.floor(weeklyEarnings) + 0.99;
+  // Audit MA.1-005 (2026-06-07): see file header for the literal ATO formula.
+  // MON-138 (T1-B, declared): band selection uses floor(weeklyEarnings) —
+  // the ATO's whole-dollar x-semantics. The old raw-earnings test against
+  // integer bounds left every fractional value in a 1-dollar gap (e.g.
+  // weekly $500.50 between max 500 and min 501) matching NO band → $0
+  // withheld vs the ATO's $22. Floor-based selection is gap-free.
+  const wholeDollars = Math.floor(weeklyEarnings);
+  const xWhole = wholeDollars + 0.99;
 
   // Find the applicable coefficient range
   let weeklyWithholding = 0;
   for (const range of scale) {
     const max = range.weeklyEarningsMax ?? Infinity;
-    if (weeklyEarnings >= range.weeklyEarningsMin && weeklyEarnings <= max) {
+    if (wholeDollars >= range.weeklyEarningsMin && wholeDollars <= max) {
       // Apply ATO Schedule 1 formula: y = (a × x) - b, where x = floor(earnings) + 0.99.
       weeklyWithholding = Math.max(0, range.coefficients.a * xWhole - range.coefficients.b);
 
@@ -255,18 +258,14 @@ export function calculateGrossFromNet(
 
   while (iterations < maxIterations) {
     const mid = (low + high) / 2;
-    // MON-131 T1-A: `config` stays DELIBERATELY UNUSED here (the
-    // payg-withholding contract's "dead parameter" finding) — wiring it live
-    // now would reverse-solve gross under one FY while composers'
-    // forward-PAYG legs (processSalary) still run the legacy default: mixed
-    // FYs inside one result (caught by composers.decimal gross−payg≈net).
-    // The WHOLE composer flips to explicit config in ONE declared step at
-    // T1-B. Until then this function is byte-identical to pre-T1.
+    // T1-B: the dead `config` param is LIVE — safe now because every leg of
+    // every composer resolves to the SAME config (the T1-A mixed-FY hazard
+    // is gone with the legacy pin).
     const payg = calculatePAYG({
       grossIncome: mid,
       frequency,
       hasTaxFreeThreshold,
-    });
+    }, config);
 
     // Calculate what net would be at this gross
     const calculatedNet = mid - fromWeeklyAmount(payg.weeklyWithholding, frequency);
@@ -294,7 +293,7 @@ export function calculateGrossFromNet(
     grossIncome: finalGross,
     frequency,
     hasTaxFreeThreshold,
-  });
+  }, config);
 
   return {
     gross: Math.round(finalGross * 100) / 100,
@@ -366,13 +365,14 @@ export function calculatePAYGDecimal(input: PAYGInputDecimal, config?: TaxYearCo
   const scale = hasTaxFreeThreshold ? schedule.scale2 : schedule.scale1;
 
   // ATO Schedule 1 §4: x = (whole dollars of weekly earnings) + 0.99.
-  // Audit MA.1-005 (2026-06-07) — Decimal sibling matches Float path.
+  // MON-138 (T1-B): floor-based band selection — see the Float path comment.
+  const wholeDollars = Math.floor(weeklyEarningsNumber);
   const xWholeDec = weeklyEarnings.floor().plus('0.99');
 
   let weeklyWithholding = new Decimal(0);
   for (const range of scale) {
     const max = range.weeklyEarningsMax ?? Infinity;
-    if (weeklyEarningsNumber >= range.weeklyEarningsMin && weeklyEarningsNumber <= max) {
+    if (wholeDollars >= range.weeklyEarningsMin && wholeDollars <= max) {
       // y = (a × x) - b where x = floor(earnings) + 0.99, floored at 0.
       const raw = xWholeDec.times(range.coefficients.a).minus(range.coefficients.b);
       weeklyWithholding = Decimal.max(new Decimal(0), raw);
@@ -465,8 +465,7 @@ export function calculateGrossFromNetDecimal(
 
   while (iterations < maxIterations) {
     const mid = low.plus(high).div(2);
-    // T1-A: config deliberately unused — see the Float sibling's comment.
-    const payg = calculatePAYGDecimal({ grossIncome: mid, frequency, hasTaxFreeThreshold });
+    const payg = calculatePAYGDecimal({ grossIncome: mid, frequency, hasTaxFreeThreshold }, config);
     const taxAtFrequency = fromWeeklyDecimal(payg.weeklyWithholding);
     const calculatedNet = mid.minus(taxAtFrequency);
 
@@ -486,7 +485,7 @@ export function calculateGrossFromNetDecimal(
   }
 
   const finalGross = low.plus(high).div(2);
-  const finalPayg = calculatePAYGDecimal({ grossIncome: finalGross, frequency, hasTaxFreeThreshold });
+  const finalPayg = calculatePAYGDecimal({ grossIncome: finalGross, frequency, hasTaxFreeThreshold }, config);
   return {
     gross: finalGross.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
     tax: fromWeeklyDecimal(finalPayg.weeklyWithholding),

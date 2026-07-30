@@ -121,12 +121,13 @@ export function processSalary(
     explanation: annualSalarySacrifice > 0 ? 'Gross minus salary sacrifice' : 'Same as gross salary',
   });
 
-  // Step 4: Calculate PAYG withholding
+  // Step 4: Calculate PAYG withholding (T1-B: explicit config — the whole
+  // composer resolves ONE FY; the reverse-solver above uses the same config)
   const paygResult = calculatePAYG({
     grossIncome: taxableIncome, // PAYG is on taxable income (after salary sacrifice)
     frequency: 'ANNUALLY',
     hasTaxFreeThreshold,
-  });
+  }, config);
 
   calculations.push({
     label: 'PAYG Withholding',
@@ -431,7 +432,7 @@ export function processSalaryDecimal(
     grossIncome: taxableIncome,
     frequency: 'ANNUALLY',
     hasTaxFreeThreshold,
-  });
+  }, config);
   const medicareResult = calculateMedicareLevyDecimal({ taxableIncome }, config);
   const totalTax = paygResult.annualWithholding.plus(medicareResult.total);
 
