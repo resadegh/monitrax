@@ -29,8 +29,6 @@ export {
 
 export {
   calculateCashflow,
-  calculateMonthlyCashflow,
-  calculateAnnualCashflow,
   type CashflowResult,
   type CashflowInput,
 } from './cashflowOrchestrator';

@@ -36,6 +36,14 @@ import {
   type CashflowInput,
 } from '@/lib/calculations/cashflowOrchestrator';
 import type { ShadowEngine } from '@/lib/calc-audit/shadowComparison';
+import {
+  buildBankedIncome,
+  buildBankedIncomeDecimal,
+  bankedTotalsFromResult,
+  bankedTotalsFromResultDecimal,
+} from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { TAX_YEAR_2026_27 } from '@/lib/tax-engine/config/taxYearConfig';
 
 // ---------------------------------------------------------------------------
 // Fixtures shared across engines (mass-affluent persona + edge cases)
@@ -170,9 +178,13 @@ export const loanAggregatorShadow: ShadowEngine<
 // ---------------------------------------------------------------------------
 // cashflow.compute (the composer)
 // ---------------------------------------------------------------------------
+// MON-131 T1-B: the orchestrator takes pre-computed BANKED totals (MON-137
+// culprit removed). The shadow now exercises the REAL end-to-end path both
+// ways: rows -> banked engine (Float/Decimal) -> the ONE totals mapping ->
+// calculateCashflow(Decimal). repaymentIncome null => HELP undetermined.
 
-const CASHFLOW_INPUT_BASE: CashflowInput = {
-  income: SALARY_INCOME,
+const CASHFLOW_ROWS = {
+  income: SALARY_INCOME.map((i) => ({ ...i })),
   expenses: MIXED_EXPENSES,
   loans: TWO_LOANS.map((l) => ({
     minRepayment: l.minRepayment,
@@ -181,16 +193,38 @@ const CASHFLOW_INPUT_BASE: CashflowInput = {
   })),
 };
 
+const BANKED_CTX = { config: TAX_YEAR_2026_27, repaymentIncome: null };
+
+function bankedInputFromRows(income: Array<Record<string, unknown>>) {
+  return {
+    income: income as unknown as BankedIncomeRow[],
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: BANKED_CTX,
+  };
+}
+
 export const cashflowOrchestratorShadow: ShadowEngine<
-  { input: CashflowInput },
+  { input: { income: Array<Record<string, unknown>>; expenses: typeof MIXED_EXPENSES; loans: Array<{ minRepayment: number; repaymentFrequency: string; name?: string }> } },
   ReturnType<typeof calculateCashflow>,
   ReturnType<typeof calculateCashflowDecimal>
 > = {
   name: 'core.cashflowOrchestrator.shadow',
-  description: 'Shadow Float vs Decimal `calculateCashflow` — full composition.',
+  description: 'Shadow Float vs Decimal `calculateCashflow` — banked totals in, full composition.',
   sourcePath: 'lib/calculations/cashflowOrchestrator.ts',
-  floatExecute: ({ input }) => calculateCashflow(input),
-  decimalExecute: ({ input }) => calculateCashflowDecimal(input),
+  floatExecute: ({ input }) =>
+    calculateCashflow({
+      incomeTotals: bankedTotalsFromResult(buildBankedIncome(bankedInputFromRows(input.income))),
+      expenses: input.expenses,
+      loans: input.loans,
+    }),
+  decimalExecute: ({ input }) =>
+    calculateCashflowDecimal({
+      incomeTotals: bankedTotalsFromResultDecimal(buildBankedIncomeDecimal(bankedInputFromRows(input.income))),
+      expenses: input.expenses,
+      loans: input.loans,
+    }),
   // Every cashflow output field is pre-rounded by Float's `round()` to 2 dp,
   // so they all behave like currency at the shadow boundary — including the
   // ratio fields (savingsRate / expenseRatio / debtServiceRatio).
@@ -203,12 +237,12 @@ export const cashflowOrchestratorShadow: ShadowEngine<
     },
     {
       name: 'mass-affluent persona',
-      description: 'Salary GROSS + rental + mixed expenses + two mortgages — full path.',
-      input: { input: CASHFLOW_INPUT_BASE },
+      description: 'Salary GROSS + rental + mixed expenses + two mortgages — full banked path.',
+      input: { input: CASHFLOW_ROWS },
     },
     {
-      name: 'salary NET no PAYG branch',
-      description: 'salaryType=NET without grossAmount — gross=net=amount, PAYG=0.',
+      name: 'salary NET no gross stored',
+      description: 'salaryType=NET without grossAmount — banked = amount, gross UNDETERMINED (floors at banked, flagged).',
       input: {
         input: {
           income: [{ amount: 8000, frequency: 'MONTHLY', type: 'SALARY', salaryType: 'NET' }],
