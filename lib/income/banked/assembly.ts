@@ -20,7 +20,7 @@ import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWi
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
 import {
-  computeRepaymentIncome,
+  assembleRepaymentIncome,
   type RepaymentIncomeResult,
 } from '@/lib/tax-engine/position/repaymentIncome';
 import type { TaxYearConfig, TaxPositionResult } from '@/lib/tax-engine/types';
@@ -43,49 +43,12 @@ export interface BankedRawData {
   transactions: CashflowTransaction[];
 }
 
-/**
- * D42 C3 — assemble repayment income from the CANONICAL tax position.
- * Derivations (each labelled in componentBasis by `computeRepaymentIncome`):
- *   - taxableIncome           ← taxPosition.tax.taxableIncome
- *   - totalNetInvestmentLoss  ← net rental loss (property + depreciation
- *     deductions over rental income) + net financial-investment loss
- *     (investment deductions over dividends + interest), each floored at 0 —
- *     the ATO IT7/IT8 add-back classes, derived from the position breakdown.
- *   - reportableSuperContributions ← Σ Income.salarySacrifice (salary
- *     sacrifice is reportable; SG is NOT and is never included; personal
- *     deductible contributions are not separable from the position and are
- *     therefore OMITTED — an under-estimate, not a guess).
- *   - FHSS / reportable fringe benefits / exempt foreign employment income —
- *     not modelled → DEFAULT_ZERO, carried in componentBasis (the result is
- *     an estimate and says so; D42 C3: Reza's own figure comes from the
- *     notice of assessment, never this derivation).
- */
-export function assembleRepaymentIncome(
-  taxPosition: TaxPositionResult,
-  incomeRows: Array<{ type: string; salarySacrifice?: number | null }>,
-): RepaymentIncomeResult {
-  const netRentalLoss = Math.max(
-    0,
-    taxPosition.deductions.property +
-      taxPosition.deductions.depreciation -
-      taxPosition.income.rental,
-  );
-  const netFinancialInvestmentLoss = Math.max(
-    0,
-    taxPosition.deductions.investment -
-      (taxPosition.income.dividends + taxPosition.income.interest),
-  );
-  const reportableSuper = incomeRows
-    .filter((r) => r.type === 'SALARY')
-    .reduce((sum, r) => sum + (r.salarySacrifice ?? 0), 0);
-
-  return computeRepaymentIncome({
-    taxableIncome: taxPosition.tax.taxableIncome,
-    totalNetInvestmentLoss: netRentalLoss + netFinancialInvestmentLoss,
-    reportableSuperContributions: reportableSuper,
-    // FHSS / RFB / exempt foreign employment — unmodelled, DEFAULT_ZERO.
-  });
-}
+// D42 C3 — `assembleRepaymentIncome` moved to its pure home,
+// `lib/tax-engine/position/repaymentIncome.ts` (T1-B §1.1: the two-pass in
+// `getUserTaxPosition` needs it without a module cycle through this
+// prisma-coupled assembler). Re-exported so this module remains the wiring
+// surface for banked-income callers — still ONE producer (§12.2.1).
+export { assembleRepaymentIncome };
 
 /** Fetch the full row set the banked engines require (every field — an
  *  input-feed omission is the MON-137 defect class). */

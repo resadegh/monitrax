@@ -130,6 +130,17 @@ export interface TaxPositionCalculationInput {
      *  cover. null/undefined = not entered → conservatively uncovered. */
     familyCovered: boolean | null;
   };
+  /**
+   * MON-131 T1-B §1.1: annual PAYG withholding credit derived by the ONE
+   * banked-income engine (Σ salary-row wedges — FACT bases win, DERIVED
+   * schedule otherwise). When provided it REPLACES the stored per-row
+   * `paygWithholding` sum (which is stale/partial on real data: 11,129 vs
+   * the 43,004 the schedule actually withholds — VR-043 §3). Supplied by
+   * `getUserTaxPosition`'s second pass; estimate callers omit it and keep
+   * the stored-row behaviour. Never affects taxable income — only the
+   * withheld credit and therefore estimatedRefund.
+   */
+  derivedPaygWithheldAnnual?: number | null;
 }
 
 // =============================================================================
@@ -368,6 +379,13 @@ export function calculateTaxPosition(
     effectiveRate: Math.round(effectiveRate * 100) / 100,
     marginalRate: incomeTaxResult.marginalRate,
   };
+
+  // Banked wedge override (see the input JSDoc): when supplied it replaces
+  // the stored row sum. Applied after the loop so taxable income (computed
+  // above) can never depend on it (no cycle). MON‑131 T1B §1.1.
+  if (input.derivedPaygWithheldAnnual != null) {
+    totalPaygWithheld = input.derivedPaygWithheldAnnual;
+  }
 
   // Calculate estimated refund/owing
   const estimatedRefund = totalPaygWithheld - netTax;
@@ -905,6 +923,12 @@ export function calculateTaxPositionDecimal(
     effectiveRate,
     marginalRate: incomeTaxResult.marginalRate,
   };
+
+  // Decimal mirror of the Float wedge override (applied after the loop so
+  // taxable income never depends on it; see the Float twin). MON‑131 §1.1.
+  if (input.derivedPaygWithheldAnnual != null) {
+    totalPaygWithheld = toDecimal(input.derivedPaygWithheldAnnual) ?? totalPaygWithheld;
+  }
 
   const estimatedRefund = totalPaygWithheld.minus(netTax);
 
