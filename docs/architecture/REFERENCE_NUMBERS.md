@@ -11,6 +11,17 @@
 > seed `.audit/producer-census.json`) · `npm run lint:source-lock` (now scanning `lib/`,
 > debt `.audit/source-lock-exceptions.json`, ratchet-down-only). The count going down is the
 > deliverable; **Definition of done: 23 quantities, 23 canonical producers (+ Decimal twins).**
+>
+> **Phase A0 complete census (2026-07-29, D16 — nothing is out of scope):** the ratchet now
+> measures **40 quantities · 1,307 formula-shape sites**, plus an **UNATTRIBUTED sweep bucket of
+> 424** money-arithmetic functions matching no signature (each maps to a named quantity or becomes
+> a new one — `docs/architecture/contracts/mon136-unattributed-sweep.md`). The previously-unmeasured
+> list is structurally EMPTY: all 11 formerly-unmeasured MON-131 quantities carry signatures, and
+> the 16 blind-spot families are censused as MON-136 candidates
+> (`docs/architecture/contracts/mon136-register.md`). Split per D16: **MON-131 = the original 23,
+> fixed first; MON-136 = everything else, immediately after, same machinery.** Full-depth Quantity
+> Contracts live in `docs/architecture/contracts/`; the decision artefact is
+> `docs/architecture/NUMBER_INVENTORY.md`.
 
 ## FACTS — asserted by a user or a document; stored ONCE, never derived
 
