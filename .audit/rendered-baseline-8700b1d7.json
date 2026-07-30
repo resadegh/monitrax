@@ -1,0 +1,80 @@
+{
+  "capturedAt": "2026-07-29 AEST",
+  "head": "8700b1d7d5d01f1f177749f77d8d1bd0b97bb156",
+  "deployment": "dpl_HFzJKYWY84Sprb7NcMPJpzi86rJq",
+  "deployState": "READY",
+  "target": "production",
+  "method": "Claude-in-Chrome, live PROD, Reza's account, read-only",
+  "purpose": "Axis-B/C reference for the Number Ledger. Complements the producer-level golden baseline (fixture data). Any post-tranche movement must be pre-declared in expectedMoves.",
+  "surfaces": {
+    "/dashboard/tax": {
+      "financialYear": "2026-27",
+      "bracketTable": "Australian Tax Brackets FY26-27",
+      "totalIncome": "$317,751",
+      "incomeSources": 19,
+      "totalDeductions": "$172,325",
+      "deductionCount": 137,
+      "taxableIncome": "$145,426",
+      "taxOwing": "$26,658",
+      "paygWithheld": "$11,129",
+      "effectiveRate": "26.0%",
+      "marginalRate": "37.0%",
+      "taxOnIncome": "$34,878",
+      "medicareLevy": "$2,909",
+      "grossTax": "$37,786",
+      "netTaxPayable": "$37,786",
+      "negativeGearingWarning": "$50,334"
+    },
+    "/dashboard/balances": {
+      "netPosition": "-$1,758,089",
+      "cash": "$304,304",
+      "credit": "-$2,496",
+      "debt": "$2,059,898",
+      "netWorth": "$3,401,782",
+      "totalAssets": "$5,461,679",
+      "liquidToday": "$301,808",
+      "liquidPct": "9%",
+      "accessible": "$67,871",
+      "accessiblePct": "2%",
+      "lockedLongTerm": "$3,032,102",
+      "lockedPct": "89%",
+      "propertyEquity": "$2,955,102",
+      "personalAssets": "$102,000",
+      "lessHecsLoans": "-$25,000"
+    },
+    "/dashboard/expenses": {
+      "headerTotalOutgoings": "$14,261/month",
+      "paretoPanel": "$1,482 / month",
+      "recurringExpenses": "$1,482",
+      "recurringCount": 5,
+      "oneOffSpending": "$50,840",
+      "oneOffCount": 132,
+      "loanRepayments": "$12,779",
+      "loanCount": 5,
+      "totalOutgoings": "$14,261",
+      "totalOutgoingsAnnual": "$171,138",
+      "perLoan": {
+        "HECS/student": "$83/mo (interest cost, no repayment linked or set)",
+        "Bankwest-Broadbeach-IO": "$1,191/mo (from linked repayments)",
+        "Bankwest-ThornlandLot2-IO": "$2,518/mo (from linked repayments)",
+        "Bankwest-ThornlandLot1-P&I": "$6,197/mo (from linked repayments)",
+        "Bankwest-Guildford-P&I": "$2,790/mo (from linked repayments)"
+      },
+      "categoryInsurance": "$812/mo ($9,747/yr)"
+    }
+  },
+  "identities": {
+    "bucketsTieToNetWorth": "301808 + 67871 + 3032102 = 3401781 vs stated 3401782 ($1 rounding)",
+    "liquidNetsCards": "304304 - 2496 = 301808 OK",
+    "loanRowsSumToAggregate": "83 + 1191 + 2518 + 6197 + 2790 = 12779 OK",
+    "outgoingsComposition": "1482 + 12779 = 14261 OK",
+    "paretoEqualsRecurring": "1482 == 1482 OK (post MON-126)",
+    "netTaxComposition": "34878 + 2909 = 37787 vs stated 37786 ($1 rounding)",
+    "taxOwing": "37786 - 11129 = 26657 vs stated 26658 ($1 rounding)"
+  },
+  "knownLiveDefectsAtCapture": [
+    "MON-133: superGuaranteeRate hardcoded 0.115 (legislated 12%) at income/page.tsx:566 and savingOpportunities.ts:162",
+    "MON-128: quickMetrics.monthlyIncome $41,303/mo exceeds declared gross $317,751/yr - net cannot exceed gross",
+    "MON-132: emergency fund reads 11.6 months on total outgoings; survival-runway spec gives ~72 months"
+  ]
+}

@@ -3,7 +3,7 @@
 **The Phase A gate deliverable** (spec: `NUMBER_INVENTORY_SPEC.md`; brief:
 `docs/issues/handoffs/CODE_BRIEF_MON-131_PHASE_A_quantity-contracts.md`). Written for Reza:
 every line is something to act on. The engineering depth behind every row lives in
-`docs/architecture/contracts/` (49 Quantity Contracts, every one adversarially reviewed by an
+`docs/architecture/contracts/` (48 contract files — 45 full-depth Quantity Contracts + 3 register/index documents; every full-depth contract adversarially reviewed by an
 independent second agent trying to refute it — §7 of the brief).
 
 **Method + evidence base.** Production tree read at HEAD `2f9f2e16`/`696ec349` (identical for
@@ -424,7 +424,7 @@ formatting-only code, and the Neomatrix's non-financial blind spots (Part 21.5's
 - The §6 boundary is specific enough to be checked. ✅
 
 **Stated counts:** 40 census quantities · 1,307 formula-shape sites · 424-function sweep bucket ·
-**68 named quantities** in this report · 49 contract files · unmeasured-by-signature: **0**
+**68 named quantities** in this report · 48 contract files (45 quantity + 3 register/index; count corrected 2026-07-30, ledger drift log D6) · unmeasured-by-signature: **0**
 (structurally empty; the honest boundary is the v1-heuristic misses itemised in Part 4).
 
 Reza reads this, makes the §5.1 calls, and only then does Phase B write a single line.
