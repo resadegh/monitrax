@@ -117,6 +117,14 @@ Tranche-specific facts (verified in the brief, to re-verify at source before eac
   **`Loan` has no `isRecurring` field (schema-verified) — do not apply the one-off gate to loans.**
 - **T3 expense run-rate (MON-129):** 23 confirmed-exposed Income/Expense reducers across 12 files
   → `monthlyRunRate`/`annualRunRate`, Float and Decimal.
+  **⛔ STATED PRECONDITION — MON-135 (LANDED 2026-07-30, PR-1 of the tranche sequence): the AI
+  categoriser stamped `isRecurring: false` unconditionally on every prediction; composed with
+  T3's strict `=== false` gate that would have zeroed every AI-categorised expense at once, and
+  the golden baseline would have absorbed the loss inside T3's legitimate expected downward
+  moves. Fixed at the producer: predictions now carry `null` (no determination), recurrence is
+  set `true` only from learned recurring-pattern evidence, and the tri-state is pinned by the
+  Wall-B2 fixtures (Float + Decimal). T3 MUST NOT merge before the MON-135 PR is merged +
+  Ring-3-verified (expenses screen unchanged).**
 - **T4:** D11 depreciation rate-unit contract (the `cost×(rate/100)×2` vs `cost×rate×2` 100× trap —
   `properties/[id]/depreciation/page.tsx:194` vs `reports/contextBuilder.ts:521`); D12 every
   legislated constant from `TAX_YEAR_CONFIGS` (`what-if/[lever]/page.tsx:422` hardcodes `30000` +

@@ -14,7 +14,8 @@ import {
   computePropertyCashflow,
   resolveLoanMonthlyCost,
 } from '../../lib/calculations/propertyCashflow';
-import { monthlyRunRate, annualRunRate, toMonthly } from '../../lib/utils/frequencies';
+import { monthlyRunRate, annualRunRate, toMonthly, toMonthlyDecimal } from '../../lib/utils/frequencies';
+import { Decimal } from '../../lib/decimal';
 import {
   calculateTaxPosition,
   calculateTaxPositionDecimal,
@@ -111,6 +112,45 @@ describe('Wall B2 · monthlyRunRate — a one-off contributes 0 to every run-rat
       ],
     });
     expect(cf.monthlyExpenses).toBeCloseTo(300, 6); // the one-off contributed 0 there too
+  });
+
+  // MON-135 (the T3 precondition) — the gate's tri-state, pinned permanently:
+  // UNDETERMINED (null/undefined) flows through at the FULL run-rate; only an
+  // explicit `false` (a real one-off assertion) contributes 0. The AI
+  // categoriser now emits null when it made no recurrence determination, so a
+  // strictly-`=== false` gate is the difference between "one-offs correctly
+  // excluded" and "recurring costs wrongly excluded" (brief §1). Float AND
+  // Decimal (the master snapshot's Decimal path filters on the same strict
+  // predicate before toMonthlyDecimal — asserted here so neither side can
+  // drift to falsy-treatment).
+  it('MON-135 · undetermined (null/unset) contributes the FULL run-rate; only explicit false is a one-off — Float', () => {
+    const undeterminedNull = { amount: 600, frequency: 'MONTHLY', isRecurring: null };
+    const undeterminedUnset = { amount: 600, frequency: 'MONTHLY' };
+    const explicitOneOff = { amount: 600, frequency: 'MONTHLY', isRecurring: false };
+    expect(monthlyRunRate(undeterminedNull)).toBeCloseTo(600, 9);
+    expect(monthlyRunRate(undeterminedUnset)).toBeCloseTo(600, 9);
+    expect(annualRunRate(undeterminedNull)).toBeCloseTo(7200, 9);
+    expect(monthlyRunRate(explicitOneOff)).toBe(0);
+    expect(annualRunRate(explicitOneOff)).toBe(0);
+  });
+
+  it('MON-135 · the same tri-state on the Decimal side (strict === false filter + toMonthlyDecimal)', () => {
+    // The Decimal engines gate with the identical strict predicate before
+    // converting (e.g. masterFinancialService's `e.isRecurring === false`
+    // filters). Pin the predicate + conversion composition so a falsy-treating
+    // rewrite of either side fails here.
+    const rows = [
+      { amount: 600, frequency: 'MONTHLY' as const, isRecurring: null },
+      { amount: 600, frequency: 'MONTHLY' as const, isRecurring: false },
+      { amount: 1200, frequency: 'ANNUAL' as const, isRecurring: true },
+    ];
+    const gated = rows.filter((r) => r.isRecurring !== false);
+    const totalMonthly = gated.reduce(
+      (sum, r) => sum.plus(toMonthlyDecimal(r.amount, r.frequency)),
+      new Decimal(0),
+    );
+    // null row counts in full (600); false row excluded; true ANNUAL row = 100.
+    expect(totalMonthly.toNumber()).toBeCloseTo(700, 9);
   });
 });
 

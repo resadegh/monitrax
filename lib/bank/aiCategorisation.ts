@@ -7,6 +7,7 @@
 import { GeminiUsageMetrics } from '@/lib/ai/google/geminiClient';
 import { NormalisedTransaction, CategorisedTransaction, CategoryType } from './types';
 import { isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
+import { DUPLICATE_AMOUNT_TOLERANCE } from '@/lib/utils/reconciliation';
 import { categoriseTransactionBatch, type CategorisationResult } from '@/lib/tie/categorisation';
 import type { UnifiedTransaction } from '@/lib/tie/types';
 import {
@@ -35,7 +36,16 @@ export interface AICategorizationPrediction {
   subcategory: string | null;
   direction: 'INCOME' | 'EXPENSE';
   isEssential: boolean;
-  isRecurring: boolean;
+  /**
+   * MON-135 (the T3 precondition): `null` = the categoriser made NO recurrence
+   * determination. `false` is an ASSERTION the row is a one-off — under the
+   * canonical one-off gate (`lib/utils/frequencies.ts` `monthlyRunRate`,
+   * strictly `=== false`) that assertion zeroes the row's run-rate, so the
+   * categoriser may only emit it from real evidence, never as a default.
+   * `true` comes from learned merchants / recurring patterns (user-confirmed
+   * evidence). The prediction path NEVER emits `false` today.
+   */
+  isRecurring: boolean | null;
   suggestedFrequency: string | null;
   confidence: number;
   reasoning: string;
@@ -87,7 +97,8 @@ function buildUncategorisedResults(
       subcategory: null,
       direction: tx.direction === 'IN' ? ('INCOME' as const) : ('EXPENSE' as const),
       isEssential: false,
-      isRecurring: false,
+      // MON-135: no categorisation happened, so no recurrence determination.
+      isRecurring: null,
       suggestedFrequency: null,
       confidence: 0,
       reasoning: reason,
@@ -200,6 +211,9 @@ export function mapNormalisedToUnified(
     merchantCategoryCode: tx.merchantCategoryCode ?? null,
     tags: [],
     userCorrectedCategory: false,
+    // Type-filler ONLY: the cascade never reads `isRecurring` (verified —
+    // zero references under lib/tie/categorisation). This value is never
+    // emitted as a prediction and never persisted (MON-135).
     isRecurring: false,
     anomalyFlags: [],
     source: 'CSV', // not consumed by the cascade; placeholder for the type
@@ -220,8 +234,10 @@ const CASCADE_REASONING: Record<CategorisationResult['source'], string> = {
  * Map one cascade `CategorisationResult` back to the `AICategorizationResult`
  * shape the import + Basiq consumers already expect — so the downstream DB-write
  * code does not change. Carries `source` (drives never-auto-file). `isEssential`
- * / `isRecurring` are not inferred by the cascade → default false (the user sets
- * them on confirm); `direction` derives from the tx as the legacy path did. Pure.
+ * is not inferred by the cascade → false; `isRecurring` is not inferred either →
+ * **null, never false** (MON-135: the cascade makes no recurrence determination,
+ * and `false` is a one-off assertion the T3 gate acts on); `direction` derives
+ * from the tx as the legacy path did. Pure.
  */
 export function cascadeResultToAIResult(
   tx: NormalisedTransaction,
@@ -246,7 +262,8 @@ export function cascadeResultToAIResult(
       subcategory: r.subcategory ?? null,
       direction: tx.direction === 'IN' ? 'INCOME' : 'EXPENSE',
       isEssential: false,
-      isRecurring: false,
+      // MON-135: the cascade categorises; it does not judge recurrence.
+      isRecurring: null,
       suggestedFrequency: null,
       confidence: r.confidence,
       reasoning,
@@ -362,7 +379,8 @@ export async function categoriseWithLearning(
           subcategory: null,
           direction: tx.direction === 'IN' ? 'INCOME' : 'EXPENSE',
           isEssential: false,
-          isRecurring: false,
+          // MON-135: transfer detection says nothing about recurrence.
+          isRecurring: null,
           suggestedFrequency: null,
           confidence: 0.9,
           reasoning: 'Recognised as an internal transfer from the description',
@@ -423,6 +441,36 @@ export async function categoriseWithLearning(
     aiResults = cascade.results;
     degraded = cascade.degraded;
     degradedReason = cascade.degradedReason;
+  }
+
+  // Step 4b (MON-135 §3.2): determine recurrence WHERE THE EVIDENCE EXISTS.
+  // `recurringPatterns` (fetched in step 2, previously unused) is the existing
+  // learned-recurrence source — user-confirmed MerchantMapping rows with
+  // isRecurring=true + a suggestedFrequency, joined to the merchant's average
+  // transaction amount. A cascade result whose merchant matches a pattern at a
+  // similar amount (the ONE canonical duplicate tolerance, ≤10% — no second
+  // heuristic, no new producer) gets a REAL determination: isRecurring: true +
+  // the learned cadence. Everything else stays null (undetermined), NEVER false.
+  if (aiResults.length > 0 && recurringPatterns.length > 0) {
+    const patternByMerchant = new Map(
+      recurringPatterns.map((p) => [p.merchant.toLowerCase(), p]),
+    );
+    for (const result of aiResults) {
+      const merchantKey = (
+        result.transaction.merchantStandardised || result.transaction.description
+      ).toLowerCase();
+      const pattern = patternByMerchant.get(merchantKey);
+      if (!pattern) continue;
+      const a = Math.abs(result.transaction.amount);
+      const b = Math.abs(pattern.amount);
+      const similarAmount =
+        a > 0 && b > 0 && Math.abs(a - b) <= Math.max(a, b) * DUPLICATE_AMOUNT_TOLERANCE;
+      if (similarAmount) {
+        result.prediction.isRecurring = true;
+        result.prediction.suggestedFrequency = pattern.frequency;
+        result.boostReasons.push('Matched learned recurring pattern (MON-135 evidence-based)');
+      }
+    }
   }
 
   // Step 5: Combine results
@@ -505,6 +553,13 @@ export async function bulkConfirmAutoAccepted(
 
       const confirmation: UserConfirmation = {
         ...result.prediction,
+        // MON-135: a confirmation stores a boolean. Undetermined (null) maps to
+        // false ONLY in the MerchantMapping learning row, where false means
+        // "no recurrence learned" (getRecurringPatterns filters isRecurring:true;
+        // false rows merely never match) — it is never an assertion the T3
+        // one-off gate reads. Declared Income/Expense rows are untouched by
+        // this path (they go through classifyIntake).
+        isRecurring: result.prediction.isRecurring ?? false,
         wasEdited: false,
         applyToSimilar: false,
       };

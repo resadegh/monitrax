@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**123 total** · 64 open · 🔵 31 · 🟡 3 · 🟠 28 · 🟢 2 · ✅ 58
+**123 total** · 64 open · 🔵 30 · 🟡 3 · 🟠 29 · 🟢 2 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -128,7 +128,7 @@
 | MON-132 | 🔵 OPEN | 🟠 | yes | Emergency fund must be a SURVIVAL RUNWAY — liquid cash / (essential expenses - salary-independent income), answering 'if I lose my salary, how long do I last' (Reza decision 2026-07-29) | — | — |
 | MON-133 | 🔵 OPEN | 🟠 | yes | Legislated tax constants hardcoded outside TAX_YEAR_CONFIGS in ~12 production files — including a STALE Super Guarantee rate of 11.5% in two live paths (the legislated rate is 12%) | — | — |
 | MON-134 | 🟠 FIXING | 🟠 | yes | Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise | ##1530 (schema), ##PR-3 (read path — this PR) | ✅ |
-| MON-135 | 🔵 OPEN | 🔴 | no | AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3) | — | n/a |
+| MON-135 | 🟠 FIXING | 🔴 | no | AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3) | #1538 | n/a |
 | MON-136 | 🔵 OPEN | 🔴 | yes | Reference Numbers, wave 2 — apply the one-producer law to every remaining quantity the complete census found beyond MON-131's 23 | — | — |
 
 ---
@@ -2220,16 +2220,22 @@ Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 1
 
 ### MON-135 — AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3)
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **no** · area: intake · opened 2026-07-29
+**🟠 FIXING** · 🔴 critical · changes numbers: **no** · area: intake · opened 2026-07-29
 
 > **What was wrong:** When the app auto-categorises your bank transactions, it marks every one of them as a one-off rather than recurring. Today that is mostly invisible — but the moment the recurring-only rule is applied to expense totals (the MON-131 expense fix), every auto-categorised expense would silently drop to zero, and the safety net that compares before/after numbers would read the loss as an expected decrease. The categoriser must stop stamping everything non-recurring BEFORE that fix lands.
 >
+> **What changed:** The auto-categoriser now says "I don't know" (null) instead of stamping every transaction one-off, and where your own confirmed history shows a merchant recurs it marks it recurring with the learned cadence. A false one-off marking can now only come from real evidence or your own choice.
+>
+> **What you should see:** Nothing should change on any screen — every figure stays identical (that IS the acceptance test: the Matrix relay diff must come back CLEAN after this deploys). New AI suggestions in the review queue no longer carry a silent one-off marking.
+
 - **Root cause:** `lib/bank/aiCategorisation.ts:90`, `lib/bank/aiCategorisation.ts:203`, `lib/bank/aiCategorisation.ts:249`, `lib/bank/aiCategorisation.ts:365`
 - **Neomatrix:** `engine.frequencies.monthlyRunRate`
+- **Downstream consumers (§19.4):** `lib/utils/frequencies.ts:50 monthlyRunRate/annualRunRate (the T3 gate — null flows as recurring; verified strict)`, `app/api/accounts/[id]/import/route.ts (UnifiedTransaction view-flag write + queue aiIsRecurring)`, `lib/bank/basiqSync.ts (same pair for Basiq sync)`, `lib/bank/reviewQueue.ts confirmReviewItem (CONFIRM prefill + transaction write + learning write)`, `lib/bank/aiLearning.ts logAICategorization (nullable telemetry) + MerchantMapping via user confirmation`, `Declared Income/Expense rows: STRUCTURALLY UNREACHABLE from the AI stamp (classifyIntake wall + evidence-based link dialog) — the census that proves the exposure was empty`
+- **Fix PR(s):** #1538
 - **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `code-brief:MON-131-PHASE-A §6 (precondition on Tranche 3)`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bank/aiCategorisation.ts.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bank/aiCategorisation.ts. FIXING 2026-07-30: PR #1538 (tri-state prediction, evidence-based recurrence via getRecurringPatterns, two aiIsRecurring columns nullable, Wall-B2 tri-state fixtures Float+Decimal + never-emits-false guards). changesNumbers stays false: the PR changes what a default MEANS; required relay verdict post-merge is CLEAN (nothing moved). Ledger: docs/implementation/MON-131_TRANCHE_LEDGER.md §3.0.
 
 ### MON-136 — Reference Numbers, wave 2 — apply the one-producer law to every remaining quantity the complete census found beyond MON-131's 23
 

@@ -524,7 +524,9 @@ async function importBasiqTransactionsWithAI(
         categoryLevel2: pred.categoryLevel2,
         subcategory: pred.subcategory,
         isEssential: pred.isEssential,
-        isRecurring: pred.isRecurring,
+        // MON-135: view flag only — see the import route's note. Undetermined
+        // (null) → not-flagged; the null survives on queue/learning rows.
+        isRecurring: pred.isRecurring ?? false,
         confidenceScore: result.adjustedConfidence,
         source: TransactionSource.BASIQ,
         basiqTransactionId: basiqId,
