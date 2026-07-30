@@ -6123,7 +6123,9 @@ model AICategorizationLearning {
   aiSubcategory    String?
   aiConfidence     Float // Original AI confidence (0-1)
   aiIsEssential    Boolean @default(false)
-  aiIsRecurring    Boolean @default(false)
+  // MON-135: nullable — the categoriser emits NULL when it made no recurrence
+  // determination; `false` is an assertion it is not entitled to make.
+  aiIsRecurring    Boolean?
   aiReasoning      String? @db.Text
 
   // Final (user-confirmed or corrected) values
@@ -6277,7 +6279,9 @@ model TransactionReviewQueue {
   aiSubcategory    String?
   aiConfidence     Float   @default(0)
   aiIsEssential    Boolean @default(false)
-  aiIsRecurring    Boolean @default(false)
+  // MON-135: nullable — NULL = no recurrence determination by the categoriser
+  // (never a default `false`; the T3 one-off gate treats false as an assertion).
+  aiIsRecurring    Boolean?
   aiReasoning      String?
 
   // Confidence classification

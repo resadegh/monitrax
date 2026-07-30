@@ -25,12 +25,18 @@ export interface CategoryPrediction {
   categoryLevel2: string | null;
   subcategory: string | null;
   isEssential: boolean;
-  isRecurring: boolean;
+  /** MON-135: `null` = the categoriser made no recurrence determination.
+   *  `false` is a one-off assertion and may only come from real evidence. */
+  isRecurring: boolean | null;
   suggestedFrequency: string | null;
   confidence: number;
 }
 
 export interface UserConfirmation extends CategoryPrediction {
+  /** A confirmation is a USER decision — the tri-state collapses to their
+   *  explicit boolean choice here (MON-135: predictions may be null; a
+   *  confirmed row may not). */
+  isRecurring: boolean;
   wasEdited: boolean;
   applyToSimilar: boolean;
 }
