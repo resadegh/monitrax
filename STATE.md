@@ -81,8 +81,33 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 4. Topic authorities: architecture -> `docs/architecture/`; phases -> `docs/blueprint/MASTER_BLUEPRINT.md`;
    compliance -> `docs/compliance/`; GTM -> `docs/marketing/` (+ `docs/marketing/gtm/`); design -> Stitch system
    (`docs/design/`); calc engines -> `lib/calculations/*` + `lib/services/masterFinancialService.ts`.
+5. **MON-131 "Reference Numbers" — THE FIRST-PRIORITY PROGRAMME (2026-07-29 →). Its doc set, in read order:**
+   `docs/architecture/MON-131_BUILD_SPECIFICATION.md` (all 7 tranches designed in advance; every brief is a
+   slice of it — scope not in it means AMEND IT FIRST, incl. its §3 dependency matrix; acceptance criteria are
+   pre-committed there, never re-authored per tranche) ·
+   `docs/implementation/MON-131_TRANCHE_LEDGER.md` (per-tranche gate state + evidence + drift log — **the
+   programme's state of record; if it disagrees with anything else, it wins**) ·
+   `docs/architecture/REFERENCE_NUMBERS_DESIGN.md` (design record + §6 decisions D1–D47) ·
+   `docs/architecture/REFERENCE_NUMBERS_DECISIONS.md` (consolidated D17–D41 register) ·
+   `docs/architecture/decisions/D42_VERIFICATION_CORRECTIONS.md` (final verification pass — 6 corrections) ·
+   `docs/architecture/NUMBER_INVENTORY.md` (68 quantities, one verdict each) + `docs/architecture/contracts/`.
+   **Roles since 2026-07-30:** Code owns the repo (designs, specs, briefs, ledger, recording findings);
+   the Matrix does live verification ONLY and no longer pushes — it reports, Code records.
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
+
+> **Re-pinned 2026-07-30 (Code session, MON-131 handover) at live HEAD `c07669e5` = merge of #1537.**
+> **Current focus: 0·REF — MON-131 "Reference Numbers" IS the programme; no unrelated issue is worked
+> before its sweep passes (D16).** Phase A complete + merged (#1534: the Number Inventory + 48
+> contracts); all §5.1 decisions settled (D17–D47 across #1535/#1536/#1537); Build Specification +
+> Tranche Ledger + T1 brief landed (#1537). **MON-135 (T3 precondition) built — PR #1538 open**, red
+> only on a P3009 dev-DB migration-resolve (one command, see the PR comment); merges before T1.
+> **Blockers of record (ledger §3 Instrumentation + drift D5):** the golden baseline was never
+> persisted — recapture + COMMIT at current main before ANY code-touching merge; VR-040.md +
+> baseline artefacts landed via the 2026-07-30 handover PR. **Then: Tranche 1 income (MON-128)**
+> per `docs/issues/handoffs/CODE_BRIEF_MON-128_TRANCHE_1_income.md` — expectedMoves are COMPUTED
+> via relay old-vs-new on the same real data, never hand-written. The section below this line is the
+> pre-handover cursor (2026-07-15), kept for history.
 
 > Re-pinned 2026-07-15 (Cowork "The Matrix" HQ session) at live HEAD `38abeee` = merge of #1416 (was stale at `b03975d` = #1164, 2026-06-21 — ~250 PRs of drift closed this session).
 > **Landed since `b03975d` (#1165–#1416, condensed):** SSOT-dedup + MON-issue fix arc (dual tax engines reconciled, depreciation 100× bug, equity floor overstatement, cashflow-tile producer unification — see `docs/issues/ISSUES.md`); CSV-import hardening (#1326–1328); AI = Gemini-only (#1323, Anthropic disabled); **NeoAudit core build COMPLETE 2026-07-14** (CLAUDE.md Part 23: Ring-2 Golden Household + parity matrix + §20.6 pre-PR gate + `issues:raise` + Release Scorecard; standing/LIVE system); verification runs **VR-001→VR-006**, accepted baseline = **VR-006** (`docs/verification/baselines/BASELINE.md`); **Issue registry live:** 50 MON issues (32 FIXING · 9 VERIFIED · 4 DIAGNOSED · 2 OPEN · 2 CLOSED · 1 RETRACTED at this pin — re-read `docs/issues/ISSUES.json` before acting, statuses move fast); **RECTIFICATION_PLAN_2026-07-14** ready with DECISION 1 (one-offs excluded from run-rate) + DECISION 2 (trailing-12-month single producer) both ✅ DECIDED by Reza 2026-07-14.

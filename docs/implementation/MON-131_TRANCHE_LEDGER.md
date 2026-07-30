@@ -56,8 +56,8 @@ Status vocabulary — five words only: `BLOCKED` · `READY` · `IN BUILD` · `VE
 | T−1 golden baseline | **DONE** | PR #1525 merged |
 | T0 census ratchet + source-lock → `lib/` | **DONE** | PR #1525; seed `.audit/producer-census.json` |
 | T−1b Matrix Relay | **DONE** | PR #1526 merged, deploy verified; parity ratchet `tests/matrix/goldenBaselineRelay.test.ts` |
-| Baseline captured | **DONE** | 8 trees, 1,767 leaves, at `4e6cdd5c`, user `91b6d7ce`, via relay A2 |
-| Phase A inventory + 49 contracts | **DONE** | PR #1534 merged |
+| Baseline captured | **BLOCKED** | ❌ **No committed artefact exists** — the relay A2 capture (8 trees, 1,767 leaves, at `4e6cdd5c`, user `91b6d7ce`) was reported but never persisted; nothing lives under `.audit/golden-baseline-*.json`. The previous **DONE** here violated this ledger's own §1 rule (drift log **D5**). Re-capture + COMMIT at current main before any code-touching merge — main has been docs-only since `4e6cdd5c`, so a fresh capture still represents the pre-code state. Capture requires relay (admin session) or CLI + `DATABASE_URL` — neither exists in the Code sandbox; the Matrix produces it, Reza/Code commits it |
+| Phase A inventory + 48 contract files | **DONE** | PR #1534 merged. Count corrected (drift log **D6**): **48** files on main = 45 full-depth quantity contracts + 3 register/index documents (`mon136-register` · `mon136-unattributed-sweep` · `forecast-flows-index`); "49" was an over-count |
 | Phase A gate — 28 decisions | **DONE** | PR #1535 merged (D17–D41); PR #1536 open (D42 corrections + D43–D47) |
 
 ### MON-134 — health-trend determinism — DONE
@@ -78,7 +78,8 @@ gate would zero every AI-categorised expense.
 | Gate | State | Evidence |
 |---|---|---|
 | G2 contract / brief | ✅ | PR #1531 brief |
-| G3 expectedMoves | — | **Declares NO movement.** This PR changes what a default means, not what a number is |
+| Build | ✅ | **PR #1538 (draft, open)** @ `1f80286c` — tri-state prediction (null = no determination) · evidence-based recurrence via `getRecurringPatterns` + the ONE ≤10% tolerance · two `aiIsRecurring` columns nullable · Wall-B2 Float+Decimal tri-state fixtures + never-emits-false guards (vitest 434/434; all seven `=== false` gates in `lib/` verified strict). Preview RED on **P3009**: migration v1 used model names not `@@map`'ped tables (lesson in the migration file); v2 pushed; dev-DB `migrate resolve --rolled-back 20260730000000_mon135_nullable_ai_isrecurring` pending (Reza) |
+| G3 expectedMoves | ✅ | **Declares NO movement.** This PR changes what a default means, not what a number is |
 | G6 merged | — | |
 | G8 Ring-3 | — | Acceptance: recurring expenses on `/dashboard/expenses` **unchanged**. Any movement is itself the finding |
 
@@ -202,8 +203,42 @@ survive tracing — Phase A's own headline finding. Root cause: code-path analys
 from session logs written before decisions 17, 20, 21, 22 and 25 were settled. *Corrected in PR #1536.
 Root cause: consolidation from a snapshot rather than from the live decision state.*
 
-**Pattern across all four: state asserted from a stale read.** The mitigation is this ledger — cells
+**D5 — the "Baseline captured — DONE" cell cited a relay call, not a committed artefact.** This
+ledger's own §1 rule is "no cell is filled without evidence"; the evidence for a baseline is the
+committed capture file, and nothing exists under `.audit/golden-baseline-*.json` — the 1,767-leaf
+capture at `4e6cdd5c` was sandbox-only and is unrecoverable as a "before" state once any code-touching
+merge lands. *Corrected 2026-07-30 (this PR): cell flipped to BLOCKED; recapture-and-commit at current
+main required before MON-135 or T1 merge (main is docs-only since `4e6cdd5c`, so a fresh capture still
+represents the pre-code state). Root cause: the ledger's opening entry was written from the Matrix's
+session memory of the capture, not from the repo — the exact failure the ledger exists to stop, in the
+ledger's own first table.*
+
+**D6 — the contract count was off by one everywhere it was cited.** "49 contracts" appears in
+`NUMBER_INVENTORY.md`, this ledger's instrumentation row, and D2's own correction. **48** files exist
+on main: 45 full-depth quantity contracts + 3 register/index documents (`mon136-register.md`,
+`mon136-unattributed-sweep.md`, `forecast-flows-index.md`). *Corrected 2026-07-30 (this PR) in both
+files. Root cause: the count was quoted from the assembling session's running tally, never re-derived
+from `ls | wc -l` at HEAD.*
+
+**Pattern across all six: state asserted from a stale read.** The mitigation is this ledger — cells
 cite evidence, and the status page renders from here rather than being written independently.
+
+## §4b The register gap — MON-112…124 is deliberate, not lost
+
+`docs/issues/ISSUES.json` holds 123 issues, runs to MON-136, and is missing exactly **MON-112…124**.
+The gap is accounted for, id by id:
+
+- **MON-112 / 113 / 114** — reserved for the three issues the `vr038-039-advance` script raises.
+  The script merged in #1521 and was **executed via `registry-reconcile.mjs` in #1529** for the
+  MON-104…110 advancement, but the 112–114 raise portion has not run; the ids stay reserved for it.
+- **MON-115…124** — VR-040's ten findings (`docs/verification/runs/VR-040.md`, committed by this PR).
+  **Seven of the ten were demoted to observations** under the holistic-verification law (an untraced
+  cross-surface difference is an observation, not a finding — D3 in the drift log is the type
+  specimen) and are **re-filed only after re-tracing**, under NEW ids if they survive. The remaining
+  three were re-filed during reconciliation under new ids (MON-125/126 among them — the brief's
+  "MON-115" became MON-126 after an id collision).
+- **Ids are never reused.** The gap is the record that these numbers were allocated and their claims
+  re-examined — a register that silently compacted would erase that history.
 
 ## §5 What this ledger deliberately does not do
 
