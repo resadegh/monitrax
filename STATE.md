@@ -96,7 +96,9 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> **Re-pinned 2026-07-30 (Code session, MON-131 handover) at live HEAD `c07669e5` = merge of #1537.**
+> **Re-pinned 2026-07-30b (Code session, T1 start gate) at live HEAD `cbd07881` = merge of #1540.**
+> **Current focus: 0·REF — MON-131.** MON-135 **merged, deployed, VERIFIED** (VR-042 Ring-3 PASS — 48 figures, zero movement). Handover PR #1539 merged (prod `d3d7e147`). **Tranche 1 (income) is READY** — start gates cleared per `CODE_BRIEF_MON-131_TRANCHE_1_START_GATE.md`: baseline captured at `d3d7e147` (10,254 leaves; leaf-jump ruled drift-D8 partial-first-capture), `?format=hash` committable-baseline endpoint ships in the start-gate PR, `.audit/expected-moves-t1.json` committed (14 paths; PAYG-11,129 removed from the regression cluster — sole declared removal), **MON-137 raised** (cashflowOrchestrator second withholding producer). **Next: the T1 build brief (`CODE_BRIEF_MON-128_TRANCHE_1_income.md`, as amended 2026-07-30) — changesNumbers YES, Reza's click.**
+> **(prior) Re-pinned 2026-07-30 (Code session, MON-131 handover) at live HEAD `c07669e5` = merge of #1537.**
 > **Current focus: 0·REF — MON-131 "Reference Numbers" IS the programme; no unrelated issue is worked
 > before its sweep passes (D16).** Phase A complete + merged (#1534: the Number Inventory + 48
 > contracts); all §5.1 decisions settled (D17–D47 across #1535/#1536/#1537); Build Specification +

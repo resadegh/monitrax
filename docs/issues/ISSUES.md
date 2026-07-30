@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**123 total** · 64 open · 🔵 30 · 🟡 3 · 🟠 29 · 🟢 2 · ✅ 58
+**124 total** · 65 open · 🔵 31 · 🟡 3 · 🟠 28 · 🟢 3 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -128,8 +128,9 @@
 | MON-132 | 🔵 OPEN | 🟠 | yes | Emergency fund must be a SURVIVAL RUNWAY — liquid cash / (essential expenses - salary-independent income), answering 'if I lose my salary, how long do I last' (Reza decision 2026-07-29) | — | — |
 | MON-133 | 🔵 OPEN | 🟠 | yes | Legislated tax constants hardcoded outside TAX_YEAR_CONFIGS in ~12 production files — including a STALE Super Guarantee rate of 11.5% in two live paths (the legislated rate is 12%) | — | — |
 | MON-134 | 🟠 FIXING | 🟠 | yes | Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise | ##1530 (schema), ##PR-3 (read path — this PR) | ✅ |
-| MON-135 | 🟠 FIXING | 🔴 | no | AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3) | #1538 | n/a |
+| MON-135 | 🟢 VERIFIED | 🔴 | no | AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3) | #1538 | n/a |
 | MON-136 | 🔵 OPEN | 🔴 | yes | Reference Numbers, wave 2 — apply the one-producer law to every remaining quantity the complete census found beyond MON-131's 23 | — | — |
+| MON-137 | 🔵 OPEN | 🔴 | yes | masterFinancialService cashflow block: gross fields fed net values, PAYG deducted twice with a third invented figure | — | — |
 
 ---
 
@@ -2220,7 +2221,7 @@ Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 1
 
 ### MON-135 — AI categorisation stamps isRecurring:false on every result path — the one-off gate would zero every AI-categorised expense (BLOCKS MON-131 Tranche 3)
 
-**🟠 FIXING** · 🔴 critical · changes numbers: **no** · area: intake · opened 2026-07-29
+**🟢 VERIFIED** · 🔴 critical · changes numbers: **no** · area: intake · opened 2026-07-29
 
 > **What was wrong:** When the app auto-categorises your bank transactions, it marks every one of them as a one-off rather than recurring. Today that is mostly invisible — but the moment the recurring-only rule is applied to expense totals (the MON-131 expense fix), every auto-categorised expense would silently drop to zero, and the safety net that compares before/after numbers would read the loss as an expected decrease. The categoriser must stop stamping everything non-recurring BEFORE that fix lands.
 >
@@ -2235,7 +2236,7 @@ Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 1
 - **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `code-brief:MON-131-PHASE-A §6 (precondition on Tranche 3)`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bank/aiCategorisation.ts. FIXING 2026-07-30: PR #1538 (tri-state prediction, evidence-based recurrence via getRecurringPatterns, two aiIsRecurring columns nullable, Wall-B2 tri-state fixtures Float+Decimal + never-emits-false guards). changesNumbers stays false: the PR changes what a default MEANS; required relay verdict post-merge is CLEAN (nothing moved). Ledger: docs/implementation/MON-131_TRANCHE_LEDGER.md §3.0.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bank/aiCategorisation.ts. FIXING 2026-07-30: PR #1538 (tri-state prediction, evidence-based recurrence via getRecurringPatterns, two aiIsRecurring columns nullable, Wall-B2 tri-state fixtures Float+Decimal + never-emits-false guards). changesNumbers stays false: the PR changes what a default MEANS; required relay verdict post-merge is CLEAN (nothing moved). Ledger: docs/implementation/MON-131_TRANCHE_LEDGER.md §3.0. VERIFIED 2026-07-30 via VR-042 §1 (Ring-3 acceptance, Path B): 48 tracked rendered figures across /dashboard/tax, balances, expenses (incl. all five per-loan rows + basis labels) and Home — ALL identical to rendered-baseline-8700b1d7.json + VR-041 Part C; producer↔render tie 9/9 (VR-042 §2.1). changesNumbers:NO confirmed on every money surface. Prod verified at d3d7e147 (relay sha field, VR-042 §0).
 
 ### MON-136 — Reference Numbers, wave 2 — apply the one-producer law to every remaining quantity the complete census found beyond MON-131's 23
 
@@ -2248,4 +2249,17 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bank/aiC
 - **Detail:** `code-brief:MON-131-PHASE-A §2 (D16)`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/ + app/api/ + app/dashboard/ + components/ (complete-census remainder).
+
+### MON-137 — masterFinancialService cashflow block: gross fields fed net values, PAYG deducted twice with a third invented figure
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: income · opened 2026-07-30
+
+> **What was wrong:** The engine's cashflow summary mislabels your income: a field named 'gross income' actually carries your after-withholding total, and tax withholding is then subtracted AGAIN from that already-reduced figure — using a third withholding number 3.25x larger than the one the tax page shows you. Result: the app holds six different values for your annual income at once, and the amount the tax page says was withheld from you (11,129) is not the amount the engine actually deducted (9,932).
+>
+- **Root cause:** `lib/calculations/cashflowOrchestrator.ts:131`, `lib/calculations/cashflowOrchestrator.ts:319`, `lib/calculations/cashflowOrchestrator.ts:400`, `lib/calculations/cashflowOrchestrator.ts:403`, `lib/calculations/cashflowOrchestrator.ts:491`
+- **Neomatrix:** `engine.cashflowOrchestrator.calculateCashflow`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-042 (V2/V3); T1 start-gate brief §2.1`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/services/masterFinancialService.ts cashflow block; Home budget tile (Saved $27,987); /dashboard/tax PAYG withheld. Verified at source 2026-07-30: calculateIncomeAmounts (:131) runs its OWN take-home computation per row (calculateTakeHomePay — a second withholding producer; the 36,197.69/yr origin); the summation (:319-331) feeds annualGrossIncome (:400) and annualPaygWithholding (:403); Decimal twin :491+. VR-042 V2/V3 measured: annualGrossIncome 495,632.05 ≡ income.annual.all.netTotal (a gross field fed the net value); three PAYG figures 9,932.00 applied / 11,128.70 reported / 36,197.69 cashflow; annualNetIncome 459,434.36 = double deduction. Fix lands in T1 (MON-128 build brief §1 amendment); expectedMoves paths committed in .audit/expected-moves-t1.json.
 

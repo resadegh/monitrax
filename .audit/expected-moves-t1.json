@@ -1,0 +1,138 @@
+{
+  "_meta": {
+    "tranche": "T1 income (MON-128)",
+    "declaredAt": "2026-07-30",
+    "baseline": {
+      "sha": "d3d7e147b429cbd93a45bf331e7638531ce3b3d3",
+      "leafCount": 10254,
+      "capturedAt": "2026-07-30T10:23:05.965Z",
+      "evidence": "docs/verification/runs/VR-042.md §2"
+    },
+    "contract": "Per-path, NEVER directional (build brief §4). Every `before` below is a VR-042 MEASURED value, not an estimate. Where `after` is a relabeling identity it is computed here; where it depends on the NEW banked-income engine, `afterStatus: PENDING_RELAY` and the value MUST be filled by running old and new producers against the same real data through the relay DURING the T1 build, BEFORE the migration merges. A PENDING_RELAY entry at T1 merge time fails G3.",
+    "declaredRemovals": [
+      "PAYG withheld $11,129 is REMOVED from the must-not-move regression cluster (VR-041 and VR-042 both held it) — start-gate brief §4: it may be the wrong of two candidates (9,932.00 applied vs 11,128.70 reported), so freezing it would freeze a defect. It appears in expectedMoves below instead. This removal is itself a declaration, and it is the only one."
+    ]
+  },
+  "expectedMoves": [
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyGrossIncome",
+      "why": "VR-042 V2 — a field named gross carries the net total (41,302.67 ≡ income.monthly.all.netTotal)",
+      "arithmetic": "before 41,302.67 → after 42,130.34 (= income.monthly.all.grossTotal, measured)",
+      "before": 41302.67,
+      "after": 42130.34,
+      "afterStatus": "COMPUTED_IDENTITY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualGrossIncome",
+      "why": "VR-042 V2 — same mislabel annually (495,632.05 ≡ income.annual.all.netTotal)",
+      "arithmetic": "before 495,632.05 → after 505,564.05 (= income.annual.all.grossTotal, measured)",
+      "before": 495632.05,
+      "after": 505564.05,
+      "afterStatus": "COMPUTED_IDENTITY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualPaygWithholding",
+      "why": "VR-042 V3 — a third PAYG figure (36,197.69 = 3.25× the rendered 11,128.70, 3.64× the applied 9,932.00); must collapse to the single surviving PAYG quantity",
+      "arithmetic": "before 36,197.69 → after = the surviving PAYG value once the 9,932.00 (applied) vs 11,128.70 (reported) fork is traced (build brief amendment §2.1) — computed via relay old-vs-new",
+      "before": 36197.69,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.paygWithholding",
+      "why": "VR-042 V3 — the identity grossTotal − netTotal ≡ paygWithholding fails by 1,196.70/yr (11,128.70 stated vs 9,932.00 applied). Whichever survives, this field must equal the deduction it describes. /dashboard/tax 'PAYG withheld $11,129' moves with it — REMOVED from the regression cluster for exactly this reason",
+      "arithmetic": "before 11,128.70 → after = the surviving value; identity after the fix: grossTotal − netTotal ≡ paygWithholding, exact",
+      "before": 11128.7,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.monthly.all.paygWithholding",
+      "why": "monthly sibling of the identity failure (927.39 stated vs 827.67 applied; ×12 = 11,128.70 vs 9,932.00 — systematic, not rounding)",
+      "arithmetic": "before 927.39 → after = surviving value / 12",
+      "before": 927.39,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualNetIncome",
+      "why": "VR-042 V3 — PAYG deducted a SECOND time from an already-net figure, using the largest of the three values (495,632.05 − 36,197.69)",
+      "arithmetic": "before 459,434.36 → after = banked income, single deduction (D17) — computed via relay once the Layer-2 aggregator exists",
+      "before": 459434.36,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualIncome",
+      "why": "carries the same double-deducted 459,434.36",
+      "arithmetic": "before 459,434.36 → after = banked income (D17), same as annualNetIncome's survivor",
+      "before": 459434.36,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyCashflow",
+      "why": "VR-042 V7 — +27,987.35 renders on Home as 'Saved $27,987' beside the −$6,073 tile; downstream of income, moves when the income feed is fixed",
+      "arithmetic": "before +27,987.35 → after computed via relay (income term replaced by banked income)",
+      "before": 27987.35,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.savingsRate",
+      "why": "VR-042 V7 — 73.1% against Home's −30.5% (sign inversion side by side); denominator becomes banked income (D18)",
+      "arithmetic": "before 73.1 → after computed via relay per D18: (banked − interest − other spending) ÷ banked × 100",
+      "before": 73.1,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.debtServiceRatio",
+      "why": "start-gate §4 — 23.03% (producer) vs Home's debt-to-income 416%; income denominator moves with T1",
+      "arithmetic": "before 23.03 → after computed via relay",
+      "before": 23.03,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyIncome",
+      "why": "MON-128 headline — 41,303/mo mislabelled net-of-PAYG (VR-042 V2 explains the mechanism: a different producer's net total, mislabelled gross)",
+      "arithmetic": "before 41,302.67 → after = banked monthly income (D17), computed via relay; build-brief indicative ≈24,250/mo is NOT the declaration",
+      "before": 41302.67,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/health/aggregateEngine.ts:generateHealthReport.score",
+      "why": "the health score consumes income (D32 predicted movement when T1 lands); Home renders 54 today",
+      "arithmetic": "before 54 → after computed via relay (income inputs re-fed with banked income)",
+      "before": 54,
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/health/buildHealthInput.ts:buildHealthInput",
+      "why": "the health input assembles income fields that T1 re-founds; sub-paths enumerated by the relay run during T1 build (this prefix is intentionally scoped to the INPUT tree whose income fields are the declared movers — the report score is declared separately above)",
+      "arithmetic": "income-derived input fields move to banked-income values; enumerated per path by the relay diff before merge",
+      "afterStatus": "PENDING_RELAY"
+    },
+    {
+      "pathPrefix": "lib/services/moneyFlowService.ts:getMoneyFlow.totalIncome",
+      "why": "VR-042 V1 row 4 — 470,261.70 is one of six 'annual income' values; collapses to the surviving named quantity or is renamed citing its contract",
+      "arithmetic": "before 470,261.70 → after computed via relay (or field renamed/deleted citing contract entry)",
+      "before": 470261.7,
+      "afterStatus": "PENDING_RELAY"
+    }
+  ],
+  "mustNotMove": {
+    "why": "the regression cluster, re-baselined at d3d7e147 and byte-identical across VR-041 and VR-042. Any movement here that is not declared above STOPS the tranche (G7/G10): revert, do not patch forward.",
+    "values": {
+      "netWorth": 3401782,
+      "totalAssets": 5461679,
+      "liquid": 301808,
+      "accessible": 67871,
+      "locked": 3032102,
+      "propertyEquity": 2955102,
+      "taxableIncome": 145426,
+      "taxNet": 37786,
+      "medicareLevy": 2909,
+      "deductions": 172325,
+      "committed": 14261,
+      "recurring": 1482,
+      "oneOff": 50840,
+      "loansMonthly": 12779,
+      "perLoanRows": "all five, with basis labels, per /dashboard/expenses (VR-042 §1)"
+    },
+    "note": "PAYG withheld 11,129 deliberately ABSENT — see _meta.declaredRemovals."
+  }
+}
