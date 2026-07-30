@@ -83,7 +83,56 @@ gate would zero every AI-categorised expense.
 | G6 merged | ✅ | PR #1538 merged 2026-07-30; prod deploy `dpl_48fktuyb…` READY (migration v2 applied to PROD cleanly). **Production verified at `d3d7e147`** (the relay's own `sha` field, VR-042 §0 — a later commit that includes MON-135; the earlier `b1af5021` note was the merge commit, not the deployed HEAD) |
 | G8 Ring-3 | ✅ | **PASS — VR-042 §1 (Path B):** 48 tracked rendered figures across /dashboard/tax · balances · expenses (incl. all five per-loan rows + basis labels) · Home — **all identical** to `rendered-baseline-8700b1d7.json` + VR-041 Part C; producer↔render tie 9/9 (VR-042 §2.1); all seven prior identities + three new ones hold. `changesNumbers: NO` confirmed on every money surface. Registry: MON-135 → VERIFIED (run VR-042) |
 
-### Tranche 1 — income (MON-128) — READY
+### Tranche 1 — income (MON-128) — IN BUILD
+
+> **Execution record (2026-07-30, build session).** T1 ships as **two PRs**, forced by the
+> G3 contract: the `PENDING_RELAY` after-values must be COMPUTED by running old and new
+> producers against the same REAL data through the relay BEFORE the migration merges — and
+> real data exists only in production (previews bind to the dev DB). So:
+> **T1-A (scaffold — moves nothing):** per-FY PAYG Schedule 1 coefficient home in
+> `TaxYearConfig.paygSchedule` (D35/X1/P1 — FY24-26 set moved from `paygCalculator.ts`,
+> FY26-27 set added, ATO-verified 2026-07-30 + one independent secondary byte-identical;
+> legacy no-config default preserved byte-identical) · greenfield HELP/STSL engine
+> (`helpRepaymentCalculator.ts`, D42 C2 cliff = 10% of the WHOLE) + `repaymentIncome.ts`
+> (C3 add-backs, componentBasis honesty) · the banked L1/L2 stack under `lib/income/banked/`
+> (salary FACT hierarchy · rental via the ONE `computePropertyCashflow` · received-cash ·
+> pure-sum aggregator; Float + Decimal) · FACT-field schema migration
+> (`Income.actualNetPay` per-row-period, `Income.helpLoanDeclared` tri-state;
+> `Property.genuinelyAvailableForRent` + `availableDaysPerYear` — X7 intake-only) ·
+> the compare relay `/api/admin/matrix/golden-baseline/t1-income` (computes every
+> PENDING_RELAY after-value through the SAME assembly the flip will wire). Golden baseline
+> must hash IDENTICAL at the T1-A merge.
+> **T1-B (the flip):** expectedMoves completed per-path from the T1-A relay output on prod →
+> consumers flipped (master income/cashflow/quickMetrics, buildHealthInput, moneyFlow,
+> portfolio/snapshot, portfolioEngine, cashflow routes) → culprits deleted citing contracts
+> (calculateIncomeAmounts + takeHome in the orchestrator [MON-137], normalizeIncomeStream's
+> dead siblings, netIncomeCalculator, buildHealthInput's private copy, `income/page.tsx:356`
+> ×0.30 invention) → MON-138 band-gap fix (declared) → intake UI for the FACT fields.
+> **Scope notes recorded:** D35 brought forward (brief-sanctioned, X1); X6's type split
+> ALREADY exists in the data model (`PropertyType.RENTAL` = tenanted residence — engine
+> reads it + flags misattached rows; no duplicate column added, §12.2.1); business
+> distributions have NO income-row representation (IncomeType has no such value) — the
+> received-cash engine covers INVESTMENT/OTHER and LegalEntity-table distribution
+> intelligence stays outside T1 (coverage boundary); serialized snapshot field names
+> (netTotal etc.) survive T1 for baseline path-continuity — the D17 rename lands at the
+> engine + label layer, the on-wire rename is queued (declared in the T1-B coverage
+> boundary). **Corrections queued for the expected-moves file at fill time:** the health
+> pathPrefix is `…generateHealthReport.healthScore.score` (the tree nests under
+> `healthScore`), not `…generateHealthReport.score`.
+> **New defect discovered + registered:** MON-138 — Schedule 1 band selection has 1-dollar
+> gaps (fractional weekly earnings between integer bounds withhold $0); legacy behaviour
+> deliberately preserved in T1-A, fixed + declared at the T1-B flip.
+> **CENSUS RESEED DECLARED (T1-A, requires Reza's sign-off at merge review):** the
+> producer census is formula-shape site counting, so the NEW canonical homes register as
+> +sites before the legacy producers die — the strangler window. Reseeded
+> `.audit/producer-census.json` (+~30 sites across 10 quantities: incomeRunRate 135→141 ·
+> payg 64→73 · grossIncome 43→47 · taxableIncome 38→41 · deductions 105→107 ·
+> expenseRunRate 84→87 · netIncome 45→46 · emergencyMonths 14→15 · negativeGearing 6→7 ·
+> insuranceAdequacy 15→16), every added site in the new T1 canonical files.
+> **HARD COMMITMENT: the T1-B flip deletes the legacy producers and MUST land every
+> reseeded count BELOW its pre-T1 value — the reseed is transitional, never the new floor.**
+> Stage-1 censuses (7 producers · input-feed omissions · consumers · the rental
+> three-value settlement) recorded on MON-128/MON-137 in the registry.
 
 | Gate | State | Evidence / what's missing |
 |---|---|---|

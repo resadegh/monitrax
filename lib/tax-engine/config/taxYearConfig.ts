@@ -25,7 +25,115 @@
  * - Super Guarantee: https://www.ato.gov.au/rates/key-superannuation-rates-and-thresholds/
  */
 
-import { TaxYearConfig } from '../types';
+import { TaxYearConfig, PAYGScheduleConfig, HelpRepaymentConfig } from '../types';
+
+// =============================================================================
+// MON-131 T1 (MON-128 / D35) — PAYG Schedule 1 coefficient sets, per effective
+// period. Moved here from `paygCalculator.ts` module-level constants so the
+// coefficient home is CONFIG, not an engine file (payg-withholding contract
+// precondition P1; X1 in MON-131_BUILD_SPECIFICATION §3).
+//
+// Formula (unchanged, audit MA.1-005): y = a·x − b, x = floor(weekly) + 0.99.
+// Band bounds use the integer convention audited in MA.1-002 — the formula is
+// continuous across boundaries and the final whole-dollar rounding absorbs the
+// cents-level fraction. Do NOT "fix" bounds to $X.99.
+// =============================================================================
+
+/**
+ * Schedule 1 in force 1 Jul 2024 – 30 Jun 2026 (the ATO did not reissue for
+ * FY25-26 — its published effective range spans both FYs; the page URL itself
+ * is "schedule-1-tax-table-01-july-2024-to-30-june-2026"). These are the
+ * FY24-25 NAT 1004 coefficients previously hardcoded in `paygCalculator.ts`
+ * (verified 2026-06-07, audit MA.1-005), now attached to BOTH FY24-25 and
+ * FY25-26 configs.
+ */
+export const PAYG_SCHEDULE_2024_26: PAYGScheduleConfig = {
+  source:
+    'https://www.ato.gov.au/tax-rates-and-codes/schedule-1-tax-table-01-july-2024-to-30-june-2026',
+  effectiveFrom: '2024-07-01',
+  effectiveTo: '2026-06-30',
+  scale2: [
+    { weeklyEarningsMin: 0, weeklyEarningsMax: 361, coefficients: { a: 0, b: 0 } },
+    { weeklyEarningsMin: 362, weeklyEarningsMax: 500, coefficients: { a: 0.16, b: 57.8462 } },
+    { weeklyEarningsMin: 501, weeklyEarningsMax: 625, coefficients: { a: 0.26, b: 107.8462 } },
+    { weeklyEarningsMin: 626, weeklyEarningsMax: 721, coefficients: { a: 0.18, b: 57.8462 } },
+    { weeklyEarningsMin: 722, weeklyEarningsMax: 865, coefficients: { a: 0.189, b: 64.3365 } },
+    { weeklyEarningsMin: 866, weeklyEarningsMax: 2596, coefficients: { a: 0.3227, b: 180.0385 } },
+    { weeklyEarningsMin: 2597, weeklyEarningsMax: 3653, coefficients: { a: 0.37, b: 302.7885 } },
+    { weeklyEarningsMin: 3654, weeklyEarningsMax: null, coefficients: { a: 0.45, b: 595.1058 } },
+  ],
+  scale1: [
+    { weeklyEarningsMin: 0, weeklyEarningsMax: 88, coefficients: { a: 0.16, b: 0.16 } },
+    { weeklyEarningsMin: 89, weeklyEarningsMax: 371, coefficients: { a: 0.2348, b: 6.5884 } },
+    { weeklyEarningsMin: 372, weeklyEarningsMax: 500, coefficients: { a: 0.219, b: 0.719 } },
+    { weeklyEarningsMin: 501, weeklyEarningsMax: 625, coefficients: { a: 0.3127, b: 47.6 } },
+    { weeklyEarningsMin: 626, weeklyEarningsMax: 721, coefficients: { a: 0.2327, b: 2.6 } },
+    { weeklyEarningsMin: 722, weeklyEarningsMax: 865, coefficients: { a: 0.2417, b: 9.0933 } },
+    { weeklyEarningsMin: 866, weeklyEarningsMax: 2596, coefficients: { a: 0.3754, b: 124.7654 } },
+    { weeklyEarningsMin: 2597, weeklyEarningsMax: 3653, coefficients: { a: 0.4227, b: 247.5154 } },
+    { weeklyEarningsMin: 3654, weeklyEarningsMax: null, coefficients: { a: 0.5027, b: 539.8331 } },
+  ],
+};
+
+/**
+ * Schedule 1 effective from 1 Jul 2026 (published 17 Jun 2026) — reflects the
+ * 15% first marginal rate (Treasury Laws Amendment (More Cost of Living
+ * Relief) Act 2025), the updated Medicare levy low-income thresholds and the
+ * indexed study-loan thresholds.
+ *
+ * Verified 2026-07-30 against the ATO coefficients page; cross-checked
+ * byte-identical against an independent secondary
+ * (https://pay-calculator.au/payg-withholding-tax-tables). Band bounds follow
+ * the ATO's "less than $X" presentation → integer convention: max = X − 1,
+ * next min = X (continuity per MA.1-002 holds — the coefficients meet at each
+ * boundary by construction).
+ */
+export const PAYG_SCHEDULE_2026_27: PAYGScheduleConfig = {
+  source:
+    'https://www.ato.gov.au/tax-rates-and-codes/payg-withholding-schedule-1-statement-of-formulas-for-calculating-amounts-to-be-withheld/coefficients-to-use-in-formulas-for-withholding-from-weekly-payments',
+  effectiveFrom: '2026-07-01',
+  scale2: [
+    { weeklyEarningsMin: 0, weeklyEarningsMax: 361, coefficients: { a: 0, b: 0 } },
+    { weeklyEarningsMin: 362, weeklyEarningsMax: 537, coefficients: { a: 0.15, b: 54.3462 } },
+    { weeklyEarningsMin: 538, weeklyEarningsMax: 672, coefficients: { a: 0.25, b: 108.2135 } },
+    { weeklyEarningsMin: 673, weeklyEarningsMax: 720, coefficients: { a: 0.17, b: 54.3473 } },
+    { weeklyEarningsMin: 721, weeklyEarningsMax: 864, coefficients: { a: 0.179, b: 60.8377 } },
+    { weeklyEarningsMin: 865, weeklyEarningsMax: 1281, coefficients: { a: 0.3227, b: 185.1935 } },
+    { weeklyEarningsMin: 1282, weeklyEarningsMax: 2595, coefficients: { a: 0.32, b: 181.7319 } },
+    { weeklyEarningsMin: 2596, weeklyEarningsMax: 3652, coefficients: { a: 0.39, b: 363.4627 } },
+    { weeklyEarningsMin: 3653, weeklyEarningsMax: null, coefficients: { a: 0.47, b: 655.7704 } },
+  ],
+  scale1: [
+    { weeklyEarningsMin: 0, weeklyEarningsMax: 187, coefficients: { a: 0.15, b: 0.15 } },
+    { weeklyEarningsMin: 188, weeklyEarningsMax: 370, coefficients: { a: 0.2084, b: 11.0185 } },
+    { weeklyEarningsMin: 371, weeklyEarningsMax: 514, coefficients: { a: 0.179, b: 0.1066 } },
+    { weeklyEarningsMin: 515, weeklyEarningsMax: 931, coefficients: { a: 0.3227, b: 74.1674 } },
+    { weeklyEarningsMin: 932, weeklyEarningsMax: 2245, coefficients: { a: 0.32, b: 71.6508 } },
+    { weeklyEarningsMin: 2246, weeklyEarningsMax: 3302, coefficients: { a: 0.39, b: 228.8816 } },
+    { weeklyEarningsMin: 3303, weeklyEarningsMax: null, coefficients: { a: 0.47, b: 493.1893 } },
+  ],
+};
+
+/**
+ * MON-131 T1 (D42 C2/C3) — HELP/STSL compulsory repayment, FY2026-27
+ * marginal system. Verified 2026-07-30 against
+ * https://www.ato.gov.au/tax-rates-and-codes/study-and-training-support-loans-rates-and-repayment-thresholds
+ * — "$0–$69,528 Nil · $69,529–$129,717 15c for each $1 over $69,528 ·
+ * $129,718–$186,050 $9,028 plus 17c for each $1 over $129,717 ·
+ * $186,051 and over 10% of your total repayment income."
+ * The top band is a CLIFF on the WHOLE repayment income (C2), coded as such.
+ */
+export const HELP_REPAYMENT_2026_27: HelpRepaymentConfig = {
+  source:
+    'https://www.ato.gov.au/tax-rates-and-codes/study-and-training-support-loans-rates-and-repayment-thresholds',
+  minThreshold: 69528,
+  bands: [
+    { over: 69528, upTo: 129717, base: 0, rate: 0.15 },
+    { over: 129717, upTo: 186050, base: 9028, rate: 0.17 },
+  ],
+  topThreshold: 186050,
+  topRateOfTotal: 0.10,
+};
 
 // =============================================================================
 // 2024-25 Financial Year (Current)
@@ -145,6 +253,11 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   evFbtPhase2CommencementVerified: false,
   dynamicPaygCommencementVerified: false,
   cpiQuarterlyIndex: {}, // populated in Stage 2 from ATO's CPI table
+
+  // MON-131 T1 (D35): Schedule 1 in force for payments 1 Jul 2024 – 30 Jun 2026.
+  paygSchedule: PAYG_SCHEDULE_2024_26,
+  // helpRepayment intentionally absent — FY24-25 used the pre-marginal flat-rate
+  // system, not verified here → calculateHelpRepayment returns UNDETERMINED.
 };
 
 // =============================================================================
@@ -238,6 +351,12 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
   evFbtPhase2CommencementVerified: false,
   dynamicPaygCommencementVerified: false,
   cpiQuarterlyIndex: {},
+
+  // MON-131 T1 (D35): the ATO did NOT reissue Schedule 1 for FY25-26 — the
+  // 2024-published schedule's effective range runs to 30 Jun 2026.
+  paygSchedule: PAYG_SCHEDULE_2024_26,
+  // helpRepayment absent — FY25-26 marginal-system thresholds not verified
+  // here (T1 needs only the current FY) → UNDETERMINED, never borrowed.
 };
 
 // =============================================================================
@@ -337,6 +456,13 @@ export const TAX_YEAR_2026_27: TaxYearConfig = {
   evFbtPhase2CommencementVerified: false,
   dynamicPaygCommencementVerified: false,
   cpiQuarterlyIndex: {},
+
+  // MON-131 T1 (D35 / X1): FY26-27 Schedule 1 — the 15% first-rate reform
+  // coefficients, effective for payments from 1 Jul 2026.
+  paygSchedule: PAYG_SCHEDULE_2026_27,
+  // MON-131 T1 (D42 C2/C3): FY26-27 HELP/STSL marginal repayment structure
+  // with the top-band cliff (10% of TOTAL repayment income above $186,050).
+  helpRepayment: HELP_REPAYMENT_2026_27,
 };
 
 // =============================================================================

@@ -36,53 +36,53 @@
  * immediately before the formula coefficients are applied.
  */
 
-import { TaxYearConfig, PAYGScale, CalculationStep } from '../types';
-import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { TaxYearConfig, PAYGScale, PAYGScheduleConfig, CalculationStep } from '../types';
+import { getCurrentTaxYearConfig, PAYG_SCHEDULE_2024_26 } from '../config/taxYearConfig';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
-// PAYG Coefficients for 2024-25 (Scale 2 - With Tax Free Threshold)
-// These coefficients are used in the formula: tax = (a × earnings) - b
-// =============================================================================
-
-// Scale 2 - With Tax Free Threshold (TFN provided, claim TFT)
-// FY24-25 ATO NAT 1004 coefficients.
+// MON-131 T1 (D35 / payg-withholding contract P1): the coefficient tables now
+// live IN CONFIG — `TaxYearConfig.paygSchedule` (see `taxYearConfig.ts`,
+// PAYG_SCHEDULE_2024_26 + PAYG_SCHEDULE_2026_27). This engine keeps the
+// formula mechanics only; it never owns a rate.
 //
 // Bracket-boundary note (audit MA.1-002, 2026-06-07): the ATO publishes
 // the bands as `0 – $361.99`, `$362 – $499.99`, etc. The integer upper
-// bounds below (`weeklyEarningsMax: 361`) appear narrower than the ATO
-// spec, but the formula is continuous across boundaries by construction
-// (a × earnings − b produces ≈$0 at each boundary), and the final
-// `Math.round` on line 144 absorbs the cents-level fraction. At
-// `$361.99` the integer-bound code returns `0.16 × 361.99 − 57.8462 ≈
-// $0.07 → rounded to $0`, byte-identical to the ATO's intended $0.
-// Do NOT "fix" the boundaries to $X.99 — that breaks the integer math
-// elsewhere in `weeklyEarningsMin`/`Max` consumers without changing the
-// observed result.
-const PAYG_SCALE_2_2024_25: PAYGScale[] = [
-  // Weekly earnings thresholds and coefficients
-  { weeklyEarningsMin: 0, weeklyEarningsMax: 361, coefficients: { a: 0, b: 0 } },
-  { weeklyEarningsMin: 362, weeklyEarningsMax: 500, coefficients: { a: 0.16, b: 57.8462 } },
-  { weeklyEarningsMin: 501, weeklyEarningsMax: 625, coefficients: { a: 0.26, b: 107.8462 } },
-  { weeklyEarningsMin: 626, weeklyEarningsMax: 721, coefficients: { a: 0.18, b: 57.8462 } },
-  { weeklyEarningsMin: 722, weeklyEarningsMax: 865, coefficients: { a: 0.189, b: 64.3365 } },
-  { weeklyEarningsMin: 866, weeklyEarningsMax: 2596, coefficients: { a: 0.3227, b: 180.0385 } },
-  { weeklyEarningsMin: 2597, weeklyEarningsMax: 3653, coefficients: { a: 0.37, b: 302.7885 } },
-  { weeklyEarningsMin: 3654, weeklyEarningsMax: null, coefficients: { a: 0.45, b: 595.1058 } },
-];
+// bounds in config appear narrower than the ATO spec, but the formula is
+// continuous across boundaries by construction (a × earnings − b produces
+// ≈$0 at each boundary), and the final whole-dollar rounding absorbs the
+// cents-level fraction. Do NOT "fix" the boundaries to $X.99.
+// =============================================================================
 
-// Scale 1 - No Tax Free Threshold
-const PAYG_SCALE_1_2024_25: PAYGScale[] = [
-  { weeklyEarningsMin: 0, weeklyEarningsMax: 88, coefficients: { a: 0.16, b: 0.16 } },
-  { weeklyEarningsMin: 89, weeklyEarningsMax: 371, coefficients: { a: 0.2348, b: 6.5884 } },
-  { weeklyEarningsMin: 372, weeklyEarningsMax: 500, coefficients: { a: 0.219, b: 0.719 } },
-  { weeklyEarningsMin: 501, weeklyEarningsMax: 625, coefficients: { a: 0.3127, b: 47.6 } },
-  { weeklyEarningsMin: 626, weeklyEarningsMax: 721, coefficients: { a: 0.2327, b: 2.6 } },
-  { weeklyEarningsMin: 722, weeklyEarningsMax: 865, coefficients: { a: 0.2417, b: 9.0933 } },
-  { weeklyEarningsMin: 866, weeklyEarningsMax: 2596, coefficients: { a: 0.3754, b: 124.7654 } },
-  { weeklyEarningsMin: 2597, weeklyEarningsMax: 3653, coefficients: { a: 0.4227, b: 247.5154 } },
-  { weeklyEarningsMin: 3654, weeklyEarningsMax: null, coefficients: { a: 0.5027, b: 539.8331 } },
-];
+/**
+ * Thrown when a caller asks for withholding under a config whose FY has no
+ * verified Schedule 1 coefficients. NEVER silently borrow another FY's
+ * table (§19.2 — a wrong-FY withholding is a wrong number, not a fallback).
+ */
+export class PaygScheduleUnavailableError extends Error {
+  constructor(financialYear: string) {
+    super(
+      `PAYG Schedule 1 coefficients are not configured for FY ${financialYear}. ` +
+        `Add a verified PAYGScheduleConfig to taxYearConfig.ts (D35) — never borrow another FY's table.`,
+    );
+    this.name = 'PaygScheduleUnavailableError';
+  }
+}
+
+/**
+ * Resolve the coefficient set for a call.
+ *
+ * LEGACY DEFAULT (dies at the T1-B flip): when no config is passed, this
+ * returns the 2024-26 schedule — byte-identical to the pre-T1 hardcoded
+ * behaviour, so the golden baseline does not move in the T1-A scaffold PR.
+ * Every NEW caller (the banked-income engines) passes its config explicitly;
+ * T1-B repoints the remaining legacy callers and this default is removed.
+ */
+function resolveSchedule(config?: TaxYearConfig): PAYGScheduleConfig {
+  if (!config) return PAYG_SCHEDULE_2024_26;
+  if (!config.paygSchedule) throw new PaygScheduleUnavailableError(config.financialYear);
+  return config.paygSchedule;
+}
 
 export interface PAYGResult {
   weeklyWithholding: number;
@@ -144,10 +144,16 @@ function fromWeeklyAmount(weeklyAmount: number, frequency: string): number {
 }
 
 /**
- * Calculate PAYG withholding using ATO formula method
+ * Calculate PAYG withholding using ATO formula method.
+ *
+ * `config` (MON-131 T1 / D35): selects the FY's Schedule 1 coefficients from
+ * `config.paygSchedule`. Omitted → LEGACY 2024-26 schedule (pre-T1 behaviour,
+ * preserved for baseline stability; removed at the T1-B flip). A config
+ * without a schedule throws `PaygScheduleUnavailableError`.
  */
-export function calculatePAYG(input: PAYGInput): PAYGResult {
+export function calculatePAYG(input: PAYGInput, config?: TaxYearConfig): PAYGResult {
   const { grossIncome, frequency, hasTaxFreeThreshold = true, hasHECSDebt = false } = input;
+  const schedule = resolveSchedule(config);
   const calculations: CalculationStep[] = [];
 
   // Convert to weekly earnings
@@ -164,8 +170,8 @@ export function calculatePAYG(input: PAYGInput): PAYGResult {
     explanation: frequency !== 'WEEKLY' ? `Converted from ${frequency.toLowerCase()}` : undefined,
   });
 
-  // Select the appropriate scale
-  const scale = hasTaxFreeThreshold ? PAYG_SCALE_2_2024_25 : PAYG_SCALE_1_2024_25;
+  // Select the appropriate scale from the FY's configured schedule (D35).
+  const scale = hasTaxFreeThreshold ? schedule.scale2 : schedule.scale1;
 
   // ATO Schedule 1 §4: x = (whole dollars of weekly earnings) + 0.99.
   // Audit MA.1-005 (2026-06-07): see file header for the literal ATO
@@ -249,6 +255,13 @@ export function calculateGrossFromNet(
 
   while (iterations < maxIterations) {
     const mid = (low + high) / 2;
+    // MON-131 T1-A: `config` stays DELIBERATELY UNUSED here (the
+    // payg-withholding contract's "dead parameter" finding) — wiring it live
+    // now would reverse-solve gross under one FY while composers'
+    // forward-PAYG legs (processSalary) still run the legacy default: mixed
+    // FYs inside one result (caught by composers.decimal gross−payg≈net).
+    // The WHOLE composer flips to explicit config in ONE declared step at
+    // T1-B. Until then this function is byte-identical to pre-T1.
     const payg = calculatePAYG({
       grossIncome: mid,
       frequency,
@@ -341,14 +354,16 @@ function toWeeklyAmountDecimal(amount: Decimal, frequency: string): Decimal {
   }
 }
 
-export function calculatePAYGDecimal(input: PAYGInputDecimal): PAYGResultDecimal {
+export function calculatePAYGDecimal(input: PAYGInputDecimal, config?: TaxYearConfig): PAYGResultDecimal {
   const { grossIncome, frequency, hasTaxFreeThreshold = true } = input;
   const grossDec = toDecimal(grossIncome) ?? new Decimal(0);
 
   const weeklyEarnings = toWeeklyAmountDecimal(grossDec, frequency);
   const weeklyEarningsNumber = weeklyEarnings.toNumber();
 
-  const scale = hasTaxFreeThreshold ? PAYG_SCALE_2_2024_25 : PAYG_SCALE_1_2024_25;
+  // Same schedule resolution as the Float path (D35; legacy default dies at T1-B).
+  const schedule = resolveSchedule(config);
+  const scale = hasTaxFreeThreshold ? schedule.scale2 : schedule.scale1;
 
   // ATO Schedule 1 §4: x = (whole dollars of weekly earnings) + 0.99.
   // Audit MA.1-005 (2026-06-07) — Decimal sibling matches Float path.
@@ -387,7 +402,8 @@ export function calculatePAYGDecimal(input: PAYGInputDecimal): PAYGResultDecimal
  */
 export function getPAYGSummary(
   annualGross: number,
-  hasTaxFreeThreshold: boolean = true
+  hasTaxFreeThreshold: boolean = true,
+  config?: TaxYearConfig
 ): {
   annual: number;
   monthly: number;
@@ -399,7 +415,7 @@ export function getPAYGSummary(
     grossIncome: annualGross,
     frequency: 'ANNUALLY',
     hasTaxFreeThreshold,
-  });
+  }, config);
 
   return {
     annual: payg.annualWithholding,
@@ -449,6 +465,7 @@ export function calculateGrossFromNetDecimal(
 
   while (iterations < maxIterations) {
     const mid = low.plus(high).div(2);
+    // T1-A: config deliberately unused — see the Float sibling's comment.
     const payg = calculatePAYGDecimal({ grossIncome: mid, frequency, hasTaxFreeThreshold });
     const taxAtFrequency = fromWeeklyDecimal(payg.weeklyWithholding);
     const calculatedNet = mid.minus(taxAtFrequency);
