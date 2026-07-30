@@ -35,6 +35,24 @@ The income quantity family, per **D17** (banked income), **D20** (three-layer en
 and `getNetAmount` deducts tax **only for salary**, so `quickMetrics.monthlyIncome` reads
 **$41,303/mo = $495,636/yr** labelled net-of-PAYG against a declared gross of **$317,751/yr**.
 
+> **AMENDED 2026-07-30 by the T1 start-gate brief §2 (VR-042 V2/V3) — the diagnosis above is true
+> but incomplete, and the framing was wrong.** The `$41,303/mo` vs `$317,751/yr` is **not a
+> net-exceeds-gross paradox** — it is a *different producer's net total, mislabelled gross*
+> (`cashflow.monthlyGrossIncome` 41,302.67 ≡ `income.monthly.all.netTotal`), rendered beside a
+> third producer's annual figure. A **second, independent mechanism** lives inside
+> `masterFinancialService`'s `cashflow` block and T1 must fix it or the headline stays wrong after
+> the migration — registered as **MON-137**:
+> - `cashflow.annualGrossIncome` **495,632.05** IS `income.annual.all.netTotal` (a gross field fed
+>   the net value); the real gross is **505,564.05**. Same monthly.
+> - **Three PAYG values, not two:** **9,932.00** actually applied (`grossTotal − netTotal`; ≡ the
+>   SALARY type split exactly) · **11,128.70** stated in `paygWithholding` and rendered on
+>   `/dashboard/tax` as "PAYG withheld $11,129" · **36,197.69** in `cashflow.annualPaygWithholding`.
+>   **The identity `grossTotal − netTotal ≡ paygWithholding` fails by $1,196.70/yr** — trace BOTH
+>   producers of 9,932.00 and 11,128.70 before deciding which survives; the rendered figure is not
+>   the applied figure, and that is the one to trace FIRST.
+> - `cashflow.annualNetIncome` **459,434.36** = 495,632.05 − 36,197.69 — **PAYG deducted a second
+>   time, from an already-net figure, using the largest of the three.**
+
 ## §2 What to build
 
 ### 2.1 Layer 1 — source engines (D20)
@@ -59,6 +77,10 @@ reaches the account — and nothing else. No tax logic beyond withholding.
 
 **Rental.** Per-property, agent fees, ownership share. **Resolve the $121,227 / $121,881 discrepancy
 by tracing both producers** — do not pick one. If they are two quantities, name both (D6).
+> **AMENDED 2026-07-30 (start-gate §2.2): a THIRD value exists.** VR-042 adds
+> `income.annual.all.byType.RENTAL` = **gross 154,443.11, net 154,443.11** (gross ≡ net — no
+> withholding applied) and `renderedPartC.rentalMonthly` = **10,102** (= $121,224/yr). Trace all
+> three; name each as its own quantity if that is what they are. **Do not pick one.**
 
 **Dividends.** Cash received only. **Franking credits are not cash** — they are a tax offset and
 belong to Layer 3.
@@ -90,6 +112,14 @@ such, and every ratio built on it states its basis. The four other producers are
 
 - **`netTotal ≤ grossTotal`**, always, Float and Decimal. This alone would have caught MON-128 on day
   one.
+  > **AMENDED 2026-07-30 (start-gate §2.1): this invariant would PASS today** — 459,434 ≤ 495,632 —
+  > because both operands are wrong in the same direction. Add the stronger siblings, each comparing
+  > a quantity to *itself under another name* (the class that catches mislabelling; a comparison
+  > between two derived values does not):
+  > - **`cashflow.annualGrossIncome ≡ income.annual.all.grossTotal`** (and the monthly pair)
+  > - **`grossTotal − netTotal ≡ paygWithholding`**, exact — the identity that fails by $1,196.70/yr
+  >   today (VR-042 V3 / MON-137)
+  > - the same identity monthly, and `annual ≡ monthly × 12` on each
 - Sources sum to banked income.
 - A one-off income row contributes **0** to every monthly and annual run-rate, on every migrated
   producer.

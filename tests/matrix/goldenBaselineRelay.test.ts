@@ -22,6 +22,7 @@ import {
   numericLeaves,
   diffBaselines,
   deployedSha,
+  hashBaseline,
   RENDERED_PART_C,
 } from '@/lib/matrix/goldenBaseline';
 
@@ -140,5 +141,48 @@ describe('constants', () => {
     expect(RENDERED_PART_C.netWorth).toBe(3401782);
     expect(RENDERED_PART_C.loansMonthly).toBe(12779);
     expect(RENDERED_PART_C.committed).toBe(14261);
+  });
+});
+
+// T1 start-gate brief §1.2 — the canonical hash summary (`?format=hash`).
+// Ratchet class: a partial capture must never masquerade as a full baseline
+// (drift log D8 — the unpersisted 1,767-leaf capture is consistent with a
+// silent __captureError tree at 0 numeric leaves).
+describe('hashBaseline — THE canonical hash + the partial-capture tripwire', () => {
+  const tree = {
+    'a.ts:engineA': { x: 1, y: { z: 2.5 } },
+    'b.ts:engineB': { list: [3, { w: 4 }] },
+  };
+
+  it('is deterministic and key-order independent', () => {
+    const reordered = {
+      'b.ts:engineB': { list: [3, { w: 4 }] },
+      'a.ts:engineA': { y: { z: 2.5 }, x: 1 },
+    };
+    const h1 = hashBaseline(tree);
+    const h2 = hashBaseline(reordered);
+    expect(h1.treeHash).toBe(h2.treeHash);
+    expect(h1.leafCount).toBe(4);
+    expect(h1.perTree).toEqual({ 'a.ts:engineA': 2, 'b.ts:engineB': 2 });
+    expect(h1.captureErrors).toEqual([]);
+  });
+
+  it('a single moved leaf changes the hash (the CLEAN/STOP gate basis)', () => {
+    const moved = { ...tree, 'a.ts:engineA': { x: 1, y: { z: 2.6 } } };
+    expect(hashBaseline(moved).treeHash).not.toBe(hashBaseline(tree).treeHash);
+  });
+
+  it('a failed capture is reported in captureErrors and contributes 0 numeric leaves', () => {
+    const partial = {
+      ...tree,
+      'c.ts:engineC': { __captureError: 'timeout after 25s' },
+    };
+    const h = hashBaseline(partial);
+    expect(h.captureErrors).toEqual(['c.ts:engineC']);
+    expect(h.perTree['c.ts:engineC']).toBe(0);
+    // trees count stays 3 while the numeric content silently lost engineC —
+    // exactly why a non-empty captureErrors invalidates the baseline.
+    expect(Object.keys(h.perTree)).toHaveLength(3);
+    expect(h.leafCount).toBe(4);
   });
 });

@@ -16,6 +16,7 @@
  * contracts enumerate signatures — extend CAPTURES in the same PR as each
  * contract. Design record: docs/architecture/REFERENCE_NUMBERS_DESIGN.md §10.
  */
+import { createHash } from 'crypto';
 import prisma from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { getUserTaxPosition } from '@/lib/tax-engine/position/userTaxPosition';
@@ -67,6 +68,57 @@ export function numericLeaves(node: unknown, path: string, out: Map<string, numb
   if (Array.isArray(node)) { node.forEach((v, i) => numericLeaves(v, `${path}[${i}]`, out)); return; }
   for (const [k, v] of Object.entries(node as Record<string, unknown>))
     numericLeaves(v, path ? `${path}.${k}` : k, out);
+}
+
+// ── canonical hash summary (T1 start-gate brief §1.2 / VR-042 §2.3) ─────────
+/**
+ * THE canonical baseline hash — defined HERE, once, so the route, the CLI and
+ * the tests all hash identically (§12.2.1). Construction: every numeric leaf
+ * as `path=value` (JS number stringification), sorted lexicographically by
+ * path, joined with `\n`, SHA-256 hex. Two captures with the same hash have
+ * moved nothing, anywhere; localising a mismatch still needs the full tree.
+ *
+ * `captureErrors` is the partial-capture tripwire: a failed capture writes a
+ * string `__captureError` stub (0 numeric leaves), so an 8-tree capture can
+ * silently be missing a tree's entire numeric content — the drift-log D8
+ * lesson (the unpersisted 1,767-leaf capture is consistent with exactly that).
+ * A hash summary with a non-empty `captureErrors` is NOT a valid baseline.
+ *
+ * NOTE ON COMPARABILITY: VR-042's in-session hash (`700935f3…`) predates this
+ * definition and its construction was not recorded — it is NOT comparable to
+ * hashes produced here. The reference of record is the first `?format=hash`
+ * capture taken after this ships (ledger Instrumentation row).
+ */
+export interface BaselineHashSummary {
+  leafCount: number;
+  treeHash: string;
+  perTree: Record<string, number>;
+  captureErrors: string[];
+}
+
+export function hashBaseline(captures: BaselineTree): BaselineHashSummary {
+  const all = new Map<string, number>();
+  numericLeaves(captures, '', all);
+  const lines = [...all.entries()]
+    .map(([p, v]) => `${p}=${v}`)
+    .sort()
+    .join('\n');
+  const perTree: Record<string, number> = {};
+  const captureErrors: string[] = [];
+  for (const [key, tree] of Object.entries(captures)) {
+    const leaves = new Map<string, number>();
+    numericLeaves(tree, '', leaves);
+    perTree[key] = leaves.size;
+    if (tree && typeof tree === 'object' && '__captureError' in (tree as Record<string, unknown>)) {
+      captureErrors.push(key);
+    }
+  }
+  return {
+    leafCount: all.size,
+    treeHash: createHash('sha256').update(lines).digest('hex'),
+    perTree,
+    captureErrors,
+  };
 }
 
 /** Rendered Part-C cluster (VR-041) — static reference constants pinning what

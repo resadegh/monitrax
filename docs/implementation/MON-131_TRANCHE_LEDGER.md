@@ -56,7 +56,7 @@ Status vocabulary — five words only: `BLOCKED` · `READY` · `IN BUILD` · `VE
 | T−1 golden baseline | **DONE** | PR #1525 merged |
 | T0 census ratchet + source-lock → `lib/` | **DONE** | PR #1525; seed `.audit/producer-census.json` |
 | T−1b Matrix Relay | **DONE** | PR #1526 merged, deploy verified; parity ratchet `tests/matrix/goldenBaselineRelay.test.ts` |
-| Baseline captured | **BLOCKED** | ❌ **No committed artefact exists** — the relay A2 capture (8 trees, 1,767 leaves, at `4e6cdd5c`, user `91b6d7ce`) was reported but never persisted; nothing lives under `.audit/golden-baseline-*.json`. The previous **DONE** here violated this ledger's own §1 rule (drift log **D5**). Re-capture + COMMIT at current main before any code-touching merge — main has been docs-only since `4e6cdd5c`, so a fresh capture still represents the pre-code state. Capture requires relay (admin session) or CLI + `DATABASE_URL` — neither exists in the Code sandbox; the Matrix produces it, Reza/Code commits it |
+| Baseline captured | **DONE** | VR-042 §2: capture at `d3d7e147` — 8 trees, **10,254 leaves**, canonical leaf-list SHA-256 `700935f3b4313087eade1d1c8fffd333d41e081649c8ed2bedc024fad01a680e`, `capturedAt 2026-07-30T10:23:05Z`, user `91b6d7ce`. Leaf-count jump vs the lost `4e6cdd5c` capture explained (drift **D8** — partial first capture). **Persistence caveat (start-gate §1.2):** the 282 KB tree still lives only in the Matrix's session; the cell is fully green when a committed reference exists under `.audit/golden-baseline-*.json`. The `?format=hash` endpoint ships in the start-gate PR — the FIRST hash-mode capture after it deploys is the committed reference of record (VR-042's in-session hash predates the canonical in-code construction and is not comparable) |
 | Phase A inventory + 48 contract files | **DONE** | PR #1534 merged. Count corrected (drift log **D6**): **48** files on main = 45 full-depth quantity contracts + 3 register/index documents (`mon136-register` · `mon136-unattributed-sweep` · `forecast-flows-index`); "49" was an over-count |
 | Phase A gate — 28 decisions | **DONE** | PR #1535 merged (D17–D41); PR #1536 open (D42 corrections + D43–D47) |
 
@@ -70,7 +70,7 @@ Status vocabulary — five words only: `BLOCKED` · `READY` · `IN BUILD` · `VE
 
 *Recorded because it is the acceptance precedent: the fix was verified by the instrument it unblocked.*
 
-### MON-135 — categoriser precondition — READY
+### MON-135 — categoriser precondition — DONE
 
 **Blocks Tranche 3.** `aiCategorisation.ts` stamps `isRecurring: false` unconditionally; the one-off
 gate would zero every AI-categorised expense.
@@ -80,18 +80,18 @@ gate would zero every AI-categorised expense.
 | G2 contract / brief | ✅ | PR #1531 brief |
 | Build | ✅ | **PR #1538 (draft, open)** @ `1f80286c` — tri-state prediction (null = no determination) · evidence-based recurrence via `getRecurringPatterns` + the ONE ≤10% tolerance · two `aiIsRecurring` columns nullable · Wall-B2 Float+Decimal tri-state fixtures + never-emits-false guards (vitest 434/434; all seven `=== false` gates in `lib/` verified strict). Migration incident CLOSED: v1 used model names not `@@map`'ped tables (lesson in the migration file); v2 pushed; Reza ran the dev-DB `migrate resolve --rolled-back` 2026-07-30 ~06:21 (output: "marked as rolled back", host `35.189.31.209`); preview REBUILT GREEN at `68dcd899` (deploy `7s94FmhV…` READY — v2 applied cleanly) |
 | G3 expectedMoves | ✅ | **Declares NO movement.** This PR changes what a default means, not what a number is |
-| G6 merged | ✅ | PR #1538 merged 2026-07-30; prod deploy `dpl_48fktuyb…` READY at `b1af5021` (migration v2 applied to PROD cleanly) |
-| G8 Ring-3 | — | Acceptance: recurring expenses on `/dashboard/expenses` **unchanged**. Any movement is itself the finding. **Merged before a pre-capture existed** — accepted paths: (a) the Matrix persists its in-session `4e6cdd5c` capture if still held (STILL a valid BEFORE — no code-touching merge landed between `4e6cdd5c` and #1538) and diffs against a fresh capture; or (b) fresh capture NOW + compare the Part-C money surfaces against the committed `rendered-baseline-8700b1d7.json` + VR-041 figures. Either way the fresh capture becomes T1's baseline of record |
+| G6 merged | ✅ | PR #1538 merged 2026-07-30; prod deploy `dpl_48fktuyb…` READY (migration v2 applied to PROD cleanly). **Production verified at `d3d7e147`** (the relay's own `sha` field, VR-042 §0 — a later commit that includes MON-135; the earlier `b1af5021` note was the merge commit, not the deployed HEAD) |
+| G8 Ring-3 | ✅ | **PASS — VR-042 §1 (Path B):** 48 tracked rendered figures across /dashboard/tax · balances · expenses (incl. all five per-loan rows + basis labels) · Home — **all identical** to `rendered-baseline-8700b1d7.json` + VR-041 Part C; producer↔render tie 9/9 (VR-042 §2.1); all seven prior identities + three new ones hold. `changesNumbers: NO` confirmed on every money surface. Registry: MON-135 → VERIFIED (run VR-042) |
 
-### Tranche 1 — income (MON-128) — BLOCKED
+### Tranche 1 — income (MON-128) — READY
 
 | Gate | State | Evidence / what's missing |
 |---|---|---|
-| G1 preconditions | ✅ | MON-134 done; MON-135 does not gate T1 |
+| G1 preconditions | ✅ | MON-134 done; MON-135 does not gate T1 — and is now itself DONE (VR-042 §1 PASS, evidence above) |
 | G2 contracts | ✅ | Semantics settled: D17 banked income · D20 layered engines · D18 savings rate |
-| G3 expectedMoves | — | **Not yet written.** Must include: income $41,303 → ~$24,250 · savings rate · health score 54 · debt-to-income 416% |
-| G4 baseline | ✅ | `4e6cdd5c` capture |
-| G5 facts | ❌ | **Salary component** (D33) · **HELP repayment income from the notice of assessment** (D42 C2/C3) · which of $121,227 vs $121,881 rental is gross (D31) |
+| G3 expectedMoves | ✅ | **Committed: `.audit/expected-moves-t1.json`** (start-gate PR) — per-path, arithmetic-anchored to VR-042 measured values; includes the three-PAYG reconciliation paths (9,932.00 applied · 11,128.70 reported · 36,197.69 cashflow) and the Home Saved/$27,987 + savings-rate 73.1% sign-inversion pair. **PAYG withheld $11,129 removed from the regression cluster** (it may be the wrong of two candidates — freezing it would freeze a defect); that removal is itself declared, and it is the only one |
+| G4 baseline | ✅ | VR-042 §2 capture at `d3d7e147` (10,254 leaves, hash `700935f3…`); committed hash-mode reference follows the start-gate PR deploy (Instrumentation row caveat) |
+| G5 facts | ✅ | **Nothing is asked of Reza** (start-gate §3; build brief §0): salary component is in the data (`byType.SALARY` gross 227,519.50 / net 217,587.50, VR-042); HELP repayment income is COMPUTED (taxable income excl. FHSS + reportable fringe benefits + total net investment loss + reportable super + exempt foreign employment — every input in Monitrax); rental gross-vs-net is a code question (build brief §2.1, now with the third value 154,443.11). Genuinely user-only values ship as FACT fields with an undetermined state (build brief §5), never as questions |
 | G7–G11 | — | |
 
 **Day-one invariant:** `netTotal ≤ grossTotal`, Float and Decimal.
@@ -220,7 +220,32 @@ on main: 45 full-depth quantity contracts + 3 register/index documents (`mon136-
 files. Root cause: the count was quoted from the assembling session's running tally, never re-derived
 from `ls | wc -l` at HEAD.*
 
-**Pattern across all six: state asserted from a stale read.** The mitigation is this ledger — cells
+**D7 — the T1 G5 row asserted ❌ for three items the build brief's own §0 had already resolved.**
+The ledger listed "salary component · HELP repayment income · rental gross-vs-net" as facts owed by
+Reza; the build brief §0 had already ruled all three computable-or-code-questions ("asking the user
+for a number the engine owes them is the same failure class as a fabricated default"). The ledger
+disagreed with the brief it indexes. *Corrected 2026-07-30 (start-gate PR): G5 → ✅ with the
+computable basis. Root cause: the ledger row was written before §0's correction and never
+re-derived.*
+
+**D8 — the leaf count moved 1,767 → 10,254 between captures, and the old operand cannot be
+verified.** VR-042 §2.2 asked whether the serializer changed: **it did not** —
+`git log d3d7e147...4e6cdd5c -- lib/matrix/goldenBaseline.ts` is empty and the file is
+byte-identical at both shas, so the jump is not instrumentation. The structural explanation: a
+failed capture writes a string `__captureError` stub **in-tree, never fatal**
+(`goldenBaseline.ts:127`), and leaf counts are **numeric leaves only** — so a capture where the
+two slowest compound trees failed still reports "8 trees" while silently losing their numeric
+content. Today's tree minus `getUserTaxPosition` (7,924) and `generateHealthReport` (566) is
+**1,764 ≈ the remembered 1,767** (Δ3 consistent with small legitimate drift, e.g. the health-trend
+history accruing its first real snapshot between captures). Exact attribution is impossible
+because the 1,767 capture was never persisted — **the comparison has an unverifiable operand,
+which is the D5 lesson restated**. *Ruling: the `d3d7e147` capture (internally verified three
+ways: 48/48 rendered identical, 9/9 producer↔render tie, per-tree decomposition recorded) is the
+reference. Hardening shipped in the start-gate PR: the `?format=hash` summary carries
+`captureErrors` — a non-empty list invalidates the baseline, so a partial capture can never
+masquerade as a full one again.*
+
+**Pattern across all eight: state asserted from a stale read.** The mitigation is this ledger — cells
 cite evidence, and the status page renders from here rather than being written independently.
 
 ## §4b The register gap — MON-112…124 is deliberate, not lost
