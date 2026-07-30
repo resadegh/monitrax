@@ -1,121 +1,72 @@
 {
   "_meta": {
-    "tranche": "T1 income (MON-128)",
+    "tranche": "T1-B income flip (MON-128 + MON-137 + MON-138)",
     "declaredAt": "2026-07-30",
     "baseline": {
-      "sha": "d3d7e147b429cbd93a45bf331e7638531ce3b3d3",
-      "leafCount": 10254,
-      "capturedAt": "2026-07-30T10:23:05.965Z",
-      "evidence": "docs/verification/runs/VR-042.md §2"
+      "sha": "3028c08a3d00c09c4909966422ea47f07ee4232a",
+      "leafCount": 1767,
+      "treeHash": "6f2369a6f0f94279e171bf95db3af26fcee16ef07d0371c14480ac98b16c0224",
+      "evidence": "docs/verification/runs/VR-043.md §1.2 (determinism-checked reference)"
     },
-    "contract": "Per-path, NEVER directional (build brief §4). Every `before` below is a VR-042 MEASURED value, not an estimate. Where `after` is a relabeling identity it is computed here; where it depends on the NEW banked-income engine, `afterStatus: PENDING_RELAY` and the value MUST be filled by running old and new producers against the same real data through the relay DURING the T1 build, BEFORE the migration merges. A PENDING_RELAY entry at T1 merge time fails G3.",
+    "contract": "Per-path, NEVER directional. Every after-value below is COMPUTED — VR-043 §3's relay run of old and new producers on the same live production data. The §1.1/§1.2 trace additions carry their arithmetic. Prefix-scoped entries (byType/primary/secondary/passive, buildHealthInput/generateHealthReport subtrees, moneyFlow, CFO/risk) declare income-derived leaves under a bounded positional prefix — the per-leaf enumeration is the G7 diff's job; any move OUTSIDE these prefixes and paths is undeclared and STOPS the tranche.",
     "declaredRemovals": [
-      "PAYG withheld $11,129 is REMOVED from the must-not-move regression cluster (VR-041 and VR-042 both held it) — start-gate brief §4: it may be the wrong of two candidates (9,932.00 applied vs 11,128.70 reported), so freezing it would freeze a defect. It appears in expectedMoves below instead. This removal is itself a declaration, and it is the only one."
+      "PAYG withheld $11,129 stays OUT of the regression cluster (start-gate §4; VR-043 §5.3 gives it its arithmetic: it MOVES to 43,004 via the §1.1 scope decision).",
+      "The master snapshot's serialized field names are retained this tranche (T1-A record) — no path removals are declared. Any removed leaf in the G7 diff is a defect."
     ]
   },
   "expectedMoves": [
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyGrossIncome",
-      "why": "VR-042 V2 — a field named gross carries the net total (41,302.67 ≡ income.monthly.all.netTotal)",
-      "arithmetic": "before 41,302.67 → after 42,130.34 (= income.monthly.all.grossTotal, measured)",
-      "before": 41302.67,
-      "after": 42130.34,
-      "afterStatus": "COMPUTED_IDENTITY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualGrossIncome",
-      "why": "VR-042 V2 — same mislabel annually (495,632.05 ≡ income.annual.all.netTotal)",
-      "arithmetic": "before 495,632.05 → after 505,564.05 (= income.annual.all.grossTotal, measured)",
-      "before": 495632.05,
-      "after": 505564.05,
-      "afterStatus": "COMPUTED_IDENTITY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualPaygWithholding",
-      "why": "VR-042 V3 — a third PAYG figure (36,197.69 = 3.25× the rendered 11,128.70, 3.64× the applied 9,932.00); must collapse to the single surviving PAYG quantity",
-      "arithmetic": "before 36,197.69 → after = the surviving PAYG value once the 9,932.00 (applied) vs 11,128.70 (reported) fork is traced (build brief amendment §2.1) — computed via relay old-vs-new",
-      "before": 36197.69,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.paygWithholding",
-      "why": "VR-042 V3 — the identity grossTotal − netTotal ≡ paygWithholding fails by 1,196.70/yr (11,128.70 stated vs 9,932.00 applied). Whichever survives, this field must equal the deduction it describes. /dashboard/tax 'PAYG withheld $11,129' moves with it — REMOVED from the regression cluster for exactly this reason",
-      "arithmetic": "before 11,128.70 → after = the surviving value; identity after the fix: grossTotal − netTotal ≡ paygWithholding, exact",
-      "before": 11128.7,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.monthly.all.paygWithholding",
-      "why": "monthly sibling of the identity failure (927.39 stated vs 827.67 applied; ×12 = 11,128.70 vs 9,932.00 — systematic, not rounding)",
-      "arithmetic": "before 927.39 → after = surviving value / 12",
-      "before": 927.39,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualNetIncome",
-      "why": "VR-042 V3 — PAYG deducted a SECOND time from an already-net figure, using the largest of the three values (495,632.05 − 36,197.69)",
-      "arithmetic": "before 459,434.36 → after = banked income, single deduction (D17) — computed via relay once the Layer-2 aggregator exists",
-      "before": 459434.36,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualIncome",
-      "why": "carries the same double-deducted 459,434.36",
-      "arithmetic": "before 459,434.36 → after = banked income (D17), same as annualNetIncome's survivor",
-      "before": 459434.36,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyCashflow",
-      "why": "VR-042 V7 — +27,987.35 renders on Home as 'Saved $27,987' beside the −$6,073 tile; downstream of income, moves when the income feed is fixed",
-      "arithmetic": "before +27,987.35 → after computed via relay (income term replaced by banked income)",
-      "before": 27987.35,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.savingsRate",
-      "why": "VR-042 V7 — 73.1% against Home's −30.5% (sign inversion side by side); denominator becomes banked income (D18)",
-      "arithmetic": "before 73.1 → after computed via relay per D18: (banked − interest − other spending) ÷ banked × 100",
-      "before": 73.1,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.debtServiceRatio",
-      "why": "start-gate §4 — 23.03% (producer) vs Home's debt-to-income 416%; income denominator moves with T1",
-      "arithmetic": "before 23.03 → after computed via relay",
-      "before": 23.03,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyIncome",
-      "why": "MON-128 headline — 41,303/mo mislabelled net-of-PAYG (VR-042 V2 explains the mechanism: a different producer's net total, mislabelled gross)",
-      "arithmetic": "before 41,302.67 → after = banked monthly income (D17), computed via relay; build-brief indicative ≈24,250/mo is NOT the declaration",
-      "before": 41302.67,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/health/aggregateEngine.ts:generateHealthReport.score",
-      "why": "the health score consumes income (D32 predicted movement when T1 lands); Home renders 54 today",
-      "arithmetic": "before 54 → after computed via relay (income inputs re-fed with banked income)",
-      "before": 54,
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/health/buildHealthInput.ts:buildHealthInput",
-      "why": "the health input assembles income fields that T1 re-founds; sub-paths enumerated by the relay run during T1 build (this prefix is intentionally scoped to the INPUT tree whose income fields are the declared movers — the report score is declared separately above)",
-      "arithmetic": "income-derived input fields move to banked-income values; enumerated per path by the relay diff before merge",
-      "afterStatus": "PENDING_RELAY"
-    },
-    {
-      "pathPrefix": "lib/services/moneyFlowService.ts:getMoneyFlow.totalIncome",
-      "why": "VR-042 V1 row 4 — 470,261.70 is one of six 'annual income' values; collapses to the surviving named quantity or is renamed citing its contract",
-      "arithmetic": "before 470,261.70 → after computed via relay (or field renamed/deleted citing contract entry)",
-      "before": 470261.7,
-      "afterStatus": "PENDING_RELAY"
-    }
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.grossTotal", "before": 505564.05, "after": 347162.61, "why": "banked-engine gross (VR-043 §3); old value carried already-annual misreads + ungated one-offs", "arithmetic": "salary gross 192,719.50 + rental 154,443.11 = 347,162.61 (VR-043 §2 L2 invariant)" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.netTotal", "before": 495632.05, "after": 304158.61, "why": "netTotal field carries BANKED after the flip (D17; path kept for continuity)", "arithmetic": "salary banked 149,715.50 + rental 154,443.11 = 304,158.61" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.paygWithholding", "before": 11128.7, "after": 43004, "why": "the withholding wedge, by construction (VR-042 V3 identity restored)", "arithmetic": "gross 347,162.61 − banked 304,158.61 = 43,004.00 exact (VR-043 §2)" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.taxableIncome", "why": "legacy taxable/nonTaxable split re-founded on banked gross", "arithmetic": "moves with grossTotal" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.monthly.all", "before": 41302.67, "after": 25346.55, "why": "the whole monthly.all block is the annual block ÷ 12 (netTotal 41,302.67 → 25,346.55; grossTotal 42,130.34 → 28,930.22; paygWithholding 927.39 → 3,583.67; byType per source)", "arithmetic": "annual ÷ 12 per field (VR-043 §3)" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.all.byType", "why": "byType re-founded on the banked engine: SALARY {gross 192,719.50, banked 149,715.50}; RENTAL 154,443.11 gross≡banked (rounding-only vs 154,443.10781…); one-offs leave the run-rate", "arithmetic": "per-source values from VR-043 §2" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.primary", "why": "primary = salary projection of the banked engine", "arithmetic": "gross 192,719.50 · banked 149,715.50 · withholding 43,004" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.monthly.primary", "why": "monthly sibling", "arithmetic": "annual ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.secondary", "why": "secondary = non-salary projection (rental + investment + other)", "arithmetic": "rental 154,443.11 dominant term" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.monthly.secondary", "why": "monthly sibling", "arithmetic": "annual ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.annual.passive", "why": "passive = rental + investment projection", "arithmetic": "rental 154,443.11 dominant term" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.income.monthly.passive", "why": "monthly sibling", "arithmetic": "annual ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualGrossIncome", "before": 495632.05, "after": 347162.61, "why": "identity restored: ≡ income.annual.all.grossTotal (VR-042 V2 mislabel dies)", "arithmetic": "same producer by construction" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyGrossIncome", "before": 41302.67, "after": 28930.22, "why": "monthly identity", "arithmetic": "347,162.61 ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualNetIncome", "before": 459434.36, "after": 304158.61, "why": "MON-137 double deduction removed — banked, single wedge", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualIncome", "before": 459434.36, "after": 304158.61, "why": "alias of annualNetIncome", "arithmetic": "same" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyNetIncome", "before": 41302.67, "after": 25346.55, "why": "monthly banked", "arithmetic": "304,158.61 ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyIncome", "before": 41302.67, "after": 25346.55, "why": "alias", "arithmetic": "same" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualPaygWithholding", "before": 36197.69, "after": 43004, "why": "MON-137 third PAYG value collapses to the one wedge", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyPaygWithholding", "before": 3016.47, "after": 3583.67, "why": "monthly wedge (renders as Money Story 'taxWithheld' on Home — §1.2 trace)", "arithmetic": "43,004 ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyCashflow", "before": 27987.35, "after": 15047.71, "why": "declared-basis cashflow re-founded on banked income (expense/loan legs UNCHANGED — T3/T2)", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlySurplus", "before": 27987.35, "after": 15047.71, "why": "alias", "arithmetic": "same" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualCashflow", "before": 335848.2, "after": 180572.52, "why": "annual sibling", "arithmetic": "15,047.71 × 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualSurplus", "before": 335848.2, "after": 180572.52, "why": "alias", "arithmetic": "same" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.savingsRate", "before": 73.1, "after": 59.37, "why": "T1 basis (banked denominator). DECLARED MOVING AGAIN in T2 (X3: principal separates, D18)", "arithmetic": "15,047.71 ÷ 25,346.55 × 100" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.expenseRatio", "why": "denominator moves to banked", "arithmetic": "declared expenses ÷ 25,346.55 × 100" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.debtServiceRatio", "before": 23.03, "after": 34.78, "why": "denominator moves to banked", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.taxableIncome", "before": 495632.05, "after": 347162.61, "why": "legacy gross-basis field fed real gross. NOT the T4 reconciliation (VR-042 V4 stays open; engine taxable 145,426 untouched)", "arithmetic": "grossTaxable ≡ gross on current data (all rows isTaxable)" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.incomeByType", "why": "orchestrator income byType re-founded on banked per-source values", "arithmetic": "per VR-043 §2 sources" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyIncome", "before": 41302.67, "after": 25346.55, "why": "MON-128 headline — banked monthly (D17)", "arithmetic": "304,158.61 ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyGrossIncome", "before": 41302.67, "after": 28930.22, "why": "reads cashflow.monthlyGrossIncome (separate leaf)", "arithmetic": "347,162.61 ÷ 12" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyCashflow", "before": 27987.35, "after": 15047.71, "why": "reads cashflow.monthlyCashflow", "arithmetic": "same" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.savingsRate", "before": 73.1, "after": 59.37, "why": "reads cashflow.savingsRate", "arithmetic": "same" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.keptAfterEssentials", "before": 39820.48, "after": 23864.36, "why": "banked monthly − essential expenses (expense leg unchanged)", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.keptMargin", "before": 96.41, "after": 82.49, "why": "kept ÷ banked gross × 100", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.metrics.debtToIncomeRatio", "before": 415.61, "after": 677.24, "why": "denominator = banked annual", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.metrics.debtServiceRatio", "why": "same denominator move inside debt metrics", "arithmetic": "repayments ÷ banked monthly × 100" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.byEntity", "why": "per-entity monthlyIncome re-founded on banked per-row attribution (entity slices of the one producer)", "arithmetic": "Σ per-entity banked rows = 25,346.55" },
+    { "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.healthScore", "why": "master's own healthScore block consumes banked monthly income", "arithmetic": "buildHealthScore re-fed with 25,346.55" },
+    { "pathPrefix": "lib/tax-engine/position/userTaxPosition.ts:getUserTaxPosition.taxPosition.paygWithheld", "before": 11129, "after": 43004, "why": "§1.1 IN SCOPE: withheld credit reads the ONE banked withholding wedge; the stored per-row column (stale, single-row) is retired as a read source", "arithmetic": "gross 347,162.61 − banked 304,158.61 = 43,004; netTax 37,786 UNCHANGED (regression cluster)" },
+    { "pathPrefix": "lib/tax-engine/position/userTaxPosition.ts:getUserTaxPosition.taxPosition.estimatedRefund", "before": -26657, "after": 5218, "why": "§1.1: refund = withheld − netTax; a $26,657 bill becomes a ≈$5,218 refund — the largest user-visible swing in the tranche, declared with its arithmetic", "arithmetic": "43,004 − 37,786 = 5,218 (before: 11,129 − 37,786 = −26,657)" },
+    { "pathPrefix": "lib/tax-engine/position/userTaxPosition.ts:getUserTaxPosition", "why": "bounded prefix for the paygWithheld/estimatedRefund pair wherever else they serialize in the tree (Decimal twin, engineInputs echo); netTax/taxableIncome/deductions must NOT move — they are in the regression cluster", "arithmetic": "only withheld-credit fields move (11,129 → 43,004; −26,657 → 5,218)" },
+    { "pathPrefix": "lib/services/moneyFlowService.ts:getMoneyFlow", "before": 470261.7, "after": 304158.61, "why": "totalIncome + per-entity income rows collapse onto banked (VR-043 §2: 'a genuine collapse, not a rename'); per-entity splits + downstream tax/surplus cells move with the income term", "arithmetic": "totalIncome 470,261.70 → 304,158.61; sub-cells re-derive from banked per-row attribution" },
+    { "pathPrefix": "lib/health/buildHealthInput.ts:buildHealthInput.portfolioSnapshot.income", "why": "per-row monthlyAmount re-fed with banked per-row values (the private double-taxing getNetMonthlyIncome dies)", "arithmetic": "Σ rows = 25,346.55" },
+    { "pathPrefix": "lib/health/buildHealthInput.ts:buildHealthInput.portfolioSnapshot.properties", "why": "per-property monthlyIncome re-fed with banked rental attribution (raw toMonthly dies)", "arithmetic": "Σ property rows = pooled banked rental 12,870.26/mo" },
+    { "pathPrefix": "lib/health/aggregateEngine.ts:generateHealthReport.healthScore.score", "before": 54, "after": 53, "why": "health engine re-run with banked income (T1's contribution ONLY — T3/T6 declare their own, X8). PathPrefix corrected from '…generateHealthReport.score' per the T1-A PR note", "arithmetic": "VR-043 §3" },
+    { "pathPrefix": "lib/health/aggregateEngine.ts:generateHealthReport", "why": "bounded prefix: category sub-scores/evidence that consume income move with the score; non-income categories must not", "arithmetic": "income-derived leaves only" },
+    { "pathPrefix": "lib/cfo/scoreCalculator.ts:computeCFOComponents", "why": "CFO components that read master income/savings fields re-derive; bounded prefix — every moved leaf must trace to the income feed", "arithmetic": "income-fed components only" },
+    { "pathPrefix": "lib/cfo/riskRadar.ts:scanForRisks", "why": "risk rows keyed on income/savings thresholds may re-grade; per-scan UUID/detectedAt regeneration is non-money noise (VR-043 §1.3 class)", "arithmetic": "income-fed risk grades only" }
   ],
   "mustNotMove": {
-    "why": "the regression cluster, re-baselined at d3d7e147 and byte-identical across VR-041 and VR-042. Any movement here that is not declared above STOPS the tranche (G7/G10): revert, do not patch forward.",
+    "why": "the regression cluster at 3028c08a, byte-identical across VR-041/VR-042/VR-043. Any movement here that is not declared above STOPS the tranche (G7/G10): revert, do not patch forward.",
     "values": {
       "netWorth": 3401782,
       "totalAssets": 5461679,
@@ -131,8 +82,8 @@
       "recurring": 1482,
       "oneOff": 50840,
       "loansMonthly": 12779,
-      "perLoanRows": "all five, with basis labels, per /dashboard/expenses (VR-042 §1)"
+      "perLoanRows": "all five, with basis labels, per /dashboard/expenses (VR-043 §1.3)"
     },
-    "note": "PAYG withheld 11,129 deliberately ABSENT — see _meta.declaredRemovals."
+    "note": "payg 11,129 deliberately ABSENT (start-gate §4) — §1.1 gives it its arithmetic above. NOT in T1-B scope and must not move: cashflow.monthlyLoanRepayments 8,816.65 (T2) · expenses.monthly.all.total 52,322.58 + expensesByCategory (T3) · the tax engine's taxable income 145,426 / netTax 37,786 (T4) · the Home debt tile gap 377,822 (T5)."
   }
 }
