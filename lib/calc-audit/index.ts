@@ -21,6 +21,7 @@ import './engines/tax-state';
 import './engines/core';
 import './engines/property';
 import './engines/rental-reconciliation'; // Phase 59: managed-rental gap
+import './engines/banked-income'; // MON-131 T1: banked income (D17/D20) + FY26-27 withholding
 
 export { calcEngineRegistry } from './registry';
 export { runDifferential, runOne } from './runDifferential';

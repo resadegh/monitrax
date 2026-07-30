@@ -254,6 +254,73 @@ export interface TaxYearConfig {
    * regardless.
    */
   cpiQuarterlyIndex: Record<string, number>;
+
+  // ---------------------------------------------------------------------------
+  // MON-131 Tranche 1 (MON-128) — per-FY withholding parameters (D35 / D42 C2-C3).
+  // ---------------------------------------------------------------------------
+
+  /**
+   * D35 — PAYG Schedule 1 formula coefficients, per FY, IN CONFIG (never
+   * hardcoded in an engine file). OPTIONAL because coefficients only exist
+   * here once verified against the ATO publication for that FY —
+   * `calculatePAYG` REFUSES to compute for a config without a schedule
+   * (never silently borrows another FY's table).
+   */
+  paygSchedule?: PAYGScheduleConfig;
+
+  /**
+   * D42 C2/C3 — study & training support loan (HELP/STSL) compulsory-repayment
+   * parameters for the marginal system. OPTIONAL: absent = not verified for
+   * this FY → `calculateHelpRepayment` returns UNDETERMINED, never a guess.
+   */
+  helpRepayment?: HelpRepaymentConfig;
+}
+
+/**
+ * D35 — a full ATO Schedule 1 (NAT 1004) coefficient set for one effective
+ * period. `scale2` = tax-free threshold claimed; `scale1` = not claimed.
+ * Formula: y = a·x − b where x = floor(weekly earnings) + 0.99
+ * (see `paygCalculator.ts` header for the audited mechanics).
+ */
+export interface PAYGScheduleConfig {
+  /** ATO publication the coefficients were read from (URL). */
+  source: string;
+  /** ISO date the schedule takes effect (payments made on/after). */
+  effectiveFrom: string;
+  /** ISO date the schedule ceases (inclusive), if the ATO bounded it. */
+  effectiveTo?: string;
+  /** Scale 2 — claiming the tax-free threshold (Medicare levy embedded). */
+  scale2: PAYGScale[];
+  /** Scale 1 — not claiming the tax-free threshold. */
+  scale1: PAYGScale[];
+}
+
+/**
+ * D42 C2/C3 — HELP/STSL compulsory repayment structure (marginal system).
+ * The top band is a CLIFF: at/above `topThreshold + 1` the repayment is
+ * `topRateOfTotal × TOTAL repayment income`, NOT a marginal rate on the
+ * excess. The two lower bands are genuinely marginal.
+ */
+export interface HelpRepaymentConfig {
+  /** ATO publication the thresholds were read from (URL). */
+  source: string;
+  /** Repayment income at or below this → nil repayment. */
+  minThreshold: number;
+  /** Marginal bands above `minThreshold`, ordered ascending. */
+  bands: Array<{
+    /** Band applies up to and including this repayment income. */
+    upTo: number;
+    /** Fixed amount owed at the band floor (from lower bands). */
+    base: number;
+    /** Marginal rate on each $1 over the band floor. */
+    rate: number;
+    /** The band floor — marginal rate applies to income over this. */
+    over: number;
+  }>;
+  /** Above this repayment income, the top-band CLIFF applies. */
+  topThreshold: number;
+  /** Rate applied to the WHOLE repayment income above `topThreshold`. */
+  topRateOfTotal: number;
 }
 
 export interface BringForwardThresholds {

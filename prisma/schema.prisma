@@ -1592,6 +1592,16 @@ model Property {
   newBuildEvidence           NewBuildEvidence? // Audits the isNewBuild claim
   isRenewablesInfrastructure Boolean? // For Measure 4 — 50% concession on qualifying renewables until 30 Jun 2030
 
+  // MON-131 T1 (X7 / D43) — "genuinely available for rent" availability FACTS.
+  // Intake-only this tranche (they do not change banked cash — a vacant
+  // property banks $0 either way); they exist so the negative-gearing
+  // producer (D43, later tranche) can distinguish the four zero-rental states
+  // (genuinely available / not available / part-year / vacant land) instead
+  // of guessing. null = UNDETERMINED → that producer outputs UNDETERMINED,
+  // never a number (the MON-134 INSUFFICIENT_HISTORY pattern).
+  genuinelyAvailableForRent Boolean?
+  availableDaysPerYear      Int? // days genuinely available for rent this FY (0-365)
+
   // Location data (Google Maps integration)
   latitude      Float? // Latitude coordinate
   longitude     Float? // Longitude coordinate
@@ -1932,6 +1942,19 @@ model Income {
   grossAmount     Float? // If NET entered, calculated GROSS
   netAmount       Float? // If GROSS entered, calculated NET
   paygWithholding Float? // Calculated PAYG withholding (annual)
+
+  // MON-131 T1 (MON-128) — banked-income FACT fields (build brief §5).
+  // actualNetPay: payslip/bank-credit actual net pay, per the ROW'S OWN
+  // `frequency` period (D33 — deliberately NOT the already-annual convention
+  // of grossAmount/netAmount/paygWithholding above; that asymmetry is the #1
+  // unit trap and new fields do not extend it). A present FACT wins over any
+  // derived withholding (D17).
+  actualNetPay Float?
+  // helpLoanDeclared: the earner declared a study loan (HELP/STSL) to the
+  // employer. null = UNDETERMINED — absence of the flag is NOT evidence of
+  // absence of a loan; derived HELP withholding renders undetermined, never
+  // an asserted zero (no default that asserts a tax position).
+  helpLoanDeclared Boolean?
 
   // Phase 20: Superannuation (for SALARY type)
   superGuaranteeRate   Float? // e.g., 0.115 for 11.5%
