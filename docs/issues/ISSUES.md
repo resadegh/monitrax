@@ -133,7 +133,7 @@
 | MON-137 | 🟠 FIXING | 🔴 | yes | masterFinancialService cashflow block: gross fields fed net values, PAYG deducted twice with a third invented figure | ##1545 (T1-B flip) | — |
 | MON-138 | 🟠 FIXING | 🟠 | yes | PAYG Schedule 1 band selection has 1-dollar gaps: fractional weekly earnings between integer band bounds withhold $0 | ##1545 (T1-B flip) | — |
 | MON-139 | 🔵 OPEN | 🟡 | no | Home dashboard renders declared income tiles beside actuals tiles without a basis label — the two contradict on real data | — | n/a |
-| MON-140 | 🟠 FIXING | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | — | ✅ |
+| MON-140 | 🟠 FIXING | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | ##1548 (pending Reza: merge-forward vs revert #1545) | ✅ |
 
 ---
 
@@ -2322,6 +2322,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 - **Root cause:** `lib/services/masterFinancialService.ts:668`, `lib/income/banked/receivedBanked.ts:28`, `lib/income/banked/salaryBanked.ts:95`
 - **Neomatrix:** `engine.bankedIncome.buildBankedIncome`, `orchestrator.masterFinancialService.getMasterFinancialSnapshot`
 - **Downstream consumers (§19.4):** `lib/services/masterFinancialService.ts income.annual/monthly.all|primary|secondary|passive (grossTotal, netTotal, byType, taxableIncome)`, `lib/services/masterFinancialService.ts cashflow.* (gross/net/cashflow/savingsRate/expenseRatio/debtServiceRatio/taxableIncome)`, `quickMetrics.* (monthlyIncome, monthlyGrossIncome, monthlyCashflow, savingsRate, keptAfterEssentials, keptMargin)`, `debt.metrics.debtToIncomeRatio / debtServiceRatio`, `byEntity per-entity monthlyIncome (bankedMonthlyPerRow over the same starved rows)`, `Home dashboard tiles + Money Story (render the above)`
+- **Fix PR(s):** ##1548 (pending Reza: merge-forward vs revert #1545)
 - **Holistic test (§19.4):** `tests/income/bankedInputFeed.test.ts`
 - **Detail:** `neoaudit-run:VR-044 (§2/§3) — the T1-B flip's own escape`
 

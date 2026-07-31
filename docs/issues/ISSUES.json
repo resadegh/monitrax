@@ -3938,7 +3938,9 @@
         "byEntity per-entity monthlyIncome (bankedMonthlyPerRow over the same starved rows)",
         "Home dashboard tiles + Money Story (render the above)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1548 (pending Reza: merge-forward vs revert #1545)"
+      ],
       "test": "tests/income/bankedInputFeed.test.ts",
       "tracker": "neoaudit-run:VR-044 (§2/§3) — the T1-B flip's own escape",
       "notes": "NOT a duplicate of MON-023 (that is the EXPENSE engine ignoring isRecurring; issues:raise de-duped on semanticKey+surface, which is too coarse across income/expense mechanisms). MECHANISM, verified at source on the deployed SHA f1c87afb: masterFinancialService's prisma.income.findMany carried a hand-rolled `select` that omitted isRecurring (and actualNetPay/salarySacrifice/helpLoanDeclared); the banked engines gate one-offs on `row.isRecurring === false`, which against `undefined` never fires, so 10 one-off rows annualised: 13,200.12 x 12 = 158,401.44 exactly, reconciling both ways (salary excess 34,800 + OTHER 123,601.44). `as unknown as BankedIncomeRow[]` defeated the type guard the row type's own docstring promised. Every OTHER feed (fetchBankedRawData, intelligence, exporter, calculate/cashflow) uses an unrestricted findMany and was correct — which is why moneyFlow landed on the declared 304,158.61 and Home did not: ONE engine, TWO feeds. FIX: BANKED_INCOME_SELECT exported from assembly.ts is the ONE definition of the engine's input contract; both feeds spread it. RATCHET tests/income/bankedInputFeed.test.ts (Ring 0 proves the x12 divergence and pins the exact 158,401.44; Ring 1 asserts every field the engines read is selected AND that no caller hand-rolls the subset) — verified to FAIL on the VR-044 code and pass on the fix. Its first draft used a non-greedy regex that silently passed on the bug; replaced with a balanced-paren extractor (same instrument-lying class VR-044 §4 found in RENDERED_PART_C, fixed in the same PR)."
