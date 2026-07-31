@@ -48,6 +48,37 @@ export async function resolveLoanCostsForUser(
 ): Promise<Map<string, ResolvedLoanCost>> {
   const ids = loans.map((l) => l.id).filter((id): id is string => !!id);
 
+  // MON-143 — the OFFSET is fetched HERE, not asked of the caller.
+  //
+  // D21: interest accrues on the balance net of the offset, so the interest
+  // floor needs it. The caller-supplied `CashflowLoan` has never carried it,
+  // and adding it to eleven separate call sites would recreate exactly the
+  // MON-140 defect: one engine, many feeds, and the starved feed is the bug.
+  // This service already owns the transaction feed for the same reason — it
+  // now owns the offset feed too, so a caller CANNOT starve the engine.
+  let offsetByLoan = new Map<string, number>();
+  if (ids.length > 0) {
+    try {
+      const withOffsets = await prisma.loan.findMany({
+        where: { userId, id: { in: ids }, offsetAccountId: { not: null } },
+        select: { id: true, offsetAccount: { select: { currentBalance: true } } },
+      });
+      offsetByLoan = new Map(
+        withOffsets
+          .filter((l) => l.offsetAccount)
+          .map((l) => [l.id, Number(l.offsetAccount!.currentBalance ?? 0)]),
+      );
+    } catch (e) {
+      // Best-effort, mirroring the transaction feed below: an offset-fetch
+      // failure degrades to the un-netted floor rather than blanking the
+      // surface. It is logged because a silent degrade here OVERSTATES cost.
+      console.warn(
+        'loanCosts: offset enrichment failed — interest floor will not net the offset:',
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
   let txs: Array<{ date: Date; amount: number; loanId: string | null }> = [];
   if (ids.length > 0) {
     try {
@@ -77,7 +108,11 @@ export async function resolveLoanCostsForUser(
   return new Map(
     loans.map((l) => [
       l.id ?? '',
-      resolveLoanMonthlyCost(l, l.id ? (byLoan.get(l.id) ?? []) : []),
+      resolveLoanMonthlyCost(
+        // The caller's row may omit offsetBalance; the service supplies it.
+        { ...l, offsetBalance: l.offsetBalance ?? (l.id ? offsetByLoan.get(l.id) : undefined) },
+        l.id ? (byLoan.get(l.id) ?? []) : [],
+      ),
     ]),
   );
 }

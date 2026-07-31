@@ -74,6 +74,17 @@ export interface CashflowLoan {
   interestRateAnnual: number; // DECIMAL, e.g. 0.0649 = 6.49%
   minRepayment?: number | null;
   repaymentFrequency?: string | null;
+  /**
+   * MON-143 — balance in the linked offset account. Interest accrues on the
+   * balance NET of the offset (D21), so this is the divisor for the interest
+   * floor. Omitted/null/0 = no offset.
+   *
+   * It is OPTIONAL on the type but NOT optional in practice: `loanCosts.ts`
+   * injects it for every server-side consumer precisely so no caller can
+   * starve the engine (the MON-140 lesson — one engine, many feeds, and the
+   * partial feed is the defect).
+   */
+  offsetBalance?: number | null;
 }
 /** A reconciled transaction linked to one of the property's income/expense/loan rows. */
 export interface CashflowTransaction extends ResolverTx {
@@ -196,7 +207,14 @@ export function resolveLoanMonthlyCost(
   l: CashflowLoan,
   transactions: CashflowTransaction[] = [],
 ): ResolvedLoanCost {
-  const monthlyInterest = Math.max(0, (l.principal ?? 0) * (l.interestRateAnnual ?? 0)) / 12;
+  // MON-143 — D21: interest accrues on the balance NET of the offset. Before
+  // this, the floor divided by the FULL balance, making it the ONLY one of
+  // four interest derivations in the app that breached D21
+  // (propertyLoanInterest.ts:87, debt-analysis:465 and portfolioEngine:428 all
+  // net it). On Guildford that is $1,964.67 against $384.45 — 5.1x — and it is
+  // the rendered cost whenever a loan floors.
+  const interestBearing = Math.max(0, (l.principal ?? 0) - Math.max(0, l.offsetBalance ?? 0));
+  const monthlyInterest = Math.max(0, interestBearing * (l.interestRateAnnual ?? 0)) / 12;
   const declaredRepayMonthly = (l.minRepayment ?? 0) > 0
     ? toMonthly(l.minRepayment as number, (l.repaymentFrequency ?? 'MONTHLY') as never)
     : 0;
