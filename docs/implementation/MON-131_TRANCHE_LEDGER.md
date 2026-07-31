@@ -172,6 +172,40 @@ gate would zero every AI-categorised expense.
 > BANKED cash, the Tax outflow is 0 by construction — the wedge is taken before pay
 > banks; showing it again would double-count. The wedge lives on the §1.1 tax position.
 
+> **T1-B VERIFICATION — VR-044: FAIL (§5.2), then the §6 redirect (2026-07-31).**
+> The Matrix ran Ring 3 on the merged flip (`f1c87afb`, prod READY) and **22 declared
+> income paths missed**. What LANDED exactly as declared: `paygWithheld` 43,004 ·
+> `estimatedRefund` 5,218 · `cashflow.annual/monthlyPaygWithholding` · `healthScore` 53 ·
+> `moneyFlow.totalIncome` **304,158.61**. MON-137 is FIXED (the double deduction is gone;
+> the gross field carries gross) and the §1.1 tax-page decision shipped to the dollar.
+> The regression cluster held byte-identical (§5.3/§5.4 PASS).
+>
+> **Root cause — NOT an unwired consumer and NOT a stale snapshot** (both §6 hypotheses
+> false; `buildIncomeBreakdown` reads `projectAggregation` at the deployed SHA).
+> `masterFinancialService`'s income `findMany` carried a HAND-ROLLED `select` that omitted
+> `isRecurring`; the engines gate one-offs on `row.isRecurring === false`, which against
+> `undefined` never fires, so 10 one-off rows annualised: **13,200.12 × 12 = 158,401.44**,
+> reconciling three ways (the measured gap; salary excess 34,800 + OTHER 123,601.44).
+> Every OTHER feed uses an unrestricted `findMany` and was correct — which is exactly why
+> moneyFlow hit the declared value and Home did not. **ONE engine, TWO feeds** — the
+> MON-028 class, reproduced by the tranche built to kill it. `as unknown as
+> BankedIncomeRow[]` defeated the guard the row type's docstring promised.
+>
+> **Resolution: MON-140, PR #1548 merged 2026-07-31** (main `e4040dbb`). Reza took the §6
+> redirect over the §5 revert — the tranche was sound and one feed was starved; reverting
+> would have discarded verified-correct work and re-landed a larger diff carrying the same
+> fix. `BANKED_INCOME_SELECT` is now the ONE definition of the engine's input contract
+> (§12.2.1 applied to the INPUT); ratchet `tests/income/bankedInputFeed.test.ts` pins the
+> ×12 mechanism and the no-hand-rolled-subset rule, **proven to fail on the VR-044 code**.
+> Two lying instruments fixed in the same PR: `RENDERED_PART_C.payg` still held the retired
+> 11,129 (VR-044 §4 — it would have passed "unchanged"), and the ratchet's own first draft
+> used a non-greedy regex that passed on the bug.
+>
+> **VR-044's rendered half is VOID** (its §7 — the admin sign-in swapped the browser
+> session), so the NEXT run re-does the full Ring 3, not just the producer half.
+> **Still open: G7 per-path diff + Ring-3 §5.5 on the post-MON-140 prod.** MON-128/137/140
+> stay FIXING until that records.
+
 | Gate | State | Evidence / what's missing |
 |---|---|---|
 | G1 preconditions | ✅ | MON-134 done; MON-135 does not gate T1 — and is now itself DONE (VR-042 §1 PASS, evidence above) |
