@@ -52,3 +52,34 @@ Declared moves computed on LIVE prod through the T1-A relay (VR-043 §3) and com
 ### PR
 - PR URL: https://github.com/resadegh/monitrax/pull/1545 (draft)
 - Status: Open — awaiting Reza's review of the before/after table; §5 acceptance post-merge is revert-on-mismatch.
+
+---
+
+## Session: g8kra5 — VR-045 Ring-3 handout (post-MON-140) + ledger correction
+
+### Changes Made
+- **Type**: Docs / operational procedure
+- **Scope**: NeoAudit Ring 3 — the verification instrument for the T1 income tranche
+- **Why**: VR-044 FAILED the T1-B flip (22 declared paths missed; two Income figures 3.1× apart live on Home). #1548 fixed the mechanism. §24.2 #7 requires a per-fix number verification before MON-128/137/140 can leave `FIXING`, and there was no handout for it.
+- **Solution**: `RING3_VR045_T1_REPAIR.md` — the scoped overlay that pins every declared path next to its VR-044 failure value, so a non-repair is unmistakable rather than inferred. It does **not** replace the canonical §3.3 sweep; §0 sequences that first (playbook §3.2 rule 1).
+
+### Files Modified
+- `docs/verification/briefs/RING3_VR045_T1_REPAIR.md` — **new**. §0 run order + VR-044 §7 identity rules · §1 mechanism + repair · §2 the 22 declared paths · §2b MON-138 reachability capture · §3 Home one-income-story (`moneyFlowService` ≡ `masterFinancialService` at 304,158.61) · §4 `mustNotMove` cluster · §5 pre-declared non-findings · §6 verdict format · §7 gate.
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — Tranche-1 block: **corrected the "VR-044's rendered half is VOID" claim** (it is not — §7 records the *first attempt* as void and the filed run as the valid re-run with identity asserted); G7/G8 rows filled with their VR-044 FAIL state + the VR-045 instrument; MON-138 named as the tranche's fourth still-FIXING member.
+- `docs/changelog/CHANGELOG_2026_07_31.md` — this entry.
+- `docs/IMPLEMENTATION_PLAN.md` — `Last updated` bumped.
+
+### Two corrections this session made to its own prior work
+1. **MON-138 was missing from the handout.** The first version named only MON-128/137/140, so a clean §2/§3/§4 PASS would have read as "the T1 tranche is closed." `.audit/expected-moves-t1.json` `_meta.tranche` declares MON-128 + MON-137 + MON-138. Since MON-138 is `changesNumbers: true`, §23.2.3 forbids closing it on the Ring-0 fixture alone (`mon128T1WithholdingConfig.test.ts:121`) — but Ring 3 may have **no reachable surface** for it on Reza's account. §2b therefore asks for a capture with a pre-decided disposition, rather than sweeping it into a tranche PASS (the `FIX_PROTOCOL.md` §1 F3 failure).
+2. **The ledger's VOID claim.** Left standing, a future session would have discarded VR-044's rendered evidence — which is precisely what proves the `mustNotMove` cluster held 13/13 and what caught the two live Home income figures.
+
+### Build Status
+- [x] Docs-only — no code, no engine, no schema, no registry lifecycle move
+- [x] Every figure traced to source (`VR-044.md`, `.audit/expected-moves-t1.json`, `userTaxPosition.ts:286-288`, `goldenBaseline.ts:172`, `mon128T1WithholdingConfig.test.ts:121`) — none from memory
+
+### Registry
+No lifecycle moves. MON-128 · MON-137 · MON-138 · MON-140 all remain `FIXING` — nothing verifies them until VR-045 runs.
+
+### PR
+- PR #1550 — **MERGED** 2026-07-31 (main `3cdaa8c4`); §17.2 verified, prod `dpl_9sEh6tx8KRXmDfzLKr4ozYdEmz6G` READY
+- Follow-up PR (this doc-sync) — the §11/§15/§16 record #1550 should have carried in the same PR

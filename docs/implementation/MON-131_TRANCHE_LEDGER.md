@@ -201,10 +201,27 @@ gate would zero every AI-categorised expense.
 > 11,129 (VR-044 §4 — it would have passed "unchanged"), and the ratchet's own first draft
 > used a non-greedy regex that passed on the bug.
 >
-> **VR-044's rendered half is VOID** (its §7 — the admin sign-in swapped the browser
-> session), so the NEXT run re-does the full Ring 3, not just the producer half.
+> **Correction (2026-07-31): VR-044's rendered half is NOT void.** This ledger previously
+> said it was. Re-reading VR-044 §7: the **first attempt** was void — signing into
+> `/admin/login` swapped the browser to the admin account, and that draft was withdrawn.
+> The run recorded in the file **is the re-run**, in Reza's own session, with identity
+> asserted from net worth $3,401,782 / 6 properties / 5 loans / entity *"Reza"* $2,651,782
+> **before any figure was read**. Its rendered evidence is good and must not be discarded —
+> it is what proves the `mustNotMove` cluster held 13/13 and what caught the two live Home
+> income figures. The next run re-does the full Ring 3 because **#1548 moved the numbers**,
+> not because VR-044's reads were unsound.
+>
 > **Still open: G7 per-path diff + Ring-3 §5.5 on the post-MON-140 prod.** MON-128/137/140
-> stay FIXING until that records.
+> stay FIXING until that records — **and so does MON-138**, the tranche's fourth member
+> (`expected-moves-t1.json` `_meta.tranche`), which the VR-045 handout §2b treats separately
+> because it may have no reachable Ring-3 surface on Reza's account at all.
+>
+> **Instrument for the next run: `docs/verification/briefs/RING3_VR045_T1_REPAIR.md`**
+> (PR #1550, merged 2026-07-31, main `3cdaa8c4`). It pins all 22 declared paths with
+> VR-044's failure values alongside, the Home one-income-story check
+> (`moneyFlowService` ≡ `masterFinancialService` at 304,158.61), the `mustNotMove` cluster,
+> and §5's pre-declared non-findings so the run cannot false-fail the documented T6
+> deferrals (`perMember[].taxPosition.paygWithheld = 11,129`, `userTaxPosition.ts:286-288`).
 
 | Gate | State | Evidence / what's missing |
 |---|---|---|
@@ -213,7 +230,10 @@ gate would zero every AI-categorised expense.
 | G3 expectedMoves | ✅ | **Committed: `.audit/expected-moves-t1.json`** (start-gate PR) — per-path, arithmetic-anchored to VR-042 measured values; includes the three-PAYG reconciliation paths (9,932.00 applied · 11,128.70 reported · 36,197.69 cashflow) and the Home Saved/$27,987 + savings-rate 73.1% sign-inversion pair. **PAYG withheld $11,129 removed from the regression cluster** (it may be the wrong of two candidates — freezing it would freeze a defect); that removal is itself declared, and it is the only one |
 | G4 baseline | ✅ | VR-042 §2 capture at `d3d7e147` (10,254 leaves, hash `700935f3…`); committed hash-mode reference follows the start-gate PR deploy (Instrumentation row caveat) |
 | G5 facts | ✅ | **Nothing is asked of Reza** (start-gate §3; build brief §0): salary component is in the data (`byType.SALARY` gross 227,519.50 / net 217,587.50, VR-042); HELP repayment income is COMPUTED (taxable income excl. FHSS + reportable fringe benefits + total net investment loss + reportable super + exempt foreign employment — every input in Monitrax); rental gross-vs-net is a code question (build brief §2.1, now with the third value 154,443.11). Genuinely user-only values ship as FACT fields with an undetermined state (build brief §5), never as questions |
-| G7–G11 | — | |
+| G7 baseline diff | ⏳ | **FAILED at VR-044** (22 declared paths missed; `grossTotal` byte-identical to pre-merge). Re-run pending on post-MON-140 prod — instrument is the VR-045 handout §2 |
+| G8 Ring-3 | ⏳ | **FAILED at VR-044** §5.5 — the rendered half was valid (see correction above) and confirmed the producer failure on Reza's Home screen. Re-run pending — VR-045 handout §3 (one income story) + §4 (`mustNotMove`) + §2b (MON-138 reachability capture) |
+| G9 census | — | Was-and-now per quantity, due with the G7/G8 pass |
+| G10–G11 | — | |
 
 **Day-one invariant:** `netTotal ≤ grossTotal`, Float and Decimal.
 
