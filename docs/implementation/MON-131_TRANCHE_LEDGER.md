@@ -577,7 +577,8 @@ Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** 
 | 07-31 | #1553 | `16abe093` | The T2 build brief (The Matrix) | No |
 | 07-31 | #1555 | `225edd18` | **Pre-build research**: §2.1 resolved (algorithm cleared by probe; stored rate is the factor) · §4 G5 facts settled from schema · §3.2 FACT-first path found in `LoanTransaction` · §3.1 first-pass enumeration · **MON-142 raised** · drift **D48** · `mon131:check` family list → range (it had already gone stale on MON-142) | **No — research only** |
 | 07-31 | #1556 | `bcf458b9` | **MON-142 v1** — the effective-loan-rate engine (evidence > typed rate; A6-allowlisted, no consumer) + two `mon131:check` blind spots fixed (hardcoded id list → range; registry ADDs-only → structural per-issue comparison) + these two SHA backfills | **No — engine only** |
-| 07-31 | *(this PR)* | — | **T2 compare relay** — `/api/admin/matrix/golden-baseline/t2-loan-cost`: runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` on the SAME live data, returning per-path before/after + per-loan basis + the measured `moneyFlowService:382` interest-only skip. This is what makes T2's `expectedMoves` COMPUTED, not predicted | **No — reads both paths** |
+| 07-31 | #1557 | `2627dcdf` | **T2 compare relay** — `/api/admin/matrix/golden-baseline/t2-loan-cost`: runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` on the SAME live data, returning per-path before/after + per-loan basis + the measured `moneyFlowService:382` interest-only skip. This is what makes T2's `expectedMoves` COMPUTED, not predicted | **No — reads both paths** |
+| 07-31 | *(this PR)* | — | **T2 relay capture handout** for the Matrix (`docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`) — one GET, identity-asserted (`loanCount === 5`), payload returned verbatim; §5 states falsifiable predictions so a mismatch is the finding | **No — a handout** |
 
 ### Tranches 3–7 + closing — BLOCKED
 
