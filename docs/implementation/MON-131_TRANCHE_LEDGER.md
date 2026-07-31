@@ -333,6 +333,14 @@ gate would zero every AI-categorised expense.
 > Two paths my own T2 brief listed as movers are correctly absent — `debtToIncomeRatio` and
 > `keptAfterEssentials` carry no loan term; the brief was over-inclusive there.
 >
+> **MON-143 — RESOLVED, #1562 merged `f7b685de` (2026-07-31).** No longer gates the migration.
+> The floor now nets the offset, and `loanCosts.ts` **fetches the offsets itself** rather than
+> trusting callers — a producer that a forgetful caller can starve is not fixed (the MON-028
+> class). Ratchet: `tests/calculations/loanInterestOffsetNetting.test.ts`. The issue stays
+> **`FIXING`, not VERIFIED** — no rendered number moves today, so its Ring-3 evidence is the T2
+> migration run itself (§23.2.3: CI green is not verification). The original diagnosis, kept for
+> the record:
+>
 > **MON-143 raised from the capture (gates the migration).** The relay surfaced
 > `monthlyInterestFloor` per loan, and Guildford's floor is computed on the FULL balance:
 > **1,964.67** against **384.45** net of its offset — 5.1×. Verified four-way in source:
@@ -659,7 +667,7 @@ Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** 
 | 07-31 | #1558 | `f897481c` | **T2 relay capture handout** for the Matrix (`docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`) — one GET, identity-asserted (`loanCount === 5`), payload returned verbatim; §5 states falsifiable predictions so a mismatch is the finding | **No — a handout** |
 | 07-31 | #1559 | `7be30bef` | **First T2 capture returned + relay repaired.** Capture at `2627dcdf` measured old **8,816.65** → new **12,779.29** (Δ +3,962.64/mo, +47,551.71/yr). The Matrix found the relay MISSING the `annualCashflow`/`annualSurplus` pair — a $47,551.71 undeclared move that G7 would have stopped the tranche on. Added. D18/X3 savings-rate shape recorded as a stated DEFERRAL. **MON-143 raised** (D21 breach in the canonical interest floor) | **No — relay repair** |
 | 07-31 | #1561 | `8bed66b6` | **Second capture + THE DERIVATION SWEEP.** Re-capture confirmed the annual pair landed (180,572.50 → **133,020.79**) but found **two more** undeclared movers, and reading the assembly surfaced a **fifth**. Root cause was the METHOD: paths were enumerated from a hand-written list. Replaced with a sweep that re-runs the REAL engines on the REAL inputs with the canonical per-loan cost substituted, and diffs — the declaration is now complete BY CONSTRUCTION | **No — relay only** |
-| 07-31 | *(this PR)* | — | **MON-143 — the canonical interest floor nets the offset (D21).** `resolveLoanMonthlyCost` was the only one of four interest derivations charging the floor on the FULL balance; `CashflowLoan` carried no offset field at all, so the engine was *structurally incapable* of netting and no fixture could express the case. Threaded `offsetBalance` through the type, and made `loanCosts.ts` **fetch the offsets itself** (the MON-140 input-feed shape) so no caller can starve the engine by forgetting to pass them. Ratchet test pins the corrected floor, pins the pre-fix **$1,964.67** as WRONG, and pins the **D21/D26 asymmetry both halves**. **Gates the T2 migration** — migrating every consumer onto a producer with a known D21 breach would have propagated it to all of them at once | **No rendered number today** — Guildford resolves via ACTUALS so it never floors. Latent until an offset loan loses its linked repayments; live for every surface the moment T2 wires them |
+| 07-31 | #1562 | `f7b685de` | **MON-143 — the canonical interest floor nets the offset (D21).** `resolveLoanMonthlyCost` was the only one of four interest derivations charging the floor on the FULL balance; `CashflowLoan` carried no offset field at all, so the engine was *structurally incapable* of netting and no fixture could express the case. Threaded `offsetBalance` through the type, and made `loanCosts.ts` **fetch the offsets itself** (the MON-140 input-feed shape) so no caller can starve the engine by forgetting to pass them. Ratchet test pins the corrected floor, pins the pre-fix **$1,964.67** as WRONG, and pins the **D21/D26 asymmetry both halves**. **Gates the T2 migration** — migrating every consumer onto a producer with a known D21 breach would have propagated it to all of them at once | **No rendered number today** — Guildford resolves via ACTUALS so it never floors. Latent until an offset loan loses its linked repayments; live for every surface the moment T2 wires them |
 
 ### Tranches 3–7 + closing — BLOCKED
 
