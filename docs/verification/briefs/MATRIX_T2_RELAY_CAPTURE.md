@@ -102,6 +102,11 @@ The payload's `paths[]` array becomes `.audit/expected-moves-t2.json`, per-path 
 
 `Gate (§20.6): Document 10/10 (T2 brief §5 · MON-131 ledger §2 G3 · VR-044 §7 · VR-045 §2.1) · Requirements 10/10 · Logic 10/10`
 
-Self-review changed three things. (1) I had written `?userId=91b6d7ce…` as the call, copying the truncated form from the run docs — I do not have the full id, and pasting a truncated one would have failed or, worse, silently resolved elsewhere. The route auto-resolves a sole user, so the handout now omits it and handles `MULTIPLE_USERS` explicitly. (2) I had listed §5's figures as things to confirm, which invites confirmation bias in exactly the way VR-045 §2b nearly went wrong when a pre-declared expected answer almost buried a real result; they are now stated as falsifiable predictions with "do not adjust anything to fit these." (3) I had no identity check, because a relay feels safe — but VR-044's first attempt was voided by precisely this, so `loanCount === 5` is now a hard precondition.
+Self-review changed three things. (1) I had written `?userId=91b6d7ce…` as the call, copying the truncated
+form from the run docs — I did not hold the full id, and a truncated one would have failed or resolved
+elsewhere. I replaced it with "omit it, the route auto-resolves a sole user". **The first capture proved
+that wrong too — 13 accounts exist, so the bare call 400s.** §2 now carries the full id, supplied by the
+Matrix and provenance-checked to VR-042. Recorded as two successive errors rather than one clean fix,
+because the lesson is that I twice guessed at an environment fact instead of measuring it. (2) I had listed §5's figures as things to confirm, which invites confirmation bias in exactly the way VR-045 §2b nearly went wrong when a pre-declared expected answer almost buried a real result; they are now stated as falsifiable predictions with "do not adjust anything to fit these." (3) I had no identity check, because a relay feels safe — but VR-044's first attempt was voided by precisely this, so `loanCount === 5` is now a hard precondition.
 
 **Coverage, stated precisely:** this handout produces the measured inputs for T2's contract. It verifies nothing, and it is not a Ring-3 run — no rendered surface is read and no correctness claim follows from it.
