@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**130 total** · 71 open · 🔵 31 · 🟡 5 · 🟠 28 · 🟢 7 · ✅ 58
+**130 total** · 71 open · 🔵 31 · 🟡 4 · 🟠 29 · 🟢 7 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -136,7 +136,7 @@
 | MON-140 | 🟢 VERIFIED | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | ##1548 (merged 2026-07-31) | ✅ |
 | MON-141 | 🔵 OPEN | 🟡 | no | /dashboard/income header and Home 'This month's budget' show two different monthly incomes ($22,579 vs $25,347) — the $33,216/yr rental-basis split is unnamed on both surfaces | — | n/a |
 | MON-142 | 🟡 DIAGNOSED | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
-| MON-143 | 🟡 DIAGNOSED | 🟠 | yes | resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement | — | — |
+| MON-143 | 🟠 FIXING | 🟠 | yes | resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement | ##1562 | ✅ |
 
 ---
 
@@ -2366,19 +2366,20 @@ FOUND while investigating T2 brief §2.1 (the 0.9370 factor). The averaging algo
 
 ### MON-143 — resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-31
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-31
 
 > **What was wrong:** When a loan has no linked repayments and no repayment amount entered, Monitrax falls back to charging you interest on the FULL balance — ignoring money sitting in the linked offset account. On the Guildford loan that reads $1,964.67 a month instead of $384.45: 5.1 times too high. Three other places in the app already net the offset off correctly; the one that feeds your loan costs does not.
 >
-> **What changed:** NOT YET FIXED — the offset needs threading into the canonical producer so the floor is charged on (balance - offset), matching the other three.
+> **What changed:** The canonical producer now charges the fallback interest on (balance − offset), the same way the other three already did — and the offset is fetched by the loan-cost service itself, so no caller can starve it by forgetting to pass it. A test pins both the corrected value and the old wrong one, so it cannot quietly come back.
 >
-> **What you should see:** Nothing today: your Guildford loan has linked repayments, so it uses the real payments and never hits this fallback. It would bite the moment an offset loan lost its linked repayments.
+> **What you should see:** You should see NO change anywhere today — that is the expected result, not a missing one. Your Guildford loan has linked repayments, so it uses those real payments and never touches this fallback. The fix matters for what comes next: the loan-cost migration points every screen at this one producer, and without this it would have spread a 5.1x overstatement to all of them at once.
 
 - **Root cause:** `lib/calculations/propertyCashflow.ts:199`
 - **Neomatrix:** `engine.propertyCashflow.resolveLoanMonthlyCost`, `orchestrator.loanCosts.resolveLoanCostsForUser`
 - **Downstream consumers (§19.4):** `lib/services/loanCosts.ts resolveLoanCostsForUser (feeds every server-side loan-cost consumer)`, `app/dashboard/expenses per-loan rows + basis label`, `app/api/budget-analysis/generate (basis label "interest cost")`, `app/dashboard/properties/[id] per-loan line`, `app/api/loans resolvedCost`, `the T2 migration target: masterFinancialService cashflow.monthlyLoanRepayments once wired`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Fix PR(s):** ##1562
+- **Holistic test (§19.4):** `tests/calculations/loanInterestOffsetNetting.test.ts`
 - **Detail:** `neoaudit-run:T2-relay-capture`
 
-FOUND by the T2 relay capture (2026-07-31): the relay surfaces monthlyInterestFloor per loan, and the Matrix spotted Guildford floored on the FULL 377,821.91 rather than 377,821.91 - 303,889.96 = 73,931.95. VERIFIED FOUR-WAY IN SOURCE: propertyLoanInterest.ts:87 nets the offset; debt-analysis/route.ts:465 nets (effectiveBalance); portfolioEngine.ts:428 nets (effectivePrincipal); resolveLoanMonthlyCost:199 does NOT. The CANONICAL producer is the only one of four that breaches D21. LATENT TODAY: Guildford resolves via ACTUALS so it never floors, and no rendered number is currently wrong. It becomes live the moment an offset loan loses its linked repayments. WHY IT GATES T2: the tranche migrates every loan-cost consumer ONTO this producer. Shipping T2 first would propagate a known D21 breach to every surface at once. Fix BEFORE the migration, or the migration inherits it. SHAPE OF THE FIX: CashflowLoan carries no offset field, so the fix threads offsetBalance through the type and every feed. loanCosts.ts already queries the loan; the relay proves offsetAccount.currentBalance is reachable.
+FOUND by the T2 relay capture (2026-07-31): the relay surfaces monthlyInterestFloor per loan, and the Matrix spotted Guildford floored on the FULL 377,821.91 rather than 377,821.91 - 303,889.96 = 73,931.95. VERIFIED FOUR-WAY IN SOURCE: propertyLoanInterest.ts:87 nets the offset; debt-analysis/route.ts:465 nets (effectiveBalance); portfolioEngine.ts:428 nets (effectivePrincipal); resolveLoanMonthlyCost:199 does NOT. The CANONICAL producer is the only one of four that breaches D21. LATENT TODAY: Guildford resolves via ACTUALS so it never floors, and no rendered number is currently wrong. It becomes live the moment an offset loan loses its linked repayments. WHY IT GATES T2: the tranche migrates every loan-cost consumer ONTO this producer. Shipping T2 first would propagate a known D21 breach to every surface at once. Fix BEFORE the migration, or the migration inherits it. SHAPE OF THE FIX: CashflowLoan carries no offset field, so the fix threads offsetBalance through the type and every feed. loanCosts.ts already queries the loan; the relay proves offsetAccount.currentBalance is reachable. FIXED in #1562: propertyCashflow.ts interestBearing = max(0, principal - max(0, offsetBalance)); CashflowLoan gained offsetBalance; loanCosts.ts now fetches offsets itself (MON-140 input-feed shape) so the engine cannot be starved by a caller. Ratchet: tests/calculations/loanInterestOffsetNetting.test.ts pins the corrected floor, pins the pre-fix 1,964.67 as WRONG, and pins the D21/D26 asymmetry both halves so a later "tidy-up" has to argue with it. STAYS FIXING until a Ring-3 run records (§23.2.3) - no rendered number moves today, so the Ring-3 evidence is the T2 migration run, not a separate one.
 
