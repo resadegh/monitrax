@@ -81,6 +81,7 @@ import { type IncomeAggregation } from '@/lib/calculations/incomeAggregator';
 import {
   buildBankedIncomeFromData,
   bankedMonthlyPerRow,
+  BANKED_INCOME_SELECT,
 } from '@/lib/income/banked/assembly';
 import {
   projectAggregation,
@@ -668,22 +669,13 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     prisma.income.findMany({
       where: { userId },
       select: {
-        id: true,
-        ownerEntityId: true,
-        name: true,
-        amount: true,
-        frequency: true,
-        type: true,
-        salaryType: true,
-        netAmount: true,
-        grossAmount: true,
-        paygWithholding: true,
-        isTaxable: true,
-        propertyId: true,
-        investmentAccountId: true,
-        // Calc-SSOT Wall B3: MANAGED rental streams' bank actuals are NET —
-        // the rent pooling grosses them back up by the derived fee.
-        rentalMode: true,
+        // MON-140: the banked engines' input contract, from its ONE definition
+        // — this select previously hand-rolled the subset and omitted
+        // `isRecurring`, so every one-off row annualised ×12 on Home while
+        // moneyFlow (fed by the assembler) was correct (VR-044 §3).
+        // Calc-SSOT Wall B3 `rentalMode` is inside the shared constant.
+        ...BANKED_INCOME_SELECT,
+        // Master's own extras (budget-variance matching — not engine inputs).
         budgetedAmount: true,
         lastReconciled: true,
       },

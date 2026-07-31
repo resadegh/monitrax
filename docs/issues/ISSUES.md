@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**126 total** · 67 open · 🔵 30 · 🟡 3 · 🟠 31 · 🟢 3 · ✅ 58
+**127 total** · 68 open · 🔵 30 · 🟡 3 · 🟠 32 · 🟢 3 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -133,6 +133,7 @@
 | MON-137 | 🟠 FIXING | 🔴 | yes | masterFinancialService cashflow block: gross fields fed net values, PAYG deducted twice with a third invented figure | ##1545 (T1-B flip) | — |
 | MON-138 | 🟠 FIXING | 🟠 | yes | PAYG Schedule 1 band selection has 1-dollar gaps: fractional weekly earnings between integer band bounds withhold $0 | ##1545 (T1-B flip) | — |
 | MON-139 | 🔵 OPEN | 🟡 | no | Home dashboard renders declared income tiles beside actuals tiles without a basis label — the two contradict on real data | — | n/a |
+| MON-140 | 🟠 FIXING | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | ##1548 (pending Reza: merge-forward vs revert #1545) | ✅ |
 
 ---
 
@@ -2307,4 +2308,23 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engi
 - **Detail:** `MON-131 T1-B start-gate §1.2 resolution (assigned T6)`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/page.tsx.
+
+### MON-140 — masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly
+
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: income · opened 2026-07-31
+
+> **What was wrong:** After the income fix went live, the Home income tile and the money-flow diagram disagreed by $158,401 a year. Both read the same new engine, but Home's copy of your income rows was missing the column that marks a payment as a one-off, so ten one-off receipts were each treated as if they arrive every month and multiplied by twelve.
+>
+> **What changed:** The list of income columns the engine needs is now written down in exactly one place, and every part of the app that loads income rows uses that one list. Home can no longer be handed a partial row.
+>
+> **What you should see:** The Home income tile and the money-flow diagram now show the same annual income (~$304,159 banked). One-off receipts no longer inflate the monthly figures.
+
+- **Root cause:** `lib/services/masterFinancialService.ts:668`, `lib/income/banked/receivedBanked.ts:28`, `lib/income/banked/salaryBanked.ts:95`
+- **Neomatrix:** `engine.bankedIncome.buildBankedIncome`, `orchestrator.masterFinancialService.getMasterFinancialSnapshot`
+- **Downstream consumers (§19.4):** `lib/services/masterFinancialService.ts income.annual/monthly.all|primary|secondary|passive (grossTotal, netTotal, byType, taxableIncome)`, `lib/services/masterFinancialService.ts cashflow.* (gross/net/cashflow/savingsRate/expenseRatio/debtServiceRatio/taxableIncome)`, `quickMetrics.* (monthlyIncome, monthlyGrossIncome, monthlyCashflow, savingsRate, keptAfterEssentials, keptMargin)`, `debt.metrics.debtToIncomeRatio / debtServiceRatio`, `byEntity per-entity monthlyIncome (bankedMonthlyPerRow over the same starved rows)`, `Home dashboard tiles + Money Story (render the above)`
+- **Fix PR(s):** ##1548 (pending Reza: merge-forward vs revert #1545)
+- **Holistic test (§19.4):** `tests/income/bankedInputFeed.test.ts`
+- **Detail:** `neoaudit-run:VR-044 (§2/§3) — the T1-B flip's own escape`
+
+NOT a duplicate of MON-023 (that is the EXPENSE engine ignoring isRecurring; issues:raise de-duped on semanticKey+surface, which is too coarse across income/expense mechanisms). MECHANISM, verified at source on the deployed SHA f1c87afb: masterFinancialService's prisma.income.findMany carried a hand-rolled `select` that omitted isRecurring (and actualNetPay/salarySacrifice/helpLoanDeclared); the banked engines gate one-offs on `row.isRecurring === false`, which against `undefined` never fires, so 10 one-off rows annualised: 13,200.12 x 12 = 158,401.44 exactly, reconciling both ways (salary excess 34,800 + OTHER 123,601.44). `as unknown as BankedIncomeRow[]` defeated the type guard the row type's own docstring promised. Every OTHER feed (fetchBankedRawData, intelligence, exporter, calculate/cashflow) uses an unrestricted findMany and was correct — which is why moneyFlow landed on the declared 304,158.61 and Home did not: ONE engine, TWO feeds. FIX: BANKED_INCOME_SELECT exported from assembly.ts is the ONE definition of the engine's input contract; both feeds spread it. RATCHET tests/income/bankedInputFeed.test.ts (Ring 0 proves the x12 divergence and pins the exact 158,401.44; Ring 1 asserts every field the engines read is selected AND that no caller hand-rolls the subset) — verified to FAIL on the VR-044 code and pass on the fix. Its first draft used a non-greedy regex that silently passed on the bug; replaced with a balanced-paren extractor (same instrument-lying class VR-044 §4 found in RENDERED_PART_C, fixed in the same PR).
 
