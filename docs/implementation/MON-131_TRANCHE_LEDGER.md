@@ -296,6 +296,29 @@ gate would zero every AI-categorised expense.
 > property) — a schema limit to record, not model around; mixed-purpose has a FACT field already
 > (`deductibleFraction @default(1.0)`, Phase 51, read by three tax-engine files).
 >
+> **SECOND CAPTURE (2026-07-31, at `7be30bef`) — the repair landed, and the METHOD was the defect.**
+> `paths` went 8 → 10 and the annual pair reads exactly as derived: `cashflow.annualCashflow` /
+> `.annualSurplus` **180,572.50 → 133,020.79** (`304,158.61 − 17,786.31 − 153,351.51`, the $47,551.71
+> move). The §5 skip prediction is now correct at three loans.
+>
+> **But it found TWO MORE undeclared movers** — `cashflow.monthlySurplus` (the monthly twin of a pair
+> whose annual half had just been added) and `debt.metrics.monthlyRepayments` (**$3,962.64**, sitting in
+> the same object as a path that WAS declared). Reading the assembly to fix them surfaced a **fifth**,
+> `quickMetrics.monthlyLoanRepayments`, that no capture had reached.
+>
+> **Three rounds, five misses — the list was the defect, not any entry in it.** The Matrix named it:
+> *"it enumerates paths by name rather than by dependency… adding two names fixed two names; it did not
+> fix the method."* Correct, and the fix is theirs: **the derivation sweep.** The relay now re-runs
+> `calculateCashflow` and `calculateDebtMetrics` — the REAL engines, on master's REAL inputs — with the
+> canonical per-loan cost substituted for the raw `minRepayment`, then diffs every numeric leaf.
+> `quickMetrics` mirrors are carried by value-match. Whatever moves, moves: no judgement, no list,
+> nothing left to forget. The old input's `l.minRepayment && l.repaymentFrequency` filter — which is
+> precisely why both interest-only loans vanish — is gone by construction in the canonical legs.
+>
+> **Coverage boundary, stated:** the sweep is complete for `cashflow.*`, `debt.metrics.*` and the
+> `quickMetrics` mirrors. It does NOT sweep `byEntity`, health, or anything outside those blocks — those
+> would need their own recompute, and G7 remains the backstop for them.
+>
 > **FIRST CAPTURE RETURNED 2026-07-31 — and it caught a hole in my own instrument.** Measured at
 > `2627dcdf` on Reza's account (identity asserted: `loanCount === 5`, userId echoed): old
 > **8,816.65** → new **12,779.29**, Δ **+3,962.64/mo · +47,551.71/yr**. Every §5 prediction landed
@@ -601,7 +624,8 @@ Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** 
 | 07-31 | #1556 | `bcf458b9` | **MON-142 v1** — the effective-loan-rate engine (evidence > typed rate; A6-allowlisted, no consumer) + two `mon131:check` blind spots fixed (hardcoded id list → range; registry ADDs-only → structural per-issue comparison) + these two SHA backfills | **No — engine only** |
 | 07-31 | #1557 | `2627dcdf` | **T2 compare relay** — `/api/admin/matrix/golden-baseline/t2-loan-cost`: runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` on the SAME live data, returning per-path before/after + per-loan basis + the measured `moneyFlowService:382` interest-only skip. This is what makes T2's `expectedMoves` COMPUTED, not predicted | **No — reads both paths** |
 | 07-31 | #1558 | `f897481c` | **T2 relay capture handout** for the Matrix (`docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`) — one GET, identity-asserted (`loanCount === 5`), payload returned verbatim; §5 states falsifiable predictions so a mismatch is the finding | **No — a handout** |
-| 07-31 | *(this PR)* | — | **First T2 capture returned + relay repaired.** Capture at `2627dcdf` measured old **8,816.65** → new **12,779.29** (Δ +3,962.64/mo, +47,551.71/yr). The Matrix found the relay MISSING the `annualCashflow`/`annualSurplus` pair — a $47,551.71 undeclared move that G7 would have stopped the tranche on. Added. D18/X3 savings-rate shape recorded as a stated DEFERRAL. **MON-143 raised** (D21 breach in the canonical interest floor) | **No — relay repair** |
+| 07-31 | #1559 | `7be30bef` | **First T2 capture returned + relay repaired.** Capture at `2627dcdf` measured old **8,816.65** → new **12,779.29** (Δ +3,962.64/mo, +47,551.71/yr). The Matrix found the relay MISSING the `annualCashflow`/`annualSurplus` pair — a $47,551.71 undeclared move that G7 would have stopped the tranche on. Added. D18/X3 savings-rate shape recorded as a stated DEFERRAL. **MON-143 raised** (D21 breach in the canonical interest floor) | **No — relay repair** |
+| 07-31 | *(this PR)* | — | **Second capture + THE DERIVATION SWEEP.** Re-capture confirmed the annual pair landed (180,572.50 → **133,020.79**) but found **two more** undeclared movers, and reading the assembly surfaced a **fifth**. Root cause was the METHOD: paths were enumerated from a hand-written list. Replaced with a sweep that re-runs the REAL engines on the REAL inputs with the canonical per-loan cost substituted, and diffs — the declaration is now complete BY CONSTRUCTION | **No — relay only** |
 
 ### Tranches 3–7 + closing — BLOCKED
 
