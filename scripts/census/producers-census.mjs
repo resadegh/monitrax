@@ -36,7 +36,24 @@ const ROOT = resolve(__dir, '../..');
 const SEED = resolve(ROOT, '.audit/producer-census.json');
 
 const SCAN_ROOTS = ['lib', 'app/api', 'app/dashboard', 'components'];
-const SKIP = /\.(test|spec)\.[tj]sx?$|\.d\.ts$|__mocks__|node_modules/;
+// Tests and type-only files are not producers.
+//
+// NEITHER ARE THE MATRIX COMPARE RELAYS (added 2026-07-31). `app/api/admin/matrix/**`
+// exists to MEASURE producers: each relay deliberately reads the OLD path and the
+// NEW canonical one side by side so a tranche's `expectedMoves` can be COMPUTED on
+// live data instead of predicted. Counting an instrument as a producer is a category
+// error with a real cost — it inflates the very metric the tranche is driving down,
+// and it makes every future tranche's relay look like fresh duplication. The T2 relay
+// scored as +1 on five separate quantities (loanCost 31→32, incomeRunRate 128→129,
+// expenseRunRate 81→82, savingsRate 30→31, emergencyMonths 15→16) while deleting
+// nothing and producing nothing any user sees.
+//
+// The narrow scope matters: this is admin-only (HR-3), read-only, and renders no
+// user-facing number. It is NOT a general "admin is exempt" rule — anything under
+// app/api/admin that actually derives a user-facing figure would still be a producer
+// and belongs in the count.
+const SKIP =
+  /\.(test|spec)\.[tj]sx?$|\.d\.ts$|__mocks__|node_modules|^app\/api\/admin\/matrix\//;
 
 // ── quantity signatures ─────────────────────────────────────────────────────
 // Each: { key, patterns: [RegExp], context?: RegExp } — a function body is a

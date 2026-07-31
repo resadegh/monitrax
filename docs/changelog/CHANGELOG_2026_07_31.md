@@ -177,3 +177,29 @@ Proves the resolution hierarchy, the D21 offset rule, the staleness threshold, t
 - [x] `vitest tests/neomatrix/` — 148/148
 - [x] `npm run neomatrix:check` — anchors resolve, census 0 uncovered
 - [x] `npm run issues:check` — 129 valid
+
+---
+
+## Session: g8kra5 (cont.) — MON-131 T2: the loan-cost compare relay (scaffold)
+
+### Changes Made
+- **Type**: Scaffold (admin measurement surface) — **moves NO number**
+- **Scope**: MON-131 Tranche 2, gate G3
+- **Why**: `expectedMoves` must be COMPUTED on live data, never predicted — previews bind to the dev DB. T1 proved the cost of declaring instead of measuring: a monthly-rounded ×12 produced a two-cent contract defect (VR-045 §2.1).
+
+### Files Modified
+- `app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts` — **new**. Runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` against the same live data; returns per-path before/after with arithmetic, per-loan basis (ACTUALS / DECLARED / INTEREST_FLOOR), the MON-142 effective-rate divergence (surfaced, not applied), and the measured `moneyFlowService:382` interest-only skip.
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — #1556 SHA backfilled (`bcf458b9`) per the convention set last PR; T2 relay row; G3 note.
+- `docs/financial-logic/graph/structural/coverage-allowlist.json` — the route, with a reason.
+
+### Gates caught the relay, correctly
+`lint:source-lock` flagged 5 raw-`minRepayment` reads and `lint:financial-surfaces` 1 declared-cashflow reference. Both are inherent: **measuring the old producer means touching it.** Each is annotated with `@source-lock-allowed` / `@financial-math-allowed` and a specific reason — the lints were not widened. One of the two turned out to be a *path-string literal* naming the quantity in the contract, not a read of it; the annotation says so.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean
+- [x] `npm run lint:source-lock` — 0 hits on the new file
+- [x] `npm run lint:financial-surfaces` — 0 hits on the new file
+- [x] `npm run neomatrix:check` — anchors resolve, census 0 uncovered
+
+### What happens next
+Deploy → open the route once → the returned numbers become T2's `expectedMoves` → the migration (loanCost 31 producer sites → ONE engine) follows with a Ring-3 run.

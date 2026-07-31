@@ -296,6 +296,30 @@ gate would zero every AI-categorised expense.
 > property) — a schema limit to record, not model around; mixed-purpose has a FACT field already
 > (`deductibleFraction @default(1.0)`, Phase 51, read by three tax-engine files).
 >
+> **G3 instrument shipped (this PR): the T2 compare relay.** `expectedMoves` cannot be declared
+> from a test — previews bind to the dev DB, so the before/after values only exist in production.
+> `/api/admin/matrix/golden-baseline/t2-loan-cost` measures both paths at once and returns, per
+> declared path, the current value and the canonical one with its arithmetic. It also returns the
+> per-loan **basis** (ACTUALS / DECLARED / INTEREST_FLOOR), the MON-142 effective-rate divergence
+> (surfaced, not applied), and the `moneyFlowService.ts:382` skip **measured rather than inferred** —
+> the `if (!minRepayment) continue` that drops both interest-only loans to $0 in the entity flow.
+> Source-lock + financial-surfaces flagged its raw-`minRepayment` reads, correctly: measuring the OLD
+> producer means touching it. Each is annotated with that reason rather than the lint being widened.
+>
+> **Census correction shipped with the relay (drift D49).** The producer census counted the
+> **compare relays themselves** as producers. `app/api/admin/matrix/**` exists to MEASURE producers —
+> each relay deliberately reads the OLD and NEW paths side by side — so counting them inflated the
+> very metric the tranches drive down, and made every future tranche's instrument look like fresh
+> duplication. The T2 relay scored **+1 on five quantities** (loanCost 31→32 · incomeRunRate 128→129 ·
+> expenseRunRate 81→82 · savingsRate 30→31 · emergencyMonths 15→16) while deleting nothing.
+> `app/api/admin/matrix/**` is now excluded and the seed re-run.
+>
+> **Read the resulting drop correctly: it is a MEASUREMENT CORRECTION, not deleted duplication.**
+> expenseRunRate 81→79 · incomeRunRate 128→126 · payg 56→54 · grossIncome 38→36 · netIncome 34→33 ·
+> emergencyMonths 15→14 · deductions 106→105 are **instrument sites leaving the count**. `loanCost`
+> stays **31**. **No producer was deleted in this PR** — that is the migration, still to come. The
+> census `history` entry carries the same warning so the number cannot be misread later.
+>
 > **§3.2 gets a FACT-first path.** `LoanTransaction` (Phase 51) already carries `interestPortion` /
 > `principalPortion` — *"when known from the statement"* — plus `balanceAfter`. So the split is a
 > D17-style hierarchy (statement fact → derive → undetermined), not pure derivation.
@@ -552,7 +576,8 @@ Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** 
 |---|---|---|---|---|
 | 07-31 | #1553 | `16abe093` | The T2 build brief (The Matrix) | No |
 | 07-31 | #1555 | `225edd18` | **Pre-build research**: §2.1 resolved (algorithm cleared by probe; stored rate is the factor) · §4 G5 facts settled from schema · §3.2 FACT-first path found in `LoanTransaction` · §3.1 first-pass enumeration · **MON-142 raised** · drift **D48** · `mon131:check` family list → range (it had already gone stale on MON-142) | **No — research only** |
-| 07-31 | *(this PR)* | — | **MON-142 v1** — the effective-loan-rate engine (evidence > typed rate; A6-allowlisted, no consumer) + two `mon131:check` blind spots fixed (hardcoded id list → range; registry ADDs-only → structural per-issue comparison) + these two SHA backfills | **No — engine only** |
+| 07-31 | #1556 | `bcf458b9` | **MON-142 v1** — the effective-loan-rate engine (evidence > typed rate; A6-allowlisted, no consumer) + two `mon131:check` blind spots fixed (hardcoded id list → range; registry ADDs-only → structural per-issue comparison) + these two SHA backfills | **No — engine only** |
+| 07-31 | *(this PR)* | — | **T2 compare relay** — `/api/admin/matrix/golden-baseline/t2-loan-cost`: runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` on the SAME live data, returning per-path before/after + per-loan basis + the measured `moneyFlowService:382` interest-only skip. This is what makes T2's `expectedMoves` COMPUTED, not predicted | **No — reads both paths** |
 
 ### Tranches 3–7 + closing — BLOCKED
 
