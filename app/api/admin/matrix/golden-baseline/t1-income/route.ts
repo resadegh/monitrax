@@ -317,7 +317,7 @@ export async function GET(request: NextRequest) {
           ? i.grossAmount
           : i.isRecurring === false
             ? i.amount
-            : toAnnual(i.amount, i.frequency as Frequency),
+            : toAnnual(i.amount, i.frequency as Frequency), // @source-lock-allowed: §1.3 attribution — mirrors taxPositionCalculator's declared-basis branch verbatim so the Matrix can attribute the $121,881-class figure per row; not a user-facing producer (deliberately NOT monthlyRunRate — the tax loop annualises recurring rows with plain toAnnual)
       ),
     }));
 
