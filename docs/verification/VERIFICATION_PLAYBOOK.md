@@ -126,6 +126,10 @@ State MATCH or MISMATCH by $X across the three. Then for the same property repor
   - No sentinel leaks: "69 years", "999", decades-long payoff, "$0 repayment" on a property that has a loan.
   - COUNTS across surfaces: the Household "Vehicles" count (Settings › Household) vs the number of VEHICLE assets on My Wealth › Assets — report BOTH numbers. The Household value is a DECLARED dropdown (0–5, used for expense estimates); the Assets value is the actual ledger. If they differ, LIST what each vehicle asset is (so plant/equipment such as an excavator is distinguishable from cars — an excavator is not a household car). (MON-042)
 
+=== DERIVED FIGURES — check the ARITHMETIC, never a remembered value (VR-045 §6) ===
+A figure DOWNSTREAM of a number that legitimately moved must NOT be expected to hold its old value. When a check tells you a figure "must return to $X" or "must be unchanged", and that figure is derived from a quantity the change moved (a savings rate × income, a budget ÷ days, an entity attribution), report the CURRENT value AND the arithmetic that produces it — then say whether the derivation is sound. A stable formula over correctly-moved inputs is a PASS, not a failure.
+Origin: VR-045 §6 — a handout listed four income-derived figures in a "must return" list; following it literally would have produced four false failures on a run that was otherwise clean.
+
 === PART F — REGRESSION SNAPSHOT (the fixed regression keys) ===
 Capture these figures for the snapshot — they are emitted inside the MACHINE REPORT's "partF" object below (do NOT also print a separate Part F block): netWorth, totalAssets, totalLiabilities, portfolioEquity; per-property cashflowYrDetail/List/Home + yieldDetail/List; totalMonthlyExpenses, estimatedAnnualTax; safetyScore, healthScoreHome, healthScoreCfo, healthGradeHome, healthGradeCfo; emergencyFundMonths, savingsRateCfo, savingsRateHome; balances.liquid/accessible/locked. Use null for not-found. Numbers only (no $ or commas).
 

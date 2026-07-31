@@ -83,3 +83,35 @@ No lifecycle moves. MON-128 · MON-137 · MON-138 · MON-140 all remain `FIXING`
 ### PR
 - PR #1550 — **MERGED** 2026-07-31 (main `3cdaa8c4`); §17.2 verified, prod `dpl_9sEh6tx8KRXmDfzLKr4ozYdEmz6G` READY
 - Follow-up PR (this doc-sync) — the §11/§15/§16 record #1550 should have carried in the same PR
+
+---
+
+## Session: g8kra5 (cont.) — VR-045 processed + the MON-131 change record + its gate
+
+### Changes Made
+- **Type**: Docs / registry lifecycle / CI gate
+- **Scope**: MON-131 programme record; Tranche 1 closure
+- **Why**: Reza — *"I need you to document all changes for MON-131 and keep it updated."* Auditing to build that record found VR-045 had landed as a run doc with **no processing**: four issues still `FIXING`, two artefact defects it reported unfixed, and one finding unraised.
+
+### VR-045 processed (the run itself was PR #1551)
+- **Registry ×4 → `VERIFIED`** with `test` + resolving `semanticKeys` on each (gate: 128 issues valid): MON-128 (`tests/income/bankedIncome.test.ts`) · MON-137 (`tests/calculations/aggregatorEntityScoping.test.ts` — pins the culprit removal: the orchestrator no longer computes income) · MON-138 (`tests/tax/mon128T1WithholdingConfig.test.ts`) · MON-140 (`tests/income/bankedInputFeed.test.ts`).
+- **`.audit/expected-moves-t1.json` corrected** — `cashflow.annualCashflow`/`.annualSurplus` `180,572.52 → 180,572.50`. Per VR-045 §2.1 the **declaration** was wrong, not the engine: it was derived as rounded-monthly `15,047.71 × 12`, propagating 2c the engine's annual-component derivation (`304,158.61 − 17,786.31 − 105,799.80`) does not. Recorded under a new `_meta.declaredCorrections`.
+- **`RING3_VR045_T1_REPAIR.md` §3 corrected** — VR-045 §6 proved four "consequential figures must return to their pre-T1-B values" expectations **arithmetically wrong**; every one is income-derived and income legitimately fell, so a literal run would have produced **four false failures**. My error, caught by the Matrix.
+- **`VERIFICATION_PLAYBOOK.md` §3.3 gains the standing lens** — a figure downstream of a declared move belongs in `expectedMoves` with its own arithmetic, never in a "must return" list.
+- **MON-141 raised** (VR-045 §7) — `/dashboard/income` $22,579 vs Home $25,347; the whole $2,768 gap is the rental basis (declared $121,227/yr vs actuals $154,443/yr), which VR-043 §4 already established as legitimately distinct quantities. Raised as a naming/design question, `changesNumbers: false`, with the decision left to Reza.
+
+### The deliverable
+- **`MON-131_TRANCHE_LEDGER.md` §6 — the change record.** Every merged MON-131 PR with its SHA, what changed, and whether numbers moved, grouped Instrumentation/Phase A · Preconditions · Tranche 1 · Tranches 2–7. Placed in the ledger rather than a new file because §1 already declares this the state of record — a second history doc would be §12.2.1 at the documentation layer.
+- **`MON-131_TRANCHE_LEDGER.md` §7 + `scripts/check-mon131-ledger.mjs` (`npm run mon131:check`)** — the keep-it-updated mechanism. A diff touching a MON-131 surface (banked engines, matrix relay, `expectedMoves`, census, the MON-131 doc set, verification runs/briefs, or a MON-131-family registry move) must touch the ledger too. Wired into `docs-hygiene` **`--strict`** — deliberately unlike the two soft-launch F-1 guards, and the workflow header now says so plus the honest caveat that this workflow is not yet a required check.
+- **Tranche 1 gates G7–G11 closed** in §3 with VR-045 evidence; tranche status `IN BUILD → DONE`.
+
+### Coverage — stated precisely
+The gate verifies that the ledger **was touched**. It does **not** judge whether the row is truthful or even related — a machine cannot tell an evidence row from a placeholder; that stays §1's job and the reviewer's. It is also diff-scoped, so a MON-131 change with no file overlap is invisible to it.
+
+### Build Status
+- [x] `npm run issues:check` — 128 valid
+- [x] `npm run mon131:check` — exercised in both directions (passes with the ledger, fails without)
+- [x] Docs/registry/CI only — no engine, no schema, no number moved
+
+### PR
+- Follow-up to #1550 (handout) / #1551 (VR-045 run) / #1552 (doc-sync)

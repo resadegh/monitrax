@@ -103,7 +103,11 @@ VR-044 §4's headline: two Income figures, 3.1× apart, both visible without scr
 
 **The single most important read in this run:** the two Home income figures must now tell **one** story. Producer-level equivalent — `moneyFlowService.getMoneyFlow.totalIncome` **304,158.61** must equal `masterFinancialService` net/banked **304,158.61**. In VR-044 these were 304,158.61 vs 462,560.05.
 
-Also re-read the consequential figures VR-044 saw move off the unflipped producer — they must return: Home *"spending more than you earn"* **$12,597** (was $11,757) · daily spending budget **$903** (was $911) · entity cashflow total **−$17,003** (was −$19,759) · Reza's entity line **−$17,379/mo** (was −$20,135).
+> **CORRECTED 2026-07-31 after VR-045 §6 — this paragraph was WRONG.** It previously listed four "consequential" figures as **must return to their pre-T1-B values**: Home *"spending more than you earn"* $12,597 · daily spending budget $903 · entity cashflow total −$17,003 · Reza's entity line −$17,379/mo. **Every one of those is derived from income, and income has just legitimately fallen** — so they must NOT return, and a run following this literally would have produced **four false failures**. VR-045 derived each and proved the formulas stable: `30.5% × 25,347 = 7,731` · `Saved 15,048 ÷ 31 = 485` · entity total −19,759 (already flipped in T1-B; −17,003 was the *pre-flip* value) · Reza's line −31,135, where Reza −11,000 + Newsha −2,200 = **−13,200 = the one-off total leaving per-entity attribution**, which `expectedMoves` already declares under the `byEntity` prefix.
+>
+> **The standing lesson (now also in `VERIFICATION_PLAYBOOK.md` §3.3):** a figure **downstream of a declared move** belongs in `expectedMoves` **with its own arithmetic** — never in a "must return / must not move" list. Regression-cluster membership is for quantities the change does not touch.
+
+Instead, capture these four and check each against its **derivation**, not against a remembered value: Home *"spending more than you earn"* (`savingsRate × monthlyIncome`) · daily spending budget (`Saved ÷ days-in-month`) · entity cashflow total · Reza's entity line. Report the figure **and** the arithmetic that produces it.
 
 ---
 
