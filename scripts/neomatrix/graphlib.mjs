@@ -204,7 +204,18 @@ export function auditInvariants(graph) {
   // THE ALLOWLIST IS NOW EMPTY (Neo-G4 complete): every built tax engine is
   // wired into the live position. A future entry here needs the same
   // reviewed-exception rigor — cite WHY the code is honestly disconnected.
-  const A6_ISLAND_ALLOWLIST = {};
+  // Calc nodes that are GENUINELY production-unwired, each with a verified
+  // reason and the trigger that removes it. Never a convenience escape hatch:
+  // an entry here is a promise that the node has no consumer TODAY, and that
+  // wiring it is a named, separate piece of work.
+  const A6_ISLAND_ALLOWLIST = {
+    'engine.loans.resolveEffectiveLoanRate':
+      'MON-142 v1 ships the engine only — it reports rate divergence and moves NO number, ' +
+      'so it deliberately has no consumer yet. Wiring it (the deductible-interest THEORETICAL ' +
+      'fallback at propertyLoanInterest.ts:85 and the loan-cost interest floor at ' +
+      'propertyCashflow.ts:199) moves real numbers and is a separate PR with its own ' +
+      'expectedMoves + Ring 3. REMOVE THIS ENTRY in that PR.',
+  };
   const adj = new Map();
   for (const n of graph.nodes) adj.set(n.id, new Set());
   for (const e of graph.edges) {

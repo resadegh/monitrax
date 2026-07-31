@@ -3,6 +3,8 @@
   "files": {
     "lib/gcp/credentials.ts": "graphify 0.8.45 skips files whose NAME matches its secret-file filter — VERIFIED: a byte-identical copy under a neutral name IS extracted, the original 'credentials.ts' is not. Auth/infra (GCP credential resolution), no financial calculation. Re-test on graphify upgrade.",
     "lib/share/tokens.ts": "Same graphify secret-name skip as credentials.ts (name contains 'tokens'). Share-link token helpers, no financial calculation.",
-    "app/api/entities/[id]/accounting/snapshots/route.ts": "graphify 0.8.45 drops this in the full-corpus merge via node-id collision (the GET handler's symbol id collides with an identically-named symbol in another route.ts) — VERIFIED: the file extracts cleanly (3 nodes) when graphify runs on its directory in isolation; sibling [id] routes are all covered. A route handler, no financial calculation. Candidate for NI-2 collision-handling improvement."
+    "app/api/entities/[id]/accounting/snapshots/route.ts": "graphify 0.8.45 drops this in the full-corpus merge via node-id collision (the GET handler's symbol id collides with an identically-named symbol in another route.ts) — VERIFIED: the file extracts cleanly (3 nodes) when graphify runs on its directory in isolation; sibling [id] routes are all covered. A route handler, no financial calculation. Candidate for NI-2 collision-handling improvement.",
+    "lib/calculations/effectiveLoanRate.ts": "MON-142 v1 — the effective-loan-rate engine, modelled as a Layer-1 semantic node (engine.loans.resolveEffectiveLoanRate) with its four input edges. Absent from the structural graph only because graphify is a local-only CLI unavailable in this environment; the semantic layer already covers it. REMOVE at the next graphify regeneration.",
+    "tests/calculations/effectiveLoanRate.test.ts": "MON-142 v1 — test file for the above; tests are not semantic nodes."
   }
 }

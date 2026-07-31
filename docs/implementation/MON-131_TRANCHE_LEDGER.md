@@ -246,6 +246,31 @@ gate would zero every AI-categorised expense.
 
 ### Tranche 2 — loan cost (MON-130) — IN BUILD (pre-build research complete)
 
+> **MON-142 v1 — the effective-loan-rate engine (this PR).** Reza approved the recommended
+> approach 2026-07-31 (*"go with your recommendation"*): derive the rate where evidence exists,
+> flag where it does not, never silently prefer either number.
+>
+> `lib/calculations/effectiveLoanRate.ts` — ONE producer for *"what rate is this loan actually
+> at?"*, a D17-style FACT hierarchy applied to a rate: **charged-interest ledger** (the bank's
+> own figure) → **interest-only repayment** (an IO repayment IS the interest) → **stored**, and
+> the stored value is never overwritten. Divergence beyond **0.10pp** raises `RATE_STALE`;
+> absence of evidence raises `RATE_UNVERIFIED`, so *"we don't know"* cannot be mistaken for
+> *"we checked"*. A **P&I repayment is never rate evidence** (it mixes principal in — Thornland
+> Lot 1's $6,197/mo would imply 7.85%). D21 honoured: the divisor is `principal − offset`, so
+> Guildford derives on $73,932, not $377,822 (a 5× error otherwise).
+>
+> **MOVES NO NUMBER.** Nothing consumes it — deliberately. It is A6-allowlisted with a named
+> removal trigger, because wiring it (the deductible-interest THEORETICAL fallback at
+> `propertyLoanInterest.ts:85` and the loan-cost interest floor at `propertyCashflow.ts:199`)
+> moves real money and needs its own `expectedMoves` + Ring 3.
+>
+> Evidence: 16 fixtures on the REAL figures — Broadbeach $1,191/mo → 6.268% vs stored 6.690%
+> (−0.4216pp, `RATE_STALE`), and Lot 2's different balance implying the **same** rate to <0.0001,
+> which is the observation a per-loan data error cannot produce. Float ≡ Decimal parity across
+> all seven shapes. Neo-sync: node `engine.loans.resolveEffectiveLoanRate` + four verified input
+> edges; `neomatrix:check` green. Registry: **MON-142 → DIAGNOSED** (root cause verified at
+> `file:line`; NOT `FIXING` — no consumer means the user-visible defect is not yet fixed).
+
 > **§2.1 RESOLVED — the 0.9370 factor is NOT in the actuals path.** The T2 brief flagged both
 > interest-only loans repaying ~0.937× their contractual interest and required it explained before
 > any loan number was declared. The averaging algorithm was cleared first, by running it:

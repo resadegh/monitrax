@@ -148,3 +148,32 @@ Stored 6.690% vs bank-charged ~6.268% = **0.422pp = $2,993/yr** across the two I
 
 ### PR
 - Follows #1554 (change record + gate). T2's migration is a separate PR, after the relay compare and Reza's MON-142 call.
+
+---
+
+## Session: g8kra5 (cont.) — MON-142 v1: the effective-loan-rate engine
+
+### Changes Made
+- **Type**: Feature (new canonical engine) — **moves NO number**
+- **Scope**: loan cost / deductible interest — the rate input itself
+- **Root cause**: `Loan.interestRateAnnual` is typed and user-maintained with no staleness signal. Reza's two Bankwest IO loans store 6.690% while the repayments in the data imply ~6.268% (`1191×12/228,000` and `2518×12/482,000` — the same implied rate from two different balances). Reza confirmed rates moved and that he does not recall updating them here. The stale rate reaches money via `propertyLoanInterest.ts:85` (THEORETICAL fallback) and `propertyCashflow.ts:199` (interest floor).
+- **Solution**: `lib/calculations/effectiveLoanRate.ts` — one producer, FACT hierarchy (charged ledger → IO repayment → stored), divergence surfaced never resolved, D21 offset-net divisor, P&I repayments excluded as evidence.
+
+### Files Modified
+- `lib/calculations/effectiveLoanRate.ts` — **new**. Float + Decimal twins.
+- `tests/calculations/effectiveLoanRate.test.ts` — **new**. 16 fixtures on the real figures + parity.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — node + 4 input edges.
+- `scripts/neomatrix/graphlib.mjs` — A6 island allowlist entry **with a named removal trigger**.
+- `docs/financial-logic/graph/structural/coverage-allowlist.json` — 2 entries (graphify is a local-only CLI, unavailable here).
+- `docs/issues/ISSUES.{json,md}` — MON-142 → DIAGNOSED.
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — T2 section row.
+
+### Coverage — stated precisely
+Proves the resolution hierarchy, the D21 offset rule, the staleness threshold, the P&I guard, and Float ≡ Decimal parity, on the real originating figures. Does **NOT** prove any surface renders it (nothing consumes it yet), and does **NOT** adjudicate which of stored-vs-implied is factually right — it reports that they disagree and what the evidence says.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean
+- [x] `vitest tests/calculations/effectiveLoanRate.test.ts` — 16/16
+- [x] `vitest tests/neomatrix/` — 148/148
+- [x] `npm run neomatrix:check` — anchors resolve, census 0 uncovered
+- [x] `npm run issues:check` — 129 valid

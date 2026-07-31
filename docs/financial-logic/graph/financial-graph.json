@@ -6750,6 +6750,24 @@
       "workedExample": null,
       "verifiedDate": "2026-07-30",
       "status": "documented"
+    },
+    {
+      "id": "engine.loans.resolveEffectiveLoanRate",
+      "kind": "engine",
+      "label": "Effective loan rate — evidence beats the typed rate (MON-142)",
+      "file": "lib/calculations/effectiveLoanRate.ts",
+      "line": 130,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "EffectiveLoanRate — annualRate + basis (DERIVED_CHARGED | DERIVED_IO_REPAYMENT | STORED), storedRateAnnual, impliedRateAnnual, divergencePp, flags (RATE_STALE | RATE_UNVERIFIED | NO_INTEREST_BEARING_BALANCE), interestBearingBalance.",
+      "formula": "interestBearing = max(0, principal - offset) [D21]. Evidence order: chargedInterestAnnual / interestBearing > (isInterestOnly ? resolvedMonthlyRepayment x 12 / interestBearing : none) > storedRateAnnual. divergencePp = (implied - stored) x 100; |divergencePp| > 0.10 => RATE_STALE. A P&I repayment is NEVER rate evidence (it mixes principal).",
+      "authority": "MON-142 + D17 FACT-hierarchy pattern applied to a rate + D21 (interest nets the offset). Threshold 0.10pp: lenders move variable rates in 0.25pp steps, so a real change clears it while partial-period/day-count artefacts do not.",
+      "status": "documented",
+      "verifiedDate": "2026-07-31",
+      "notes": "MOVES NO NUMBER YET - no consumer wired; wiring is a separate number-moving PR with its own expectedMoves + Ring 3. Reports divergence, never overwrites Loan.interestRateAnnual. Float + Decimal twins, parity fixtured (tests/calculations/effectiveLoanRate.test.ts)."
     }
   ],
   "edges": [
@@ -10371,6 +10389,46 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "app/api/tax/position reads getUserTaxPosition().taxPosition.tax — the dashboard tax surface renders the bundle, not a direct calculateTaxPosition call; since T1-B the bundle carries the §1.1 two-pass wedge ancestry (salaryWithholdingWedgeAnnual → derivedPaygWithheldAnnual), so both taxPayable-keyed numbers trace through the same producer set."
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.loans.resolveEffectiveLoanRate",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "rate (decimal p.a.)",
+      "evidence": "effectiveLoanRate.ts:150 interestBearingBalance = max(0, principal - offset) — the divisor for every implied rate (D21)",
+      "verifiedDate": "2026-07-31"
+    },
+    {
+      "from": "input.Loan.interestRateAnnual",
+      "to": "engine.loans.resolveEffectiveLoanRate",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "rate (decimal p.a.)",
+      "toUnit": "rate (decimal p.a.)",
+      "evidence": "effectiveLoanRate.ts:149 storedRateAnnual — the value compared against evidence; returned as-is when no evidence exists (basis STORED)",
+      "verifiedDate": "2026-07-31"
+    },
+    {
+      "from": "input.LoanTransaction.interestCharged",
+      "to": "engine.loans.resolveEffectiveLoanRate",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/year",
+      "toUnit": "rate (decimal p.a.)",
+      "evidence": "effectiveLoanRate.ts:172 chargedInterestAnnual / interestBearing — the DERIVED_CHARGED path; the bank own figure, strongest evidence",
+      "verifiedDate": "2026-07-31"
+    },
+    {
+      "from": "engine.propertyCashflow.resolveLoanMonthlyCost",
+      "to": "engine.loans.resolveEffectiveLoanRate",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "rate (decimal p.a.)",
+      "evidence": "effectiveLoanRate.ts:178-186 resolvedMonthlyRepayment x 12 / interestBearing — DERIVED_IO_REPAYMENT, gated on isInterestOnly (a P&I repayment mixes principal and is never rate evidence)",
+      "verifiedDate": "2026-07-31"
     }
   ]
 }
