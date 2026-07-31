@@ -287,7 +287,10 @@ describe('Per-engine fixture coverage (HR-3 — every engine auditable)', () => 
       .filter((e) => e.category === 'CORE')
       .map((e) => e.name);
     expect(coreNames).toContain('core.netWorth');
-    expect(coreNames).toContain('core.incomeAggregator');
+    // MON-131 T1-B: core.incomeAggregator retired with its engine — the ONE
+    // income producer's inventory entry is income.bankedAggregator.
+    expect(coreNames).toContain('income.bankedAggregator');
+    expect(coreNames).not.toContain('core.incomeAggregator');
     expect(coreNames).toContain('core.expenseAggregator');
     expect(coreNames).toContain('core.loanAggregator');
   });

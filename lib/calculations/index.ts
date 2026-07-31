@@ -40,8 +40,9 @@ export {
   type ExpenseInput,
 } from './expenseAggregator';
 
+// MON-131 T1-B: `aggregateIncome` deleted — the banked engine
+// (lib/income/banked/aggregator.ts) is the ONE income producer. Types remain.
 export {
-  aggregateIncome,
   type IncomeAggregation,
   type IncomeInput,
 } from './incomeAggregator';

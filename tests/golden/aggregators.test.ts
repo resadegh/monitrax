@@ -13,50 +13,57 @@
  */
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { aggregateIncome, type IncomeInput } from '@/lib/calculations/incomeAggregator';
+import { buildBankedIncome } from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { TAX_YEAR_2026_27 } from '@/lib/tax-engine/config/taxYearConfig';
 import { aggregateLoanRepayments, type LoanInput } from '@/lib/calculations/loanAggregator';
 
 const money = (max = 500_000) => fc.double({ min: 0, max, noNaN: true, noDefaultInfinity: true });
 const FREQS = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL', 'HALF_YEARLY'] as const;
 const REPAY_FREQS = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] as const;
 
-// No salaryType/grossAmount → getGrossAmount always uses amount × frequency,
-// keeping the ×12 conversion law provable.
-const incomeArb: fc.Arbitrary<IncomeInput> = fc.record({
+// MON-131 T1-B: the income laws now run over the ONE banked engine — the
+// legacy `aggregateIncome` is deleted (income-net-run-rate contract). The
+// arbitrary spans all sources incl. SALARY rows that take the full
+// DERIVED_SCHEDULE path (random amounts through the real PAYG schedule).
+const incomeArb: fc.Arbitrary<BankedIncomeRow> = fc.record({
   amount: money(),
   frequency: fc.constantFrom(...FREQS),
-  type: fc.constantFrom('SALARY', 'RENTAL', 'DIVIDEND', 'INTEREST', 'OTHER'),
+  type: fc.constantFrom('SALARY', 'RENTAL', 'INVESTMENT', 'OTHER'),
   isTaxable: fc.boolean(),
+  isRecurring: fc.constant(true),
 });
 
-describe('Ring 0-gen: income aggregation totalities hold for any income list', () => {
-  it('taxable + non-taxable = gross total (every item in exactly one split)', () => {
+const banked = (income: BankedIncomeRow[]) =>
+  buildBankedIncome({
+    income,
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: TAX_YEAR_2026_27, repaymentIncome: null },
+  });
+
+describe('Ring 0-gen: banked-income totalities hold for any income list (D20 L2 invariants)', () => {
+  it('Σ bySource banked = banked total (pure summation — every row in exactly one source)', () => {
     fc.assert(
       fc.property(fc.array(incomeArb, { maxLength: 40 }), (income) => {
-        const agg = aggregateIncome(income, 'monthly');
-        expect(agg.taxableIncome + agg.nonTaxableIncome).toBeCloseTo(agg.grossTotal, 4);
+        const r = banked(income);
+        const sourceSum =
+          r.annual.bySource.salary.banked +
+          r.annual.bySource.rental.banked +
+          r.annual.bySource.investment.banked +
+          r.annual.bySource.other.banked;
+        expect(sourceSum).toBeCloseTo(r.annual.banked, 4);
       }),
     );
   });
 
-  it('Σ byType gross = grossTotal and Σ byType net = netTotal', () => {
+  it('banked ≤ gross, and gross − banked ≡ the withholding wedge (§5.6 identities)', () => {
     fc.assert(
       fc.property(fc.array(incomeArb, { maxLength: 40 }), (income) => {
-        const agg = aggregateIncome(income, 'monthly');
-        const gross = Object.values(agg.byType).reduce((s, v) => s + v.gross, 0);
-        const net = Object.values(agg.byType).reduce((s, v) => s + v.net, 0);
-        expect(gross).toBeCloseTo(agg.grossTotal, 4);
-        expect(net).toBeCloseTo(agg.netTotal, 4);
-      }),
-    );
-  });
-
-  it('annual gross = 12 × monthly gross (frequency conversion is linear)', () => {
-    fc.assert(
-      fc.property(fc.array(incomeArb, { maxLength: 40 }), (income) => {
-        const m = aggregateIncome(income, 'monthly');
-        const y = aggregateIncome(income, 'annual');
-        expect(y.grossTotal).toBeCloseTo(m.grossTotal * 12, 3);
+        const r = banked(income);
+        expect(r.annual.banked).toBeLessThanOrEqual(r.annual.gross + 1e-6);
+        expect(r.annual.gross - r.annual.banked).toBeCloseTo(r.annual.withholding.total, 4);
       }),
     );
   });

@@ -49,7 +49,7 @@ bootstrapUserAuditRegistry();
 export { userAuditAdapterRegistry } from './registry';
 export {
   netWorthAdapter,
-  incomeAggregatorAdapter,
+  bankedIncomeAdapter,
   expenseAggregatorAdapter,
   loanAggregatorAdapter,
   CORE_USER_AUDIT_ADAPTERS,

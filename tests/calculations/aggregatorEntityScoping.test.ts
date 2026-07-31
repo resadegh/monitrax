@@ -11,7 +11,6 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { aggregateIncome } from '@/lib/calculations/incomeAggregator';
 import { aggregateExpenses } from '@/lib/calculations/expenseAggregator';
 import { aggregateLoanRepayments } from '@/lib/calculations/loanAggregator';
 import { calculateCashflow } from '@/lib/calculations/cashflowOrchestrator';
@@ -27,60 +26,11 @@ import type { BankedIncomeRow } from '@/lib/income/banked/types';
 import { TAX_YEAR_2026_27 } from '@/lib/tax-engine/config/taxYearConfig';
 
 describe('aggregator entity-scoping (audit C-3 fix)', () => {
-  describe('incomeAggregator.aggregateIncome', () => {
-    const income = [
-      {
-        amount: 10000,
-        frequency: 'MONTHLY',
-        type: 'SALARY',
-        isTaxable: true,
-        ownerEntityId: 'e1',
-      },
-      {
-        amount: 800,
-        frequency: 'WEEKLY',
-        type: 'RENTAL',
-        isTaxable: true,
-        ownerEntityId: 'e2',
-      },
-      {
-        amount: 200,
-        frequency: 'WEEKLY',
-        type: 'RENTAL',
-        isTaxable: true,
-        ownerEntityId: 'e1',
-      },
-    ];
-
-    it('no filter param → aggregates everything (backward-compat)', () => {
-      const all = aggregateIncome(income, 'monthly');
-      const filtered = aggregateIncome(income, 'monthly');
-      // Same call → same result (sanity)
-      expect(filtered.grossTotal).toBe(all.grossTotal);
-    });
-
-    it('omitted ownerEntityId aggregates the entire household', () => {
-      const result = aggregateIncome(income, 'monthly');
-      // All three items should contribute
-      expect(result.grossTotal).toBeGreaterThan(0);
-    });
-
-    it('ownerEntityId="e1" excludes e2 items', () => {
-      const all = aggregateIncome(income, 'monthly');
-      const e1Only = aggregateIncome(income, 'monthly', 'e1');
-      const e2Only = aggregateIncome(income, 'monthly', 'e2');
-      // e1 + e2 should sum to the unfiltered total (within rounding).
-      expect(e1Only.grossTotal + e2Only.grossTotal).toBeCloseTo(all.grossTotal, 2);
-      // e1's total is strictly less than the household total (e2 has rows).
-      expect(e1Only.grossTotal).toBeLessThan(all.grossTotal);
-    });
-
-    it('ownerEntityId="ghost" returns zero (no matching rows)', () => {
-      const result = aggregateIncome(income, 'monthly', 'ghost');
-      expect(result.grossTotal).toBe(0);
-      expect(result.netTotal).toBe(0);
-    });
-  });
+  // MON-131 T1-B: the incomeAggregator.aggregateIncome scoping block is
+  // deleted with its engine (income-net-run-rate contract). Income entity
+  // scoping is now the CALLER's pre-filter over rows fed to the ONE banked
+  // engine — pinned by the cashflowOrchestrator block below (e1 + e2 banked
+  // slices sum to the household total).
 
   describe('expenseAggregator.aggregateExpenses', () => {
     const expenses = [

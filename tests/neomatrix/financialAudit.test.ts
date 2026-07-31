@@ -35,7 +35,7 @@ import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/health
 import { generatePropertyPortfolioReport } from '@/lib/reports/generators/propertyPortfolio';
 import { aggregateLoanRepayments } from '@/lib/calculations/loanAggregator';
 import { aggregateExpenses } from '@/lib/calculations/expenseAggregator';
-import { aggregateIncome } from '@/lib/calculations/incomeAggregator';
+
 import {
   holdingMarketValue,
   sumHoldingsMarketValue,
@@ -587,75 +587,58 @@ const CASES: AuditCase[] = [
     expected: 600,
   },
 
-  // ── Depth: income aggregation — gross/net/PAYG, salary GROSS vs NET, taxable split ─
+  // ── Depth: banked income (D17/D20) — the ONE income producer since T1-B.
+  // (The legacy engine.incomeAggregator.aggregateIncome cases are deleted
+  // with the engine — income-net-run-rate contract.)
   {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'grossTotal = Σ getGrossAmount; SALARY GROSS uses amount×freq, non-salary uses amount×freq; toMonthly(ANNUAL)=/12',
-    derivation: 'SALARY GROSS $120,000 ANNUAL ($10,000/mo) + rental $2,000 MONTHLY = $12,000/mo',
+    node: 'engine.bankedIncome.buildBankedIncome',
+    law: 'L2 pure summation: NET-entered salary banks its declared amount; grossAnnual = stored grossAmount (already-annual); non-property rental banks its declared run-rate',
+    derivation: 'NET salary $78,000 ANNUAL (gross $100,000) + rental $2,000 MONTHLY → banked 78,000 + 24,000 = $102,000/yr',
     actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 120000, frequency: 'ANNUAL', paygWithholding: 30000 },
-          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
-        ] as never,
-        'monthly',
-      ).grossTotal,
-    expected: 12000,
-  },
-  {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'paygWithholding is an ALREADY-ANNUAL figure (asymmetric with amount); monthly target divides by 12; only SALARY type',
-    derivation: 'PAYG $30,000 (annual) → $30,000 / 12 = $2,500/mo; rental contributes $0 (not SALARY)',
-    actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 120000, frequency: 'ANNUAL', paygWithholding: 30000 },
-          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
-        ] as never,
-        'monthly',
-      ).paygWithholding,
-    expected: 2500,
-  },
-  {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'SALARY salaryType=NET with grossAmount set: grossAmount is ALREADY-ANNUAL (used directly for an annual target, not amount×freq)',
-    derivation: 'NET salary, grossAmount $100,000, annual target → grossTotal $100,000 (not the $78,000 net amount)',
-    actual: () =>
-      aggregateIncome(
-        [
+      buildBankedIncome({
+        income: [
           { type: 'SALARY', salaryType: 'NET', amount: 78000, grossAmount: 100000, frequency: 'ANNUAL' },
-        ] as never,
-        'annual',
-      ).grossTotal,
-    expected: 100000,
+          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
+        ],
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      }).annual.banked,
+    expected: 102000,
   },
   {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'taxableIncome accumulates gross when isTaxable !== false',
-    derivation: 'taxable SALARY gross $100,000 ANNUAL + non-taxable gift $5,000 → taxableIncome $100,000',
-    actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 100000, frequency: 'ANNUAL' },
-          { type: 'GIFT', amount: 5000, frequency: 'ANNUAL', isTaxable: false },
-        ] as never,
-        'annual',
-      ).taxableIncome,
-    expected: 100000,
+    node: 'engine.bankedIncome.buildBankedIncome',
+    law: 'Identity (§5.6): gross − banked ≡ the withholding wedge; the NET-entered wedge = grossAmount − amount',
+    derivation: 'gross 100,000 + 24,000 − banked 102,000 = wedge $22,000 (= 100,000 − 78,000; rental has no wedge)',
+    actual: () => {
+      const r = buildBankedIncome({
+        income: [
+          { type: 'SALARY', salaryType: 'NET', amount: 78000, grossAmount: 100000, frequency: 'ANNUAL' },
+          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
+        ],
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      });
+      return r.annual.gross - r.annual.banked;
+    },
+    expected: 22000,
   },
   {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'nonTaxableIncome accumulates gross when isTaxable === false (never dropped — §19.1)',
-    derivation: 'non-taxable gift $5,000 ANNUAL → nonTaxableIncome $5,000',
+    node: 'engine.bankedIncome.computeReceivedBanked',
+    law: 'One-off gate (MON-053): isRecurring=false contributes 0 to every run-rate; the face value is counted once in oneOff',
+    derivation: 'one-off OTHER $9,000 → banked run-rate $0/yr (oneOff.total carries the $9,000)',
     actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 100000, frequency: 'ANNUAL' },
-          { type: 'GIFT', amount: 5000, frequency: 'ANNUAL', isTaxable: false },
-        ] as never,
-        'annual',
-      ).nonTaxableIncome,
-    expected: 5000,
+      buildBankedIncome({
+        income: [{ type: 'OTHER', amount: 9000, frequency: 'MONTHLY', isRecurring: false }],
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      }).annual.banked,
+    expected: 0,
   },
 
   // ── Depth: asset valuation — canonical read-model helpers (mirror net worth) ──

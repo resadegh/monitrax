@@ -87,4 +87,7 @@ describe('MON-030 stage 1 — the two engine entry points agree on the ONE input
 
 // Locked after running the real engine on the golden input (see the finite/range
 // assertions above). This is a regression pin, not a hand-derived §19.2 value.
-const GOLDEN_HEALTH_SCORE_BASELINE = 72;
+// 72 → 73 on MON-131 T1-B: buildHealthInput's income rows re-fed with BANKED
+// per-row values from the ONE producer (declared move — expected-moves-t1.json
+// buildHealthInput.portfolioSnapshot.income + the bounded healthScore prefix).
+const GOLDEN_HEALTH_SCORE_BASELINE = 73;

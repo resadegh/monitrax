@@ -20,11 +20,7 @@ import {
   aggregateExpensesDecimal,
   type ExpenseInput,
 } from '@/lib/calculations/expenseAggregator';
-import {
-  aggregateIncome,
-  aggregateIncomeDecimal,
-  type IncomeInput,
-} from '@/lib/calculations/incomeAggregator';
+import type { IncomeInput } from '@/lib/calculations/incomeAggregator';
 import {
   aggregateLoanRepayments,
   aggregateLoanRepaymentsDecimal,
@@ -113,43 +109,10 @@ export const expenseAggregatorShadow: ShadowEngine<
 };
 
 // ---------------------------------------------------------------------------
-// income.aggregate
-// ---------------------------------------------------------------------------
-
-export const incomeAggregatorShadow: ShadowEngine<
-  { income: IncomeInput[]; targetFrequency?: 'monthly' | 'annual' },
-  ReturnType<typeof aggregateIncome>,
-  ReturnType<typeof aggregateIncomeDecimal>
-> = {
-  name: 'core.incomeAggregator.shadow',
-  description: 'Shadow Float vs Decimal `aggregateIncome` — salary GROSS + non-salary rental.',
-  sourcePath: 'lib/calculations/incomeAggregator.ts',
-  floatExecute: ({ income, targetFrequency }) => aggregateIncome(income, targetFrequency),
-  decimalExecute: ({ income, targetFrequency }) => aggregateIncomeDecimal(income, targetFrequency),
-  fieldPolicy: {},
-  fixtures: [
-    { name: 'empty', description: 'No income.', input: { income: [] } },
-    { name: 'salary GROSS + rental monthly', description: 'PAYG asymmetry exercised.', input: { income: SALARY_INCOME } },
-    { name: 'salary GROSS + rental annual', description: 'Same income annual target.', input: { income: SALARY_INCOME, targetFrequency: 'annual' } },
-    {
-      name: 'salary NET with stored grossAmount',
-      description: 'salaryType=NET + grossAmount preset (skips take-home calc).',
-      input: {
-        income: [
-          {
-            amount: 7800,
-            frequency: 'MONTHLY',
-            type: 'SALARY',
-            salaryType: 'NET',
-            grossAmount: 114000, // already-annual gross
-            isTaxable: true,
-          },
-        ],
-      },
-    },
-  ],
-};
-
+// income.aggregate — shadow DELETED (MON-131 T1-B). `aggregateIncome` and its
+// Decimal sibling are retired with the income-net-run-rate contract; the
+// banked engine's Float/Decimal parity is exercised end-to-end by the
+// cashflow shadow below (rows → banked engine twins → totals → orchestrator).
 // ---------------------------------------------------------------------------
 // loan.aggregate
 // ---------------------------------------------------------------------------
@@ -260,7 +223,6 @@ export const cashflowOrchestratorShadow: ShadowEngine<
 
 export const calculationsShadowEngines = [
   expenseAggregatorShadow,
-  incomeAggregatorShadow,
   loanAggregatorShadow,
   cashflowOrchestratorShadow,
 ] as const;
