@@ -41,6 +41,8 @@ import {
   bankedMonthlyPerRow,
 } from '@/lib/income/banked/assembly';
 import { projectAggregation } from '@/lib/income/banked/aggregator';
+import { toAnnual } from '@/lib/utils/frequencies';
+import type { Frequency } from '@/lib/types/prisma-enums';
 
 interface ComparedPath {
   path: string;
@@ -293,6 +295,32 @@ export async function GET(request: NextRequest) {
     misattachedRows: banked.rental.misattachedRows,
   };
 
+  // §1.3 — the TAX-side declared rental basis, NAMED + attributed per row:
+  // `rentalTaxableGrossDeclared` = grossAmount ?? (one-off ? amount :
+  // annualised) — the exact per-row resolution taxPositionCalculator's income
+  // loop applies (its :180-184 branch). This is the $121,881-class figure: a
+  // DECLARED tax-basis quantity, deliberately DISTINCT from the banked
+  // actuals-first rental; reconciling the two is T4 scope (V4 stays open).
+  const rentalTaxableGrossDeclared = rawData.income
+    .filter((i) => i.type === 'RENT' || i.type === 'RENTAL')
+    .map((i) => ({
+      incomeId: i.id ?? null,
+      propertyId: i.propertyId ?? null,
+      declaredAmount: i.amount,
+      frequency: i.frequency,
+      isRecurring: i.isRecurring ?? null,
+      storedGrossAmount: i.grossAmount ?? null,
+      // @financial-math-allowed: admin compare relay — replicates the tax
+      // calculator's per-row resolution to ATTRIBUTE it, not to produce it (HR-3).
+      rentalTaxableGrossDeclared: r2(
+        i.grossAmount
+          ? i.grossAmount
+          : i.isRecurring === false
+            ? i.amount
+            : toAnnual(i.amount, i.frequency as Frequency),
+      ),
+    }));
+
   return NextResponse.json({
     success: true,
     data: {
@@ -302,6 +330,7 @@ export async function GET(request: NextRequest) {
       financialYear: config.financialYear,
       paths,
       rentalLocalisation,
+      rentalTaxableGrossDeclared,
       salaryPlausibility: banked.salaryRows.map((r) => ({
         incomeId: r.id,
         basis: r.basis,
