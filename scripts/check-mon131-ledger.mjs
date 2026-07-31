@@ -100,16 +100,43 @@ if (!changed.length) {
 
 const touchedSurfaces = changed.filter((f) => SURFACES.some((re) => re.test(f)));
 
-// A registry edit only counts when a MON-131-family id actually moved in it.
+// A registry edit only counts when a MON-131-family issue actually moved.
+//
+// This compares the PARSED registry either side of the diff, per issue id.
+// The first version grepped the textual diff for `"MON-nnn"`, which only ever
+// matched when the *id line itself* changed — i.e. on ADD. A status move
+// (MON-142 OPEN → DIAGNOSED) edits `status`/`semanticKeys`/`plain` and leaves
+// the id line untouched, so the gate stayed silent on exactly the lifecycle
+// transitions it exists to catch. Structural comparison has no such blind spot.
 let registryReason = '';
 if (changed.includes('docs/issues/ISSUES.json')) {
-  const diff = sh(`git diff ${base}...HEAD -- docs/issues/ISSUES.json`);
-  const seen = new Set();
-  for (const m of diff.matchAll(/^[+-].*"(MON-(\d{3}))"/gm)) {
-    if (isFamilyId(Number(m[2]))) seen.add(m[1]);
+  const parse = (text) => {
+    try {
+      const issues = JSON.parse(text)?.issues ?? [];
+      return new Map(issues.map((i) => [i.id, JSON.stringify(i)]));
+    } catch {
+      return null; // unparseable either side → fall through to the safe default
+    }
+  };
+  const before = parse(sh(`git show ${base}:docs/issues/ISSUES.json`));
+  const after = parse(sh(`git show HEAD:docs/issues/ISSUES.json`));
+
+  if (before && after) {
+    const moved = [];
+    for (const [id, json] of after) {
+      const n = Number(String(id).slice(4));
+      if (!Number.isFinite(n) || !isFamilyId(n)) continue;
+      if (before.get(id) !== json) moved.push(id);
+    }
+    for (const [id] of before) {
+      const n = Number(String(id).slice(4));
+      if (Number.isFinite(n) && isFamilyId(n) && !after.has(id)) moved.push(`${id} (removed)`);
+    }
+    if (moved.length) registryReason = `registry movement on ${moved.sort().join(', ')}`;
+  } else {
+    // Could not parse one side — assume in scope rather than silently pass.
+    registryReason = 'registry changed (ISSUES.json unparseable on one side — assuming in scope)';
   }
-  const ids = [...seen].sort();
-  if (ids.length) registryReason = `registry movement on ${ids.join(', ')}`;
 }
 
 const reasons = [
