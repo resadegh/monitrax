@@ -244,7 +244,52 @@ gate would zero every AI-categorised expense.
 
 **Day-one invariant:** `netTotal ≤ grossTotal`, Float and Decimal.
 
-### Tranche 2 — loan cost (MON-130) — BLOCKED
+### Tranche 2 — loan cost (MON-130) — IN BUILD (pre-build research complete)
+
+> **§2.1 RESOLVED — the 0.9370 factor is NOT in the actuals path.** The T2 brief flagged both
+> interest-only loans repaying ~0.937× their contractual interest and required it explained before
+> any loan number was declared. The averaging algorithm was cleared first, by running it:
+> `calculateMonthlyAverage` uses `totalDays = daysSpan + avgInterval` (= N × interval), so
+> `monthly = payment/interval × 30.4375` — a probe of 12 monthly payments at contractual interest
+> returns **ratio 1.00000 exactly**, and the result is scale-free in N (so Reza's ~2 months of data
+> still averages correctly for what it covers). All four candidate causes named in the brief —
+> short window, partial first/last period, day-count mismatch, missing payment — are eliminated.
+>
+> **The factor is the stored rate.** `1191×12/228,000 = 6.268%` and `2518×12/482,000 = 6.269%` —
+> the same implied rate from two different balances, which a per-loan data error cannot produce but
+> one lender changing one rate can. **Reza confirmed (2026-07-31): bank rates changed, and he does
+> not recall updating the rate in Monitrax.** Raised as **MON-142**.
+>
+> **Consequence for T2: UNBLOCKED.** The actuals path is trustworthy, so migrating
+> `masterFinancialService` onto the canonical $12,779 is safe. The brief's stated risk —
+> canonicalising a 6.3% understatement — does not apply.
+>
+> **§4 G5 facts settled from the schema, not from Reza** (brief §4): fixed-rate is **expressible**
+> (`rateType: VARIABLE|FIXED` + `fixedExpiry` + `extraRepaymentCap`) — all five loans reading
+> `variable` is a data state, not a schema gap; **cross-collateralisation is structurally
+> INEXPRESSIBLE** (`Loan.propertyId` is a single optional FK, so one loan secures at most one
+> property) — a schema limit to record, not model around; mixed-purpose has a FACT field already
+> (`deductibleFraction @default(1.0)`, Phase 51, read by three tax-engine files).
+>
+> **§3.2 gets a FACT-first path.** `LoanTransaction` (Phase 51) already carries `interestPortion` /
+> `principalPortion` — *"when known from the statement"* — plus `balanceAfter`. So the split is a
+> D17-style hierarchy (statement fact → derive → undetermined), not pure derivation.
+>
+> **§3.1 first-pass enumeration.** NINE files already read the canonical producer
+> (`/api/loans`, portfolio/snapshot, cashflow summary + intelligence, budget-analysis, both CFO
+> scenario routes, debt-analysis, goldenBaseline). `masterFinancialService` is **not** among them.
+> Candidate uncanonical readers to confirm (separating readers from legitimate writers):
+> `masterFinancialService`, `lib/cfo/scoreCalculator.ts`, `lib/cfo/riskRadar.ts`,
+> `lib/cfo/aiAdvisor.ts`, `lib/planning/debtPlanner.ts`, `lib/services/moneyFlowService.ts`.
+>
+> **Still open before declaring `expectedMoves`:** the relay compare on live data (§5), and Reza's
+> approach call on MON-142.
+
+| Gate | State | Evidence |
+|---|---|---|
+| G5 facts | ✅ | All three answered from `prisma/schema.prisma` — see the §4 note above. Nothing asked of Reza (T1 §0 lesson) |
+| G1–G4, G6–G11 | — | |
+
 
 | Gate | State | Evidence / what's missing |
 |---|---|---|
@@ -396,6 +441,15 @@ masquerade as a full one again.*
 **Pattern across all eight: state asserted from a stale read.** The mitigation is this ledger — cells
 cite evidence, and the status page renders from here rather than being written independently.
 
+**D48 — VR-041's $12,779 acceptance did not cover contractual interest (2026-07-31).**
+VR-041 verified the aggregate against the five per-loan rows, which reconcile *to each other*. It
+never compared any of them to `principal × rate ÷ 12`. Doing that during T2's §2.1 investigation
+surfaced MON-142 — both IO loans repaying ~0.937× their stored-rate interest. **The $12,779 is not
+wrong** (the actuals are what was paid), but the coverage claim was narrower than it read. Recorded
+per the T2 brief §7, which asked for this to be logged as a coverage gap rather than discovered
+later. Lesson: a set of figures reconciling to each other is not evidence they reconcile to the
+contract that generates them.
+
 ## §4b The register gap — MON-112…124 is deliberate, not lost
 
 `docs/issues/ISSUES.json` holds 123 issues, runs to MON-136, and is missing exactly **MON-112…124**.
@@ -462,7 +516,14 @@ Enforced by `npm run mon131:check` (§7).
 
 Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** · tax **owing $26,657 → refund $5,218** · PAYG withheld **$11,129 → $43,004**. Every income surface now reads one producer.
 
-### Tranches 2–7 + closing — BLOCKED
+### Tranche 2 — loan cost (MON-130) — IN BUILD
+
+| Date | PR | SHA | What changed | Numbers moved? |
+|---|---|---|---|---|
+| 07-31 | #1553 | `16abe093` | The T2 build brief (The Matrix) | No |
+| 07-31 | *(this PR)* | — | **Pre-build research**: §2.1 resolved (algorithm cleared by probe; stored rate is the factor) · §4 G5 facts settled from schema · §3.2 FACT-first path found in `LoanTransaction` · §3.1 first-pass enumeration · **MON-142 raised** · drift **D48** · `mon131:check` family list → range (it had already gone stale on MON-142) | **No — research only** |
+
+### Tranches 3–7 + closing — BLOCKED
 
 No changes shipped. Rows land here as they merge.
 

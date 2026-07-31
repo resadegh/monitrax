@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**128 total** · 69 open · 🔵 31 · 🟡 3 · 🟠 28 · 🟢 7 · ✅ 58
+**129 total** · 70 open · 🔵 32 · 🟡 3 · 🟠 28 · 🟢 7 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -135,6 +135,7 @@
 | MON-139 | 🔵 OPEN | 🟡 | no | Home dashboard renders declared income tiles beside actuals tiles without a basis label — the two contradict on real data | — | n/a |
 | MON-140 | 🟢 VERIFIED | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | ##1548 (merged 2026-07-31) | ✅ |
 | MON-141 | 🔵 OPEN | 🟡 | no | /dashboard/income header and Home 'This month's budget' show two different monthly incomes ($22,579 vs $25,347) — the $33,216/yr rental-basis split is unnamed on both surfaces | — | n/a |
+| MON-142 | 🔵 OPEN | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
 
 ---
 
@@ -2344,4 +2345,20 @@ NOT a duplicate of MON-023 (that is the EXPENSE engine ignoring isRecurring; iss
 - **Detail:** `neoaudit-run:VR-045`
 
 Found by VR-045 §7 (not in the declared T1 set, and not in any prior regression baseline, so it CANNOT be called new). Both surfaces reconcile internally: 12,476 + 10,102 = 22,578 and 12,476.29 + 12,870.26 = 25,346.55. VR-043 §4 already established the two rental figures as LEGITIMATELY DISTINCT quantities — so the defect is not the values, it is that two different totals are both presented as monthly income with neither naming its basis. The app DOES explain the split in a banner on /dashboard/income ("$57,200 of your declared income across 3 sources has no matching transactions yet. Home and Cashflow show your last-12-months actuals... while your Tax estimate uses the declared gross"), which is why this is raised as a naming/design question rather than a number defect. DECISION FOR REZA (VR-045 §7): designed two-basis presentation needing D6 naming on both surfaces, or collapse to one? Tranche assignment follows that call.
+
+### MON-142 — Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-31
+
+> **What was wrong:** Monitrax has 6.690% stored for your two Bankwest interest-only loans, but the repayments actually in your data imply the bank charged about 6.268%. Both loans point at the SAME real rate, which is what you would expect from one lender changing one rate — you confirmed rates moved and that you do not recall updating them here. Nothing in the app tells you the stored rate has gone stale.
+>
+> **What changed:** NOT YET FIXED. Needs a decision on approach (see notes) — the candidates are a lastVerified/staleness signal on the rate, deriving the rate from charged interest where the loan ledger has it, or surfacing the divergence rather than silently preferring either number.
+>
+> **What you should see:** Nothing to check yet. When it ships you will either see a prompt that a stored rate looks out of date against your actual repayments, or the app will use the interest actually charged.
+
+- **Root cause:** `prisma/schema.prisma:1671`, `lib/tax-engine/deductions/propertyLoanInterest.ts:85`, `lib/calculations/propertyCashflow.ts:199`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-045`
+
+FOUND while investigating T2 brief §2.1 (the 0.9370 factor). The averaging algorithm was CLEARED first: calculateMonthlyAverage uses totalDays = daysSpan + avgInterval (= N x interval), so monthly = payment/interval x 30.4375 — a probe of 12 monthly payments at contractual interest returns ratio 1.00000 EXACTLY. So the factor is not in the code; it is the stored rate. Arithmetic: 1191x12/228000 = 6.268% and 2518x12/482000 = 6.269% — the same implied rate from two different balances, which a per-loan data error could not produce. Stored 6.690% overstates by 0.422pp = $961/yr Broadbeach + $2,032/yr Lot 2 = $2,993/yr combined. EXPOSURE IS CONDITIONAL, stated precisely: propertyLoanInterest is ACTUALS-FIRST (uses the Phase 51 LoanTransaction INTEREST_CHARGED sum when present) and only falls back to the stored rate when that ledger is empty. Reza reports ~2 months of data, so the ledger is likely sparse and the fallback likely live — NOT CONFIRMED without a relay capture of LoanTransaction rows. 14 files read interestRateAnnual, incl. loanDecisionSupport (21), debtPlanner (10), loanAggregator (9), the tax engine (10 across two files). The loan-cost interest FLOOR uses it too, so any loan without linked repayments carries the stale rate into its rendered cost. NOT a T2 blocker: T2 migrates onto the ACTUALS path, which this does not affect. DECISION FOR REZA on approach.
 

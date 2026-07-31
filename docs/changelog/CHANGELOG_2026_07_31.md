@@ -115,3 +115,36 @@ The gate verifies that the ledger **was touched**. It does **not** judge whether
 
 ### PR
 - Follow-up to #1550 (handout) / #1551 (VR-045 run) / #1552 (doc-sync)
+
+---
+
+## Session: g8kra5 (cont. 2) — T2 pre-build research: §2.1 resolved, MON-142 raised
+
+### Changes Made
+- **Type**: Research / registry / CI gate fix
+- **Scope**: MON-131 Tranche 2 (loan cost, MON-130) — **no migration, no number moved**
+- **Why**: the T2 brief §2.1 required the 0.9370 factor explained *before* any loan number is declared, on the grounds that migrating onto a 6.3%-understated producer would ship a wrong number with more authority than the one it replaced.
+
+### §2.1 — resolved, and it inverts the brief's risk
+The averaging algorithm was **cleared by running it**, not by reading it: `calculateMonthlyAverage` uses `totalDays = daysSpan + avgInterval` (= N × interval), so `monthly = payment/interval × 30.4375`. A probe of 12 monthly payments at contractual interest returns **ratio 1.00000 exactly**, and is scale-free in N (Reza's ~2 months of data still averages correctly for what it covers). All four candidate causes in the brief — short window, partial period, day-count, missing payment — eliminated.
+
+The factor is the **stored rate**: `1191×12/228,000 = 6.268%` and `2518×12/482,000 = 6.269%` — the same implied rate from two different balances. Reza confirmed rates changed and that he does not recall updating them in Monitrax. **T2 is UNBLOCKED**: the actuals path is trustworthy.
+
+### MON-142 raised (`high`, `changesNumbers: true`)
+Stored 6.690% vs bank-charged ~6.268% = **0.422pp = $2,993/yr** across the two IO loans. Exposure stated precisely: `propertyLoanInterest` is actuals-first and only falls back to `(principal − offset) × storedRate` when the Phase 51 ledger is empty — likely with 2 months of data, **not confirmed** without a relay capture. The loan-cost interest floor uses the same rate. 14 files read `interestRateAnnual`. Approach decision left to Reza (staleness signal / derive from charged interest / surface the divergence).
+
+### Other findings recorded
+- **§4 G5 facts settled from the schema**, nothing asked of Reza: fixed-rate **expressible**; **cross-collateralisation structurally INEXPRESSIBLE** (`Loan.propertyId` single FK); mixed-purpose FACT field exists.
+- **§3.2 gets a FACT-first path** — `LoanTransaction.interestPortion` / `principalPortion` carry statement-sourced splits.
+- **§3.1** — nine files already read the canonical producer; `masterFinancialService` is not one.
+- **Drift D48** — VR-041 verified $12,779 against per-loan rows that reconcile *to each other*, never against contractual interest. Logged as a coverage gap per brief §7.
+
+### Gate fix — my own, one hour old
+`check-mon131-ledger.mjs` hard-coded the family id list 127…141 and **was already stale**: it did not fire on MON-142. Replaced with a range (`FAMILY_MIN = 127` + an explicit exclude set). A hand-maintained id list goes stale by construction — the same defect class the gate exists to catch.
+
+### Build Status
+- [x] `npm run issues:check` — 129 valid
+- [x] No engine, schema, or migration change; no number moved
+
+### PR
+- Follows #1554 (change record + gate). T2's migration is a separate PR, after the relay compare and Reza's MON-142 call.
