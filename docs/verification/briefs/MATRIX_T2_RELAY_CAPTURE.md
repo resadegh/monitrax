@@ -22,9 +22,15 @@ So the relay runs **both** loan-cost paths against the same live rows and return
 GET https://<prod-host>/api/admin/matrix/golden-baseline/t2-loan-cost
 ```
 
-**Authentication:** admin session required (`audit:read`). **Omit `?userId=`** — the route resolves the sole user automatically.
+**Authentication:** admin session required (`audit:read`).
 
-**If it returns `MULTIPLE_USERS`,** the response body lists candidates. Pick the one that is **Reza's account** and re-call as `?userId=<id>`. Do not guess: confirm against a known figure (§3) before accepting any payload as his.
+**The explicit `?userId=` IS REQUIRED — corrected 2026-07-31 after the first capture.** This handout originally said to omit it and let the route auto-resolve a sole user. That is wrong in this environment: **13 accounts exist**, so the bare call returns `400 MULTIPLE_USERS` and the auto-resolve path is unusable. Call:
+
+```
+GET /api/admin/matrix/golden-baseline/t2-loan-cost?userId=91b6d7ce-d9f1-4ac0-96ce-fc958dca2a3c
+```
+
+That id was confirmed 9/9 against Reza's own rendered screens in VR-042 (net worth 3,401,782 · taxable 145,426 · deductions 172,325). Still assert §3's precondition on the response before accepting it — a correct-looking id is not proof the payload came back scoped to it.
 
 ---
 
@@ -49,6 +55,12 @@ Then, separately, a short human note answering only these:
 
 ---
 
+## §4b Status — this is now a RE-capture
+
+The first capture ran 2026-07-31 at `2627dcdf` and **succeeded**. It is being re-run because **the relay was incomplete**, not because the capture failed: `cashflow.annualCashflow` / `.annualSurplus` move by **$47,551.71** and were missing from the declared paths — an undeclared move that gate G7 stops the tranche on. The repaired relay ships in PR **#1559**; capture against a build that includes it.
+
+Two findings from the first run are already recorded and need no re-verification: **MON-143** (the canonical interest floor does not net the offset — D21) and the confirmation of §2.1's stale-rate diagnosis.
+
 ## §5 What I expect to see — stated in advance so a mismatch is informative
 
 These are **falsifiable predictions**, not instructions. If the payload disagrees with any of them, that disagreement is the finding, and it matters more than the numbers themselves. **Do not adjust anything to fit these.**
@@ -58,7 +70,7 @@ These are **falsifiable predictions**, not instructions. If the payload disagree
 | `summary.oldMonthlyLoanCost` | **≈ 8,816.65** | the current `masterFinancialService` figure, in which both interest-only loans contribute $0 |
 | `summary.newMonthlyLoanCost` | **≈ 12,779** | what `/dashboard/expenses` already renders — canonical and Ring-3-verified at VR-041 |
 | `summary.deltaMonthly` | **≈ +3,962** | the understatement T2 exists to close (≈ $47,548/yr) |
-| `moneyFlowSkip.skippedLoans` | **the 2 interest-only loans** (Broadbeach, Thornland Lot 2) | `moneyFlowService.ts:382` is `if (!loan.minRepayment \|\| <= 0) continue` — I read that in source but have never seen it execute |
+| `moneyFlowSkip.skippedLoans` | **3 loans** — both interest-only **plus HECS**, totalling **3,792.92** | corrected after the first capture: the skip is keyed on *no declared repayment*, NOT on interest-only, so HECS (`isInterestOnly: false`) is caught too. My original prediction said two and was one short |
 | per-loan `effectiveRate.flags` | **`RATE_STALE` on the two Bankwest IO loans** | stored 6.690% vs an implied ≈6.268% (MON-142) |
 | per-loan `newBasis` | mostly **`ACTUALS`**; `INTEREST_FLOOR` on the HECS row | HECS has no linked repayments, so it floors to interest |
 
