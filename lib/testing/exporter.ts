@@ -7,6 +7,9 @@
 
 import { PrismaClient } from '@prisma/client';
 import { calculateDepreciationAnnual } from '@/lib/depreciation';
+import { buildBankedIncome, bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import type {
   TestExportOutput,
   NetWorthOutput,
@@ -260,31 +263,24 @@ export class TestScenarioExporter {
    * Calculate cashflow
    */
   private calculateCashflow(income: any[], expenses: any[], loans: any[]): CashflowOutput {
-    // Income calculations
-    let grossIncome = 0;
-    let netIncome = 0;
-    let paygWithholding = 0;
-    const incomeBreakdown: Record<string, number> = {};
-
-    for (const inc of income) {
-      const annualAmount = toAnnual(Number(inc.amount), inc.frequency as Frequency);
-      grossIncome += annualAmount;
-
-      if (inc.type === 'SALARY' && inc.salaryType === 'GROSS' && inc.paygWithholding) {
-        paygWithholding += Number(inc.paygWithholding);
-        netIncome += annualAmount - Number(inc.paygWithholding);
-      } else if (inc.type === 'SALARY' && inc.salaryType === 'NET') {
-        netIncome += annualAmount;
-        // Estimate PAYG
-        const estimatedGross = inc.grossAmount ? Number(inc.grossAmount) : annualAmount * 1.3;
-        paygWithholding += estimatedGross - annualAmount;
-        grossIncome = grossIncome - annualAmount + estimatedGross;
-      } else {
-        netIncome += annualAmount;
-      }
-
-      incomeBreakdown[inc.type] = (incomeBreakdown[inc.type] || 0) + annualAmount;
-    }
+    // MON-131 T1-B: income leg reads the ONE pure banked engine (D17) —
+    // the local gross/net/PAYG switch (stored-field trust + a fabricated
+    // ×1.3 gross estimate) is deleted, not wrapped. No user tax context in
+    // this test exporter → repaymentIncome null (study-loan undetermined).
+    const banked = buildBankedIncome({
+      income: income as unknown as BankedIncomeRow[],
+      properties: [],
+      derivedAgentExpenses: [],
+      transactions: [],
+      ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+    });
+    const totals = bankedTotalsFromResult(banked);
+    const grossIncome = totals.monthlyGross * 12;
+    const netIncome = totals.monthlyBanked * 12;
+    const paygWithholding = totals.monthlyWithholding * 12;
+    const incomeBreakdown: Record<string, number> = Object.fromEntries(
+      Object.entries(totals.byTypeMonthlyBanked).map(([k, v]) => [k, v * 12]),
+    );
 
     // Expense calculations
     let totalExpenses = 0;

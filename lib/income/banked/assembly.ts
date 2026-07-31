@@ -99,6 +99,10 @@ export interface AssembledBankedIncome {
   bankedDecimal: BankedIncomeResultDecimal;
   repaymentIncome: RepaymentIncomeResult;
   config: TaxYearConfig;
+  /** The raw fetched rows the result was built from — for consumers that
+   *  need per-row attribution (`bankedMonthlyPerRow`) or row metadata
+   *  (ownerEntityId / sourceType classification). Same objects, one fetch. */
+  raw: BankedRawData;
 }
 
 /** Build the banked result from prefetched data + the canonical tax position
@@ -107,7 +111,7 @@ export function buildBankedIncomeFromData(
   data: BankedRawData,
   taxPosition: TaxPositionResult,
   config: TaxYearConfig = getCurrentTaxYearConfig(),
-): Omit<AssembledBankedIncome, 'bankedDecimal'> & { bankedDecimal: BankedIncomeResultDecimal } {
+): Omit<AssembledBankedIncome, 'raw'> {
   const repaymentIncome = assembleRepaymentIncome(taxPosition, data.income);
   const ctx: BankedContext = { config, repaymentIncome: repaymentIncome.repaymentIncome };
   const input = {
@@ -131,7 +135,7 @@ export async function assembleBankedIncomeForUser(userId: string): Promise<Assem
     fetchBankedRawData(userId),
     getUserTaxPosition(userId),
   ]);
-  return buildBankedIncomeFromData(data, taxBundle.taxPosition);
+  return { ...buildBankedIncomeFromData(data, taxBundle.taxPosition), raw: data };
 }
 
 /**
