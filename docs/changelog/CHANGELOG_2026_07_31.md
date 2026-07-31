@@ -240,3 +240,33 @@ Verified four-way in source: `propertyLoanInterest.ts:87` nets · `debt-analysis
 
 ### Next
 Re-capture on the repaired relay → declare `expectedMoves` → **fix MON-143** → then the migration.
+
+---
+
+## Session: g8kra5 (cont.) — second T2 capture; the list was the defect; the derivation sweep
+
+### The re-capture (at `7be30bef`)
+The repair landed: `paths` 8 → 10, and the annual pair reads exactly as derived — `cashflow.annualCashflow`/`.annualSurplus` **180,572.50 → 133,020.79** (`304,158.61 − 17,786.31 − 153,351.51`), the $47,551.71 move. The §5 skip prediction is now correct at three loans.
+
+### It found two more — and reading the code found a fifth
+- `cashflow.monthlySurplus` — the **monthly twin** of the pair whose annual half had just been added.
+- `debt.metrics.monthlyRepayments` — **$3,962.64**, in the same object as a path that *was* declared.
+- `quickMetrics.monthlyLoanRepayments` — surfaced while fixing the above; **no capture had reached it**.
+
+### The method was the defect, not any entry
+Three rounds, five misses. The Matrix named it precisely: *"it enumerates paths by name rather than by dependency… adding two names fixed two names; it did not fix the method."*
+
+**The fix is theirs: the derivation sweep.** The relay now re-runs `calculateCashflow` and `calculateDebtMetrics` — the REAL engines, on master's REAL inputs (expenses under the same `isRecurring !== false` filter; banked income via the same assembly) — with the canonical per-loan cost substituted for the raw `minRepayment`, then diffs every numeric leaf. `quickMetrics` mirrors are carried by value-match.
+
+Whatever moves, moves. No judgement, no list, nothing to forget. And the old input's `l.minRepayment && l.repaymentFrequency` filter — precisely why both interest-only loans vanish today — is gone by construction in the canonical legs.
+
+### Coverage boundary — stated, not implied
+Complete for `cashflow.*`, `debt.metrics.*` and the `quickMetrics` mirrors. It does **NOT** sweep `byEntity`, health, or anything outside those blocks; those need their own recompute, and G7 remains the backstop.
+
+### Still open from the capture, unchanged
+- Guildford's `monthlyInterestFloor` still reads 1,964.67 (full balance, not net of the $303,889.96 offset) — **MON-143**, gates the migration.
+- `savingsRate` remains a straight substitution — the D18/X3 deferral, stated in the relay notes.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean
+- [x] `lint:financial-surfaces` · `lint:source-lock` · `census:producers:check` · `lint:ai-grounding` · `neomatrix:check` — all PASS

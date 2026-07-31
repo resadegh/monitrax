@@ -50,6 +50,10 @@ import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialServic
 import { getMoneyFlow } from '@/lib/services/moneyFlowService';
 import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
 import { resolveEffectiveLoanRate } from '@/lib/calculations/effectiveLoanRate';
+import { calculateCashflow } from '@/lib/calculations/cashflowOrchestrator';
+import { assembleBankedIncomeForUser } from '@/lib/income/banked/assembly';
+import { bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
+import { calculateDebtMetrics } from '@/lib/calculations/loanAggregator';
 import { toMonthly } from '@/lib/utils/frequencies';
 import type { Frequency } from '@/lib/types/prisma-enums';
 
@@ -61,6 +65,48 @@ interface ComparedPath {
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Every numeric leaf whose value differs between two objects, as dotted paths.
+ *
+ * THE DERIVATION SWEEP (added 2026-07-31, after the SECOND capture).
+ *
+ * The first two rounds enumerated declared paths from a HAND-WRITTEN LIST, and
+ * a list is the wrong instrument: round 1 missed `cashflow.annualCashflow` /
+ * `.annualSurplus` ($47,551.71), round 2 missed `cashflow.monthlySurplus` and
+ * `debt.metrics.monthlyRepayments` ($3,962.64) — and reading the assembly for
+ * this change surfaced a FIFTH, `quickMetrics.monthlyLoanRepayments`, that no
+ * round had found. Adding names fixed names; it never fixed the method, and
+ * under G7 every miss stops the tranche.
+ *
+ * So the declaration is now produced BY CONSTRUCTION: re-run the REAL engines
+ * with the canonical per-loan cost substituted for the raw `minRepayment`, and
+ * diff. Whatever moves, moves — no judgement, no list, nothing to forget.
+ */
+function diffNumericLeaves(
+  before: unknown,
+  after: unknown,
+  prefix: string,
+  out: Array<{ path: string; before: number; after: number }> = [],
+): Array<{ path: string; before: number; after: number }> {
+  if (typeof before === 'number' && typeof after === 'number') {
+    if (Number.isFinite(before) && Number.isFinite(after) && r2(before) !== r2(after)) {
+      out.push({ path: prefix, before: r2(before), after: r2(after) });
+    }
+    return out;
+  }
+  if (before && after && typeof before === 'object' && typeof after === 'object') {
+    for (const k of Object.keys(after as Record<string, unknown>)) {
+      diffNumericLeaves(
+        (before as Record<string, unknown>)[k],
+        (after as Record<string, unknown>)[k],
+        prefix ? `${prefix}.${k}` : k,
+        out,
+      );
+    }
+  }
+  return out;
+}
 
 export async function GET(request: NextRequest) {
   if (!isAdminPortalAccessible()) {
@@ -116,10 +162,22 @@ export async function GET(request: NextRequest) {
   }));
 
   // ---- OLD: the live legacy producers, exactly as production renders ------
-  const [snapshot, moneyFlow] = await Promise.all([
+  // Expenses + banked income are fetched so the sweep can re-run the REAL
+  // engine on the REAL inputs — same filter master applies at
+  // masterFinancialService.ts:1853 (`isRecurring !== false`). Reading them here
+  // is measurement, not a second producer: the relay renders nothing.
+  const [snapshot, moneyFlow, expenseRows, bankedAssembled] = await Promise.all([
     getMasterFinancialSnapshot(userId),
     getMoneyFlow(userId),
+    prisma.expense.findMany({
+      where: { userId },
+      select: { amount: true, frequency: true, isEssential: true, isRecurring: true },
+    }),
+    assembleBankedIncomeForUser(userId),
   ]);
+  const engineExpenseLegs = expenseRows
+    .filter((e) => e.isRecurring !== false)
+    .map((e) => ({ amount: e.amount, frequency: e.frequency, isEssential: e.isEssential }));
 
   // ---- NEW: the ONE canonical producer, actuals-first ---------------------
   const resolved = await resolveLoanCostsForUser(userId, cashflowLoans);
@@ -189,69 +247,63 @@ export async function GET(request: NextRequest) {
   const newSavingsRate = monthlyIncome > 0 ? (newMonthlyCashflow / monthlyIncome) * 100 : 0;
   const newDebtServiceRatio = monthlyIncome > 0 ? (newMonthlyLoanCost / monthlyIncome) * 100 : 0;
 
-  const paths: ComparedPath[] = [
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyLoanRepayments',
-      before: r2(oldMonthlyLoan),
-      after: r2(newMonthlyLoanCost),
-      arithmetic: `Σ canonical per-loan resolved cost (actuals-first) = ${r2(newMonthlyLoanCost)}; was Σ raw minRepayment→monthly = ${r2(oldMonthlyLoan)}`,
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualLoanRepayments',
-      before: r2(cf.annualLoanRepayments),
-      after: r2(newMonthlyLoanCost * 12),
-      arithmetic: 'annual = Σ per-loan monthly × 12 — derived from the monthly COMPONENTS, never from a rounded monthly total (VR-045 §2.1)',
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyCashflow',
-      before: r2(cf.monthlyCashflow),
-      after: r2(newMonthlyCashflow),
-      arithmetic: `income ${r2(monthlyIncome)} (T1, frozen) − expenses ${r2(cf.monthlyExpenses)} − loans ${r2(newMonthlyLoanCost)}`,
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualCashflow',
-      before: r2(cf.annualCashflow),
-      after: r2(newAnnualCashflow),
-      // @financial-math-allowed: the ×12 is inside the ARITHMETIC DESCRIPTION string. Income and expenses come from the snapshot's own ANNUAL fields; only the loan leg annualises, and it does so from the per-loan monthly COMPONENTS (each loan's annual = its own monthly × 12, summed) — not from a rounded monthly TOTAL, which is the VR-045 §2.1 defect. Admin relay, HR-3.
-      arithmetic: `annual components: income ${r2(cf.annualIncome)} − expenses ${r2(cf.annualExpenses)} − loans ${r2(newMonthlyLoanCost * 12)} — loan leg from per-loan monthly components; income/expenses from the snapshot's annual fields (VR-045 §2.1)`,
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualSurplus',
-      before: r2(cf.annualSurplus),
-      after: r2(newAnnualCashflow),
-      arithmetic: 'mirrors cashflow.annualCashflow',
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.savingsRate', // @financial-math-allowed: this is a PATH STRING naming the declared quantity in the before/after contract, not a read of it (HR-3 admin relay)
-      before: r2(cf.savingsRate),
-      after: r2(newSavingsRate),
-      arithmetic: `${r2(newMonthlyCashflow)} ÷ ${r2(monthlyIncome)} × 100`,
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.debtServiceRatio',
-      before: r2(cf.debtServiceRatio),
-      after: r2(newDebtServiceRatio),
-      arithmetic: `${r2(newMonthlyLoanCost)} ÷ ${r2(monthlyIncome)} × 100`,
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyCashflow',
-      before: r2(qm.monthlyCashflow),
-      after: r2(newMonthlyCashflow),
-      arithmetic: 'mirrors cashflow.monthlyCashflow',
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.savingsRate',
-      before: r2(qm.savingsRate),
-      after: r2(newSavingsRate),
-      arithmetic: 'mirrors cashflow.savingsRate',
-    },
-    {
-      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.metrics.debtServiceRatio',
-      before: r2(snapshot.debt?.metrics?.debtServiceRatio ?? 0),
-      after: r2(newDebtServiceRatio),
-      arithmetic: 'the ONE debt-service ratio — currently a second producer over raw minRepayment',
-    },
-  ];
+  // ---- THE DERIVATION SWEEP — declared paths BY CONSTRUCTION --------------
+  // Re-run the REAL engines with the canonical per-loan cost substituted for
+  // the raw minRepayment, then diff. Note the old input FILTERS OUT loans with
+  // no minRepayment (masterFinancialService.ts:1861) — which is exactly why
+  // both interest-only loans vanish today. The canonical input carries every
+  // loan, so the filter is gone by construction.
+  const canonicalLoanLegs = loanRows.map((l) => ({
+    minRepayment: resolved.get(l.id)?.monthly ?? 0,
+    repaymentFrequency: 'MONTHLY',
+  }));
+
+  const newCashflow = calculateCashflow({
+    incomeTotals: bankedTotalsFromResult(bankedAssembled.banked),
+    expenses: engineExpenseLegs,
+    loans: canonicalLoanLegs,
+  } as never);
+
+  const newDebtMetrics = calculateDebtMetrics(
+    loanRows.map((l) => ({
+      principal: Number(l.principal ?? 0),
+      minRepayment: resolved.get(l.id)?.monthly ?? 0,
+      repaymentFrequency: 'MONTHLY',
+      interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+      isInterestOnly: l.isInterestOnly ?? false,
+      ownerEntityId: l.ownerEntityId,
+    })),
+    monthlyIncome,
+  );
+
+  const cashflowMoves = diffNumericLeaves(cf, newCashflow, 'cashflow');
+  const debtMoves = diffNumericLeaves(
+    snapshot.debt?.metrics ?? {},
+    newDebtMetrics,
+    'debt.metrics',
+  );
+
+  // quickMetrics MIRRORS cashflow leaves (masterFinancialService.ts:2031+), so
+  // any quickMetrics leaf holding a value that just moved, moves with it.
+  const movedByOldValue = new Map<number, number>();
+  for (const m of cashflowMoves) movedByOldValue.set(m.before, m.after);
+  const quickMoves: Array<{ path: string; before: number; after: number }> = [];
+  for (const [k, v] of Object.entries(qm as Record<string, unknown>)) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    const hit = movedByOldValue.get(r2(v));
+    if (hit !== undefined && r2(v) !== hit) {
+      quickMoves.push({ path: `quickMetrics.${k}`, before: r2(v), after: hit });
+    }
+  }
+
+  const P = 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.';
+  const paths: ComparedPath[] = [...cashflowMoves, ...debtMoves, ...quickMoves].map((m) => ({
+    path: `${P}${m.path}`,
+    before: m.before,
+    after: m.after,
+    arithmetic:
+      'DERIVATION SWEEP: produced by re-running the real engine with the canonical per-loan cost substituted, then diffing. Not a hand-listed path.',
+  }));
 
   // ---- the moneyFlow interest-only skip, measured ------------------------
   const skipped = perLoan.filter((l) => l.skippedByMoneyFlow);
