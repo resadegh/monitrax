@@ -296,7 +296,29 @@ gate would zero every AI-categorised expense.
 > property) — a schema limit to record, not model around; mixed-purpose has a FACT field already
 > (`deductibleFraction @default(1.0)`, Phase 51, read by three tax-engine files).
 >
-> **G3 instrument shipped (this PR): the T2 compare relay.** `expectedMoves` cannot be declared
+> **FIRST CAPTURE RETURNED 2026-07-31 — and it caught a hole in my own instrument.** Measured at
+> `2627dcdf` on Reza's account (identity asserted: `loanCount === 5`, userId echoed): old
+> **8,816.65** → new **12,779.29**, Δ **+3,962.64/mo · +47,551.71/yr**. Every §5 prediction landed
+> except one, and the exception was informative: `moneyFlowSkip` returned **three** loans, not two —
+> the skip is keyed on *no declared repayment*, not on interest-only, so **HECS is caught too**
+> (2,518.34 + 1,191.25 + 83.33 = 3,792.92 exactly). The §2.1 stored-rate diagnosis is confirmed from
+> the other side: `impliedRateAnnual 0.0626974` vs `stored 0.0669` = **0.93718**, the same factor the
+> brief flagged, identical `divergencePp −0.42026` on both loans.
+>
+> **The relay was INCOMPLETE and G7 would have stopped the tranche.** `cashflow.annualCashflow` /
+> `.annualSurplus` move by **$47,551.71** and were not in the declared paths at all. Fixed in this PR.
+> Two paths my own T2 brief listed as movers are correctly absent — `debtToIncomeRatio` and
+> `keptAfterEssentials` carry no loan term; the brief was over-inclusive there.
+>
+> **MON-143 raised from the capture (gates the migration).** The relay surfaced
+> `monthlyInterestFloor` per loan, and Guildford's floor is computed on the FULL balance:
+> **1,964.67** against **384.45** net of its offset — 5.1×. Verified four-way in source:
+> `propertyLoanInterest.ts:87`, `debt-analysis:465` and `portfolioEngine:428` all net the offset;
+> **`resolveLoanMonthlyCost:199` — the canonical producer — does not.** Latent today (Guildford
+> resolves via ACTUALS so never floors), but T2 migrates every consumer ONTO that producer, so it
+> **must be fixed before the migration** or every surface inherits a known D21 breach.
+>
+> **G3 instrument shipped (#1557): the T2 compare relay.** `expectedMoves` cannot be declared
 > from a test — previews bind to the dev DB, so the before/after values only exist in production.
 > `/api/admin/matrix/golden-baseline/t2-loan-cost` measures both paths at once and returns, per
 > declared path, the current value and the canonical one with its arithmetic. It also returns the
@@ -578,7 +600,8 @@ Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** 
 | 07-31 | #1555 | `225edd18` | **Pre-build research**: §2.1 resolved (algorithm cleared by probe; stored rate is the factor) · §4 G5 facts settled from schema · §3.2 FACT-first path found in `LoanTransaction` · §3.1 first-pass enumeration · **MON-142 raised** · drift **D48** · `mon131:check` family list → range (it had already gone stale on MON-142) | **No — research only** |
 | 07-31 | #1556 | `bcf458b9` | **MON-142 v1** — the effective-loan-rate engine (evidence > typed rate; A6-allowlisted, no consumer) + two `mon131:check` blind spots fixed (hardcoded id list → range; registry ADDs-only → structural per-issue comparison) + these two SHA backfills | **No — engine only** |
 | 07-31 | #1557 | `2627dcdf` | **T2 compare relay** — `/api/admin/matrix/golden-baseline/t2-loan-cost`: runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` on the SAME live data, returning per-path before/after + per-loan basis + the measured `moneyFlowService:382` interest-only skip. This is what makes T2's `expectedMoves` COMPUTED, not predicted | **No — reads both paths** |
-| 07-31 | *(this PR)* | — | **T2 relay capture handout** for the Matrix (`docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`) — one GET, identity-asserted (`loanCount === 5`), payload returned verbatim; §5 states falsifiable predictions so a mismatch is the finding | **No — a handout** |
+| 07-31 | #1558 | `f897481c` | **T2 relay capture handout** for the Matrix (`docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`) — one GET, identity-asserted (`loanCount === 5`), payload returned verbatim; §5 states falsifiable predictions so a mismatch is the finding | **No — a handout** |
+| 07-31 | *(this PR)* | — | **First T2 capture returned + relay repaired.** Capture at `2627dcdf` measured old **8,816.65** → new **12,779.29** (Δ +3,962.64/mo, +47,551.71/yr). The Matrix found the relay MISSING the `annualCashflow`/`annualSurplus` pair — a $47,551.71 undeclared move that G7 would have stopped the tranche on. Added. D18/X3 savings-rate shape recorded as a stated DEFERRAL. **MON-143 raised** (D21 breach in the canonical interest floor) | **No — relay repair** |
 
 ### Tranches 3–7 + closing — BLOCKED
 
@@ -587,6 +610,17 @@ No changes shipped. Rows land here as they merge.
 ---
 
 ## §7 Keeping it current — the mechanism, not the intention
+
+> **KNOWN COVERAGE HOLE, found 2026-07-31 by Reza asking whether everything was documented.**
+> This gate checks **only this ledger**. It does not check `docs/IMPLEMENTATION_PLAN.md`'s
+> `Last updated` or `01_ACTIVE_WORKSTREAMS.md` §0·REF — so both drifted **five PRs** behind
+> (#1555…#1559) while the gate stayed green on every one of them, because the ledger row was
+> always present. The gate did exactly what it was written to do, and that was not enough.
+>
+> Widening it to cover the plan hub and the workstream spoke is the obvious next step and is
+> **not done yet** — recorded here rather than left implicit, because an ungated rule is the
+> failure mode this whole section exists to name.
+
 
 `scripts/check-mon131-ledger.mjs` (`npm run mon131:check`, wired into the `docs-hygiene` workflow).
 

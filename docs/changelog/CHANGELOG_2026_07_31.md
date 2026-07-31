@@ -203,3 +203,40 @@ Proves the resolution hierarchy, the D21 offset rule, the staleness threshold, t
 
 ### What happens next
 Deploy → open the route once → the returned numbers become T2's `expectedMoves` → the migration (loanCost 31 producer sites → ONE engine) follows with a Ring-3 run.
+
+---
+
+## Session: g8kra5 (cont.) — first T2 capture returned; relay repaired; MON-143 raised
+
+### The capture
+Measured on Reza's account at `2627dcdf`, identity asserted (`loanCount === 5`): loan cost **8,816.65 → 12,779.29**, Δ **+3,962.64/mo · +47,551.71/yr**.
+
+Predictions from the handout §5 all landed except one, and the exception was the useful part: `moneyFlowSkip` returned **three** loans, not two. The skip is keyed on *no declared repayment*, not on interest-only — so **HECS is caught too** (`2,518.34 + 1,191.25 + 83.33 = 3,792.92`, exact). My reading of `moneyFlowService.ts:382` was right; my prediction was one loan short.
+
+§2.1's stored-rate diagnosis is confirmed independently: `impliedRateAnnual 0.0626974 ÷ stored 0.0669 = 0.93718` — the same factor the brief flagged, with identical `divergencePp −0.42026` on both loans.
+
+### The hole in my own instrument (D2)
+`cashflow.annualCashflow` / `.annualSurplus` move by **$47,551.71** and were **not in the declared paths at all**. Under G7 an undeclared move stops the tranche — so the first capture could not have produced a valid contract. Added, derived from annual components per VR-045 §2.1.
+
+Two paths my T2 brief listed as movers are correctly absent: `debtToIncomeRatio` and `keptAfterEssentials` carry no loan term. The brief was over-inclusive.
+
+### MON-143 — raised from the capture, gates the migration
+The relay surfaces `monthlyInterestFloor` per loan, which exposed that Guildford's floor is computed on the **full** balance: **$1,964.67** against **$384.45** net of its $303,889.96 offset — **5.1×**.
+
+Verified four-way in source: `propertyLoanInterest.ts:87` nets · `debt-analysis/route.ts:465` nets · `portfolioEngine.ts:428` nets · **`resolveLoanMonthlyCost:199` — the canonical producer — does not.** Latent today (Guildford resolves via ACTUALS and never floors), but T2 migrates every loan-cost consumer onto that producer, so it must be fixed **before** the migration.
+
+### D18/X3 — stated deferral, not an omission
+`savingsRate` is currently a straight substitution treating the whole loan payment as spending. X3 separates principal out of spending and into saving, changing the numerator's *shape*. Recorded in the relay's `notes` so it is a decision on the record rather than a gap.
+
+### Files Modified
+- `app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts` — annual pair added; D3 deferral + MON-143 recorded in `notes`
+- `docs/issues/ISSUES.{json,md}` — MON-143 raised → DIAGNOSED
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — capture outcome, #1558 SHA backfilled (`f897481c`)
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean
+- [x] `lint:financial-surfaces` · `lint:source-lock` · `census:producers:check` · `lint:ai-grounding` · `neomatrix:check` — all PASS
+- [x] `npm run issues:check` — 130 valid
+
+### Next
+Re-capture on the repaired relay → declare `expectedMoves` → **fix MON-143** → then the migration.
