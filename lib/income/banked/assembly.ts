@@ -50,11 +50,53 @@ export interface BankedRawData {
 // surface for banked-income callers — still ONE producer (§12.2.1).
 export { assembleRepaymentIncome };
 
+/**
+ * MON-140 — THE income-row select for every banked-engine feed (§12.2.1
+ * applied to the INPUT, not just the producer).
+ *
+ * VR-044 proved the producer being canonical is not sufficient: at the T1-B
+ * flip `masterFinancialService` fed the ONE engine a `select`-narrowed row
+ * that omitted `isRecurring`, so the one-off gate (`row.isRecurring === false`
+ * in salaryBanked/receivedBanked/rentalBanked) never fired and 10 one-off rows
+ * annualised ×12 — $158,401.44/yr of income that was never received, on the
+ * Home tile, while `moneyFlowService` (fed by `fetchBankedRawData`, which
+ * selects nothing and therefore selects everything) returned the correct
+ * total. Same engine, two feeds, two answers: the MON-028 class.
+ *
+ * Any caller that hands rows to the banked engines uses THIS constant. A
+ * consumer needing extra columns spreads it and adds its own — it must never
+ * hand-roll the banked subset. Ratcheted by
+ * `tests/income/bankedInputFeed.test.ts`.
+ */
+export const BANKED_INCOME_SELECT = {
+  id: true,
+  type: true,
+  name: true,
+  amount: true,
+  frequency: true,
+  // The one-off gate. Omitting this silently annualises one-offs (VR-044).
+  isRecurring: true,
+  salaryType: true,
+  grossAmount: true,
+  netAmount: true,
+  paygWithholding: true,
+  // T1 FACT fields — omitting these silently downgrades the basis hierarchy
+  // from FACT to DERIVED without any flag (D33).
+  actualNetPay: true,
+  salarySacrifice: true,
+  helpLoanDeclared: true,
+  isTaxable: true,
+  propertyId: true,
+  investmentAccountId: true,
+  ownerEntityId: true,
+  rentalMode: true,
+} as const;
+
 /** Fetch the full row set the banked engines require (every field — an
- *  input-feed omission is the MON-137 defect class). */
+ *  input-feed omission is the MON-137/MON-140 defect class). */
 export async function fetchBankedRawData(userId: string): Promise<BankedRawData> {
   const [income, properties, derivedExpenses, linkedTransactions] = await Promise.all([
-    prisma.income.findMany({ where: { userId } }),
+    prisma.income.findMany({ where: { userId }, select: BANKED_INCOME_SELECT }),
     prisma.property.findMany({ where: { userId }, select: { id: true, type: true } }),
     prisma.expense.findMany({
       where: { userId, derivedFromIncomeId: { not: null } },

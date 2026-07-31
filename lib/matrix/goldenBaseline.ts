@@ -152,10 +152,24 @@ export function hashBaseline(captures: BaselineTree): BaselineHashSummary {
 
 /** Rendered Part-C cluster (VR-041) — static reference constants pinning what
  *  Reza SAW; not live captures (REFERENCE_NUMBERS_DESIGN.md §10). */
+/**
+ * The rendered regression pins the Matrix cross-checks producers against.
+ * Every value here is one a HUMAN can read off a screen.
+ *
+ * VR-044 §4 caught this instrument lying. It still held the figure that the
+ * income flip retired, so a run seeing the corrected one would have reported
+ * "unchanged" as a PASS. A pin that survives the change it exists to detect
+ * is worse than no pin at all.
+ *
+ * MAINTENANCE RULE: when a tranche declares a move on a pinned figure, this
+ * constant moves in the SAME PR as the flip, never after it.
+ */
 export const RENDERED_PART_C = {
   netWorth: 3401782, liquid: 301808, committed: 14261, loansMonthly: 12779,
   rentalMonthly: 10102, taxNet: 37786, taxableIncome: 145426,
-  deductions: 172325, medicareLevy: 2909, payg: 11129,
+  deductions: 172325, medicareLevy: 2909,
+  // 11,129 became 43,004 at the income flip; VR-044 §1 verified it landed.
+  payg: 43004,
 } as const;
 
 export interface BaselineTree {
