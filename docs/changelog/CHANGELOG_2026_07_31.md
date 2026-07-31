@@ -270,3 +270,56 @@ Complete for `cashflow.*`, `debt.metrics.*` and the `quickMetrics` mirrors. It d
 ### Build Status
 - [x] `npx tsc --noEmit` — clean
 - [x] `lint:financial-surfaces` · `lint:source-lock` · `census:producers:check` · `lint:ai-grounding` · `neomatrix:check` — all PASS
+
+---
+
+## Session: g8kra5 (cont.) — MON-143: the canonical interest floor nets the offset
+
+### What was wrong
+`resolveLoanMonthlyCost` — the producer T2 is about to point *every* loan-cost surface at — charged its
+interest floor on the **full** balance. Three other derivations in the app (`propertyLoanInterest.ts:87`,
+`debt-analysis:465`, `portfolioEngine:428`) all net the offset off first. The canonical one was the only
+one of four breaching **D21**. On Guildford: **$1,964.67** against **$384.45** — 5.1×.
+
+Nothing caught it because `CashflowLoan` carried **no offset field at all**. The engine was structurally
+incapable of netting, so no fixture could express the case. It surfaced only because the T2 relay prints
+`monthlyInterestFloor` per loan and the Matrix read it against the balance.
+
+### What changed
+- `propertyCashflow.ts` — `interestBearing = max(0, principal − max(0, offsetBalance))`; `CashflowLoan`
+  gained `offsetBalance`.
+- `loanCosts.ts` — the service now **fetches the offsets itself** (the MON-140 input-feed shape) rather
+  than trusting callers to pass them. Same-engine-different-inputs is the MON-028 failure class; a
+  producer that can be starved by a forgetful caller is not fixed.
+- Ratchet — `tests/calculations/loanInterestOffsetNetting.test.ts`: pins the corrected floor, pins the
+  pre-fix **1,964.67 as WRONG**, and pins the **D21/D26 asymmetry both halves** (interest nets the
+  offset, equity does not) so a later "tidy-up" has to argue with a test instead of a comment.
+
+### What you'll see
+**Nothing today — and that is the expected result, not a missing one.** Guildford has linked repayments,
+so it resolves via ACTUALS and never reaches this fallback. The fix matters for what comes next: the T2
+migration points every screen at this producer, and shipping it first would have propagated a known
+5.1× overstatement to all of them at once.
+
+### The Neomatrix gates — D49
+Editing two anchored files trips ANCHORED DRIFT *and* the symbol-anchor gate, which resolve against a
+Layer 0 frozen at `4ae03705`; the documented remedy (`neomatrix:graphify`) is a local-only CLI absent
+here and in CI. I first called this a blocker for Reza and reverted a manifest rehash as "dishonest" —
+**both wrong**: `d5c9434f` (MON-140) already established the targeted-patch precedent. Applied it, but
+verified rather than fitted — all 10 moved Layer-0 nodes shifted by exact hunk offsets, then each
+asserted to land on its label in current source. **17/17** nodes in both files land, including the 7 the
+gates never inspect.
+
+**Not fixed:** every T2 migration target is anchored, so the migration pays this tax per file. The
+durable fix is a CI-runnable extractor, or resolving the symbol gate against **source** instead of a
+frozen Layer 0. Recorded in the ledger §4 as D49, not assumed covered.
+
+### Coverage — stated precisely
+The test proves the floor's arithmetic and the asymmetry. It does **NOT** prove any surface renders it:
+on live data no loan both floors *and* carries an offset today. No Ring-3 run applies, so MON-143 stays
+**FIXING** — its Ring-3 evidence is the T2 migration run, not a separate one.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean
+- [x] `lint:financial-surfaces` · `lint:source-lock` · `census:producers:check` · `neomatrix:check` · `issues:check` · `mon131:check` — all PASS
+- [x] vitest — 148 passed across the neomatrix + registry + MON-143 suites

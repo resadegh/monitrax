@@ -544,6 +544,39 @@ per the T2 brief §7, which asked for this to be logged as a coverage gap rather
 later. Lesson: a set of figures reconciling to each other is not evidence they reconcile to the
 contract that generates them.
 
+**D49 — the Neomatrix gates make every anchored-file edit a two-artifact edit, and I nearly escalated
+that as a blocker instead of reading the precedent (2026-07-31).**
+MON-143 touched two files carrying Layer-1 anchors. That trips *two* gates at once, and the pair form
+a catch-22 if read naively:
+
+- **`check-layer0-coverage`** hard-fails on ANCHORED DRIFT — the file's bytes changed since Layer 0
+  was extracted, so the meaning layer is claiming things about code it has not seen.
+- **`check-binding-coverage`** resolves each Layer-1 line against **Layer 0's** recorded symbol line.
+  Layer 0 is frozen at `4ae03705`. So re-pinning an anchor to its *true* current source line — which
+  §21.2.1 requires — makes this gate fail, because Layer 0 still holds the old line.
+
+Satisfy one and you break the other; the documented remedy (`npm run neomatrix:graphify`) shells out
+to `graphify`, a **local-only CLI absent from this environment and from CI**. My first read was that
+this blocked the PR and needed Reza's call, and I hand-waved a manifest rehash as "dishonest" and
+reverted it. **Both judgements were wrong.** `d5c9434f` (MON-140) had already solved exactly this:
+re-pin Layer 1, shift the moved Layer-0 symbol lines, rehash the manifest, leave `builtAtCommit`
+honest. It is a **targeted patch of a generated artifact, not a regeneration**, and it is sound
+*provided the patch is verified against source rather than fitted to the gate*. So this PR shifts all
+10 moved Layer-0 nodes by the exact diff-hunk offsets and then **asserts each one's label is present
+at its new line in the current file** — 17/17 nodes in both files land, including the 7 the gates
+never look at. A patch that only moved the two gated anchors would have passed CI and left the
+artifact selectively true.
+
+**The part that is NOT fixed, and matters more than this PR.** Every T2 migration target —
+`masterFinancialService`, `loanAggregator`, `moneyFlowService`, `contextBuilder`,
+`cashflowOrchestrator`, `propertyCashflow`, `loanCosts` — is Layer-1 anchored (checked: 169 anchor
+files). So the migration hits this on **every file it touches**, and each one needs the same manual
+two-artifact patch. That is a real tax on the tranche and a real chance to get an artifact subtly
+wrong. The durable fixes are either a CI-runnable extractor or narrowing the symbol-anchor gate to
+resolve against **source** rather than a frozen Layer 0 — the latter would remove the catch-22
+entirely, since source is what the anchor actually claims. **Neither is done. Recorded, not assumed
+covered** (the §4 gate-coverage question, applied to my own gates).
+
 ## §4b The register gap — MON-112…124 is deliberate, not lost
 
 `docs/issues/ISSUES.json` holds 123 issues, runs to MON-136, and is missing exactly **MON-112…124**.
@@ -625,7 +658,8 @@ Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** 
 | 07-31 | #1557 | `2627dcdf` | **T2 compare relay** — `/api/admin/matrix/golden-baseline/t2-loan-cost`: runs the OLD loan-cost producers and the canonical `resolveLoanCostsForUser` on the SAME live data, returning per-path before/after + per-loan basis + the measured `moneyFlowService:382` interest-only skip. This is what makes T2's `expectedMoves` COMPUTED, not predicted | **No — reads both paths** |
 | 07-31 | #1558 | `f897481c` | **T2 relay capture handout** for the Matrix (`docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`) — one GET, identity-asserted (`loanCount === 5`), payload returned verbatim; §5 states falsifiable predictions so a mismatch is the finding | **No — a handout** |
 | 07-31 | #1559 | `7be30bef` | **First T2 capture returned + relay repaired.** Capture at `2627dcdf` measured old **8,816.65** → new **12,779.29** (Δ +3,962.64/mo, +47,551.71/yr). The Matrix found the relay MISSING the `annualCashflow`/`annualSurplus` pair — a $47,551.71 undeclared move that G7 would have stopped the tranche on. Added. D18/X3 savings-rate shape recorded as a stated DEFERRAL. **MON-143 raised** (D21 breach in the canonical interest floor) | **No — relay repair** |
-| 07-31 | *(this PR)* | — | **Second capture + THE DERIVATION SWEEP.** Re-capture confirmed the annual pair landed (180,572.50 → **133,020.79**) but found **two more** undeclared movers, and reading the assembly surfaced a **fifth**. Root cause was the METHOD: paths were enumerated from a hand-written list. Replaced with a sweep that re-runs the REAL engines on the REAL inputs with the canonical per-loan cost substituted, and diffs — the declaration is now complete BY CONSTRUCTION | **No — relay only** |
+| 07-31 | #1561 | `8bed66b6` | **Second capture + THE DERIVATION SWEEP.** Re-capture confirmed the annual pair landed (180,572.50 → **133,020.79**) but found **two more** undeclared movers, and reading the assembly surfaced a **fifth**. Root cause was the METHOD: paths were enumerated from a hand-written list. Replaced with a sweep that re-runs the REAL engines on the REAL inputs with the canonical per-loan cost substituted, and diffs — the declaration is now complete BY CONSTRUCTION | **No — relay only** |
+| 07-31 | *(this PR)* | — | **MON-143 — the canonical interest floor nets the offset (D21).** `resolveLoanMonthlyCost` was the only one of four interest derivations charging the floor on the FULL balance; `CashflowLoan` carried no offset field at all, so the engine was *structurally incapable* of netting and no fixture could express the case. Threaded `offsetBalance` through the type, and made `loanCosts.ts` **fetch the offsets itself** (the MON-140 input-feed shape) so no caller can starve the engine by forgetting to pass them. Ratchet test pins the corrected floor, pins the pre-fix **$1,964.67** as WRONG, and pins the **D21/D26 asymmetry both halves**. **Gates the T2 migration** — migrating every consumer onto a producer with a known D21 breach would have propagated it to all of them at once | **No rendered number today** — Guildford resolves via ACTUALS so it never floors. Latent until an offset loan loses its linked repayments; live for every surface the moment T2 wires them |
 
 ### Tranches 3–7 + closing — BLOCKED
 

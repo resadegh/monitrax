@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "note": "sha256 (first 16 hex) of every Layer-0 covered file AT EXTRACTION TIME. `check-layer0-coverage.mjs` rehashes on every build; a mismatch means the code moved and Layer 0 did not. Generated \u2014 do not hand-edit.",
+    "note": "sha256 (first 16 hex) of every Layer-0 covered file AT EXTRACTION TIME. `check-layer0-coverage.mjs` rehashes on every build; a mismatch means the code moved and Layer 0 did not. Generated — do not hand-edit.",
     "builtAtCommit": "4ae037056764a8f4421e0cf658766ecde0807ef8",
     "algorithm": "sha256:16",
     "files": 1852
@@ -1104,7 +1104,7 @@
     "lib/calculations/netWorthCalculator.ts": "ac848c9dd29d2b5c",
     "lib/calculations/netWorthHistory.ts": "3e2799a5c74b6e4e",
     "lib/calculations/propertyActualsWindow.ts": "9f954cb84afbc258",
-    "lib/calculations/propertyCashflow.ts": "7529a65b510b1972",
+    "lib/calculations/propertyCashflow.ts": "e5f7031ce47dbe84",
     "lib/calculations/rentalReconciliation.ts": "48e5626643ecf7b6",
     "lib/calculations/safetyScore.ts": "a172c7f1b14d7ddf",
     "lib/cashflow-intelligence/geminiSummary.ts": "007ded27f313d162",
@@ -1359,7 +1359,7 @@
     "lib/services/householdCategoryService.ts": "162f864d10e0527d",
     "lib/services/index.ts": "4473a9446442451c",
     "lib/services/legalEntityService.ts": "6131f4562567c9a8",
-    "lib/services/loanCosts.ts": "b112c66463546f86",
+    "lib/services/loanCosts.ts": "5ba0068fd8c325e0",
     "lib/services/managedRentalService.ts": "7b86f6edf861d802",
     "lib/services/marketplaceService.ts": "24e814b0b36a0a36",
     "lib/services/masterFinancialService.ts": "f3220cf4f09ea394",
