@@ -306,6 +306,20 @@ gate would zero every AI-categorised expense.
 > Source-lock + financial-surfaces flagged its raw-`minRepayment` reads, correctly: measuring the OLD
 > producer means touching it. Each is annotated with that reason rather than the lint being widened.
 >
+> **Census correction shipped with the relay (drift D49).** The producer census counted the
+> **compare relays themselves** as producers. `app/api/admin/matrix/**` exists to MEASURE producers —
+> each relay deliberately reads the OLD and NEW paths side by side — so counting them inflated the
+> very metric the tranches drive down, and made every future tranche's instrument look like fresh
+> duplication. The T2 relay scored **+1 on five quantities** (loanCost 31→32 · incomeRunRate 128→129 ·
+> expenseRunRate 81→82 · savingsRate 30→31 · emergencyMonths 15→16) while deleting nothing.
+> `app/api/admin/matrix/**` is now excluded and the seed re-run.
+>
+> **Read the resulting drop correctly: it is a MEASUREMENT CORRECTION, not deleted duplication.**
+> expenseRunRate 81→79 · incomeRunRate 128→126 · payg 56→54 · grossIncome 38→36 · netIncome 34→33 ·
+> emergencyMonths 15→14 · deductions 106→105 are **instrument sites leaving the count**. `loanCost`
+> stays **31**. **No producer was deleted in this PR** — that is the migration, still to come. The
+> census `history` entry carries the same warning so the number cannot be misread later.
+>
 > **§3.2 gets a FACT-first path.** `LoanTransaction` (Phase 51) already carries `interestPortion` /
 > `principalPortion` — *"when known from the statement"* — plus `balanceAfter`. So the split is a
 > D17-style hierarchy (statement fact → derive → undetermined), not pure derivation.
