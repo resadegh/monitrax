@@ -4,7 +4,7 @@
 **Under test:** PR **#1548** `fix/mon-140-banked-input-feed` — **MERGED** `e4040dbb` · prod `dpl_B2rYVXJVDvvVqEH1HzJzJ5VGa1tW` **READY** 04:14 UTC
 **SHA to verify:** `0756fe3d` (`origin/main` HEAD, incl. #1549 docs)
 **Contract:** `.audit/expected-moves-t1.json` @ `f1c87afb`, declared against `3028c08a` / `treeHash 6f2369a6…`
-**Registry:** MON-128 · MON-137 · MON-140 — all `FIXING`, all `changesNumbers: true`. This run is the §24.2 #7 per-fix number verification that gates them to `VERIFIED`.
+**Registry:** MON-128 · MON-137 · MON-140 — all `FIXING`, all `changesNumbers: true`. This run is the §24.2 #7 per-fix number verification that gates them to `VERIFIED`. **MON-138** is the fourth member of this tranche (`expected-moves-t1.json` `_meta.tranche`) and needs a §2b capture before it can move — see there.
 
 > **Read VR-044 first.** T1-B was a **partial** flip: the tax half landed to the dollar, the income half never reached `masterFinancialService`, and Home ended up showing **$12,476/mo** and **$38,547/mo** side by side, both labelled Income. This run decides whether #1548 closed that.
 
@@ -73,6 +73,22 @@ Producer tree via the admin relay, `?userId=91b6d7ce…`. **Every row must equal
 
 ---
 
+## §2b MON-138 — a capture, not yet a verdict
+
+MON-138 (PAYG Schedule 1 band selection had 1-dollar gaps: fractional weekly earnings between integer band bounds withheld **$0**) shipped in #1545 and is `changesNumbers: true`, so §23.2.3 will not let it reach `VERIFIED` on a formula argument alone.
+
+**Its correctness is already proven at Ring 0** — `tests/tax/mon128T1WithholdingConfig.test.ts:121` pins `$500.50/wk → $22/wk` on the FY24-25 tables, across both the Float and Decimal twins.
+
+**What is NOT yet established is whether this run can verify it at Ring 3 at all.** So capture, do not judge:
+
+- Across every income row on the account, is there any with a **WEEKLY or FORTNIGHTLY** frequency whose gross amount is **not a whole dollar** (e.g. `$500.50`, `$1,842.31`)? List each: source name, frequency, exact gross, and the withholding shown for it.
+- If such a row exists, its withholding must be **non-zero** — the defect was $0 withholding above the tax-free threshold.
+- **If no such row exists on this account, say so plainly.** That is the expected answer and it is not a failure.
+
+**Disposition, decided in advance so the run does not have to improvise:** no fractional weekly/fortnightly row ⇒ MON-138 has **no Ring-3 surface on this dataset** and **stays `FIXING`**. It is not verified by this run and must not be swept into a tranche PASS. Closing it then needs Reza's call between (a) a recorded Ring-0-sufficient exemption for a defect with no reachable surface on the reference account, or (b) VR-044 §7 rule 5 — a second dataset carrying the shape Reza's does not have.
+
+---
+
 ## §3 The contradiction must be GONE from Home
 
 VR-044 §4's headline: two Income figures, 3.1× apart, both visible without scrolling.
@@ -117,12 +133,13 @@ Pre-declared so this run does not repeat the VR-029 false-fail.
 | Item | Verdict |
 |---|---|
 | §2 — all 22 declared paths land on their declared value | PASS / FAIL (list every miss) |
+| §2b — fractional weekly/fortnightly income rows | LIST them, or state NONE FOUND (not a pass/fail) |
 | §3 — Home shows ONE income story; moneyFlow ≡ master | PASS / FAIL |
 | §4 — regression cluster byte-identical | PASS / FAIL |
 | §5 — no undeclared movement outside the income family | PASS / FAIL |
 | §3.3 canonical sweep — coverage object complete, `skipped: []` | PASS / INCOMPLETE |
 
-**If §2 and §3 both PASS and §4 holds:** MON-128, MON-137 and MON-140 move `FIXING → VERIFIED` with `VR-045` in the notes, and the T1 tranche closes.
+**If §2 and §3 both PASS and §4 holds:** MON-128, MON-137 and MON-140 move `FIXING → VERIFIED` with `VR-045` in the notes. **MON-138 does not move on this run unless §2b found a fractional row** — so the T1 tranche closes three-quarters, not whole, and MON-138's disposition goes to Reza per §2b.
 **If any of §2, §3 or §4 fails:** report the exact misses. The T1-B brief §5 revert contract applies to the tranche, not to #1548 alone — Code re-diagnoses from Stage 1 (`FIX_PROTOCOL.md`), and the issues stay `FIXING`.
 
 Every new FAIL outside the declared set becomes a fresh `MON-###` via `npm run issues:raise`.
@@ -135,4 +152,6 @@ Every new FAIL outside the declared set becomes a fresh `MON-###` via `npm run i
 
 Self-review changed three things. (1) I had drafted the per-member `11,129` divergence as an unregistered second PAYG producer and a §12.2.1 finding — reading `userTaxPosition.ts:286-288` showed it is an explicit, commented T6 deferral, so it moved from "raise this" to §5's do-not-fail list; shipping the first version would have manufactured a false FAIL. (2) I had the overlay standing alone; playbook §3.2 rule 1 requires the §3.3 canonical brief be handed over verbatim and un-improvised, so §0 now sequences the canonical sweep first and states this document does not replace it. (3) The `renderedPartC.payg` instrument was asserted repaired from VR-044's recommendation — verified in source at `lib/matrix/goldenBaseline.ts:172` before it was written down as trustworthy.
 
-**Coverage boundary, stated precisely:** this handout verifies that the 22 declared producer paths land on their declared values, that Home renders one income story, and that the named regression cluster is unmoved. It does **NOT** verify the correctness of the declared values themselves (that is VR-043 §3's relay derivation plus the Ring-0 fixtures), and it does **NOT** verify any surface outside the §3.3 canonical sweep plus the paths named here.
+**Coverage boundary, stated precisely:** this handout verifies that the 22 declared producer paths land on their declared values, that Home renders one income story, and that the named regression cluster is unmoved. It does **NOT** verify the correctness of the declared values themselves (that is VR-043 §3's relay derivation plus the Ring-0 fixtures), it does **NOT** resolve MON-138 (§2b is a capture that decides whether Ring 3 can reach it at all), and it does **NOT** verify any surface outside the §3.3 canonical sweep plus the paths named here.
+
+**Amendment, 2026-07-31 (§2b added).** The first version of this handout named only MON-128/137/140 and would have let a §2/§3/§4 PASS read as "the T1 tranche is closed." `.audit/expected-moves-t1.json` `_meta.tranche` declares **four** members — MON-138 is one, is `changesNumbers: true`, and shipped in the same #1545. Sweeping it into a tranche PASS with no reachable surface would have been exactly the verified-by-claim-not-numbers failure `FIX_PROTOCOL.md` §1 exists to stop.
