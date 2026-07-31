@@ -6,11 +6,21 @@ name: Docs Hygiene
 #   (b) index coverage  — every in-scope doc under docs/ must be referenced
 #       in docs/00_INDEX.md.
 #
-# SOFT-LAUNCH: both scripts run without --strict, so they emit ::warning::
-# annotations and exit 0 (never block a merge). To ARM later: add --strict to
-# the two run steps and add this workflow as a required status check. Arming
-# also depends on the GitHub `workflow` scope being granted (same blocker as
-# continuity-gate.yml — see STATE.md / §0·CONT).
+#   (c) MON-131 ledger freshness — a diff touching a MON-131 surface must
+#       touch docs/implementation/MON-131_TRANCHE_LEDGER.md too.
+#
+# SOFT-LAUNCH applies to (a) and (b) ONLY: they run without --strict, emitting
+# ::warning:: and exiting 0. To ARM them: add --strict to those two run steps.
+#
+# (c) RUNS --strict DELIBERATELY (Reza directive 2026-07-31: "document all
+# changes for MON-131 and keep it updated"). A warn-only ledger gate does not
+# keep anything updated — it is the failure mode CLAUDE.md §20.6 named, where
+# the rule exists and nothing checks it. The step therefore FAILS the job.
+#
+# NOTE, so this is not over-read: this workflow is not yet a REQUIRED status
+# check, so a failure here is loud but does not itself block merge. Making it
+# required depends on the GitHub `workflow` scope being granted (same blocker
+# as continuity-gate.yml — see STATE.md / §0·CONT).
 
 on:
   pull_request:
@@ -21,6 +31,10 @@ on:
       - 'SYSTEM_MAP.md'
       - 'scripts/check-plan-freshness.sh'
       - 'scripts/check-index-paths.sh'
+      - 'scripts/check-mon131-ledger.mjs'
+      - 'lib/income/banked/**'
+      - 'lib/matrix/**'
+      - '.audit/**'
       - '.github/workflows/docs-hygiene.yml'
 
 jobs:
@@ -29,7 +43,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Plan freshness (F-1a)
         run: bash scripts/check-plan-freshness.sh
       - name: Index coverage (F-1b)
         run: bash scripts/check-index-paths.sh
+      - name: MON-131 ledger freshness
+        run: node scripts/check-mon131-ledger.mjs --strict --base=origin/${{ github.base_ref }}

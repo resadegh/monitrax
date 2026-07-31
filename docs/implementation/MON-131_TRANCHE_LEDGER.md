@@ -83,7 +83,7 @@ gate would zero every AI-categorised expense.
 | G6 merged | ✅ | PR #1538 merged 2026-07-30; prod deploy `dpl_48fktuyb…` READY (migration v2 applied to PROD cleanly). **Production verified at `d3d7e147`** (the relay's own `sha` field, VR-042 §0 — a later commit that includes MON-135; the earlier `b1af5021` note was the merge commit, not the deployed HEAD) |
 | G8 Ring-3 | ✅ | **PASS — VR-042 §1 (Path B):** 48 tracked rendered figures across /dashboard/tax · balances · expenses (incl. all five per-loan rows + basis labels) · Home — **all identical** to `rendered-baseline-8700b1d7.json` + VR-041 Part C; producer↔render tie 9/9 (VR-042 §2.1); all seven prior identities + three new ones hold. `changesNumbers: NO` confirmed on every money surface. Registry: MON-135 → VERIFIED (run VR-042) |
 
-### Tranche 1 — income (MON-128) — IN BUILD
+### Tranche 1 — income (MON-128) — DONE
 
 > **Execution record (2026-07-30, build session).** T1 ships as **two PRs**, forced by the
 > G3 contract: the `PENDING_RELAY` after-values must be COMPUTED by running old and new
@@ -211,10 +211,14 @@ gate would zero every AI-categorised expense.
 > income figures. The next run re-does the full Ring 3 because **#1548 moved the numbers**,
 > not because VR-044's reads were unsound.
 >
-> **Still open: G7 per-path diff + Ring-3 §5.5 on the post-MON-140 prod.** MON-128/137/140
-> stay FIXING until that records — **and so does MON-138**, the tranche's fourth member
-> (`expected-moves-t1.json` `_meta.tranche`), which the VR-045 handout §2b treats separately
-> because it may have no reachable Ring-3 surface on Reza's account at all.
+> **CLOSED at VR-045 (2026-07-31, PASS).** 22/22 declared paths land · the Home
+> contradiction is gone (`moneyFlowService` 304,158.61 ≡ `masterFinancialService`
+> 304,158.61, against 304,158.61 vs 462,560.05 at VR-044) · regression cluster
+> byte-identical. **MON-128 · MON-137 · MON-138 · MON-140 → VERIFIED.**
+> **The tranche closes WHOLE, not three-quarters** — VR-045 §2b found the Ring-3
+> surface the handout pre-declared absent (the FORTNIGHTLY Ingeus **salary** row at a
+> fractional $1,919.35 net / $2,301.35 gross, withholding non-zero at $9,672/yr), so
+> MON-138 verified on real data and no disposition call went to Reza.
 >
 > **Instrument for the next run: `docs/verification/briefs/RING3_VR045_T1_REPAIR.md`**
 > (PR #1550, merged 2026-07-31, main `3cdaa8c4`). It pins all 22 declared paths with
@@ -230,8 +234,11 @@ gate would zero every AI-categorised expense.
 | G3 expectedMoves | ✅ | **Committed: `.audit/expected-moves-t1.json`** (start-gate PR) — per-path, arithmetic-anchored to VR-042 measured values; includes the three-PAYG reconciliation paths (9,932.00 applied · 11,128.70 reported · 36,197.69 cashflow) and the Home Saved/$27,987 + savings-rate 73.1% sign-inversion pair. **PAYG withheld $11,129 removed from the regression cluster** (it may be the wrong of two candidates — freezing it would freeze a defect); that removal is itself declared, and it is the only one |
 | G4 baseline | ✅ | VR-042 §2 capture at `d3d7e147` (10,254 leaves, hash `700935f3…`); committed hash-mode reference follows the start-gate PR deploy (Instrumentation row caveat) |
 | G5 facts | ✅ | **Nothing is asked of Reza** (start-gate §3; build brief §0): salary component is in the data (`byType.SALARY` gross 227,519.50 / net 217,587.50, VR-042); HELP repayment income is COMPUTED (taxable income excl. FHSS + reportable fringe benefits + total net investment loss + reportable super + exempt foreign employment — every input in Monitrax); rental gross-vs-net is a code question (build brief §2.1, now with the third value 154,443.11). Genuinely user-only values ship as FACT fields with an undetermined state (build brief §5), never as questions |
-| G7 baseline diff | ⏳ | **FAILED at VR-044** (22 declared paths missed; `grossTotal` byte-identical to pre-merge). Re-run pending on post-MON-140 prod — instrument is the VR-045 handout §2 |
-| G8 Ring-3 | ⏳ | **FAILED at VR-044** §5.5 — the rendered half was valid (see correction above) and confirmed the producer failure on Reza's Home screen. Re-run pending — VR-045 handout §3 (one income story) + §4 (`mustNotMove`) + §2b (MON-138 reachability capture) |
+| G7 baseline diff | ✅ | **FAILED at VR-044** (22 paths missed) → **PASS at VR-045 §2**: 21 exact, 1 off by $0.02 — and that one is a **defect in the DECLARATION, not the engine** (`annualCashflow` was declared as rounded-monthly ×12 = 180,572.52; the engine derives from annual components = 180,572.50). Contract amended in this PR with the annual-component arithmetic + a `_meta.declaredCorrections` record. New reference hash at `3cdaa8c4`: `347006b9…`, 1,759 leaves, `captureErrors: []` |
+| G8 Ring-3 | ✅ | **FAILED at VR-044** → **PASS at VR-045** (`docs/verification/runs/VR-045.md`, SHA `3cdaa8c4`, prod READY, read in Reza's own session with identity asserted before any figure). §3 Home one-income-story ✅ · §2b MON-138 reachable and passing ✅ |
+| G9 census | ✅ | `byType.OTHER` **absent from the tree**, not zeroed — the one-off rows left the run-rate rather than being suppressed. Income producers: SEVEN before T1 (Stage-1 census) → **ONE** (`buildBankedIncome`); the five legacy re-computations deleted at T1-B, the sixth (`cashflowOrchestrator`'s) removed as MON-137's culprit, the starved feed unified as MON-140's `BANKED_INCOME_SELECT` |
+| G10 regression cluster | ✅ | VR-045 §4 — `/dashboard/balances` 13/13 · `/dashboard/expenses` 13/13 · `/dashboard/tax` all figures at their T1-B values · out-of-scope producers (T2 `monthlyLoanRepayments` 8,816.65 · T3 `expensesByCategory` · net worth 3,401,781.52) untouched. `renderedPartC.payg` now reads 43,004 — the VR-044 §4 lying instrument is repaired |
+| G11 issues closed on own evidence | ✅ | Each verified on its OWN numbers, not by inheritance: MON-128 (one-off gate — `byType.OTHER` gone) · MON-137 (one wedge, identity `347,162.61 − 43,004.00 = 304,158.61` exact) · MON-138 (§2b fractional salary row, non-zero withholding) · MON-140 (Home ≡ moneyFlow). Registry moved in this PR with `test` + resolving `semanticKeys` on all four |
 | G9 census | — | Was-and-now per quantity, due with the G7/G8 pass |
 | G10–G11 | — | |
 
@@ -405,6 +412,77 @@ The gap is accounted for, id by id:
   "MON-115" became MON-126 after an id collision).
 - **Ids are never reused.** The gap is the record that these numbers were allocated and their claims
   re-examined — a register that silently compacted would erase that history.
+
+## §6 The change record — every change shipped under MON-131
+
+> **Reza directive 2026-07-31:** *"I need you to document all changes for MON-131 and keep it updated."*
+>
+> **Why it lives HERE and not in a new file.** §1 already declares this ledger the programme's state
+> of record — *"if this file and any other artefact disagree, this file wins."* A second MON-131 history
+> document would be a §12.2.1 violation at the documentation layer: two sources of truth for
+> "what happened to MON-131." The gate state (§3) and the change record (§6) are the same record
+> viewed two ways — where the programme IS, and how it GOT here.
+
+**The rule.** Every merged PR that touches MON-131 — engine, contract, instrument, brief, run, registry
+move, decision — gets a row here **in the same PR**, with its SHA. A row without a SHA is not a row.
+Enforced by `npm run mon131:check` (§7).
+
+### Instrumentation + Phase A (the foundation)
+
+| Date | PR | SHA | What changed | Numbers moved? |
+|---|---|---|---|---|
+| 07-29 | #1525 | — | T−1/T0: golden-baseline capture+diff · producer-census ratchet · source-lock extended to `lib/` | No |
+| 07-29 | #1526 | — | T−1b **the Matrix Relay** — capture/diff to `lib/matrix/goldenBaseline.ts` + 3 admin routes; takes Reza's terminal out of every capture loop | No |
+| 07-29 | #1534 | `4e6cdd5c` | **Phase A** — `NUMBER_INVENTORY.md` (68 quantities, one verdict each) + 48 contract files, each adversarially re-reviewed | No |
+| 07-30 | #1535 | `89ecfd7a` | Decisions register **D17–D41** consolidated | No |
+| 07-30 | #1537 | `c07669e5` | Decision corrections + **D42–D47**; the **Build Specification** (all 7 tranches designed in advance); the **Tranche Ledger** (this file) | No |
+| 07-30 | #1539 | `d3d7e147` | The handover — VR-040 recovered, ledger corrected (**D5/D6** + §4b register gap), design made discoverable | No |
+
+### Preconditions
+
+| Date | PR | SHA | What changed | Numbers moved? |
+|---|---|---|---|---|
+| 07-29 | #1529/#1530/#1532 | — | **MON-134** health-trend determinism — `Math.random()` fabrication removed, real `calculateTrend` + snapshot table | Yes (a fabricated trend became honest) |
+| 07-30 | #1538 | `b1af5021` | **MON-135** AI categoriser stops asserting one-off — tri-state `isRecurring` (T3 precondition) | No — changes what a default MEANS |
+
+### Tranche 1 — income (MON-128 · MON-137 · MON-138 · MON-140) — **DONE**
+
+| Date | PR | SHA | What changed | Numbers moved? |
+|---|---|---|---|---|
+| 07-30 | #1541 | `5367209e` | **T1 START GATE** — §1.1 leaf-jump ruled (D8 partial first capture), `?format=hash` baseline persistence, `expectedMoves` committed | No |
+| 07-30 | #1542 | `3028c08a` | **T1-A scaffold** — per-FY PAYG Schedule 1 config home · greenfield HELP/STSL engine · the banked L1/L2 stack `lib/income/banked/*` · FACT-field migration · the T1 compare relay | **No — by contract** |
+| 07-31 | #1545 | `f1c87afb` | **T1-B THE FLIP** — every consumer onto the ONE banked producer; five legacy income producers deleted; §1.1 two-pass withholding credit (11,129 → **43,004**, owing $26,657 → **refund $5,218**); MON-138 floor-based band selection | **YES — the tranche's number-moving PR** |
+| 07-31 | — | `1fe9d4a5` | **VR-044 recorded — FAIL.** 22 declared paths missed; two Income figures 3.1× apart live on Home | — |
+| 07-31 | #1548 | `e4040dbb` | **MON-140 repair** — `BANKED_INCOME_SELECT` becomes the ONE definition of the engine's input contract (§12.2.1 applied to the INPUT); ratchet `tests/income/bankedInputFeed.test.ts` | **YES — completes the flip** |
+| 07-31 | #1550 | `3cdaa8c4` | **VR-045 handout** — the Ring-3 instrument for the repaired tranche | No |
+| 07-31 | #1551 | `8a556efc` | **VR-045 recorded — PASS.** 22/22 land · Home contradiction gone · cluster byte-identical · MON-138 Ring-3-reachable | — |
+| 07-31 | *(this PR)* | — | **T1 CLOSED** — registry ×4 → `VERIFIED`; `expectedMoves` `annualCashflow` corrected 180,572.52 → **180,572.50** (VR-045 §2.1 — the declaration was wrong, not the engine); handout §3 corrected (VR-045 §6 — four income-derived figures were wrongly listed as "must return"); playbook gains the derived-figures lens; **MON-141 raised** (VR-045 §7) | No |
+
+### What T1 actually changed for the user
+
+Monthly income **$41,303 → $25,347** · monthly saved **$27,987 → $15,048** · tax **owing $26,657 → refund $5,218** · PAYG withheld **$11,129 → $43,004**. Every income surface now reads one producer.
+
+### Tranches 2–7 + closing — BLOCKED
+
+No changes shipped. Rows land here as they merge.
+
+---
+
+## §7 Keeping it current — the mechanism, not the intention
+
+`scripts/check-mon131-ledger.mjs` (`npm run mon131:check`, wired into the `docs-hygiene` workflow).
+
+**What it enforces:** if a PR's diff against `main` touches any MON-131 surface — `lib/income/banked/**`,
+`.audit/expected-moves-t1.json`, `.audit/producer-census.json`, `lib/matrix/**`, the MON-131 doc set,
+`docs/verification/runs/**`, or a MON-131-family registry entry — then **this ledger must be touched in
+the same diff**. It fails otherwise.
+
+**What it deliberately does NOT do:** judge whether the row is *good*. A machine cannot tell a real
+evidence row from a placeholder — that is §1's job and the reviewer's. It closes the failure mode that
+actually recurs (the ledger silently falling behind), not the one it cannot see.
+
+**Honest limit:** it is diff-scoped, so it cannot catch a MON-131 change that lands with no file
+overlap at all. §1 still governs.
 
 ## §5 What this ledger deliberately does not do
 

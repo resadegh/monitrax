@@ -37,7 +37,8 @@
     "issues:check": "node scripts/issues/check-issues.mjs",
     "issues:generate": "node scripts/issues/generate-issues-md.mjs",
     "issues:raise": "node scripts/issues/raise-issue.mjs",
-    "neoaudit:scorecard": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' scripts/neoaudit/scorecard.ts"
+    "neoaudit:scorecard": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' scripts/neoaudit/scorecard.ts",
+    "mon131:check": "node scripts/check-mon131-ledger.mjs --strict"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
