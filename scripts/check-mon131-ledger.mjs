@@ -50,8 +50,20 @@ const SURFACES = [
   /^docs\/verification\/briefs\//,
 ];
 
-/** MON ids whose registry movement is a MON-131 programme change. */
-const FAMILY = [127, 128, 129, 130, 131, 134, 135, 136, 137, 138, 139, 140, 141];
+/**
+ * MON ids whose registry movement is a MON-131 programme change.
+ *
+ * RANGE, not a list. The first version hard-coded 127…141 and was stale within
+ * the hour: MON-142 (the stale stored-rate defect) was raised out of T2's §2.1
+ * investigation and the gate did not fire on it. A hand-maintained id list goes
+ * stale by construction — the same defect class this gate exists to catch.
+ * MON-127 is where the programme's numbering starts; everything at or above it
+ * is in scope unless explicitly excluded.
+ */
+const FAMILY_MIN = 127;
+/** Ids at/above FAMILY_MIN that are NOT MON-131 work (extend with a reason). */
+const FAMILY_EXCLUDE = new Set([]);
+const isFamilyId = (n) => n >= FAMILY_MIN && !FAMILY_EXCLUDE.has(n);
 
 const args = process.argv.slice(2);
 const strict = args.includes('--strict');
@@ -92,9 +104,11 @@ const touchedSurfaces = changed.filter((f) => SURFACES.some((re) => re.test(f)))
 let registryReason = '';
 if (changed.includes('docs/issues/ISSUES.json')) {
   const diff = sh(`git diff ${base}...HEAD -- docs/issues/ISSUES.json`);
-  const ids = FAMILY.map((n) => `MON-${String(n).padStart(3, '0')}`).filter((id) =>
-    new RegExp(`^[+-].*"${id}"`, 'm').test(diff),
-  );
+  const seen = new Set();
+  for (const m of diff.matchAll(/^[+-].*"(MON-(\d{3}))"/gm)) {
+    if (isFamilyId(Number(m[2]))) seen.add(m[1]);
+  }
+  const ids = [...seen].sort();
   if (ids.length) registryReason = `registry movement on ${ids.join(', ')}`;
 }
 
