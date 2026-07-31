@@ -611,6 +611,17 @@ No changes shipped. Rows land here as they merge.
 
 ## §7 Keeping it current — the mechanism, not the intention
 
+> **KNOWN COVERAGE HOLE, found 2026-07-31 by Reza asking whether everything was documented.**
+> This gate checks **only this ledger**. It does not check `docs/IMPLEMENTATION_PLAN.md`'s
+> `Last updated` or `01_ACTIVE_WORKSTREAMS.md` §0·REF — so both drifted **five PRs** behind
+> (#1555…#1559) while the gate stayed green on every one of them, because the ledger row was
+> always present. The gate did exactly what it was written to do, and that was not enough.
+>
+> Widening it to cover the plan hub and the workstream spoke is the obvious next step and is
+> **not done yet** — recorded here rather than left implicit, because an ungated rule is the
+> failure mode this whole section exists to name.
+
+
 `scripts/check-mon131-ledger.mjs` (`npm run mon131:check`, wired into the `docs-hygiene` workflow).
 
 **What it enforces:** if a PR's diff against `main` touches any MON-131 surface — `lib/income/banked/**`,
