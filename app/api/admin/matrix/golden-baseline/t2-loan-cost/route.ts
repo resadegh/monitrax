@@ -285,6 +285,16 @@ export async function GET(request: NextRequest) {
 
   // quickMetrics MIRRORS cashflow leaves (masterFinancialService.ts:2031+), so
   // any quickMetrics leaf holding a value that just moved, moves with it.
+  //
+  // KNOWN LIMIT, stated rather than discovered later: this matches by VALUE,
+  // not by the assignment. If two quickMetrics leaves happened to hold the
+  // same old number and only one of them mirrors a mover, BOTH would be
+  // declared — a false positive, which G7 would then flag as a path that was
+  // declared but did not move. Checked on the live account 2026-07-31: all 10
+  // numeric leaves hold distinct values, so it is exact TODAY. It is not
+  // structurally guaranteed. The structural fix is to encode the real
+  // assignment map from masterFinancialService.ts:2031+ (which IS structural,
+  // unlike a list of paths); worth doing if a collision ever appears.
   const movedByOldValue = new Map<number, number>();
   for (const m of cashflowMoves) movedByOldValue.set(m.before, m.after);
   const quickMoves: Array<{ path: string; before: number; after: number }> = [];
