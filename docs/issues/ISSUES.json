@@ -3975,22 +3975,26 @@
     {
       "id": "MON-142",
       "title": "Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor",
-      "status": "OPEN",
+      "status": "DIAGNOSED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-31",
       "area": "loans",
       "plain": {
         "issue": "Monitrax has 6.690% stored for your two Bankwest interest-only loans, but the repayments actually in your data imply the bank charged about 6.268%. Both loans point at the SAME real rate, which is what you would expect from one lender changing one rate — you confirmed rates moved and that you do not recall updating them here. Nothing in the app tells you the stored rate has gone stale.",
-        "fix": "NOT YET FIXED. Needs a decision on approach (see notes) — the candidates are a lastVerified/staleness signal on the rate, deriving the rate from charged interest where the loan ledger has it, or surfacing the divergence rather than silently preferring either number.",
-        "check": "Nothing to check yet. When it ships you will either see a prompt that a stored rate looks out of date against your actual repayments, or the app will use the interest actually charged."
+        "fix": "PARTIALLY BUILT. One engine now works out what rate a loan is ACTUALLY at, from evidence: the interest your bank charged (from the loan statement) beats an interest-only repayment, which beats the rate typed into Monitrax. When the evidence disagrees with the typed rate by more than 0.10%, it is flagged as out of date. It does NOT overwrite what you typed — it tells you they disagree. Nothing reads it yet, so no number on screen has moved.",
+        "check": "Nothing on screen changes in this step. The next step wires it in, and THAT will move your deductible interest and any loan cost that currently falls back to the typed rate — you will see that as a before/after table before it ships."
       },
       "rootCause": [
         "prisma/schema.prisma:1671",
         "lib/tax-engine/deductions/propertyLoanInterest.ts:85",
         "lib/calculations/propertyCashflow.ts:199"
       ],
-      "semanticKeys": [],
+      "semanticKeys": [
+        "engine.loans.resolveEffectiveLoanRate",
+        "engine.tax.deductiblePropertyLoanInterest",
+        "engine.propertyCashflow.resolveLoanMonthlyCost"
+      ],
       "downstreamConsumers": [],
       "fixPRs": [],
       "test": null,

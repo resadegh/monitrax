@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 290 · **Edges:** 400
-- **By kind:** orchestrator 17 · engine 158 · input-field 34 · number 16 · ui-surface 18 · law 40 · verification 7
-- **By status:** documented 289 · suspected-issue 1
-- **Edge provenance:** verified 400 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/191 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 291 · **Edges:** 404
+- **By kind:** orchestrator 17 · engine 159 · input-field 34 · number 16 · ui-surface 18 · law 40 · verification 7
+- **By status:** documented 290 · suspected-issue 1
+- **Edge provenance:** verified 404 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/192 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -193,6 +193,7 @@
 | **L1 banked rental (actuals-first via the canonical per-property engine)** | `lib/income/banked/rentalBanked.ts:88` | engine | core | RentalBankedResult — per-property banked (delegated to computePropertyCashflow: pooling, cadence, managed gross-up), non-property gated run-rate, one-off amount, MISATTACHED_TENANTED_RESIDENCE exclusions (D26(b)/X6: PropertyType.RENTAL produces no rental income). | D17 + D20 (no second rent producer — delegation only) + D26(b)/X6 type split. The three rental quantities named: rentalBankedActuals (this) / rentalDeclaredRunRate (declaredMonthly) / rentalTaxableGrossDeclared (Layer 3, untouched). | lib/income/banked/rentalBanked.ts:88 (read this session, MON-131 T1-A) | documented |
 | **L1 banked received-cash (INVESTMENT/OTHER)** | `lib/income/banked/receivedBanked.ts:24` | engine | core | BankedRowResult — cash as received; gross ≡ banked; franking credits NEVER added (Layer-3 offset). One-off gate via the canonical monthlyRunRate. | D17 + D20. IncomeType has no DIVIDEND/BUSINESS values — INVESTMENT covers dividends/distributions/interest; business-distribution intelligence stays with the LegalEntity tables (T1 coverage boundary). | lib/income/banked/receivedBanked.ts:24 (read this session, MON-131 T1-A) | documented |
 | **L2 banked-income aggregator (pure summation)** | `lib/income/banked/aggregator.ts:83` | engine | core | BankedIncomeResult — banked/gross/grossTaxable + withholding components + bySource + oneOff. projectAggregation() = the legacy IncomeAggregation-shape projection used at the T1-B flip. | D20 L2 (pure summation, no arithmetic of its own) + build brief §3 invariants (amended). Ratchets: tests/income/bankedIncome.test.ts + calc-audit income.bankedAggregator. | lib/income/banked/aggregator.ts:83 (read this session, MON-131 T1-A) | documented |
+| **Effective loan rate — evidence beats the typed rate (MON-142)** | `lib/calculations/effectiveLoanRate.ts:130` | engine | core | EffectiveLoanRate — annualRate + basis (DERIVED_CHARGED \| DERIVED_IO_REPAYMENT \| STORED), storedRateAnnual, impliedRateAnnual, divergencePp, flags (RATE_STALE \| RATE_UNVERIFIED \| NO_INTEREST_BEARING_BALANCE), interestBearingBalance. | MON-142 + D17 FACT-hierarchy pattern applied to a rate + D21 (interest nets the offset). Threshold 0.10pp: lenders move variable rates in 0.25pp steps, so a real change clears it while partial-period/day-count artefacts do not. |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -719,6 +720,10 @@
 | L2 banked-income aggregator (pure summation) | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | — | verified | portfolio/snapshot/route.ts:606 assembleBankedIncomeForUser → bankedTotalsFromResult totals + bankedPerRowAnnualView per-row incomeSnapshots (gross/net/PAYG helper trio DELETED) |
 | L1 banked salary (FACT hierarchy, D17) | → | User tax position (shared source) | feeds | AUD/year→AUD/year | verified | userTaxPosition.ts:291 salaryWithholdingWedgeAnnual (Σ salary-row wedges) → derivedPaygWithheldAnnual override — the §1.1 two-pass withheld credit (taxPositionCalculator applies it post-loop; taxable income never reads it) |
 | User tax position (shared source) | → | Net tax payable | feeds | — | verified | app/api/tax/position reads getUserTaxPosition().taxPosition.tax — the dashboard tax surface renders the bundle, not a direct calculateTaxPosition call; since T1-B the bundle carries the §1.1 two-pass wedge ancestry (salaryWithholdingWedgeAnnual → derivedPaygWithheldAnnual), so both taxPayable-keyed numbers trace through the same producer set. |
+| Loan.principal | → | Effective loan rate — evidence beats the typed rate (MON-142) | feeds | AUD→rate (decimal p.a.) | verified | effectiveLoanRate.ts:150 interestBearingBalance = max(0, principal - offset) — the divisor for every implied rate (D21) |
+| Loan interest rate (annual, decimal) | → | Effective loan rate — evidence beats the typed rate (MON-142) | feeds | rate (decimal p.a.)→rate (decimal p.a.) | verified | effectiveLoanRate.ts:149 storedRateAnnual — the value compared against evidence; returned as-is when no evidence exists (basis STORED) |
+| Loan ledger: interest charged (actuals) | → | Effective loan rate — evidence beats the typed rate (MON-142) | feeds | AUD/year→rate (decimal p.a.) | verified | effectiveLoanRate.ts:172 chargedInterestAnnual / interestBearing — the DERIVED_CHARGED path; the bank own figure, strongest evidence |
+| Per-loan monthly cost (interest floor) | → | Effective loan rate — evidence beats the typed rate (MON-142) | feeds | AUD/month→rate (decimal p.a.) | verified | effectiveLoanRate.ts:178-186 resolvedMonthlyRepayment x 12 / interestBearing — DERIVED_IO_REPAYMENT, gated on isInterestOnly (a P&I repayment mixes principal and is never rate evidence) |
 
 ---
 

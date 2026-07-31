@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**129 total** · 70 open · 🔵 32 · 🟡 3 · 🟠 28 · 🟢 7 · ✅ 58
+**129 total** · 70 open · 🔵 31 · 🟡 4 · 🟠 28 · 🟢 7 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -135,7 +135,7 @@
 | MON-139 | 🔵 OPEN | 🟡 | no | Home dashboard renders declared income tiles beside actuals tiles without a basis label — the two contradict on real data | — | n/a |
 | MON-140 | 🟢 VERIFIED | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | ##1548 (merged 2026-07-31) | ✅ |
 | MON-141 | 🔵 OPEN | 🟡 | no | /dashboard/income header and Home 'This month's budget' show two different monthly incomes ($22,579 vs $25,347) — the $33,216/yr rental-basis split is unnamed on both surfaces | — | n/a |
-| MON-142 | 🔵 OPEN | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
+| MON-142 | 🟡 DIAGNOSED | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
 
 ---
 
@@ -2348,15 +2348,16 @@ Found by VR-045 §7 (not in the declared T1 set, and not in any prior regression
 
 ### MON-142 — Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-31
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-31
 
 > **What was wrong:** Monitrax has 6.690% stored for your two Bankwest interest-only loans, but the repayments actually in your data imply the bank charged about 6.268%. Both loans point at the SAME real rate, which is what you would expect from one lender changing one rate — you confirmed rates moved and that you do not recall updating them here. Nothing in the app tells you the stored rate has gone stale.
 >
-> **What changed:** NOT YET FIXED. Needs a decision on approach (see notes) — the candidates are a lastVerified/staleness signal on the rate, deriving the rate from charged interest where the loan ledger has it, or surfacing the divergence rather than silently preferring either number.
+> **What changed:** PARTIALLY BUILT. One engine now works out what rate a loan is ACTUALLY at, from evidence: the interest your bank charged (from the loan statement) beats an interest-only repayment, which beats the rate typed into Monitrax. When the evidence disagrees with the typed rate by more than 0.10%, it is flagged as out of date. It does NOT overwrite what you typed — it tells you they disagree. Nothing reads it yet, so no number on screen has moved.
 >
-> **What you should see:** Nothing to check yet. When it ships you will either see a prompt that a stored rate looks out of date against your actual repayments, or the app will use the interest actually charged.
+> **What you should see:** Nothing on screen changes in this step. The next step wires it in, and THAT will move your deductible interest and any loan cost that currently falls back to the typed rate — you will see that as a before/after table before it ships.
 
 - **Root cause:** `prisma/schema.prisma:1671`, `lib/tax-engine/deductions/propertyLoanInterest.ts:85`, `lib/calculations/propertyCashflow.ts:199`
+- **Neomatrix:** `engine.loans.resolveEffectiveLoanRate`, `engine.tax.deductiblePropertyLoanInterest`, `engine.propertyCashflow.resolveLoanMonthlyCost`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-045`
 
