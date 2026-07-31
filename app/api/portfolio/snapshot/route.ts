@@ -13,7 +13,15 @@ import {
   extractInvestmentAccountLinks,
   extractHoldingLinks,
 } from '@/lib/grdcs';
-import { getNetAnnualIncome } from '@/lib/income/netIncomeCalculator';
+// MON-131 T1-B: income values come from the ONE banked-income producer —
+// the route's private gross/net/PAYG helpers (a duplicate-producer trio of
+// the income run-rate: stored-field trust, no one-off gate, netIncome
+// re-taxation) are DELETED, not wrapped.
+import {
+  assembleBankedIncomeForUser,
+  bankedMonthlyPerRow,
+} from '@/lib/income/banked/assembly';
+import { bankedTotalsFromResult, type BankedIncomeResult } from '@/lib/income/banked/aggregator';
 import { calculateLVR, calculateRentalYield } from '@/lib/utils/calculations';
 import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 // MON-014: per-property cashflow reads the ONE canonical engine (same as the
@@ -33,70 +41,36 @@ import { Frequency } from '@/lib/types/prisma-enums';
 // Uses centralized frequency utilities from lib/utils/frequencies (Blueprint §5.1)
 // ============================================================================
 
-// Helper to get gross income amount for salary types
-function getGrossIncomeAmount(incomeItem: {
-  amount: number;
-  frequency: string;
-  type: string;
-  salaryType?: string | null;
-  netAmount?: number | null;
-  grossAmount?: number | null;
-  paygWithholding?: number | null;
-}): number {
-  if (incomeItem.type === 'SALARY') {
-    // If user entered NET income, use the pre-calculated grossAmount
-    if (incomeItem.salaryType === 'NET' && incomeItem.grossAmount != null) {
-      return incomeItem.grossAmount;
-    }
-
-    // If user entered GROSS income, the amount field is the gross
-    if (incomeItem.salaryType === 'GROSS') {
-      return toAnnual(incomeItem.amount, incomeItem.frequency as Frequency);
-    }
-
-    // Fallback: use amount as gross (legacy behavior)
-    return toAnnual(incomeItem.amount, incomeItem.frequency as Frequency);
+/**
+ * MON-131 T1-B — per-row ANNUAL income view derived from the ONE banked
+ * result (D17). Salary rows read their own gross/wedge components; rental
+ * rows read the pooled property stream's per-row attribution (gross ≡
+ * banked — no wedge on rent); other rows bank at their received run-rate.
+ * Replaces the deleted getGrossIncomeAmount / getNetIncomeAmount /
+ * getPaygWithholding trio (contract: income-gross-run-rate +
+ * income-net-run-rate + salary-take-home).
+ */
+function bankedPerRowAnnualView(
+  banked: BankedIncomeResult,
+  perRowMonthly: Map<string, number>,
+): Map<string, { grossAnnual: number; netAnnual: number; wedgeAnnual: number }> {
+  const view = new Map<string, { grossAnnual: number; netAnnual: number; wedgeAnnual: number }>();
+  for (const r of [...banked.salaryRows, ...banked.otherRows]) {
+    if (!r.id) continue;
+    const wedge = (r.components.payg ?? 0) + (r.components.help ?? 0);
+    view.set(r.id, {
+      grossAnnual: r.grossAnnual ?? r.bankedAnnual,
+      netAnnual: r.bankedAnnual,
+      wedgeAnnual: wedge,
+    });
   }
-  // For non-salary income, use gross amount
-  return toAnnual(incomeItem.amount, incomeItem.frequency as Frequency);
-}
-
-// Helper to get PAYG withholding for salary types
-function getPaygWithholding(incomeItem: {
-  amount: number;
-  frequency: string;
-  type: string;
-  salaryType?: string | null;
-  netAmount?: number | null;
-  grossAmount?: number | null;
-  paygWithholding?: number | null;
-}): number {
-  if (incomeItem.type === 'SALARY') {
-    // Use stored PAYG if available (pre-calculated)
-    if (incomeItem.paygWithholding != null) {
-      return incomeItem.paygWithholding;
+  // Rental rows (property-pooled + non-property): banked attribution, no wedge.
+  for (const [id, monthly] of perRowMonthly) {
+    if (!view.has(id)) {
+      view.set(id, { grossAnnual: monthly * 12, netAnnual: monthly * 12, wedgeAnnual: 0 });
     }
-
-    // Calculate from gross/net difference
-    const gross = getGrossIncomeAmount(incomeItem);
-    const net = getNetIncomeAmount(incomeItem);
-    return Math.max(0, gross - net);
   }
-  // Non-salary income has no PAYG withholding
-  return 0;
-}
-
-// Helper to get net income amount - delegates to shared calculator for consistency
-// This ensures dashboard shows IDENTICAL values to the income page
-function getNetIncomeAmount(incomeItem: {
-  amount: number;
-  frequency: string;
-  type: string;
-  salaryType?: string | null;
-  netAmount?: number | null;
-  grossAmount?: number | null;
-}): number {
-  return getNetAnnualIncome(incomeItem);
+  return view;
 }
 
 // LVR + rental yield come from the canonical SSOT (lib/utils/calculations.ts) —
@@ -627,6 +601,15 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // fetch (§12.10, no N+1).
       const enrichedProperties = await enrichPropertiesWithActuals(userId, properties);
 
+      // MON-131 T1-B: the ONE banked-income producer — totals + per-row
+      // attribution for every income figure this route emits.
+      const assembledBanked = await assembleBankedIncomeForUser(userId);
+      const bankedTotals = bankedTotalsFromResult(assembledBanked.banked);
+      const perRowBankedView = bankedPerRowAnnualView(
+        assembledBanked.banked,
+        bankedMonthlyPerRow(assembledBanked.banked, assembledBanked.raw.income),
+      );
+
       // ============================================================================
       // CALCULATE LINKAGE HEALTH
       // ============================================================================
@@ -672,13 +655,11 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const totalLiabilities = nw.liabilities.total;
       const netWorth = nw.netWorth;
 
-      // Cashflow calculations with tax-adjusted income
-      // Gross income (before tax) - uses stored grossAmount for NET entries
-      const totalAnnualGrossIncome = income.reduce((sum: number, i: any) => sum + getGrossIncomeAmount(i), 0);
-      // Net income (after PAYG for salaries) - uses stored netAmount, no double-taxation
-      const totalAnnualNetIncome = income.reduce((sum: number, i: any) => sum + getNetIncomeAmount(i), 0);
-      // PAYG withholding - uses stored paygWithholding where available
-      const totalAnnualPaygWithholding = income.reduce((sum: number, i: any) => sum + getPaygWithholding(i), 0);
+      // Cashflow calculations — banked-income basis (D17, MON-131 T1-B):
+      // gross / banked / wedge from the ONE producer's totals mapping.
+      const totalAnnualGrossIncome = bankedTotals.monthlyGross * 12;
+      const totalAnnualNetIncome = bankedTotals.monthlyBanked * 12;
+      const totalAnnualPaygWithholding = bankedTotals.monthlyWithholding * 12;
 
       // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
       const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + annualRunRate({ amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring }), 0);
@@ -938,9 +919,11 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // INCOME SNAPSHOTS FOR CASHFLOW BREAKDOWN
       // ============================================================================
       const incomeSnapshots = income.map((inc: any) => {
-        const grossAnnual = getGrossIncomeAmount(inc);
-        const netAnnual = getNetIncomeAmount(inc);
-        const paygAnnual = getPaygWithholding(inc);
+        // MON-131 T1-B: per-row values from the banked view (one producer).
+        const rowView = perRowBankedView.get(inc.id);
+        const grossAnnual = rowView?.grossAnnual ?? 0;
+        const netAnnual = rowView?.netAnnual ?? 0;
+        const paygAnnual = rowView?.wedgeAnnual ?? 0;
         return {
           id: inc.id,
           name: inc.name,
@@ -961,9 +944,11 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // ============================================================================
       // TAX EXPOSURE
       // ============================================================================
-      const taxableIncome = income
-        .filter((i: any) => i.isTaxable)
-        .reduce((sum: number, i: any) => sum + toAnnual(i.amount, i.frequency as Frequency), 0);
+      // MON-131 T1-B: gross-taxable from the ONE producer (one-off-gated,
+      // salary gross resolved) — the raw toAnnual sum is deleted. Field
+      // semantic unchanged (legacy gross-basis exposure figure, not the tax
+      // engine's taxable income — T4 scope).
+      const taxableIncome = bankedTotals.grossTaxableAnnual;
 
       const deductibleExpenses = expenses
         .filter((e: any) => e.isTaxDeductible)

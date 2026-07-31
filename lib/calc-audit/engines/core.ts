@@ -16,7 +16,6 @@ import {
   type SuperInput,
   type AssetInput,
 } from '@/lib/calculations/netWorthCalculator';
-import { aggregateIncome, type IncomeInput } from '@/lib/calculations/incomeAggregator';
 import {
   aggregateExpenses,
   type ExpenseInput,
@@ -109,66 +108,14 @@ calcEngineRegistry.register({
 });
 
 // ============================================================
-// Income aggregator
+// Income aggregator — DELETED (MON-131 T1-B)
 // ============================================================
-
-calcEngineRegistry.register({
-  name: 'core.incomeAggregator',
-  description: 'Income aggregation — sums gross/net/PAYG by frequency, with taxable/non-taxable split.',
-  category: 'CORE',
-  sourcePath: 'lib/calculations/incomeAggregator.ts',
-  execute: (input: { items: IncomeInput[]; targetFrequency?: 'monthly' | 'annual' }) =>
-    aggregateIncome(input.items, input.targetFrequency ?? 'annual'),
-  fixtures: [
-    {
-      name: 'Weekly salary + annual dividend → annual aggregation',
-      description: '$2k weekly GROSS salary ($104k/yr) + $5.2k annual dividend = $109,200/yr gross. PAYG passed as annual ($26k = $500 × 52, pre-converted by caller per engine contract — see getPaygAmount JSDoc).',
-      input: {
-        items: [
-          {
-            amount: 2_000,
-            grossAmount: 104_000, // pre-converted annual (engine contract for SALARY+GROSS)
-            netAmount: 78_000, // $1,500 × 52 weeks
-            paygWithholding: 26_000, // pre-converted annual (engine contract)
-            frequency: 'WEEKLY', // UPPERCASE Frequency enum
-            type: 'SALARY',
-            salaryType: 'GROSS',
-            isTaxable: true,
-          },
-          {
-            amount: 5_200,
-            grossAmount: 5_200,
-            netAmount: 5_200,
-            paygWithholding: 0,
-            frequency: 'ANNUAL',
-            type: 'DIVIDEND',
-            isTaxable: true,
-          },
-        ],
-        targetFrequency: 'annual',
-      },
-      assertions: [
-        {
-          description: 'Gross total = $109,200/yr ($2k × 52 + $5,200)',
-          check: (r) => Math.round(r.grossTotal) === 109_200,
-        },
-        {
-          description: 'PAYG withholding = $26,000/yr (annual figure passed through)',
-          check: (r) => Math.round(r.paygWithholding) === 26_000,
-        },
-        {
-          description: 'SALARY type breakdown gross = $104,000',
-          check: (r) => Math.round(r.byType.SALARY?.gross ?? 0) === 104_000,
-        },
-        {
-          description: 'DIVIDEND type breakdown gross = $5,200',
-          check: (r) => Math.round(r.byType.DIVIDEND?.gross ?? 0) === 5_200,
-        },
-      ],
-      authoritySource: 'Hand-calc: $2k × 52 weeks + $5,200 = $109,200. Engine contracts: frequency uses UPPERCASE Frequency enum; paygWithholding is pre-converted annual.',
-    },
-  ],
-});
+// `core.incomeAggregator` is retired WITH its engine: `aggregateIncome`
+// (the legacy income run-rate producer) is deleted from
+// lib/calculations/incomeAggregator.ts. Its correctness surface is now
+// `income.salaryBanked` / `income.bankedAggregate` in
+// engines/banked-income.ts (the ONE producer, D17/D20) — not a parallel
+// silo (§22.2.2): the inventory entry moved with the producer.
 
 // ============================================================
 // Expense aggregator

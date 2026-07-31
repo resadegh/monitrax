@@ -70,6 +70,26 @@ export function numericLeaves(node: unknown, path: string, out: Map<string, numb
     numericLeaves(v, path ? `${path}.${k}` : k, out);
 }
 
+// ── volatile-leaf exclusion (T1-B brief §1.4 / VR-043 §1.4) ─────────────────
+/**
+ * Numeric leaves that change with the CALENDAR, not with code. VR-043 §1.4:
+ * `staleness.oldestManualAgeDays` moved 41 → 42 across a day boundary with
+ * zero code change — inside the hashed set that is a false STOP at every
+ * day boundary, and a gate that cries wolf gets ignored. Timestamps/UUIDs
+ * are strings (never hashed — `numericLeaves` is numeric-only); this list
+ * covers the NUMERIC calendar-derived leaves. Applied by BOTH `hashBaseline`
+ * and `diffBaselines` so the hash detector and the G7 diff agree.
+ * Extending this list changes the hash — re-issue the reference (the
+ * post-change capture becomes the new reference of record).
+ */
+export const VOLATILE_LEAF_PATTERNS: RegExp[] = [
+  /\.staleness\.oldestManualAgeDays$/,
+];
+
+function isVolatileLeaf(path: string): boolean {
+  return VOLATILE_LEAF_PATTERNS.some((p) => p.test(path));
+}
+
 // ── canonical hash summary (T1 start-gate brief §1.2 / VR-042 §2.3) ─────────
 /**
  * THE canonical baseline hash — defined HERE, once, so the route, the CLI and
@@ -90,16 +110,23 @@ export function numericLeaves(node: unknown, path: string, out: Map<string, numb
  * capture taken after this ships (ledger Instrumentation row).
  */
 export interface BaselineHashSummary {
+  /** Leaves in the HASHED set (volatile calendar leaves excluded). */
   leafCount: number;
   treeHash: string;
   perTree: Record<string, number>;
   captureErrors: string[];
+  /** Calendar-derived numeric leaves excluded from the hash (§1.4). */
+  volatileExcluded: number;
 }
 
 export function hashBaseline(captures: BaselineTree): BaselineHashSummary {
   const all = new Map<string, number>();
   numericLeaves(captures, '', all);
+  // T1-B §1.4: calendar-derived numeric leaves are excluded from the hash
+  // (they'd emit a false STOP at every day boundary). perTree counts below
+  // stay raw so every tree's full leaf tally stays visible.
   const lines = [...all.entries()]
+    .filter(([p]) => !isVolatileLeaf(p))
     .map(([p, v]) => `${p}=${v}`)
     .sort()
     .join('\n');
@@ -113,11 +140,13 @@ export function hashBaseline(captures: BaselineTree): BaselineHashSummary {
       captureErrors.push(key);
     }
   }
+  const volatileExcluded = [...all.keys()].filter((p) => isVolatileLeaf(p)).length;
   return {
-    leafCount: all.size,
+    leafCount: all.size - volatileExcluded,
     treeHash: createHash('sha256').update(lines).digest('hex'),
     perTree,
     captureErrors,
+    volatileExcluded,
   };
 }
 
@@ -209,10 +238,11 @@ export function diffBaselines(
   const added: string[] = [];
   const removed: string[] = [];
   for (const [p, v] of b) {
+    if (isVolatileLeaf(p)) continue; // §1.4: calendar leaves never count as movement
     if (!a.has(p)) added.push(p);
     else if (Math.abs((a.get(p) as number) - v) > 1e-9) changed.push({ path: p, old: a.get(p) as number, new: v });
   }
-  for (const p of a.keys()) if (!b.has(p)) removed.push(p);
+  for (const p of a.keys()) if (!b.has(p) && !isVolatileLeaf(p)) removed.push(p);
 
   const isExpected = (p: string) => expectedMoves.some((e) => p.startsWith(e.pathPrefix));
   const declared = changed.filter((c) => isExpected(c.path));

@@ -23,10 +23,8 @@ import type {
   SuperInput,
   AssetInput,
 } from '@/lib/calculations/netWorthCalculator';
-import type {
-  IncomeInput,
-  IncomeAggregation,
-} from '@/lib/calculations/incomeAggregator';
+import { fetchBankedRawData, type BankedRawData } from '@/lib/income/banked/assembly';
+import type { BankedIncomeResult } from '@/lib/income/banked/aggregator';
 import type {
   ExpenseInput,
   ExpenseAggregation,
@@ -161,71 +159,63 @@ export const netWorthAdapter: UserAuditAdapter<NetWorthInput, NetWorthResult> = 
 };
 
 // =============================================================================
-// incomeAggregator
+// bankedIncome (MON-131 T1-B — replaces the deleted incomeAggregatorAdapter;
+// its engine `core.incomeAggregator` / `aggregateIncome` is retired with the
+// income-net-run-rate contract). Runs the ONE L2 banked aggregator on the
+// user's live rows and checks the §5.6 identities.
 // =============================================================================
 
-export const incomeAggregatorAdapter: UserAuditAdapter<
-  { incomes: IncomeInput[]; targetFrequency: 'MONTHLY' | 'ANNUAL' },
-  IncomeAggregation
+export const bankedIncomeAdapter: UserAuditAdapter<
+  Omit<BankedRawData, never>,
+  BankedIncomeResult
 > = {
-  engineName: 'core.incomeAggregator',
+  engineName: 'income.bankedAggregator',
 
   async fetchInput(userId) {
-    const incomes = await prisma.income.findMany({
-      where: { userId },
-      select: {
-        amount: true,
-        frequency: true,
-        type: true,
-        salaryType: true,
-        grossAmount: true,
-        netAmount: true,
-        paygWithholding: true,
-        isTaxable: true,
-      },
-    });
-    return {
-      incomes: incomes.map((i) => ({
-        amount: Number(i.amount),
-        frequency: String(i.frequency),
-        type: i.type ? String(i.type) : undefined,
-        salaryType: i.salaryType ? String(i.salaryType) : null,
-        grossAmount: i.grossAmount == null ? null : Number(i.grossAmount),
-        netAmount: i.netAmount == null ? null : Number(i.netAmount),
-        paygWithholding: i.paygWithholding == null ? null : Number(i.paygWithholding),
-        isTaxable: i.isTaxable ?? undefined,
-      })),
-      targetFrequency: 'MONTHLY',
-    };
+    // The SAME canonical fetch the master snapshot's assembler uses — full
+    // row set (an input-feed omission is the MON-137 defect class).
+    return fetchBankedRawData(userId);
   },
 
   validateOutput(out): ValidationResult {
-    if (!Number.isFinite(out.grossTotal)) {
-      return { ok: false, reason: 'grossTotal is not finite', severity: 'HIGH' };
+    const a = out.annual;
+    if (!Number.isFinite(a.banked) || !Number.isFinite(a.gross)) {
+      return { ok: false, reason: 'banked/gross not finite', severity: 'HIGH' };
     }
-    if (!Number.isFinite(out.netTotal)) {
-      return { ok: false, reason: 'netTotal is not finite', severity: 'HIGH' };
-    }
-    if (out.grossTotal < 0) {
+    if (a.banked < 0) {
       return {
         ok: false,
-        reason: `grossTotal negative ($${out.grossTotal.toFixed(2)}) — should be ≥ 0`,
+        reason: `banked negative ($${a.banked.toFixed(2)}) — should be ≥ 0`,
         severity: 'HIGH',
       };
     }
-    if (out.netTotal < 0) {
+    // §5.6 identity: banked can never exceed gross (a wedge is never negative).
+    if (a.banked > a.gross + 0.01) {
       return {
         ok: false,
-        reason: `netTotal negative ($${out.netTotal.toFixed(2)}) — should be ≥ 0`,
+        reason: `banked ($${a.banked.toFixed(2)}) exceeds gross ($${a.gross.toFixed(2)})`,
         severity: 'HIGH',
       };
     }
-    // Net should not exceed gross (PAYG cannot be negative).
-    if (out.netTotal > out.grossTotal + 0.01) {
+    // §5.6 identity: sources sum to the total (D20 L2 invariant).
+    const sourceSum =
+      a.bySource.salary.banked +
+      a.bySource.rental.banked +
+      a.bySource.investment.banked +
+      a.bySource.other.banked;
+    if (Math.abs(sourceSum - a.banked) > 0.01) {
       return {
         ok: false,
-        reason: `netTotal ($${out.netTotal.toFixed(2)}) exceeds grossTotal ($${out.grossTotal.toFixed(2)})`,
-        severity: 'HIGH',
+        reason: `sources ($${sourceSum.toFixed(2)}) do not sum to banked ($${a.banked.toFixed(2)})`,
+        severity: 'CRITICAL',
+      };
+    }
+    // §5.6 identity: gross − banked ≡ the withholding wedge.
+    if (Math.abs(a.gross - a.banked - a.withholding.total) > 0.01) {
+      return {
+        ok: false,
+        reason: `gross − banked ($${(a.gross - a.banked).toFixed(2)}) != withholding total ($${a.withholding.total.toFixed(2)})`,
+        severity: 'CRITICAL',
       };
     }
     return { ok: true };
@@ -359,7 +349,7 @@ export const loanAggregatorAdapter: UserAuditAdapter<
 
 export const CORE_USER_AUDIT_ADAPTERS = [
   netWorthAdapter,
-  incomeAggregatorAdapter,
+  bankedIncomeAdapter,
   expenseAggregatorAdapter,
   loanAggregatorAdapter,
 ] as const;

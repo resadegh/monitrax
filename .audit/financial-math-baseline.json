@@ -1,11 +1,11 @@
 {
   "comment": "Phase 41i.6b \u2014 pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny \u2014 adding entries here suppresses bugs the lint is designed to catch).",
   "generatedAt": "2026-06-25T11:00:32.520Z",
-  "count": 34,
+  "count": 32,
   "entries": [
     {
       "file": "app/dashboard/income/page.tsx",
-      "line": 2443,
+      "line": 2523,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits",
       "note": "Line re-pinned 2073\u21922169 on 2026-07-16 (Phase 59 income-form insertions shifted the file; the violation itself is untouched/pre-existing). Re-pinned 2169\u21922277 on 2026-07-17 (MON-080 income-form insertions shifted the file; violation untouched)."
@@ -78,7 +78,7 @@
     },
     {
       "file": "app/api/cashflow/intelligence/route.ts",
-      "line": 464,
+      "line": 452,
       "pattern": "HARDCODED_FINANCIAL_CONSTANT",
       "match": "27500"
     },
@@ -90,7 +90,7 @@
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 904,
+      "line": 885,
       "pattern": "INLINE_ARITHMETIC",
       "match": "asset.purchasePrice - asset.currentValue"
     },
@@ -117,18 +117,6 @@
       "line": 123,
       "pattern": "INLINE_ARITHMETIC",
       "match": "currentTax.taxPayable - moderateTax.taxPayable"
-    },
-    {
-      "file": "lib/calculations/incomeAggregator.ts",
-      "line": 77,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "grossAmount / 12"
-    },
-    {
-      "file": "lib/calculations/incomeAggregator.ts",
-      "line": 97,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "netAmount / 12"
     },
     {
       "file": "lib/cashflow-intelligence/leakDetector.ts",

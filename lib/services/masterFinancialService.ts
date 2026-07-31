@@ -74,10 +74,20 @@ import {
   type CategoryBreakdown,
 } from '@/lib/calculations/expenseAggregator';
 
+// MON-131 T1-B: income is produced by the ONE banked engine stack (D17/D20);
+// the legacy aggregateIncome producer is deleted (income-net/gross-run-rate
+// contracts). IncomeAggregation survives as the projection's return shape.
+import { type IncomeAggregation } from '@/lib/calculations/incomeAggregator';
 import {
-  aggregateIncome,
-  type IncomeAggregation,
-} from '@/lib/calculations/incomeAggregator';
+  buildBankedIncomeFromData,
+  bankedMonthlyPerRow,
+} from '@/lib/income/banked/assembly';
+import {
+  projectAggregation,
+  bankedTotalsFromResult,
+  type BankedIncomeResult,
+} from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
 
 import {
   aggregateLoanRepayments,
@@ -1044,107 +1054,22 @@ function calculateExpenseBudgetVariance(
 }
 
 /**
- * MON-009: dedup a property's rental income that reconciliation fragmented
- * across several Income records. Each property's rental rows are replaced by ONE
- * synthetic MONTHLY row carrying the resolved (actuals-first, stream-level) rent
- * — so aggregate income totals (and savings rate / health that read them) are
- * not inflated by the "4 monthly rows" bug. Non-rental and non-property income
- * passes through unchanged. Raw records are still used for budget variance.
+ * MON-131 T1-B: the income breakdown is a pure re-shaping of the ONE
+ * banked-income result (D17/D20) — the legacy `aggregateIncome` producer is deleted
+ * (income-net-run-rate + income-gross-run-rate contracts). `netTotal` carries
+ * BANKED (field name survives this tranche for baseline path continuity).
+ * Budget variance still reads the raw records (per-record actual matching).
  */
-/**
- * Pool a property's rental income at the STREAM level so a rental fragmented
- * across several Income records (e.g. reconciliation split one lease into 4
- * "monthly" rows) is counted ONCE, at the true monthly rent resolved from the
- * actual transaction dates (declared fallback). Non-property-rental income
- * passes through unchanged.
- *
- * The ONE rental-dedup source: both the aggregate income breakdown AND the tax
- * summary read the array it returns, so the passive-rental total and the taxable-
- * rental basis converge by construction (§12.2.1). The pooling itself is the pure
- * canonical `computePropertyCashflow` — see tests/tax/rentalTaxDedup.test.ts.
- */
-function adjustPropertyRentalIncome(
-  properties: RawProperty[],
-  income: RawIncome[],
-  linkedTransactions: RawLinkedTransaction[],
-  expenses: RawExpense[] = []
-): RawIncome[] {
-  const RENT = new Set(['RENT', 'RENTAL']);
-  const propertyIds = new Set(properties.map(p => p.id));
-  const isPropertyRental = (i: RawIncome) => !!i.propertyId && propertyIds.has(i.propertyId) && RENT.has(i.type);
-  const passthrough = income.filter(i => !isPropertyRental(i));
-
-  const synthetic: RawIncome[] = [];
-  for (const property of properties) {
-    const rentalRows = income.filter(i => i.propertyId === property.id && RENT.has(i.type));
-    if (rentalRows.length === 0) continue;
-    const incomeIds = new Set(rentalRows.map(r => r.id));
-    const rentalTx = linkedTransactions.filter(t => t.incomeId && incomeIds.has(t.incomeId));
-    // Calc-SSOT Wall B3: pass rentalMode + the streams' derived agent-cost
-    // rows so a MANAGED stream's NET actuals gross back up — the pooled
-    // monthly rent (feeding the income breakdown AND the master tax summary)
-    // reads GROSS, with the fee counted once as an expense/deduction.
-    const cf = computePropertyCashflow({
-      income: rentalRows.map(r => ({ id: r.id, type: r.type, amount: r.amount, frequency: r.frequency, rentalMode: r.rentalMode })),
-      expenses: expenses
-        .filter(e => e.derivedFromIncomeId && incomeIds.has(e.derivedFromIncomeId))
-        .map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring, derivedFromIncomeId: e.derivedFromIncomeId })),
-      transactions: rentalTx.map(t => ({ incomeId: t.incomeId, expenseId: t.expenseId, loanId: t.loanId, date: t.date, amount: t.amount })),
-    });
-    synthetic.push({
-      ...rentalRows[0],
-      id: `synthetic-rent-${property.id}`,
-      type: 'RENTAL',
-      amount: cf.monthlyRent,
-      frequency: 'MONTHLY',
-      netAmount: null,
-      grossAmount: null,
-      paygWithholding: null,
-      salaryType: null,
-      budgetedAmount: null,
-      lastReconciled: null,
-    });
-  }
-  return [...passthrough, ...synthetic];
-}
-
 function buildIncomeBreakdown(
+  banked: BankedIncomeResult,
   income: RawIncome[],
   targetFrequency: 'monthly' | 'annual',
-  linkedTransactions: RawLinkedTransaction[] = [],
-  /** MON-009: source for the AGGREGATE totals (rental deduped). Budget variance
-   *  still uses the raw `income` so per-record actual matching is preserved. */
-  aggregateSource: RawIncome[] = income
+  linkedTransactions: RawLinkedTransaction[] = []
 ): MasterIncomeBreakdown {
-  const mapIncome = (i: RawIncome) => ({
-    amount: i.amount,
-    frequency: i.frequency,
-    type: i.type,
-    salaryType: i.salaryType,
-    netAmount: i.netAmount,
-    grossAmount: i.grossAmount,
-    paygWithholding: i.paygWithholding,
-    isTaxable: i.isTaxable,
-  });
-
-  const all = aggregateIncome(aggregateSource.map(mapIncome), targetFrequency);
-
-  const primaryTypes = ['SALARY', 'WAGES'];
-  const primary = aggregateIncome(
-    aggregateSource.filter(i => primaryTypes.includes(i.type)).map(mapIncome),
-    targetFrequency
-  );
-
-  const secondary = aggregateIncome(
-    aggregateSource.filter(i => !primaryTypes.includes(i.type)).map(mapIncome),
-    targetFrequency
-  );
-
-  const passiveTypes = ['RENTAL', 'DIVIDEND', 'INTEREST', 'ROYALTY'];
-  const passive = aggregateIncome(
-    aggregateSource.filter(i => passiveTypes.includes(i.type)).map(mapIncome),
-    targetFrequency
-  );
+  const all = projectAggregation(banked, 'all', targetFrequency);
+  const primary = projectAggregation(banked, 'primary', targetFrequency);
+  const secondary = projectAggregation(banked, 'secondary', targetFrequency);
+  const passive = projectAggregation(banked, 'passive', targetFrequency);
 
   // Phase 30: Calculate budget variance with transaction-based actuals (raw records)
   const budgetVariance = calculateIncomeBudgetVariance(income, targetFrequency, linkedTransactions);
@@ -1848,22 +1773,41 @@ async function computeMasterFinancialSnapshot(
   // Fetch all raw data
   const data = await fetchAllUserData(userId);
 
-  // MON-009 + MON-010: dedup property rental fragmented across Income records so
-  // BOTH the aggregate income totals (savings rate / health) AND the tax summary
-  // (taxable rental) count a fragmented rental ONCE, at the true monthly rent. The
-  // one deduped array feeds buildIncomeBreakdown AND buildTaxSummary, so the
-  // passive-rental total and the taxable-rental basis converge by construction
-  // (§12.2.1). No new tax math — buildTaxSummary still delegates to the reform-aware
-  // calculateTaxPosition (§12.14); this only changes WHICH income rows it sums.
-  const adjustedIncome = adjustPropertyRentalIncome(data.properties, data.income, data.linkedTransactions, data.expenses);
+  // MON-131 T1-B: the ONE canonical tax position is computed FIRST — it feeds
+  // the banked-income context (repayment income, D42 C3) AND the tax summary.
+  // Its own numbers (taxable income 145,426 / netTax 37,786) are in the
+  // regression cluster and do not depend on the banked engine (no cycle:
+  // taxable income never reads withholding).
+  const taxBundle = await getUserTaxPosition(userId);
+
+  // MON-131 T1-B (MON-128 fixed at the producer): ALL income quantities come
+  // from the ONE banked-income engine stack (D17/D20) — salary FACT hierarchy,
+  // rental pooled actuals-first via computePropertyCashflow (supersedes the
+  // MON-009 adjustPropertyRentalIncome dedup, now deleted), received cash,
+  // one-off gate everywhere. The tax summary keeps reading the canonical tax
+  // position (Layer 3, untouched).
+  const { banked } = buildBankedIncomeFromData(
+    {
+      income: data.income as unknown as BankedIncomeRow[],
+      properties: data.properties.map(p => ({ id: p.id, type: p.type })),
+      derivedAgentExpenses: data.expenses
+        .filter(e => e.derivedFromIncomeId)
+        .map(e => ({ id: e.id, amount: e.amount, frequency: e.frequency, isRecurring: e.isRecurring, derivedFromIncomeId: e.derivedFromIncomeId })),
+      transactions: data.linkedTransactions
+        .filter(t => t.incomeId)
+        .map(t => ({ incomeId: t.incomeId, expenseId: t.expenseId, loanId: t.loanId, date: t.date, amount: t.amount })),
+    },
+    taxBundle.taxPosition,
+  );
+  const bankedPerRowMonthly = bankedMonthlyPerRow(banked, data.income as unknown as BankedIncomeRow[]);
 
   // Build expense breakdowns (with transaction-based actuals)
   const monthlyExpenses = buildExpenseBreakdown(data.expenses, 'monthly', data.linkedTransactions);
   const annualExpenses = buildExpenseBreakdown(data.expenses, 'annual', data.linkedTransactions);
 
-  // Build income breakdowns (raw records for budget variance, deduped rental for totals)
-  const monthlyIncome = buildIncomeBreakdown(data.income, 'monthly', data.linkedTransactions, adjustedIncome);
-  const annualIncome = buildIncomeBreakdown(data.income, 'annual', data.linkedTransactions, adjustedIncome);
+  // Build income breakdowns (projections of the banked result; raw records for budget variance)
+  const monthlyIncome = buildIncomeBreakdown(banked, data.income, 'monthly', data.linkedTransactions);
+  const annualIncome = buildIncomeBreakdown(banked, data.income, 'annual', data.linkedTransactions);
 
   // MON-013 — exclude SOLD / WRITTEN_OFF personal assets from net worth (the
   // portfolio/snapshot route already did; master previously counted them).
@@ -1900,19 +1844,17 @@ async function computeMasterFinancialSnapshot(
     loans: data.loans,
     superannuation: data.superannuation,
     assets: activePersonalAssets,
-    income: adjustedIncome,
+    income: data.income,
+    bankedPerRowMonthly,
     expenses: data.expenses,
   });
 
-  // Calculate cashflow using existing orchestrator
+  // Calculate cashflow — income legs are the BANKED totals (MON-137 fixed:
+  // the orchestrator's second withholding producer is deleted; identity
+  // cashflow.grossIncome ≡ income.grossTotal by construction). Expense/loan
+  // legs unchanged (T3/T2 own those).
   const cashflowInput = {
-    income: adjustedIncome.map(i => ({
-      amount: i.amount,
-      frequency: i.frequency,
-      type: i.type,
-      salaryType: i.salaryType,
-      netAmount: i.netAmount,
-    })),
+    incomeTotals: bankedTotalsFromResult(banked),
     // MON-011: savings rate reflects ongoing recurring spend — one-off
     // purchases don't count against the monthly surplus (they show as actual
     // spend in the month they happened).
@@ -1960,10 +1902,8 @@ async function computeMasterFinancialSnapshot(
   const investmentMetrics = buildInvestmentMetrics(data.investmentHoldings);
 
   // Build tax summary — MON-020/060: read the ONE canonical user-level tax
-  // position (same source as /dashboard/tax, /cashflow and the CFO), adapted
-  // to the legacy TaxSummary shape. Master no longer assembles its own tax
-  // inputs (its old set omitted depreciation/loan-interest/super/franking).
-  const taxBundle = await getUserTaxPosition(userId);
+  // position (fetched above, before the banked assembly), adapted to the
+  // legacy TaxSummary shape.
   const taxSummary = buildTaxSummaryFromPosition(taxBundle.taxPosition);
 
   // MON-031/064: THE canonical "liquid cash" — DEPLOYABLE basis (Reza decision

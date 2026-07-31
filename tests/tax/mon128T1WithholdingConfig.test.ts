@@ -105,17 +105,34 @@ describe('PAYG Schedule 1 — FY2026-27 coefficients from config (D35/X1)', () =
     expect(fy2425.weeklyWithholding).toBe(143);
   });
 
-  it('LEGACY no-config default is byte-identical to the FY24-26 schedule (T1-A moves-nothing)', () => {
+  it('T1-B: no-config resolves to the CURRENT FY schedule (the T1-A legacy pin is dead)', () => {
     for (const weekly of [300, 500, 700, 1000, 2000, 4000]) {
-      const legacy = calculatePAYG({ grossIncome: weekly, frequency: 'WEEKLY', hasTaxFreeThreshold: true });
+      const defaulted = calculatePAYG({ grossIncome: weekly, frequency: 'WEEKLY', hasTaxFreeThreshold: true });
       const explicit = calculatePAYG(
         { grossIncome: weekly, frequency: 'WEEKLY', hasTaxFreeThreshold: true },
-        TAX_YEAR_2024_25,
+        TAX_YEAR_2026_27,
       );
-      expect(legacy.weeklyWithholding).toBe(explicit.weeklyWithholding);
+      expect(defaulted.weeklyWithholding).toBe(explicit.weeklyWithholding);
     }
-    // FY25-26 carries the SAME schedule (the ATO did not reissue for 25-26).
+    // FY25-26 carries the SAME schedule as FY24-25 (the ATO did not reissue).
     expect(TAX_YEAR_2025_26.paygSchedule).toBe(TAX_YEAR_2024_25.paygSchedule);
+  });
+
+  it('MON-138: fractional weekly earnings inside the old 1-dollar band gaps now withhold correctly', () => {
+    // FY24-26 scale 2: the old raw-earnings selection left (500, 501) with NO
+    // band → $0/wk. Floor-based selection lands $500.50 in the 362–500 band:
+    // x = 500.99, y = 0.16 × 500.99 − 57.8462 = 22.312 → $22/wk.
+    const gap = calculatePAYG(
+      { grossIncome: 500.5, frequency: 'WEEKLY', hasTaxFreeThreshold: true },
+      TAX_YEAR_2024_25,
+    );
+    expect(gap.weeklyWithholding).toBe(22);
+    // Boundary continuity is preserved: $500.00 and $500.99 withhold the same.
+    const atBound = calculatePAYG({ grossIncome: 500, frequency: 'WEEKLY', hasTaxFreeThreshold: true }, TAX_YEAR_2024_25);
+    expect(atBound.weeklyWithholding).toBe(22);
+    // Decimal twin agrees.
+    const dec = calculatePAYGDecimal({ grossIncome: 500.5, frequency: 'WEEKLY', hasTaxFreeThreshold: true }, TAX_YEAR_2024_25);
+    expect(dec.weeklyWithholding.toNumber()).toBe(22);
   });
 
   it('a config without a schedule REFUSES — never borrows another FY (D35)', () => {

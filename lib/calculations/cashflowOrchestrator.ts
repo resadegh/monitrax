@@ -13,9 +13,8 @@
  * Formula: Cashflow = Net Income - Expenses - Loan Repayments
  */
 
-import { toMonthly, toAnnual, toMonthlyDecimal } from '@/lib/utils/frequencies';
+import { toMonthly, toMonthlyDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
-import { calculateTakeHomePay, calculateTakeHomePayDecimal } from '@/lib/cashflow/incomeNormalizer';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
@@ -23,21 +22,29 @@ import { Decimal, toDecimal } from '@/lib/decimal';
 // =============================================================================
 
 /**
- * Phase 41a — `LegalEntity` ownership FK propagated through the cashflow
- * inputs (Phase 41e.0 audit C-3). Optional + nullable on every input row;
- * the `ownerEntityId` filter param on `calculateCashflow()` defaults to
- * "no filter" so omitting it preserves pre-41e behaviour exactly.
+ * MON-131 T1-B (MON-137 culprit REMOVED): the orchestrator no longer computes
+ * income. Its second withholding producer (`calculateIncomeAmounts` +
+ * `calculateTakeHomePay`) — the origin of the gross-carries-net mislabel, the
+ * 36,197.69 third PAYG value and the double deduction (VR-042 V2/V3) — is
+ * DELETED, not wrapped. Income arrives as pre-computed BANKED totals from the
+ * ONE L2 aggregator (`lib/income/banked/aggregator.ts`, D17/D20); the
+ * identity `cashflow.grossIncome ≡ income.grossTotal` holds by construction
+ * because both read the same producer. Contract authority:
+ * docs/architecture/contracts/monthly-cashflow-declared.md (DR-4 collapse) +
+ * income-net-run-rate.md (variant C deleted).
  */
-export interface IncomeItem {
-  amount: number;
-  frequency: string;
-  type?: string;
-  salaryType?: string | null;
-  netAmount?: number | null;
-  grossAmount?: number | null;
-  isTaxable?: boolean;
-  name?: string;
-  ownerEntityId?: string | null;
+export interface BankedIncomeTotals {
+  /** Monthly gross run-rate (banked-engine basis). */
+  monthlyGross: number;
+  /** Monthly banked (cash reaching the account — D17; NOT "net income"). */
+  monthlyBanked: number;
+  /** Monthly withholding wedge (PAYG + HELP). */
+  monthlyWithholding: number;
+  /** Annual gross over isTaxable !== false rows (legacy taxableIncome field
+   *  semantic ONLY — the tax engine owns the real base; T4 renames). */
+  grossTaxableAnnual: number;
+  /** Monthly banked per income type (SALARY/RENTAL/INVESTMENT/OTHER). */
+  byTypeMonthlyBanked: Record<string, number>;
 }
 
 export interface ExpenseItem {
@@ -61,7 +68,12 @@ export interface LoanItem {
 }
 
 export interface CashflowInput {
-  income: IncomeItem[];
+  /** Pre-computed banked income totals from the ONE L2 aggregator. Callers
+   *  derive these via `bankedTotalsFromResult()` — never hand-rolled. The
+   *  `ownerEntityId` filter below applies to expenses/loans only; income
+   *  totals are pre-scoped by the caller (entity slices come from the
+   *  banked per-row attribution, the same one producer). */
+  incomeTotals: BankedIncomeTotals;
   expenses: ExpenseItem[];
   loans: LoanItem[];
 }
@@ -121,169 +133,32 @@ export interface SimpleCashflowResult {
 }
 
 // =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-/**
- * Calculate gross and net amounts for an income item
- * Handles SALARY income with GROSS/NET types appropriately
- */
-function calculateIncomeAmounts(item: IncomeItem): {
-  monthlyGross: number;
-  monthlyNet: number;
-  monthlyPayg: number;
-} {
-  const monthlyAmount = toMonthly(item.amount, item.frequency as Frequency);
-
-  // Default: amount is both gross and net (no PAYG)
-  let monthlyGross = monthlyAmount;
-  let monthlyNet = monthlyAmount;
-  let monthlyPayg = 0;
-
-  if (item.type === 'SALARY') {
-    if (item.salaryType === 'NET') {
-      // User entered NET income - don't re-calculate PAYG
-      if (item.grossAmount != null) {
-        monthlyGross = toMonthly(item.grossAmount, item.frequency as Frequency);
-        monthlyNet = monthlyAmount; // The entered amount is already net
-        monthlyPayg = monthlyGross - monthlyNet;
-      } else {
-        // No grossAmount stored, the entered amount IS the net income
-        monthlyGross = monthlyAmount;
-        monthlyNet = monthlyAmount;
-        monthlyPayg = 0;
-      }
-    } else {
-      // User entered GROSS income - calculate take-home pay
-      const takeHome = calculateTakeHomePay(
-        item.amount,
-        item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
-      );
-      monthlyGross = monthlyAmount;
-      monthlyNet = toMonthly(takeHome.netAmount, item.frequency as Frequency);
-      monthlyPayg = toMonthly(takeHome.paygWithholding + takeHome.medicareLevy, item.frequency as Frequency);
-    }
-  }
-
-  return { monthlyGross, monthlyNet, monthlyPayg };
-}
-
-/**
- * Get net income amount for an income item (simple version)
- * For backward compatibility with existing code
- */
-export function getNetMonthlyAmount(item: IncomeItem): number {
-  return calculateIncomeAmounts(item).monthlyNet;
-}
-
-// =============================================================================
 // MAIN CALCULATIONS
 // =============================================================================
+// The DR-4 internal duplication (calculateMonthlyCashflow /
+// calculateAnnualCashflow re-implementing the same math) is COLLAPSED:
+// calculateSimpleCashflow is now a pure projection of calculateCashflow
+// (monthly-cashflow-declared contract, T1-B).
 
 /**
- * Calculate monthly cashflow components (simple version)
- * For backward compatibility
- */
-export function calculateMonthlyCashflow(input: CashflowInput): {
-  income: number;
-  expenses: number;
-  loanRepayments: number;
-  cashflow: number;
-  essentialExpenses: number;
-  discretionaryExpenses: number;
-} {
-  // Calculate monthly income (net for salary types)
-  const income = input.income.reduce(
-    (sum, item) => sum + getNetMonthlyAmount(item),
-    0
-  );
-
-  // Calculate monthly expenses
-  let essentialExpenses = 0;
-  let discretionaryExpenses = 0;
-
-  for (const expense of input.expenses) {
-    const monthlyAmount = toMonthly(expense.amount, expense.frequency as Frequency);
-    if (expense.isEssential) {
-      essentialExpenses += monthlyAmount;
-    } else {
-      discretionaryExpenses += monthlyAmount;
-    }
-  }
-
-  const expenses = essentialExpenses + discretionaryExpenses;
-
-  // Calculate monthly loan repayments
-  const loanRepayments = input.loans.reduce(
-    (sum, loan) =>
-      sum + toMonthly(loan.minRepayment, loan.repaymentFrequency as Frequency),
-    0
-  );
-
-  return {
-    income,
-    expenses,
-    loanRepayments,
-    cashflow: income - expenses - loanRepayments,
-    essentialExpenses,
-    discretionaryExpenses,
-  };
-}
-
-/**
- * Calculate annual cashflow components (simple version)
- * For backward compatibility
- */
-export function calculateAnnualCashflow(input: CashflowInput): {
-  income: number;
-  expenses: number;
-  loanRepayments: number;
-  cashflow: number;
-} {
-  const monthly = calculateMonthlyCashflow(input);
-
-  return {
-    income: monthly.income * 12,
-    expenses: monthly.expenses * 12,
-    loanRepayments: monthly.loanRepayments * 12,
-    cashflow: monthly.cashflow * 12,
-  };
-}
-
-/**
- * Calculate simple cashflow result (for backward compatibility)
+ * Calculate simple cashflow result — a projection of `calculateCashflow`.
  */
 export function calculateSimpleCashflow(input: CashflowInput): SimpleCashflowResult {
-  const monthly = calculateMonthlyCashflow(input);
-  const annual = calculateAnnualCashflow(input);
-
-  const savingsRate =
-    monthly.income > 0
-      ? ((monthly.income - monthly.expenses - monthly.loanRepayments) /
-          monthly.income) *
-        100
-      : 0;
-
-  const expenseRatio =
-    monthly.income > 0 ? (monthly.expenses / monthly.income) * 100 : 0;
-
-  const debtServiceRatio =
-    monthly.income > 0 ? (monthly.loanRepayments / monthly.income) * 100 : 0;
-
+  const full = calculateCashflow(input);
   return {
-    monthlyIncome: monthly.income,
-    monthlyExpenses: monthly.expenses,
-    monthlyLoanRepayments: monthly.loanRepayments,
-    monthlyCashflow: monthly.cashflow,
-    annualIncome: annual.income,
-    annualExpenses: annual.expenses,
-    annualLoanRepayments: annual.loanRepayments,
-    annualCashflow: annual.cashflow,
-    savingsRate,
-    expenseRatio,
-    debtServiceRatio,
-    essentialExpenses: monthly.essentialExpenses,
-    discretionaryExpenses: monthly.discretionaryExpenses,
+    monthlyIncome: full.monthlyIncome,
+    monthlyExpenses: full.monthlyExpenses,
+    monthlyLoanRepayments: full.monthlyLoanRepayments,
+    monthlyCashflow: full.monthlyCashflow,
+    annualIncome: full.annualIncome,
+    annualExpenses: full.annualExpenses,
+    annualLoanRepayments: full.annualLoanRepayments,
+    annualCashflow: full.annualCashflow,
+    savingsRate: full.savingsRate,
+    expenseRatio: full.expenseRatio,
+    debtServiceRatio: full.debtServiceRatio,
+    essentialExpenses: full.essentialExpenses,
+    discretionaryExpenses: full.discretionaryExpenses,
   };
 }
 
@@ -305,9 +180,7 @@ export function calculateCashflow(
 ): CashflowResult {
   // Apply optional entity filter once at the top so every downstream
   // loop sees the scoped set. `ownerEntityId === undefined` ⇒ no filter.
-  const incomeFiltered = ownerEntityId
-    ? input.income.filter((i) => i.ownerEntityId === ownerEntityId)
-    : input.income;
+  // Income totals are pre-scoped by the caller (see CashflowInput JSDoc).
   const expensesFiltered = ownerEntityId
     ? input.expenses.filter((e) => e.ownerEntityId === ownerEntityId)
     : input.expenses;
@@ -315,27 +188,13 @@ export function calculateCashflow(
     ? input.loans.filter((l) => l.ownerEntityId === ownerEntityId)
     : input.loans;
 
-  // Calculate income with gross/net separation
-  let monthlyGrossIncome = 0;
-  let monthlyNetIncome = 0;
-  let monthlyPaygWithholding = 0;
-  let taxableIncome = 0;
-  const incomeByType: Record<string, number> = {};
-
-  for (const item of incomeFiltered) {
-    const { monthlyGross, monthlyNet, monthlyPayg } = calculateIncomeAmounts(item);
-
-    monthlyGrossIncome += monthlyGross;
-    monthlyNetIncome += monthlyNet;
-    monthlyPaygWithholding += monthlyPayg;
-
-    if (item.isTaxable !== false) {
-      taxableIncome += monthlyGross * 12;
-    }
-
-    const type = item.type || 'OTHER';
-    incomeByType[type] = (incomeByType[type] || 0) + monthlyNet;
-  }
+  // Income: the pre-computed banked totals (D17 — the "net" fields carry
+  // BANKED; the field names survive this tranche for path continuity).
+  const monthlyGrossIncome = input.incomeTotals.monthlyGross;
+  const monthlyNetIncome = input.incomeTotals.monthlyBanked;
+  const monthlyPaygWithholding = input.incomeTotals.monthlyWithholding;
+  const taxableIncome = input.incomeTotals.grossTaxableAnnual;
+  const incomeByType: Record<string, number> = { ...input.incomeTotals.byTypeMonthlyBanked };
 
   // Calculate expenses with breakdowns
   let monthlyExpenses = 0;
@@ -483,47 +342,20 @@ export interface CashflowResultDecimal {
   taxDeductibleExpenses: Decimal;
 }
 
-/**
- * Compute the gross/net/PAYG monthly amounts for a salary item, in Decimal.
- * Mirrors `calculateIncomeAmounts` exactly (same conditional structure;
- * uses `calculateTakeHomePayDecimal` from PR 2.C for the GROSS branch).
- */
-function calculateIncomeAmountsDecimal(item: IncomeItem): {
+/** Decimal twin of `BankedIncomeTotals` — derived via
+ *  `bankedTotalsFromResultDecimal()`, never hand-rolled. */
+export interface BankedIncomeTotalsDecimal {
   monthlyGross: Decimal;
-  monthlyNet: Decimal;
-  monthlyPayg: Decimal;
-} {
-  const monthlyAmount = toMonthlyDecimal(item.amount, item.frequency as Frequency);
+  monthlyBanked: Decimal;
+  monthlyWithholding: Decimal;
+  grossTaxableAnnual: Decimal;
+  byTypeMonthlyBanked: Record<string, Decimal>;
+}
 
-  let monthlyGross = monthlyAmount;
-  let monthlyNet = monthlyAmount;
-  let monthlyPayg = new Decimal(0);
-
-  if (item.type === 'SALARY') {
-    if (item.salaryType === 'NET') {
-      if (item.grossAmount != null) {
-        monthlyGross = toMonthlyDecimal(item.grossAmount, item.frequency as Frequency);
-        monthlyNet = monthlyAmount;
-        monthlyPayg = monthlyGross.minus(monthlyNet);
-      } else {
-        monthlyGross = monthlyAmount;
-        monthlyNet = monthlyAmount;
-        monthlyPayg = new Decimal(0);
-      }
-    } else {
-      // PR 2.C: Float-bridge dropped — now uses Decimal `calculateTakeHomePay`.
-      const takeHome = calculateTakeHomePayDecimal(
-        item.amount,
-        item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL',
-      );
-      monthlyGross = monthlyAmount;
-      monthlyNet = toMonthlyDecimal(takeHome.netAmount, item.frequency as Frequency);
-      const paygPlusLevy = takeHome.paygWithholding.plus(takeHome.medicareLevy);
-      monthlyPayg = toMonthlyDecimal(paygPlusLevy, item.frequency as Frequency);
-    }
-  }
-
-  return { monthlyGross, monthlyNet, monthlyPayg };
+export interface CashflowInputDecimal {
+  incomeTotals: BankedIncomeTotalsDecimal;
+  expenses: ExpenseItem[];
+  loans: LoanItem[];
 }
 
 /**
@@ -531,12 +363,9 @@ function calculateIncomeAmountsDecimal(item: IncomeItem): {
  * end-to-end Decimal arithmetic with no mid-computation rounding.
  */
 export function calculateCashflowDecimal(
-  input: CashflowInput,
+  input: CashflowInputDecimal,
   ownerEntityId?: string,
 ): CashflowResultDecimal {
-  const incomeFiltered = ownerEntityId
-    ? input.income.filter((i) => i.ownerEntityId === ownerEntityId)
-    : input.income;
   const expensesFiltered = ownerEntityId
     ? input.expenses.filter((e) => e.ownerEntityId === ownerEntityId)
     : input.expenses;
@@ -544,25 +373,11 @@ export function calculateCashflowDecimal(
     ? input.loans.filter((l) => l.ownerEntityId === ownerEntityId)
     : input.loans;
 
-  let monthlyGrossIncome = new Decimal(0);
-  let monthlyNetIncome = new Decimal(0);
-  let monthlyPaygWithholding = new Decimal(0);
-  let taxableIncome = new Decimal(0);
-  const incomeByType: Record<string, Decimal> = {};
-
-  for (const item of incomeFiltered) {
-    const { monthlyGross, monthlyNet, monthlyPayg } = calculateIncomeAmountsDecimal(item);
-    monthlyGrossIncome = monthlyGrossIncome.plus(monthlyGross);
-    monthlyNetIncome = monthlyNetIncome.plus(monthlyNet);
-    monthlyPaygWithholding = monthlyPaygWithholding.plus(monthlyPayg);
-
-    if (item.isTaxable !== false) {
-      taxableIncome = taxableIncome.plus(monthlyGross.times(12));
-    }
-
-    const type = item.type || 'OTHER';
-    incomeByType[type] = (incomeByType[type] ?? new Decimal(0)).plus(monthlyNet);
-  }
+  const monthlyGrossIncome = input.incomeTotals.monthlyGross;
+  const monthlyNetIncome = input.incomeTotals.monthlyBanked;
+  const monthlyPaygWithholding = input.incomeTotals.monthlyWithholding;
+  const taxableIncome = input.incomeTotals.grossTaxableAnnual;
+  const incomeByType: Record<string, Decimal> = { ...input.incomeTotals.byTypeMonthlyBanked };
 
   let monthlyExpenses = new Decimal(0);
   let essentialExpenses = new Decimal(0);

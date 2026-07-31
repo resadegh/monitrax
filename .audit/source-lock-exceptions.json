@@ -1,7 +1,7 @@
 {
-  "comment": "Calc-SSOT Wall A1 — tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
+  "comment": "Calc-SSOT Wall A1 \u2014 tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
   "generatedAt": "2026-07-29T04:55:08.403Z",
-  "count": 223,
+  "count": 205,
   "entries": [
     {
       "file": "app/api/ai/debt-analysis/route.ts",
@@ -46,7 +46,7 @@
     {
       "file": "app/api/cashflow/intelligence/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 2
+      "count": 1
     },
     {
       "file": "app/api/cashflow/intelligence/route.ts",
@@ -66,7 +66,7 @@
     {
       "file": "app/api/cashflow/summary/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 2
+      "count": 1
     },
     {
       "file": "app/api/cashflow/summary/route.ts",
@@ -101,12 +101,12 @@
     {
       "file": "app/api/portfolio/snapshot/route.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 4
+      "count": 1
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
       "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 7
+      "count": 3
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
@@ -170,18 +170,13 @@
     },
     {
       "file": "lib/calculations/cashflowOrchestrator.ts",
-      "pattern": "RAW_ARRAY_REDUCE_SUM",
-      "count": 2
-    },
-    {
-      "file": "lib/calculations/cashflowOrchestrator.ts",
       "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 3
+      "count": 1
     },
     {
       "file": "lib/calculations/cashflowOrchestrator.ts",
       "pattern": "RAW_MIN_REPAYMENT_COST",
-      "count": 3
+      "count": 2
     },
     {
       "file": "lib/calculations/entityBreakdown.ts",
@@ -191,7 +186,7 @@
     {
       "file": "lib/calculations/entityBreakdown.ts",
       "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 2
+      "count": 1
     },
     {
       "file": "lib/calculations/loanAggregator.ts",
@@ -280,11 +275,6 @@
     },
     {
       "file": "lib/health/buildHealthInput.ts",
-      "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 1
-    },
-    {
-      "file": "lib/health/buildHealthInput.ts",
       "pattern": "RAW_MIN_REPAYMENT_COST",
       "count": 1
     },
@@ -292,11 +282,6 @@
       "file": "lib/health/metricAggregation.ts",
       "pattern": "RAW_ARRAY_REDUCE_SUM",
       "count": 4
-    },
-    {
-      "file": "lib/income/netIncomeCalculator.ts",
-      "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 1
     },
     {
       "file": "lib/income/unmatchedDeclaredIncome.ts",
@@ -371,7 +356,7 @@
     {
       "file": "lib/services/moneyFlowService.ts",
       "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 2
+      "count": 1
     },
     {
       "file": "lib/services/moneyFlowService.ts",

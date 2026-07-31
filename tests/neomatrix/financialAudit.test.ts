@@ -35,7 +35,7 @@ import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/health
 import { generatePropertyPortfolioReport } from '@/lib/reports/generators/propertyPortfolio';
 import { aggregateLoanRepayments } from '@/lib/calculations/loanAggregator';
 import { aggregateExpenses } from '@/lib/calculations/expenseAggregator';
-import { aggregateIncome } from '@/lib/calculations/incomeAggregator';
+
 import {
   holdingMarketValue,
   sumHoldingsMarketValue,
@@ -48,6 +48,9 @@ import {
   type EntityBreakdownInput,
 } from '@/lib/calculations/entityBreakdown';
 import { calculateLITO, applyOffsets } from '@/lib/tax-engine/core/taxOffsets';
+import { buildBankedIncome } from '@/lib/income/banked/aggregator';
+import { bankedMonthlyPerRow } from '@/lib/income/banked/assembly';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { calculateStampDuty, NSW_STAMP_DUTY_FY2024_25 } from '@/lib/tax-engine/stampDuty/stateStampDuty';
 import { calculateLandTax, NSW_LAND_TAX_CY2025 } from '@/lib/tax-engine/landTax/stateLandTax';
 import { calculateCrossStateLandTax } from '@/lib/tax-engine/landTax/crossStateAggregator';
@@ -584,75 +587,58 @@ const CASES: AuditCase[] = [
     expected: 600,
   },
 
-  // ── Depth: income aggregation — gross/net/PAYG, salary GROSS vs NET, taxable split ─
+  // ── Depth: banked income (D17/D20) — the ONE income producer since T1-B.
+  // (The legacy engine.incomeAggregator.aggregateIncome cases are deleted
+  // with the engine — income-net-run-rate contract.)
   {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'grossTotal = Σ getGrossAmount; SALARY GROSS uses amount×freq, non-salary uses amount×freq; toMonthly(ANNUAL)=/12',
-    derivation: 'SALARY GROSS $120,000 ANNUAL ($10,000/mo) + rental $2,000 MONTHLY = $12,000/mo',
+    node: 'engine.bankedIncome.buildBankedIncome',
+    law: 'L2 pure summation: NET-entered salary banks its declared amount; grossAnnual = stored grossAmount (already-annual); non-property rental banks its declared run-rate',
+    derivation: 'NET salary $78,000 ANNUAL (gross $100,000) + rental $2,000 MONTHLY → banked 78,000 + 24,000 = $102,000/yr',
     actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 120000, frequency: 'ANNUAL', paygWithholding: 30000 },
-          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
-        ] as never,
-        'monthly',
-      ).grossTotal,
-    expected: 12000,
-  },
-  {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'paygWithholding is an ALREADY-ANNUAL figure (asymmetric with amount); monthly target divides by 12; only SALARY type',
-    derivation: 'PAYG $30,000 (annual) → $30,000 / 12 = $2,500/mo; rental contributes $0 (not SALARY)',
-    actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 120000, frequency: 'ANNUAL', paygWithholding: 30000 },
-          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
-        ] as never,
-        'monthly',
-      ).paygWithholding,
-    expected: 2500,
-  },
-  {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'SALARY salaryType=NET with grossAmount set: grossAmount is ALREADY-ANNUAL (used directly for an annual target, not amount×freq)',
-    derivation: 'NET salary, grossAmount $100,000, annual target → grossTotal $100,000 (not the $78,000 net amount)',
-    actual: () =>
-      aggregateIncome(
-        [
+      buildBankedIncome({
+        income: [
           { type: 'SALARY', salaryType: 'NET', amount: 78000, grossAmount: 100000, frequency: 'ANNUAL' },
-        ] as never,
-        'annual',
-      ).grossTotal,
-    expected: 100000,
+          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
+        ],
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      }).annual.banked,
+    expected: 102000,
   },
   {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'taxableIncome accumulates gross when isTaxable !== false',
-    derivation: 'taxable SALARY gross $100,000 ANNUAL + non-taxable gift $5,000 → taxableIncome $100,000',
-    actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 100000, frequency: 'ANNUAL' },
-          { type: 'GIFT', amount: 5000, frequency: 'ANNUAL', isTaxable: false },
-        ] as never,
-        'annual',
-      ).taxableIncome,
-    expected: 100000,
+    node: 'engine.bankedIncome.buildBankedIncome',
+    law: 'Identity (§5.6): gross − banked ≡ the withholding wedge; the NET-entered wedge = grossAmount − amount',
+    derivation: 'gross 100,000 + 24,000 − banked 102,000 = wedge $22,000 (= 100,000 − 78,000; rental has no wedge)',
+    actual: () => {
+      const r = buildBankedIncome({
+        income: [
+          { type: 'SALARY', salaryType: 'NET', amount: 78000, grossAmount: 100000, frequency: 'ANNUAL' },
+          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
+        ],
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      });
+      return r.annual.gross - r.annual.banked;
+    },
+    expected: 22000,
   },
   {
-    node: 'engine.incomeAggregator.aggregateIncome',
-    law: 'nonTaxableIncome accumulates gross when isTaxable === false (never dropped — §19.1)',
-    derivation: 'non-taxable gift $5,000 ANNUAL → nonTaxableIncome $5,000',
+    node: 'engine.bankedIncome.computeReceivedBanked',
+    law: 'One-off gate (MON-053): isRecurring=false contributes 0 to every run-rate; the face value is counted once in oneOff',
+    derivation: 'one-off OTHER $9,000 → banked run-rate $0/yr (oneOff.total carries the $9,000)',
     actual: () =>
-      aggregateIncome(
-        [
-          { type: 'SALARY', salaryType: 'GROSS', amount: 100000, frequency: 'ANNUAL' },
-          { type: 'GIFT', amount: 5000, frequency: 'ANNUAL', isTaxable: false },
-        ] as never,
-        'annual',
-      ).nonTaxableIncome,
-    expected: 5000,
+      buildBankedIncome({
+        income: [{ type: 'OTHER', amount: 9000, frequency: 'MONTHLY', isRecurring: false }],
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      }).annual.banked,
+    expected: 0,
   },
 
   // ── Depth: asset valuation — canonical read-model helpers (mirror net worth) ──
@@ -720,8 +706,8 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.entityBreakdown.buildEntityBreakdown',
-    law: 'Per-entity monthlyCashflow = Σ toMonthly(income) − Σ toMonthly(expenses) on that partition',
-    derivation: 'e1 income $10,000/mo − expenses $3,000/mo = $7,000/mo',
+    law: 'Per-entity monthlyCashflow = Σ bankedPerRowMonthly(income rows) − Σ toMonthly(expenses) on that partition (MON-131 T1-B: income slices read the ONE banked producer)',
+    derivation: 'e1 OTHER income $10,000/mo banked (received run-rate = declared) − expenses $3,000/mo = $7,000/mo',
     actual: () => ebPosition('e1').monthlyCashflow,
     expected: 7000,
   },
@@ -1053,7 +1039,19 @@ function stabilityScore(input: never): number {
 
 // Entity-breakdown fixture: e1 (property − loan + income/expenses), e2 (cash),
 // and a null-owner property that must land in the unattributed bucket.
+// MON-131 T1-B: per-entity income reads the banked per-row attribution (the
+// ONE producer) — the fixture runs the REAL banked engine to build the map.
 function ebInput(): EntityBreakdownInput {
+  const incomeRows = [
+    { id: 'inc-1', type: 'OTHER', amount: 10000, frequency: 'MONTHLY', isTaxable: true, ownerEntityId: 'e1' },
+  ];
+  const banked = buildBankedIncome({
+    income: incomeRows,
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+  });
   return {
     entities: [
       { id: 'e1', name: 'Reza', type: 'PERSONAL' },
@@ -1068,7 +1066,8 @@ function ebInput(): EntityBreakdownInput {
     loans: [{ principal: 600000, type: 'MORTGAGE', ownerEntityId: 'e1' }],
     superannuation: [],
     assets: [],
-    income: [{ amount: 10000, frequency: 'MONTHLY', ownerEntityId: 'e1' }],
+    income: incomeRows.map((r) => ({ id: r.id, amount: r.amount, frequency: r.frequency, ownerEntityId: r.ownerEntityId })),
+    bankedPerRowMonthly: bankedMonthlyPerRow(banked, incomeRows),
     expenses: [{ amount: 3000, frequency: 'MONTHLY', ownerEntityId: 'e1' }],
   };
 }

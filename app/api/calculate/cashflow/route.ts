@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
 import { calculateCashflow, CashflowInput } from '@/lib/calculations/cashflowOrchestrator';
+import { buildBankedIncome, bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 
 // =============================================================================
 // REQUEST SCHEMA
@@ -65,19 +67,37 @@ const cashflowRequestSchema = z.object({
 // =============================================================================
 
 /**
- * Transform income from database or input format to orchestrator format
+ * MON-131 T1-B: income totals come from the ONE banked engine (D17/D20) —
+ * the orchestrator no longer computes income (MON-137 culprit removed).
+ * Ad-hoc/what-if rows (no user context) run with repaymentIncome null →
+ * HELP undetermined, flagged by the engine, never asserted.
  */
-function transformIncomeData(income: any[]): CashflowInput['income'] {
-  return income.map((i) => ({
-    name: i.name,
-    amount: i.amount,
-    frequency: i.frequency,
-    type: i.type,
-    salaryType: i.salaryType,
-    netAmount: i.netAmount,
-    grossAmount: i.grossAmount,
-    isTaxable: i.isTaxable ?? true,
-  }));
+function bankedIncomeTotals(income: any[]): CashflowInput['incomeTotals'] {
+  const banked = buildBankedIncome({
+    income: income.map((i) => ({
+      id: i.id,
+      type: i.type,
+      name: i.name,
+      amount: i.amount,
+      frequency: i.frequency,
+      isRecurring: i.isRecurring,
+      salaryType: i.salaryType,
+      grossAmount: i.grossAmount,
+      netAmount: i.netAmount,
+      paygWithholding: i.paygWithholding,
+      actualNetPay: i.actualNetPay,
+      salarySacrifice: i.salarySacrifice,
+      helpLoanDeclared: i.helpLoanDeclared,
+      isTaxable: i.isTaxable ?? true,
+      propertyId: i.propertyId,
+      rentalMode: i.rentalMode,
+    })),
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+  });
+  return bankedTotalsFromResult(banked);
 }
 
 /**
@@ -159,7 +179,7 @@ export const POST = withPermission('report.read', async (request, auth) => {
 
       // Transform data to orchestrator format and calculate
       const cashflowInput: CashflowInput = {
-        income: transformIncomeData(incomeData || []),
+        incomeTotals: bankedIncomeTotals(incomeData || []),
         expenses: transformExpenseData(expenseData || []),
         loans: transformLoanData(loanData || []),
       };
@@ -223,7 +243,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       // Transform data to orchestrator format and calculate
       const cashflowInput: CashflowInput = {
-        income: transformIncomeData(income),
+        incomeTotals: bankedIncomeTotals(income),
         expenses: transformExpenseData(expenses),
         loans: transformLoanData(loans),
       };

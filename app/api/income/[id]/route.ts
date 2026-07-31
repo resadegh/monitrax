@@ -53,6 +53,11 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         superGuaranteeRate,
         superGuaranteeAmount,
         salarySacrifice,
+        // MON-131 T1 FACT fields (D33): actualNetPay per the row's OWN
+        // frequency; helpLoanDeclared tri-state (null = UNDETERMINED, never
+        // defaulted — absence of the flag is not evidence of absence).
+        actualNetPay,
+        helpLoanDeclared,
         // Phase 20: Investment-specific fields
         frankingPercentage,
         frankingCredits,
@@ -217,6 +222,18 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
           superGuaranteeRate: toNumber(superGuaranteeRate),
           superGuaranteeAmount: toNumber(superGuaranteeAmount),
           salarySacrifice: toNumber(salarySacrifice),
+          // MON-131 T1 FACT fields (SALARY only; tri-state preserved — an
+          // omitted helpLoanDeclared leaves the stored value untouched,
+          // an explicit null clears back to UNDETERMINED).
+          actualNetPay: type === 'SALARY' ? toNumber(actualNetPay) : null,
+          helpLoanDeclared:
+            type !== 'SALARY'
+              ? null
+              : helpLoanDeclared === undefined
+                ? undefined
+                : typeof helpLoanDeclared === 'boolean'
+                  ? helpLoanDeclared
+                  : null,
           // Phase 20: Investment-specific fields
           frankingPercentage: toNumber(frankingPercentage),
           frankingCredits: toNumber(frankingCredits),

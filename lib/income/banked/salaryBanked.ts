@@ -198,6 +198,25 @@ export function computeSalaryBanked(row: BankedIncomeRow, ctx: BankedContext): S
   };
 }
 
+/**
+ * MON-131 T1-B §1.1 — the annual withholding wedge summed over SALARY rows
+ * (payg + help where determined; an UNDETERMINED help component contributes
+ * 0 and stays flagged on the per-row result, never asserted). THE feed for
+ * `getUserTaxPosition`'s derived withheld credit — a projection of this
+ * engine's own per-row outputs, not a second producer (§12.2.1).
+ */
+export function salaryWithholdingWedgeAnnual(
+  rows: BankedIncomeRow[],
+  ctx: BankedContext,
+): number {
+  return rows
+    .filter((r) => r.type === 'SALARY')
+    .reduce((sum, r) => {
+      const banked = computeSalaryBanked(r, ctx);
+      return sum + (banked.components.payg ?? 0) + (banked.components.help ?? 0);
+    }, 0);
+}
+
 // =============================================================================
 // Decimal sibling — same hierarchy, Decimal arithmetic. The Schedule-1
 // whole-dollar rounding is regulatory (NAT 1004), so Float ≡ Decimal on the

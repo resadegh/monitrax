@@ -56,7 +56,11 @@ export interface EntityBreakdownInput {
   loans: Array<OwnedRow & { principal: number; type: string; propertyId?: string | null }>;
   superannuation: Array<OwnedRow & { currentBalance: number; fundType?: string }>;
   assets: Array<OwnedRow & { currentValue: number }>;
-  income: Array<OwnedRow & { amount: number; frequency: string }>;
+  income: Array<OwnedRow & { id?: string; amount: number; frequency: string }>;
+  /** MON-131 T1-B: banked monthly per income-row id (the ONE producer's
+   *  per-row attribution — lib/income/banked/assembly.ts). Entity income
+   *  slices sum from THIS, never a local re-derivation. */
+  bankedPerRowMonthly?: Map<string, number>;
   expenses: Array<OwnedRow & { amount: number; frequency: string }>;
 }
 
@@ -153,8 +157,12 @@ export function buildEntityBreakdown(input: EntityBreakdownInput): EntityPositio
       b.assets.map(a => ({ currentValue: a.currentValue })),
       b.investmentAccounts.map(a => ({ cashBalance: a.cashBalance, ownerEntityId: a.ownerEntityId })),
     );
+    // MON-131 T1-B: per-entity income = the banked per-row attribution (the
+    // ONE producer's entity slices — D17/D19). The raw toMonthly reduce
+    // (gross, no salary handling, no one-off gate) is deleted. Rows absent
+    // from the map (no id) contribute 0 — never re-derived locally.
     const monthlyIncome = b.income.reduce(
-      (sum, i) => sum + toMonthly(i.amount, i.frequency as Parameters<typeof toMonthly>[1]),
+      (sum, i) => sum + (i.id ? (input.bankedPerRowMonthly?.get(i.id) ?? 0) : 0),
       0,
     );
     const monthlyExpenses = b.expenses.reduce(

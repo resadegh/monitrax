@@ -174,7 +174,7 @@ export function computeRentalBanked(input: RentalBankedInput): RentalBankedResul
 // Decimal sibling. `computePropertyCashflow` has no Decimal twin yet
 // (property-cashflow contract: "Decimal twin NOT ESTABLISHED") — per-property
 // figures cross the boundary via toDecimal at full Float precision; the
-// SUMMATION is Decimal. Recorded in the T1 coverage boundary.
+// SUMMATION is Decimal. Recorded in the T1 scope boundary.
 // =============================================================================
 
 export interface RentalBankedResultDecimal {

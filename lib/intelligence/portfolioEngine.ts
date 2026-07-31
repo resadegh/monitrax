@@ -34,6 +34,8 @@ import {
   type AssetInput as CanonicalPersonalAssetInput,
 } from '@/lib/calculations/netWorthCalculator';
 import { calculateSimpleCashflow as canonicalCalculateSimpleCashflow } from '@/lib/calculations/cashflowOrchestrator';
+import { buildBankedIncome, bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 
 // =============================================================================
 // TYPES
@@ -367,14 +369,34 @@ export function calculateCashflow(input: PortfolioInput): CashflowAnalysis {
   // Income + base expenses via canonical SSOT (PAYG-aware income +
   // proper category aggregation). Loans empty here — we compute them
   // ourselves below as interest-only for stress-test semantics.
-  const canonical = canonicalCalculateSimpleCashflow({
+  // MON-131 T1-B: income totals come from the ONE banked engine (D17). The
+  // old field-dropping row mapping (no salaryType/netAmount/grossAmount)
+  // double-taxed NET-entered salaries — the income-net-run-rate contract's
+  // variant-E class, deleted. repaymentIncome null → HELP undetermined
+  // (flagged by the engine, never asserted).
+  const banked = buildBankedIncome({
     income: input.income.map((i) => ({
+      id: i.id,
+      type: i.type,
       amount: i.amount,
       frequency: i.frequency,
-      type: i.type,
+      isRecurring: (i as { isRecurring?: boolean | null }).isRecurring,
+      salaryType: (i as { salaryType?: string | null }).salaryType,
+      grossAmount: (i as { grossAmount?: number | null }).grossAmount,
+      netAmount: (i as { netAmount?: number | null }).netAmount,
+      actualNetPay: (i as { actualNetPay?: number | null }).actualNetPay,
+      salarySacrifice: (i as { salarySacrifice?: number | null }).salarySacrifice,
+      helpLoanDeclared: (i as { helpLoanDeclared?: boolean | null }).helpLoanDeclared,
       isTaxable: i.isTaxable,
-      name: i.name,
+      propertyId: (i as { propertyId?: string | null }).propertyId,
     })),
+    properties: input.properties.map((p) => ({ id: p.id, type: p.type })),
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+  });
+  const canonical = canonicalCalculateSimpleCashflow({
+    incomeTotals: bankedTotalsFromResult(banked),
     expenses: input.expenses.map((e) => ({
       amount: e.amount,
       frequency: e.frequency,

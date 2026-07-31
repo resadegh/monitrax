@@ -20,10 +20,8 @@ import {
   isSummaryStale,
   GeminiSummary,
 } from '@/lib/cashflow-intelligence';
-import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
-import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
+import { monthlyRunRate } from '@/lib/utils/frequencies';
 import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
-import { Frequency } from '@/lib/types/prisma-enums';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 
 // Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
@@ -33,9 +31,8 @@ import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialServic
 // =============================================================================
 
 async function buildSummaryInput(userId: string) {
-  const [accounts, income, expenses, loans, budgetAnalysis, leaks, snapshot] = await Promise.all([
+  const [accounts, expenses, loans, budgetAnalysis, leaks, snapshot] = await Promise.all([
     prisma.account.findMany({ where: { userId } }),
-    prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
     prisma.loan.findMany({ where: { userId } }),
     prisma.budgetAnalysis.findFirst({
@@ -50,23 +47,12 @@ async function buildSummaryInput(userId: string) {
     getMasterFinancialSnapshot(userId),
   ]);
 
-  // Calculate monthly income (NET after PAYG)
-  const monthlyIncome = income.reduce((sum: number, i: any) => {
-    const baseStream = {
-      id: i.id,
-      name: i.name,
-      type: i.type,
-      monthlyAmount: toMonthly(Number(i.amount), i.frequency as Frequency),
-      frequency: i.frequency,
-      volatility: 0.1,
-      salaryType: i.salaryType || null,
-      grossAmount: i.grossAmount != null ? Number(i.grossAmount) : null,
-      netAmount: i.netAmount != null ? Number(i.netAmount) : null,
-      paygWithholding: i.paygWithholding != null ? Number(i.paygWithholding) : null,
-    };
-    const normalized = normalizeIncomeStream(baseStream);
-    return sum + normalized.netMonthlyAmount;
-  }, 0);
+  // MON-131 T1-B: banked monthly income (D17) from the master snapshot —
+  // already fetched below in the same Promise.all, itself fed by the ONE
+  // banked-income producer. The local normalizeIncomeStream re-derivation
+  // (estimated-tax take-home — the salary-take-home duplicate class) is
+  // deleted with lib/cashflow/incomeNormalizer.ts.
+  const monthlyIncome = snapshot.quickMetrics.monthlyIncome;
 
   // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
   const monthlyExpenses = expenses.reduce(

@@ -237,6 +237,56 @@ export function projectAggregation(
 }
 
 // =============================================================================
+// Orchestrator totals projection — THE one mapping onto the cashflow
+// orchestrator's `BankedIncomeTotals` input (T1-B). Every calculateCashflow
+// caller derives its income totals HERE, never hand-rolled (§12.2.1).
+// =============================================================================
+
+export function bankedTotalsFromResult(result: BankedIncomeResult): {
+  monthlyGross: number;
+  monthlyBanked: number;
+  monthlyWithholding: number;
+  grossTaxableAnnual: number;
+  byTypeMonthlyBanked: Record<string, number>;
+} {
+  const s = result.annual.bySource;
+  const byTypeMonthlyBanked: Record<string, number> = {};
+  if (s.salary.banked !== 0) byTypeMonthlyBanked.SALARY = s.salary.banked / 12;
+  if (s.rental.banked !== 0) byTypeMonthlyBanked.RENTAL = s.rental.banked / 12;
+  if (s.investment.banked !== 0) byTypeMonthlyBanked.INVESTMENT = s.investment.banked / 12;
+  if (s.other.banked !== 0) byTypeMonthlyBanked.OTHER = s.other.banked / 12;
+  return {
+    monthlyGross: result.annual.gross / 12,
+    monthlyBanked: result.annual.banked / 12,
+    monthlyWithholding: (result.annual.withholding.payg + result.annual.withholding.help) / 12,
+    grossTaxableAnnual: result.annual.grossTaxable,
+    byTypeMonthlyBanked,
+  };
+}
+
+export function bankedTotalsFromResultDecimal(result: BankedIncomeResultDecimal): {
+  monthlyGross: Decimal;
+  monthlyBanked: Decimal;
+  monthlyWithholding: Decimal;
+  grossTaxableAnnual: Decimal;
+  byTypeMonthlyBanked: Record<string, Decimal>;
+} {
+  const s = result.annual.bySource;
+  const byTypeMonthlyBanked: Record<string, Decimal> = {};
+  if (!s.salary.banked.isZero()) byTypeMonthlyBanked.SALARY = s.salary.banked.div(12);
+  if (!s.rental.banked.isZero()) byTypeMonthlyBanked.RENTAL = s.rental.banked.div(12);
+  if (!s.investment.banked.isZero()) byTypeMonthlyBanked.INVESTMENT = s.investment.banked.div(12);
+  if (!s.other.banked.isZero()) byTypeMonthlyBanked.OTHER = s.other.banked.div(12);
+  return {
+    monthlyGross: result.annual.gross.div(12),
+    monthlyBanked: result.annual.banked.div(12),
+    monthlyWithholding: result.annual.withholding.payg.plus(result.annual.withholding.help).div(12),
+    grossTaxableAnnual: result.annual.grossTaxable,
+    byTypeMonthlyBanked,
+  };
+}
+
+// =============================================================================
 // Decimal sibling — same summation, Decimal arithmetic.
 // =============================================================================
 
@@ -244,6 +294,7 @@ export interface BankedIncomeResultDecimal {
   annual: {
     banked: Decimal;
     gross: Decimal;
+    grossTaxable: Decimal;
     withholding: { payg: Decimal; help: Decimal; salarySacrifice: Decimal; total: Decimal };
     bySource: Record<'salary' | 'rental' | 'investment' | 'other', { banked: Decimal; gross: Decimal }>;
   };
@@ -256,18 +307,18 @@ export function buildBankedIncomeDecimal(input: BankedIncomeInput): BankedIncome
   const ZERO = new Decimal(0);
   const dsum = (xs: Decimal[]) => xs.reduce((a, b) => a.plus(b), ZERO);
 
-  const salaryRows = input.income
-    .filter((r) => r.type === 'SALARY')
-    .map((r) => computeSalaryBankedDecimal(r, input.ctx));
+  const salaryInputRows = input.income.filter((r) => r.type === 'SALARY');
+  const salaryRows = salaryInputRows.map((r) => computeSalaryBankedDecimal(r, input.ctx));
   const rental = computeRentalBankedDecimal({
     properties: input.properties,
     income: input.income,
     derivedAgentExpenses: input.derivedAgentExpenses,
     transactions: input.transactions,
   });
-  const otherRows = input.income
-    .filter((r) => r.type !== 'SALARY' && !RENT_TYPES.has(r.type))
-    .map((r) => computeReceivedBankedDecimal(r, r.type === 'INVESTMENT' ? 'investment' : 'other'));
+  const otherInputRows = input.income.filter((r) => r.type !== 'SALARY' && !RENT_TYPES.has(r.type));
+  const otherRows = otherInputRows.map((r) =>
+    computeReceivedBankedDecimal(r, r.type === 'INVESTMENT' ? 'investment' : 'other'),
+  );
 
   const salaryBanked = dsum(salaryRows.map((r) => r.bankedAnnual));
   const salaryGross = dsum(salaryRows.map((r) => r.grossAnnual ?? r.bankedAnnual));
@@ -300,6 +351,19 @@ export function buildBankedIncomeDecimal(input: BankedIncomeInput): BankedIncome
     .plus(bySource.investment.gross)
     .plus(bySource.other.gross);
 
+  // Mirrors the Float grossTaxable exactly (legacy taxableIncome semantic).
+  const grossTaxable = dsum(
+    salaryRows.map((r, i) =>
+      salaryInputRows[i].isTaxable !== false ? (r.grossAnnual ?? r.bankedAnnual) : ZERO,
+    ),
+  )
+    .plus(bySource.rental.gross)
+    .plus(
+      dsum(
+        otherRows.map((r, i) => (otherInputRows[i].isTaxable !== false ? r.grossAnnual : ZERO)),
+      ),
+    );
+
   const oneOffValues = [
     ...salaryRows.map((r) => r.oneOffAmount),
     rental.oneOffAmount,
@@ -310,6 +374,7 @@ export function buildBankedIncomeDecimal(input: BankedIncomeInput): BankedIncome
     annual: {
       banked,
       gross,
+      grossTaxable,
       withholding: { payg, help, salarySacrifice, total: payg.plus(help).plus(salarySacrifice) },
       bySource,
     },

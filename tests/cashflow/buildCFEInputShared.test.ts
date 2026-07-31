@@ -27,9 +27,14 @@ describe('MON-027: the shared CFE input builder has the correct basis', () => {
   it('excludes transfers (§19.1 — transfers are not cashflow)', () => {
     expect(src).toContain('isTransfer: { not: true }');
   });
-  it('uses AFTER-tax income (normalizeIncomeStream), not a raw pre-tax normaliser', () => {
-    expect(src).toContain('normalizeIncomeStream(');
-    expect(src).toContain('normalized.netMonthlyAmount');
+  it('uses BANKED income from the ONE producer (D17), not a raw pre-tax normaliser', () => {
+    // MON-131 T1-B: normalizeIncomeStream (the estimated-tax re-derivation)
+    // is deleted with incomeNormalizer.ts — streams read the banked per-row
+    // attribution from the canonical assembler.
+    expect(src).toContain('assembleBankedIncomeForUser(');
+    expect(src).toContain('bankedMonthlyPerRow(');
+    expect(src).toContain('perRowBankedMonthly.get(');
+    expect(src).not.toContain('normalizeIncomeStream(');
     expect(src).not.toContain('normalizeToMonthly');
   });
   it('exports the single builder', () => {

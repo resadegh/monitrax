@@ -17,6 +17,7 @@ import {
 import { Decimal } from '@/lib/decimal';
 import { calculateIncomeTaxDecimal } from '@/lib/tax-engine/core/incomeTaxCalculator';
 import { calculatePAYGDecimal } from '@/lib/tax-engine/core/paygCalculator';
+import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 import { calculateMedicareLevyDecimal } from '@/lib/tax-engine/core/medicareLevyCalculator';
 import {
   calculateAllOffsetsDecimal,
@@ -150,22 +151,24 @@ describe('Decimal contracts', () => {
     expect(r.weeklyWithholding.toString()).toBe('0');
   });
 
-  it('payg MA.1-005: high-band boundary case $4000 (top bracket a=0.45)', () => {
+  it('payg MA.1-005: high-band boundary case $4000 (FY24-25 top bracket a=0.45)', () => {
+    // T1-B (D35): the no-config default now resolves to the CURRENT FY —
+    // this contract pins the FY24-25 table, so the FY is passed explicitly.
     // x = 4000.99
     // raw = 0.45 × 4000.99 - 595.1058 = 1800.4455 - 595.1058 = 1205.3397
     // round HALF_EVEN → $1205
-    const r = calculatePAYGDecimal({ grossIncome: 4000, frequency: 'WEEKLY' });
+    const r = calculatePAYGDecimal({ grossIncome: 4000, frequency: 'WEEKLY' }, TAX_YEAR_2024_25);
     expect(r.weeklyWithholding.toString()).toBe('1205');
   });
 
-  it('payg MA.1-005: divergence point — $869.39 produces $101 (was $100 pre-fix)', () => {
+  it('payg MA.1-005: divergence point — $869.39 produces $101 under FY24-25 (was $100 pre-fix)', () => {
     // Constructed boundary case demonstrating that the fix changes
-    // rounded outcomes. At $869.39:
+    // rounded outcomes. At $869.39 (FY24-25 coefficients, pinned explicitly):
     //   Pre-fix:  0.3227 × 869.39 - 180.04 = $100.49 → round → $100
     //   Post-fix: x = floor(869.39) + 0.99 = 869.99
     //             0.3227 × 869.99 - 180.04 = $100.69 → round → $101
     // This is the canonical ATO answer per Schedule 1 NAT 1004.
-    const r = calculatePAYGDecimal({ grossIncome: 869.39, frequency: 'WEEKLY' });
+    const r = calculatePAYGDecimal({ grossIncome: 869.39, frequency: 'WEEKLY' }, TAX_YEAR_2024_25);
     expect(r.weeklyWithholding.toString()).toBe('101');
   });
 

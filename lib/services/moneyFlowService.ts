@@ -6,10 +6,14 @@
  *
  * Composition (annual, FY-bucketed):
  *
- *   Income source (Salary / Rental / Investment / Other)
+ *   Income source (Salary / Rental / Investment / Other) — BANKED (D17):
+ *      the cash that reaches the account, from the ONE banked-income
+ *      producer's per-row attribution (MON-131 T1-B)
  *      ↓  per-entity allocation via Income.ownerEntityId
  *   Legal entity
- *      ↓  Tax (PAYG withholding allocated to this entity's income)
+ *      ↓  Tax — always 0 since T1-B: the wedge is taken BEFORE pay banks,
+ *         so it is not an outflow of banked cash (it lives on the tax
+ *         position, §1.1). Key retained for shape stability.
  *      ↓  Essential expenses (Expense.ownerEntityId + isEssential)
  *      ↓  Discretionary expenses
  *      ↓  Loan repayments
@@ -28,11 +32,6 @@
  *     visual readable.
  *
  * v1 heuristics (Phase 41e will tighten these):
- *   - PAYG withholding is allocated proportionally to each entity's
- *     share of taxable income. Real per-entity tax requires Div 6/6E
- *     trust distribution math (Phase 41e.1 / 41e.4); v1 uses the
- *     proportional approximation so the visual is correct in
- *     aggregate.
  *   - Loan repayments use `minRepayment` annualised — actual interest
  *     vs. principal split lands in the entity-aware tax engine.
  *   - Distributions are the trust's `trustNetIncome` (s95) / the
@@ -49,6 +48,10 @@ import { prisma } from '@/lib/db';
 import type { Prisma, PrismaClient, LegalEntityRole, LegalEntityType } from '@prisma/client';
 import { toAnnual } from '@/lib/utils/frequencies';
 import type { Frequency } from '@/lib/types/prisma-enums';
+import {
+  assembleBankedIncomeForUser,
+  bankedMonthlyPerRow,
+} from '@/lib/income/banked/assembly';
 
 type PrismaTxOrClient = PrismaClient | Prisma.TransactionClient;
 
@@ -220,24 +223,16 @@ export async function getMoneyFlow(
   userId: string,
   client: PrismaTxOrClient = prisma,
 ): Promise<MoneyFlowResult> {
-  // Load everything we need in parallel.
-  const [entities, incomes, expenses, loans, resolutions, dividends] = await Promise.all([
+  // Load everything we need in parallel. Income rows + their banked values
+  // come from the ONE banked-income assembler (MON-131 T1-B) — never a local
+  // re-derivation of the income run-rate.
+  const [entities, assembled, expenses, loans, resolutions, dividends] = await Promise.all([
     client.legalEntity.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
       select: { id: true, name: true, type: true, role: true },
     }),
-    client.income.findMany({
-      where: { userId },
-      select: {
-        ownerEntityId: true,
-        type: true,
-        sourceType: true,
-        amount: true,
-        frequency: true,
-        paygWithholding: true,
-      },
-    }),
+    assembleBankedIncomeForUser(userId),
     client.expense.findMany({
       where: { userId },
       select: {
@@ -277,6 +272,9 @@ export async function getMoneyFlow(
       },
     }),
   ]);
+
+  const incomes = assembled.raw.income;
+  const perRowBankedMonthly = bankedMonthlyPerRow(assembled.banked, incomes);
 
   if (entities.length === 0 || (incomes.length === 0 && expenses.length === 0)) {
     return {
@@ -325,28 +323,27 @@ export async function getMoneyFlow(
   }
 
   // ---------------------------------------------------------------------
-  // Aggregate income by (entity × source label)
+  // Aggregate income by (entity × source label) — BANKED (D17): the cash
+  // that actually reaches the entity's accounts, from the ONE producer's
+  // per-row attribution. The old declared toAnnual sum (gross ≡ net, one-off
+  // rows annualised — the MON-137 class) is deleted, not wrapped.
   // ---------------------------------------------------------------------
   type SourcePerEntity = Record<string, Record<MoneyFlowSourceLabel, number>>;
   const incomeByEntity: SourcePerEntity = {};
-  let totalPayg = 0;
 
-  for (const inc of incomes) {
-    const annual = toAnnual(inc.amount, inc.frequency as Frequency);
+  for (const inc of incomes as Array<(typeof incomes)[number] & { sourceType?: string | null }>) {
+    const annual = (inc.id ? (perRowBankedMonthly.get(inc.id) ?? 0) : 0) * 12;
     if (annual <= 0) continue;
     const label = classifyIncome(inc.type, inc.sourceType);
-    if (!incomeByEntity[inc.ownerEntityId]) {
-      incomeByEntity[inc.ownerEntityId] = {
+    if (!incomeByEntity[inc.ownerEntityId ?? '']) {
+      incomeByEntity[inc.ownerEntityId ?? ''] = {
         Salary: 0,
         Rental: 0,
         Investment: 0,
         Other: 0,
       };
     }
-    incomeByEntity[inc.ownerEntityId][label] += annual;
-    if (inc.paygWithholding != null && inc.paygWithholding > 0) {
-      totalPayg += inc.paygWithholding;
-    }
+    incomeByEntity[inc.ownerEntityId ?? ''][label] += annual;
   }
 
   // Source totals (left column nodes)
@@ -389,22 +386,15 @@ export async function getMoneyFlow(
   }
 
   // ---------------------------------------------------------------------
-  // Tax allocation — proportional to taxable-income share
+  // Tax outflow — REMOVED with the banked basis (MON-131 T1-B). Income now
+  // enters the flow as BANKED cash: the withholding wedge is taken BEFORE
+  // pay reaches the account, so carving a Tax outflow out of banked income
+  // again would double-count it. The wedge lives on the tax position
+  // (`getUserTaxPosition().taxPosition.paygWithheld` — the §1.1 derived
+  // credit), not in this Sankey. The old proportional allocation of the
+  // stored per-row sum is deleted, not wrapped.
   // ---------------------------------------------------------------------
-  const taxableByEntity: Record<string, number> = {};
-  let totalTaxable = 0;
-  for (const [entityId, perSource] of Object.entries(incomeByEntity)) {
-    const taxable =
-      perSource.Salary + perSource.Rental + perSource.Investment + perSource.Other;
-    taxableByEntity[entityId] = taxable;
-    totalTaxable += taxable;
-  }
   const taxByEntity: Record<string, number> = {};
-  if (totalTaxable > 0 && totalPayg > 0) {
-    for (const [entityId, taxable] of Object.entries(taxableByEntity)) {
-      taxByEntity[entityId] = (taxable / totalTaxable) * totalPayg;
-    }
-  }
 
   // ---------------------------------------------------------------------
   // Build the per-entity flow rows

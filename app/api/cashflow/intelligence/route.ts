@@ -27,7 +27,9 @@ import {
   BudgetCategory,
   TaxOptimization,
 } from '@/lib/cashflow-intelligence';
-import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
+import { buildBankedIncome, bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 // MON-020: the tax estimate now reads the ONE canonical tax position (Medicare
 // + full deductions + offsets) shared with My Guide, instead of an ad-hoc
@@ -43,21 +45,9 @@ import {
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-function normalizeToMonthly(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY':
-      return (amount * 52) / 12;
-    case 'FORTNIGHTLY':
-      return (amount * 26) / 12;
-    case 'MONTHLY':
-      return amount;
-    case 'ANNUAL':
-      return amount / 12;
-    default:
-      return amount;
-  }
-}
+// MON-131 T1-B: the local normalizeToMonthly frequency switch (a duplicate of
+// the canonical converter, and the last consumer of normalizeIncomeStream
+// here) is deleted — income figures read the banked producer below.
 
 // =============================================================================
 // DATA FETCHING
@@ -109,25 +99,23 @@ async function fetchUserFinancialData(userId: string) {
 // METRIC CALCULATIONS
 // =============================================================================
 
+/**
+ * MON-131 T1-B: DEGRADED-MODE banked monthly income — used ONLY when the
+ * master snapshot (the primary banked-fed source below) is unavailable.
+ * Runs the SAME pure banked engine over the fetched rows with no user tax
+ * context (repaymentIncome null → study-loan component undetermined) — one
+ * producer, degraded inputs, never a second formula. The old
+ * normalizeIncomeStream re-derivation is deleted with incomeNormalizer.ts.
+ */
 function calculateMonthlyIncome(income: any[]): number {
-  return income.reduce((sum, i) => {
-    // Use income normalizer for salary types to get NET income
-    const baseStream = {
-      id: i.id,
-      name: i.name,
-      type: i.type,
-      monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
-      frequency: i.frequency,
-      volatility: 0.1,
-      salaryType: i.salaryType || null,
-      grossAmount: i.grossAmount != null ? Number(i.grossAmount) : null,
-      netAmount: i.netAmount != null ? Number(i.netAmount) : null,
-      paygWithholding: i.paygWithholding != null ? Number(i.paygWithholding) : null,
-    };
-
-    const normalized = normalizeIncomeStream(baseStream);
-    return sum + normalized.netMonthlyAmount;
-  }, 0);
+  const banked = buildBankedIncome({
+    income: income as unknown as BankedIncomeRow[],
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+  });
+  return bankedTotalsFromResult(banked).monthlyBanked;
 }
 
 function calculateMonthlyExpenses(expenses: any[]): number {

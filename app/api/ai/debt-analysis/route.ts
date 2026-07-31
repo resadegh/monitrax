@@ -19,7 +19,8 @@ import {
   formatCurrencyForPrompt,
   formatPercentageForPrompt,
 } from '@/lib/ai/google';
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+import { assembleBankedIncomeForUser } from '@/lib/income/banked/assembly';
+import { bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
 import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
 import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 import { buildEngineProjections, toLoanInputs } from '@/lib/neobrain/debtProjections';
@@ -125,18 +126,9 @@ export const POST = withPermission('report.read', async (request, auth) => {
       );
     }
 
-    // Fetch user's income, expenses, accounts, and budget analysis for cash flow context
-    const [incomes, expenses, accounts, budgetAnalysis] = await Promise.all([
-      prisma.income.findMany({
-        where: { userId },
-        select: {
-          amount: true,
-          frequency: true,
-          type: true,
-          salaryType: true,  // GROSS or NET
-          netAmount: true,   // User-provided NET amount
-        },
-      }),
+    // Fetch user's expenses, accounts, and budget analysis for cash flow
+    // context (income comes from the banked assembler below — one producer).
+    const [expenses, accounts, budgetAnalysis] = await Promise.all([
       prisma.expense.findMany({
         where: { userId },
         select: { amount: true, frequency: true, isEssential: true },
@@ -155,33 +147,12 @@ export const POST = withPermission('report.read', async (request, auth) => {
       }),
     ]);
 
-    // Frequency → monthly via the canonical SSOT converter (§12.2.1). Replaces
-    // a local switch with inline arithmetic — which the financial-surface lint
-    // forbids and which silently mis-handled 'ANNUAL' (the DB enum is 'ANNUAL',
-    // not 'ANNUALLY', so annual rows fell through to the identity default).
-    const convertToMonthly = (amount: number, freq: string): number =>
-      toMonthly(amount, freq as Parameters<typeof toMonthly>[1]);
-
-    // Calculate NET income (after PAYG tax) - same as Cashflow API
-    let monthlyNetIncome = 0;
-    for (const income of incomes) {
-      const annualAmount = convertToMonthly(income.amount, income.frequency) * 12;
-      let annualNet: number;
-
-      if (income.type === 'SALARY' && income.salaryType === 'GROSS') {
-        // GROSS salary: calculate PAYG tax
-        const takeHome = calculateTakeHomePay(annualAmount, income.frequency as any);
-        annualNet = takeHome.netAmount;
-      } else if (income.netAmount) {
-        // User provided NET amount directly
-        annualNet = convertToMonthly(income.netAmount, income.frequency) * 12;
-      } else {
-        // Already NET or non-taxable (rental, dividends, etc.)
-        annualNet = annualAmount;
-      }
-
-      monthlyNetIncome += annualNet / 12;
-    }
+    // MON-131 T1-B: BANKED monthly income (D17) from the ONE producer —
+    // the local per-row gross/net switch (a calculateTakeHomePay consumer,
+    // the salary-take-home duplicate class; it also misread the
+    // already-annual netAmount as per-frequency) is deleted, not wrapped.
+    const { banked } = await assembleBankedIncomeForUser(userId);
+    const monthlyNetIncome = bankedTotalsFromResult(banked).monthlyBanked;
 
     // Calc-SSOT Wall B2: canonical one-off-aware run-rate (a one-off never ×12).
     const trackedExpenses = expenses.reduce((sum: number, e: typeof expenses[0]) => sum + monthlyRunRate(e), 0);

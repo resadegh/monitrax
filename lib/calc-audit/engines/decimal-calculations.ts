@@ -20,11 +20,7 @@ import {
   aggregateExpensesDecimal,
   type ExpenseInput,
 } from '@/lib/calculations/expenseAggregator';
-import {
-  aggregateIncome,
-  aggregateIncomeDecimal,
-  type IncomeInput,
-} from '@/lib/calculations/incomeAggregator';
+import type { IncomeInput } from '@/lib/calculations/incomeAggregator';
 import {
   aggregateLoanRepayments,
   aggregateLoanRepaymentsDecimal,
@@ -36,6 +32,14 @@ import {
   type CashflowInput,
 } from '@/lib/calculations/cashflowOrchestrator';
 import type { ShadowEngine } from '@/lib/calc-audit/shadowComparison';
+import {
+  buildBankedIncome,
+  buildBankedIncomeDecimal,
+  bankedTotalsFromResult,
+  bankedTotalsFromResultDecimal,
+} from '@/lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { TAX_YEAR_2026_27 } from '@/lib/tax-engine/config/taxYearConfig';
 
 // ---------------------------------------------------------------------------
 // Fixtures shared across engines (mass-affluent persona + edge cases)
@@ -105,43 +109,10 @@ export const expenseAggregatorShadow: ShadowEngine<
 };
 
 // ---------------------------------------------------------------------------
-// income.aggregate
-// ---------------------------------------------------------------------------
-
-export const incomeAggregatorShadow: ShadowEngine<
-  { income: IncomeInput[]; targetFrequency?: 'monthly' | 'annual' },
-  ReturnType<typeof aggregateIncome>,
-  ReturnType<typeof aggregateIncomeDecimal>
-> = {
-  name: 'core.incomeAggregator.shadow',
-  description: 'Shadow Float vs Decimal `aggregateIncome` — salary GROSS + non-salary rental.',
-  sourcePath: 'lib/calculations/incomeAggregator.ts',
-  floatExecute: ({ income, targetFrequency }) => aggregateIncome(income, targetFrequency),
-  decimalExecute: ({ income, targetFrequency }) => aggregateIncomeDecimal(income, targetFrequency),
-  fieldPolicy: {},
-  fixtures: [
-    { name: 'empty', description: 'No income.', input: { income: [] } },
-    { name: 'salary GROSS + rental monthly', description: 'PAYG asymmetry exercised.', input: { income: SALARY_INCOME } },
-    { name: 'salary GROSS + rental annual', description: 'Same income annual target.', input: { income: SALARY_INCOME, targetFrequency: 'annual' } },
-    {
-      name: 'salary NET with stored grossAmount',
-      description: 'salaryType=NET + grossAmount preset (skips take-home calc).',
-      input: {
-        income: [
-          {
-            amount: 7800,
-            frequency: 'MONTHLY',
-            type: 'SALARY',
-            salaryType: 'NET',
-            grossAmount: 114000, // already-annual gross
-            isTaxable: true,
-          },
-        ],
-      },
-    },
-  ],
-};
-
+// income.aggregate — shadow DELETED (MON-131 T1-B). `aggregateIncome` and its
+// Decimal sibling are retired with the income-net-run-rate contract; the
+// banked engine's Float/Decimal parity is exercised end-to-end by the
+// cashflow shadow below (rows → banked engine twins → totals → orchestrator).
 // ---------------------------------------------------------------------------
 // loan.aggregate
 // ---------------------------------------------------------------------------
@@ -170,9 +141,13 @@ export const loanAggregatorShadow: ShadowEngine<
 // ---------------------------------------------------------------------------
 // cashflow.compute (the composer)
 // ---------------------------------------------------------------------------
+// MON-131 T1-B: the orchestrator takes pre-computed BANKED totals (MON-137
+// culprit removed). The shadow now exercises the REAL end-to-end path both
+// ways: rows -> banked engine (Float/Decimal) -> the ONE totals mapping ->
+// calculateCashflow(Decimal). repaymentIncome null => HELP undetermined.
 
-const CASHFLOW_INPUT_BASE: CashflowInput = {
-  income: SALARY_INCOME,
+const CASHFLOW_ROWS = {
+  income: SALARY_INCOME.map((i) => ({ ...i })),
   expenses: MIXED_EXPENSES,
   loans: TWO_LOANS.map((l) => ({
     minRepayment: l.minRepayment,
@@ -181,19 +156,41 @@ const CASHFLOW_INPUT_BASE: CashflowInput = {
   })),
 };
 
+const BANKED_CTX = { config: TAX_YEAR_2026_27, repaymentIncome: null };
+
+function bankedInputFromRows(income: Array<Record<string, unknown>>) {
+  return {
+    income: income as unknown as BankedIncomeRow[],
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: BANKED_CTX,
+  };
+}
+
 export const cashflowOrchestratorShadow: ShadowEngine<
-  { input: CashflowInput },
+  { input: { income: Array<Record<string, unknown>>; expenses: typeof MIXED_EXPENSES; loans: Array<{ minRepayment: number; repaymentFrequency: string; name?: string }> } },
   ReturnType<typeof calculateCashflow>,
   ReturnType<typeof calculateCashflowDecimal>
 > = {
   name: 'core.cashflowOrchestrator.shadow',
-  description: 'Shadow Float vs Decimal `calculateCashflow` — full composition.',
+  description: 'Shadow Float vs Decimal `calculateCashflow` — banked totals in, full composition.',
   sourcePath: 'lib/calculations/cashflowOrchestrator.ts',
-  floatExecute: ({ input }) => calculateCashflow(input),
-  decimalExecute: ({ input }) => calculateCashflowDecimal(input),
+  floatExecute: ({ input }) =>
+    calculateCashflow({
+      incomeTotals: bankedTotalsFromResult(buildBankedIncome(bankedInputFromRows(input.income))),
+      expenses: input.expenses,
+      loans: input.loans,
+    }),
+  decimalExecute: ({ input }) =>
+    calculateCashflowDecimal({
+      incomeTotals: bankedTotalsFromResultDecimal(buildBankedIncomeDecimal(bankedInputFromRows(input.income))),
+      expenses: input.expenses,
+      loans: input.loans,
+    }),
   // Every cashflow output field is pre-rounded by Float's `round()` to 2 dp,
   // so they all behave like currency at the shadow boundary — including the
-  // ratio fields (savingsRate / expenseRatio / debtServiceRatio).
+  // ratio fields (savingsRate, expenseRatio, debtServiceRatio).
   fieldPolicy: {},
   fixtures: [
     {
@@ -203,12 +200,12 @@ export const cashflowOrchestratorShadow: ShadowEngine<
     },
     {
       name: 'mass-affluent persona',
-      description: 'Salary GROSS + rental + mixed expenses + two mortgages — full path.',
-      input: { input: CASHFLOW_INPUT_BASE },
+      description: 'Salary GROSS + rental + mixed expenses + two mortgages — full banked path.',
+      input: { input: CASHFLOW_ROWS },
     },
     {
-      name: 'salary NET no PAYG branch',
-      description: 'salaryType=NET without grossAmount — gross=net=amount, PAYG=0.',
+      name: 'salary NET no gross stored',
+      description: 'salaryType=NET without grossAmount — banked = amount, gross UNDETERMINED (floors at banked, flagged).',
       input: {
         input: {
           income: [{ amount: 8000, frequency: 'MONTHLY', type: 'SALARY', salaryType: 'NET' }],
@@ -226,7 +223,6 @@ export const cashflowOrchestratorShadow: ShadowEngine<
 
 export const calculationsShadowEngines = [
   expenseAggregatorShadow,
-  incomeAggregatorShadow,
   loanAggregatorShadow,
   cashflowOrchestratorShadow,
 ] as const;

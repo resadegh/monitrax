@@ -22,8 +22,18 @@ import type {
   AssetInput,
   LoanInput,
 } from '@/lib/calculations/netWorthCalculator';
-import type { IncomeItem, ExpenseItem, LoanItem } from '@/lib/calculations/cashflowOrchestrator';
+import type { ExpenseItem, LoanItem } from '@/lib/calculations/cashflowOrchestrator';
 import type { EntityRef, EntityBreakdownInput } from '@/lib/calculations/entityBreakdown';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import type { TaxYearConfig } from '@/lib/tax-engine/types';
+import {
+  buildBankedIncome,
+  buildBankedIncomeDecimal,
+  bankedTotalsFromResult,
+  bankedTotalsFromResultDecimal,
+  type BankedIncomeResult,
+  type BankedIncomeResultDecimal,
+} from '@/lib/income/banked/aggregator';
 import type { PropertyOwner } from '@/lib/cfo/scenarios/propertyDisposalCgt';
 import type { CgtEligibleEntityType } from '@/lib/tax-engine/divisions/cgtDiscount';
 
@@ -47,10 +57,47 @@ export interface Archetype {
   superannuation: SuperInput[];
   personalAssets: AssetInput[];
   loans: Array<LoanInput & { principal: number }>;
-  income: IncomeItem[];
+  income: BankedIncomeRow[];
   expenses: ExpenseItem[];
   cashflowLoans: LoanItem[];
   disposal: DisposalFixture;
+}
+
+/**
+ * MON-131 T1-B: income enters the cashflow orchestrator as pre-computed
+ * BANKED totals from the ONE engine (MON-137 culprit removed). This helper
+ * runs the archetype's income rows through the real banked path (Float +
+ * Decimal) so both regression suites exercise the production wiring.
+ * Fixture rows have no user context → repaymentIncome null (HELP
+ * undetermined, flagged by the engine — never asserted zero).
+ */
+export function bankedIncomeFixture(
+  a: Archetype,
+  config: TaxYearConfig,
+): {
+  rows: BankedIncomeRow[];
+  banked: BankedIncomeResult;
+  bankedDecimal: BankedIncomeResultDecimal;
+  incomeTotals: ReturnType<typeof bankedTotalsFromResult>;
+  incomeTotalsDecimal: ReturnType<typeof bankedTotalsFromResultDecimal>;
+} {
+  const rows = a.income.map((r, i) => ({ ...r, id: r.id ?? `${a.key}-inc-${i}` }));
+  const input = {
+    income: rows,
+    properties: [],
+    derivedAgentExpenses: [],
+    transactions: [],
+    ctx: { config, repaymentIncome: null },
+  };
+  const banked = buildBankedIncome(input);
+  const bankedDecimal = buildBankedIncomeDecimal(input);
+  return {
+    rows,
+    banked,
+    bankedDecimal,
+    incomeTotals: bankedTotalsFromResult(banked),
+    incomeTotalsDecimal: bankedTotalsFromResultDecimal(bankedDecimal),
+  };
 }
 
 // Fixed dates so monthsHeld (and therefore the >12-month discount test) is

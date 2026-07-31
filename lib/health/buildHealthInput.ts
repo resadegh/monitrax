@@ -19,9 +19,13 @@
  * scoring engine in `aggregateEngine.ts` (§6.4 — engines stay pure).
  */
 import prisma from '@/lib/db';
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import {
+  assembleBankedIncomeForUser,
+  bankedMonthlyPerRow,
+} from '@/lib/income/banked/assembly';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
 import type {
   FinancialHealthInput,
   PropertyData,
@@ -33,18 +37,10 @@ import type {
   InsightData,
 } from './types';
 
-/** Net (after-PAYG) monthly amount for SALARY income; gross monthly otherwise. */
-function getNetMonthlyIncome(incomeItem: { amount: number; frequency: string; type: string }): number {
-  if (incomeItem.type === 'SALARY') {
-    const takeHome = calculateTakeHomePay(
-      incomeItem.amount,
-      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL',
-    );
-    return toMonthly(takeHome.netAmount, incomeItem.frequency as Frequency);
-  }
-  // Non-salary income: gross amount (tax calculated at year end).
-  return toMonthly(incomeItem.amount, incomeItem.frequency as Frequency);
-}
+// MON-131 T1-B: the private per-row take-home helper (a second producer of
+// the salary net figure — the calculateTakeHomePay consumer class) is
+// DELETED. Income rows now carry the banked per-row attribution from the
+// ONE engine (D17/D20; salary-take-home + income-net-run-rate contracts).
 
 /** Assemble the canonical `FinancialHealthInput` for a user from the database. */
 export async function buildHealthInput(userId: string): Promise<FinancialHealthInput> {
@@ -65,6 +61,11 @@ export async function buildHealthInput(userId: string): Promise<FinancialHealthI
     }),
   ]);
 
+  // MON-131 T1-B: the ONE banked-income producer + its per-row attribution
+  // (property rental rows carry the pooled property stream's share).
+  const { banked } = await assembleBankedIncomeForUser(userId);
+  const perRowBankedMonthly = bankedMonthlyPerRow(banked, income as unknown as BankedIncomeRow[]);
+
   // Totals (investments at cost basis — see file header note).
   const totalPropertyValue = properties.reduce((sum: number, p: any) => sum + Number(p.currentValue), 0);
   const totalAccountBalances = accounts.reduce((sum: number, a: any) => sum + Number(a.currentBalance), 0);
@@ -79,7 +80,7 @@ export async function buildHealthInput(userId: string): Promise<FinancialHealthI
     const propertyIncome = income.filter((i: any) => i.propertyId === p.id);
     const propertyExpenses = expenses.filter((e: any) => e.propertyId === p.id);
     const monthlyIncome = propertyIncome.reduce(
-      (sum: number, i: any) => sum + toMonthly(Number(i.amount), i.frequency as Frequency),
+      (sum: number, i: any) => sum + (perRowBankedMonthly.get(i.id) ?? 0),
       0,
     );
     const monthlyExpenses = propertyExpenses.reduce(
@@ -132,7 +133,8 @@ export async function buildHealthInput(userId: string): Promise<FinancialHealthI
     id: i.id,
     name: i.name,
     type: i.type,
-    monthlyAmount: getNetMonthlyIncome({ amount: Number(i.amount), frequency: i.frequency, type: i.type }),
+    // Banked monthly (D17): cash reaching the account, from the ONE producer.
+    monthlyAmount: perRowBankedMonthly.get(i.id) ?? 0,
     isTaxable: i.isTaxable,
   }));
 

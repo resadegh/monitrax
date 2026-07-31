@@ -35,7 +35,9 @@ import { getCFOScore } from '@/lib/cfo/intelligenceEngine';
 import { buildHealthInput, generateHealthReport, quickHealthCheck } from '@/lib/health';
 import { GOLDEN_USER_ID } from './goldenHousehold';
 
-const GOLDEN_HEALTH_SCORE = 72; // matches ring2.healthInput.test.ts baseline
+// 72 → 73 on MON-131 T1-B (banked income basis) — matches
+// ring2.healthInput.test.ts baseline; declared under the healthScore prefix.
+const GOLDEN_HEALTH_SCORE = 73;
 
 let homeScore: number;
 let cfo: Awaited<ReturnType<typeof getCFOScore>>;

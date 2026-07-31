@@ -11,7 +11,7 @@
       "kind": "orchestrator",
       "label": "Master financial snapshot",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1797,
+      "line": 1722,
       "layer": "service",
       "domain": "core",
       "trailStage": null,
@@ -270,14 +270,14 @@
       "kind": "engine",
       "label": "Per-entity position breakdown (additive view)",
       "file": "lib/calculations/entityBreakdown.ts",
-      "line": 89,
+      "line": 93,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
       "produces": "EntityPosition[] — per owning-entity netWorth/assets/liabilities/monthlyIncome/expenses/cashflow. ADDITIVE: only adds the byEntity view beside the flat household numbers.",
-      "formula": "Partition rows by ownerEntityId (null → __unattributed__ bucket, never dropped); per partition reuse calculateNetWorth (identical math) + Σ toMonthly(income/expenses); monthlyCashflow = monthlyIncome − monthlyExpenses. Invariant: Σ per-entity netWorth == household netWorth. Empty entities omitted; sort largest-net first, unattributed last.",
+      "formula": "Per-entity: netWorth via calculateNetWorth on the entity partition; monthlyIncome = Σ bankedPerRowMonthly.get(row.id) (the banked per-row attribution — MON-131 T1-B; raw toMonthly income reduce DELETED); monthlyExpenses = Σ toMonthly(expense).",
       "authority": "Phase 47 Stage C1 additivity contract (Σ per-entity == household) + §12.2/§12.3 (reuse calculateNetWorth, never re-implement)",
       "inputs": [
         {
@@ -426,14 +426,14 @@
       "kind": "engine",
       "label": "Declared cashflow",
       "file": "lib/calculations/cashflowOrchestrator.ts",
-      "line": 302,
+      "line": 177,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
       "produces": "CashflowResult — monthly/annual gross+net income, PAYG, expenses, loan repayments, cashflow (surplus), ratios (savingsRate/expenseRatio/debtServiceRatio), essential/discretionary split. DECLARED basis (records × frequency), NOT actual bank spend.",
-      "formula": "monthlyCashflow = monthlyNetIncome − monthlyExpenses − monthlyLoanRepayments (NET income, after-tax); savingsRate = monthlyCashflow / monthlyNetIncome × 100 (0 when income ≤ 0).",
+      "formula": "cashflow = bankedMonthly − Σ toMonthly(expense) − Σ toMonthly(loan.minRepayment). Income arrives as PRE-COMPUTED BankedIncomeTotals from the ONE L2 banked aggregator (MON-131 T1-B — the internal income producer calculateIncomeAmounts is DELETED); monthlyGrossIncome/monthlyNetIncome/monthlyPaygWithholding read the totals verbatim.",
       "authority": "CLAUDE.md §19.1 (declared = the 'plan' side; fallback only when no transactions)",
       "inputs": [
         {
@@ -1061,7 +1061,7 @@
       "kind": "engine",
       "label": "Income tax position",
       "file": "lib/tax-engine/position/taxPositionCalculator.ts",
-      "line": 153,
+      "line": 164,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -2469,46 +2469,6 @@
       "status": "documented"
     },
     {
-      "id": "engine.incomeAggregator.aggregateIncome",
-      "kind": "engine",
-      "label": "Declared income aggregation (gross / net / PAYG)",
-      "file": "lib/calculations/incomeAggregator.ts",
-      "line": 143,
-      "layer": "engine",
-      "domain": "core",
-      "trailStage": null,
-      "regime": null,
-      "semanticKey": null,
-      "produces": "IncomeAggregation — grossTotal, netTotal, paygWithholding, byType, taxableIncome, nonTaxableIncome. The §6.2 income SSOT.",
-      "formula": "grossTotal = Σ getGrossAmount(item, target); net = Σ getNetAmount; payg = Σ getPaygAmount. SALARY+NET uses grossAmount (already ANNUAL, /12 for monthly); SALARY+GROSS uses amount×freq; non-salary uses amount×freq. paygWithholding is already-annual (/12 for monthly). taxableIncome splits on isTaxable !== false.",
-      "authority": "CLAUDE.md §6.2 (income SSOT) + lib/utils/frequencies.ts toMonthly/toAnnual",
-      "inputs": [
-        {
-          "name": "income.amount + frequency",
-          "unit": "AUD/period",
-          "type": "number",
-          "note": "toMonthly: ANNUAL/12, WEEKLY×52/12, MONTHLY×1"
-        },
-        {
-          "name": "salaryType + grossAmount/netAmount",
-          "unit": "AUD/year",
-          "type": "number",
-          "note": "SALARY GROSS vs NET: grossAmount/netAmount are ALREADY-ANNUAL (asymmetric with amount which uses frequency)"
-        },
-        {
-          "name": "paygWithholding",
-          "unit": "AUD/year",
-          "type": "number",
-          "note": "already-annual; /12 for monthly target; only SALARY type"
-        }
-      ],
-      "astHash": null,
-      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/incomeAggregator.ts:143",
-      "workedExample": "SALARY GROSS $120k/yr + rental $2k/mo → grossTotal $12,000/mo; PAYG $30k → $2,500/mo; SALARY NET grossAmount $100k (annual target) → grossTotal $100,000",
-      "verifiedDate": "2026-06-24",
-      "status": "documented"
-    },
-    {
       "id": "law.standard.loanInterest",
       "kind": "law",
       "label": "Loan interest = principal × annual rate",
@@ -2555,7 +2515,7 @@
       "kind": "orchestrator",
       "label": "Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)",
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 522,
+      "line": 496,
       "layer": "route",
       "domain": "intelligence",
       "trailStage": null,
@@ -3930,48 +3890,6 @@
       "status": "documented"
     },
     {
-      "id": "engine.incomeNormalizer.normalizeAllIncome",
-      "kind": "engine",
-      "label": "Normalise all income streams",
-      "file": "lib/cashflow/incomeNormalizer.ts",
-      "line": 183,
-      "layer": "engine",
-      "domain": "core",
-      "trailStage": null,
-      "regime": null,
-      "semanticKey": null,
-      "produces": "NormalizedIncomeResult — per-stream normalised income plus totalGrossMonthly, totalNetMonthly, totalMonthlyPayg.",
-      "formula": "map each stream through normalizeIncomeStream; totals = Σ grossMonthlyAmount / Σ netMonthlyAmount / Σ monthlyPaygWithholding.",
-      "authority": "Monitrax income normalisation — per-stream gross→net (PAYG) then monthly aggregation.",
-      "inputs": [],
-      "astHash": null,
-      "verifiedBy": "calc-audit engine cashflow.normalizeAllIncome (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:183",
-      "workedExample": null,
-      "verifiedDate": "2026-06-26",
-      "status": "documented"
-    },
-    {
-      "id": "engine.incomeNormalizer.calculateTakeHomePay",
-      "kind": "engine",
-      "label": "Take-home pay from gross salary",
-      "file": "lib/cashflow/incomeNormalizer.ts",
-      "line": 221,
-      "layer": "engine",
-      "domain": "core",
-      "trailStage": null,
-      "regime": null,
-      "semanticKey": null,
-      "produces": "Take-home pay breakdown: grossAmount, netAmount, paygWithholding, medicareLevy, effectiveTaxRate.",
-      "formula": "annualGross = toAnnual(gross, freq); grossTax = PAYG + Medicare; netTax = max(0, grossTax − LITO); annualNet = annualGross − netTax; converted back to the input frequency.",
-      "authority": "ATO PAYG withholding + Medicare Levy + LITO offset (via lib/tax-engine).",
-      "inputs": [],
-      "astHash": null,
-      "verifiedBy": "calc-audit engine cashflow.calculateTakeHomePay (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:221",
-      "workedExample": null,
-      "verifiedDate": "2026-06-26",
-      "status": "documented"
-    },
-    {
       "id": "engine.investmentDecisionSupport.calculateDividendYield",
       "kind": "engine",
       "label": "Investment: estimated dividend yield",
@@ -4127,7 +4045,7 @@
       "kind": "engine",
       "label": "PAYG withholding (ATO Schedule 1)",
       "file": "lib/tax-engine/core/paygCalculator.ts",
-      "line": 154,
+      "line": 153,
       "layer": "engine",
       "domain": "tax",
       "trailStage": null,
@@ -4652,7 +4570,7 @@
       "kind": "engine",
       "label": "Portfolio net-worth adapter",
       "file": "lib/intelligence/portfolioEngine.ts",
-      "line": 313,
+      "line": 315,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -4820,7 +4738,7 @@
       "kind": "engine",
       "label": "Money flow (income → spend → save)",
       "file": "lib/services/moneyFlowService.ts",
-      "line": 219,
+      "line": 222,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -5843,7 +5761,7 @@
       "kind": "orchestrator",
       "label": "User tax position (shared source)",
       "file": "lib/tax-engine/position/userTaxPosition.ts",
-      "line": 86,
+      "line": 91,
       "layer": "service",
       "domain": "tax",
       "trailStage": null,
@@ -6351,7 +6269,7 @@
       "kind": "engine",
       "label": "Emergency fund metrics (consumer of canonical liquid)",
       "file": "lib/services/masterFinancialService.ts",
-      "line": 1380,
+      "line": 1305,
       "layer": "service",
       "domain": "core",
       "trailStage": "A",
@@ -6577,7 +6495,7 @@
       "id": "orchestrator.cashflow.buildCFEInput",
       "label": "CFE input builder",
       "file": "lib/cashflow/buildCFEInput.ts",
-      "line": 37,
+      "line": 42,
       "domain": "core",
       "produces": "The canonical CFEInput: account balances (with linked-loan/offset context), the last 90 days of NON-transfer transactions, active recurring payments, income streams normalised to AFTER-tax monthly, loan schedules carrying offset balances, and config { forecastDays, granularity: 'DAILY', includeConfidenceBands: true }.",
       "formula": "Data assembly — no arithmetic of its own beyond frequency normalisation. One Promise.all over account / unifiedTransaction / recurringPayment / income / loan, then per-row mapping into AccountBalance, TransactionRecord, RecurringPaymentData, IncomeStream and LoanSchedule. Transfers are excluded at the query (`isTransfer: { not: true }`, §19.1 — internal moves are not cashflow). Each income stream is first `toMonthly(amount, frequency)` and then REPLACED by `normalizeIncomeStream(baseStream).netMonthlyAmount` (:106) so the forecast projects after-PAYG money that actually lands.",
@@ -6598,7 +6516,7 @@
       "id": "orchestrator.health.buildHealthInput",
       "label": "Financial-health input builder",
       "file": "lib/health/buildHealthInput.ts",
-      "line": 50,
+      "line": 46,
       "domain": "health",
       "produces": "The canonical FinancialHealthInput: portfolioSnapshot (netWorth, totalAssets, totalLiabilities + the property / loan / account / investment / income / expense arrays) and linkageHealth (orphans, missingLinks, consistencyScore). CAVEAT carried from the source header (:12-16, a separate open correctness question, deliberately preserved): investments are valued at `units × averagePrice` (cost basis) here, NOT the canonical market value the net-worth engine uses.",
       "formula": "Data assembly. One Promise.all over property / loan / account / income / expense / investmentHolding, then: totalAssets = Σ currentValue(property) + Σ currentBalance(account) + Σ (units × averagePrice); totalLiabilities = Σ principal(loan); netWorth = totalAssets − totalLiabilities. Per-property monthlyIncome/monthlyExpenses are `toMonthly` sums of that property’s linked rows. Loan monthlyRepayment = interest-only ? principal × rate / 12 : minRepayment || interest × 1.2. Income is monthly-normalised through the private getNetMonthlyIncome (:37) — AFTER-PAYG via calculateTakeHomePay for SALARY, gross otherwise (non-salary tax falls at year end). consistencyScore = totalEntities > 0 ? max(0, 100 − orphanCount × 10) : 100, where orphans are loans and RENT/RENTAL income with no propertyId.",
@@ -7766,26 +7684,6 @@
       "verifiedDate": "2026-06-23"
     },
     {
-      "from": "input.Income.declared",
-      "to": "engine.incomeAggregator.aggregateIncome",
-      "type": "feeds",
-      "source": "verified",
-      "fromUnit": "AUD/period",
-      "toUnit": "AUD/month",
-      "evidence": "incomeAggregator.ts:82 converter(item.amount, item.frequency)",
-      "verifiedDate": "2026-06-24"
-    },
-    {
-      "from": "engine.incomeAggregator.aggregateIncome",
-      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
-      "type": "feeds",
-      "source": "verified",
-      "fromUnit": null,
-      "toUnit": null,
-      "evidence": "masterFinancialService.ts:1005 aggregateIncome(income.map(mapIncome), targetFrequency)",
-      "verifiedDate": "2026-06-24"
-    },
-    {
       "from": "input.Investment.value",
       "to": "engine.assetValuation.holdingMarketValue",
       "type": "feeds",
@@ -8915,34 +8813,6 @@
       "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:714-721 — standard P&I amortisation"
     },
     {
-      "from": "input.Income.declared",
-      "to": "engine.incomeNormalizer.normalizeAllIncome",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/cashflow/incomeNormalizer.ts:183-184 — maps incomeStreams (declared income records) into gross/net/PAYG monthly totals"
-    },
-    {
-      "from": "input.Income.declared",
-      "to": "engine.incomeNormalizer.calculateTakeHomePay",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/cashflow/incomeNormalizer.ts:221,232 — grossAmount (gross salary/income) → annualGross via toAnnual"
-    },
-    {
-      "from": "engine.incomeNormalizer.calculateTakeHomePay",
-      "to": "law.itaa1997.incomeTax",
-      "type": "governed-by",
-      "source": "verified",
-      "evidence": "lib/cashflow/incomeNormalizer.ts:237 — TaxEngine.calculatePAYG on annualGross"
-    },
-    {
-      "from": "engine.incomeNormalizer.calculateTakeHomePay",
-      "to": "law.medicareLevyAct",
-      "type": "governed-by",
-      "source": "verified",
-      "evidence": "lib/cashflow/incomeNormalizer.ts:243 — TaxEngine.calculateMedicareLevy"
-    },
-    {
       "from": "input.Investment.value",
       "to": "engine.investmentDecisionSupport.calculateDividendYield",
       "type": "feeds",
@@ -9032,13 +8902,6 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/tax-engine/core/paygCalculator.ts:3-5,11 + :184 — ATO Schedule 1 NAT 1004 formula y = a·x − b"
-    },
-    {
-      "from": "engine.tax.payg.calculatePAYG",
-      "to": "engine.incomeNormalizer.calculateTakeHomePay",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/cashflow/incomeNormalizer.ts:237 calls TaxEngine.calculatePAYG (re-export of this fn — lib/tax-engine/index.ts:32,80)"
     },
     {
       "from": "input.Income.declared",
@@ -10276,14 +10139,6 @@
       "verifiedDate": "2026-07-29"
     },
     {
-      "from": "engine.incomeNormalizer.calculateTakeHomePay",
-      "to": "orchestrator.health.buildHealthInput",
-      "type": "feeds",
-      "source": "verified",
-      "evidence": "lib/health/buildHealthInput.ts:39 — getNetMonthlyIncome() calls calculateTakeHomePay() for SALARY streams, and :127 uses it for every income row",
-      "verifiedDate": "2026-07-29"
-    },
-    {
       "from": "orchestrator.health.buildHealthInput",
       "to": "engine.aggregateEngine.generateHealthScore",
       "type": "feeds",
@@ -10444,6 +10299,78 @@
       "toUnit": "AUD/year",
       "evidence": "assembly.ts assembleRepaymentIncome — taxableIncome + net rental/financial-investment loss derived from the canonical position breakdown; reportable super from Income.salarySacrifice",
       "verifiedDate": "2026-07-30"
+    },
+    {
+      "from": "engine.bankedIncome.buildBankedIncome",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "masterFinancialService.ts:1789 buildBankedIncomeFromData(...) — income breakdown, cashflow incomeTotals, per-row entity attribution all read the banked result (T1-B flip)"
+    },
+    {
+      "from": "engine.bankedIncome.buildBankedIncome",
+      "to": "engine.cashflowOrchestrator.calculateCashflow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/year",
+      "toUnit": "AUD/month",
+      "evidence": "cashflowOrchestrator.ts:193 input.incomeTotals — pre-computed via bankedTotalsFromResult(); the orchestrator no longer computes income (MON-137 culprit removed)"
+    },
+    {
+      "from": "engine.bankedIncome.buildBankedIncome",
+      "to": "orchestrator.health.buildHealthInput",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "buildHealthInput.ts:66 assembleBankedIncomeForUser → bankedMonthlyPerRow feeds incomeData.monthlyAmount + propertyData.monthlyIncome (private getNetMonthlyIncome DELETED)"
+    },
+    {
+      "from": "engine.bankedIncome.buildBankedIncome",
+      "to": "orchestrator.cashflow.buildCFEInput",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "buildCFEInput.ts:61 assembleBankedIncomeForUser → per-row banked monthly feeds IncomeStream.monthlyAmount (normalizeIncomeStream DELETED)"
+    },
+    {
+      "from": "engine.bankedIncome.buildBankedIncome",
+      "to": "engine.moneyFlow.getMoneyFlow",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "moneyFlowService.ts:235 assembleBankedIncomeForUser → per-row banked annual feeds incomeByEntity; the proportional stored-PAYG Tax allocation is DELETED (wedge is pre-bank)"
+    },
+    {
+      "from": "engine.bankedIncome.buildBankedIncome",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "portfolio/snapshot/route.ts:606 assembleBankedIncomeForUser → bankedTotalsFromResult totals + bankedPerRowAnnualView per-row incomeSnapshots (gross/net/PAYG helper trio DELETED)"
+    },
+    {
+      "from": "engine.bankedIncome.computeSalaryBanked",
+      "to": "service.tax.getUserTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/year",
+      "toUnit": "AUD/year",
+      "evidence": "userTaxPosition.ts:291 salaryWithholdingWedgeAnnual (Σ salary-row wedges) → derivedPaygWithheldAnnual override — the §1.1 two-pass withheld credit (taxPositionCalculator applies it post-loop; taxable income never reads it)"
+    },
+    {
+      "from": "service.tax.getUserTaxPosition",
+      "to": "number.taxPayable",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/tax/position reads getUserTaxPosition().taxPosition.tax — the dashboard tax surface renders the bundle, not a direct calculateTaxPosition call; since T1-B the bundle carries the §1.1 two-pass wedge ancestry (salaryWithholdingWedgeAnnual → derivedPaygWithheldAnnual), so both taxPayable-keyed numbers trace through the same producer set."
     }
   ]
 }

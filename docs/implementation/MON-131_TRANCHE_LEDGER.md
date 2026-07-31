@@ -134,6 +134,44 @@ gate would zero every AI-categorised expense.
 > Stage-1 censuses (7 producers · input-feed omissions · consumers · the rental
 > three-value settlement) recorded on MON-128/MON-137 in the registry.
 
+> **T1-A: DONE (2026-07-30).** PR #1542 merged → main `3028c08a` → prod verified.
+> **Ring-3 ACCEPTED — VR-043:** 0 money leaves moved on the live capture; the committed
+> hash-mode reference of record issued at `3028c08a` — **1,767 leaves**, tree hash
+> `6f2369a6f0f94279e171bf95db3af26fcee16ef07d0371c14480ac98b16c0224`.
+> **Start-gate §1.1 (leaf-count reconciliation) WITHDRAWN — VR-043 §6:** the route's
+> canonical count is non-array-descending (1,767); the Matrix's 10,254 was its own
+> client-side recursion over the same tree — two counting conventions, ONE tree, no
+> missing data. Recorded here so no future session re-litigates it.
+>
+> **T1-B: IN BUILD (this PR — the flip, `changesNumbers: YES extensively`).** Four
+> start-gate questions resolved BEFORE code (§1.1 tax-page PAYG IN SCOPE — the withheld
+> credit reads the banked wedge via a two-pass `getUserTaxPosition`, 11,129 → 43,004,
+> refund −26,657 → +5,218; §1.2 Home actuals tiles untouched, declared twins in the set,
+> basis-contradiction filed as MON-139 → T6; §1.3 the $121,881 named
+> `rentalTaxableGrossDeclared` + per-row attribution block on the relay; §1.4 calendar
+> leaves excluded from the hash via VOLATILE_LEAF_PATTERNS — the reference re-issues at
+> the post-T1-B capture since the hashed set changed). G3 expectedMoves REWRITTEN from
+> VR-043 §3 (computed on live prod through the relay, commit `d59419ea`) BEFORE the first
+> migration commit. MON-138 fixed (floor-based band selection, gap-free; whole composer
+> one-FY; legacy no-config pin dead). Core flip: orchestrator takes pre-computed
+> BankedIncomeTotals (MON-137 culprits DELETED, not wrapped) · master + health + moneyFlow
+> + CFE + portfolio-snapshot + intelligence + debt-analysis + exporter + income page all
+> read the ONE producer · legacy producers deleted citing contracts (incomeNormalizer.ts ·
+> netIncomeCalculator.ts · aggregateIncome + Decimal/BySource siblings · snapshot-route
+> helper trio · buildHealthInput private copy · the ×0.30 preview invention) · intake UI
+> shipped (actualNetPay FACT + helpLoanDeclared tri-state, never defaulted — the tranche's
+> highest-value item: ≈$22,576/yr HELP currently invisible above the $186,050 cliff).
+> **CENSUS LANDED (the T1-A hard commitment):** every reseeded count fell — payg 73→56
+> (pre-T1 64) · incomeRunRate 141→128 (135) · netIncome 46→34 (45) · grossIncome 47→38
+> (43) · medicareLevy 26→20 · taxableIncome 41→38 (=38 pre-T1). Two honest exceptions vs
+> pre-T1, attributed at site level: emergencyMonths 15 vs 14 (the T1-A compare relay
+> route — temporary tranche infrastructure, dies with the relay) and deductions 106 vs
+> 105 (`assembleRepaymentIncome` — the NEW D42 C3 canonical assembler, one producer of a
+> new quantity). Source-lock debt paid down 11 entries (orchestrator reduce-sums → 0).
+> moneyFlow design note (financial-adviser lens): with income entering the Sankey as
+> BANKED cash, the Tax outflow is 0 by construction — the wedge is taken before pay
+> banks; showing it again would double-count. The wedge lives on the §1.1 tax position.
+
 | Gate | State | Evidence / what's missing |
 |---|---|---|
 | G1 preconditions | ✅ | MON-134 done; MON-135 does not gate T1 — and is now itself DONE (VR-042 §1 PASS, evidence above) |

@@ -37,6 +37,11 @@ import type {
   TaxPositionCalculationInput,
 } from './taxPositionCalculator';
 import type { TaxPositionResult } from '../types';
+// MON-131 T1-B §1.1 — the two pass wedge credit (all pure imports):
+import { assembleRepaymentIncome } from './repaymentIncome';
+import { salaryWithholdingWedgeAnnual } from '@/lib/income/banked/salaryBanked';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { getTaxYearConfig } from '../config/taxYearConfig';
 
 export interface UserTaxPositionBundle {
   /** The canonical tax position — the single source every tax surface reads. */
@@ -259,7 +264,7 @@ export async function getUserTaxPosition(
     familyCovered,
   };
 
-  const engineInputs: TaxPositionCalculationInput = {
+  const baseEngineInputs: TaxPositionCalculationInput = {
     incomes: incomeItems,
     expenses: expenseItems,
     depreciations: depreciationItems,
@@ -267,6 +272,30 @@ export async function getUserTaxPosition(
     superContributions: superTotals,
     financialYear: fyYear,
     medicareContext,
+  };
+
+  // MON-131 T1B §1.1, two pass derivation of the wedge credit.
+  // Pass 1 yields the position from stored rows only; taxable income,
+  // deductions and Medicare never read the credit, so there is no cycle.
+  // From it: repayment income (D42 C3, an estimate; componentBasis records
+  // the unmodelled DEFAULT_ZERO legs) feeds the ONE salary banked engine,
+  // which derives each salary row's annual wedge (FACT bases win over the
+  // schedule; an UNDETERMINED study loan component contributes 0, flagged,
+  // never asserted). Pass 2 recomputes the SAME position with that wedge as
+  // the credit (the §1.1 ruling: 11,129 grows to 43,004 credit and the
+  // refund moves from −26,657 to 5,218 on VR‑043 data). Per member
+  // positions below stay on stored rows this tranche (their movement is
+  // NOT declared in expectedMoves; T6 scope).
+  const pass1Position = calculateTaxPosition(baseEngineInputs);
+  const repayment = assembleRepaymentIncome(pass1Position, incomes as any[]);
+  const derivedWedgeAnnual = salaryWithholdingWedgeAnnual(
+    incomes as unknown as BankedIncomeRow[],
+    { config: getTaxYearConfig(fyYear), repaymentIncome: repayment.repaymentIncome },
+  );
+
+  const engineInputs: TaxPositionCalculationInput = {
+    ...baseEngineInputs,
+    derivedPaygWithheldAnnual: derivedWedgeAnnual,
   };
   const taxPosition = calculateTaxPosition(engineInputs);
 

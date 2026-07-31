@@ -23,7 +23,12 @@ import {
   calculateTaxPosition,
   calculateTaxPositionDecimal,
 } from '../../lib/tax-engine/position/taxPositionCalculator';
-import { getNetMonthlyIncome, getNetAnnualIncome } from '../../lib/income/netIncomeCalculator';
+// MON-131 T1-B: the netIncomeCalculator producer is deleted — the run-rate
+// one-off gate is now proven on the ONE banked engine (income-net-run-rate
+// contract; the banked engine gates one-offs out of every run-rate).
+import { buildBankedIncome, bankedTotalsFromResult } from '../../lib/income/banked/aggregator';
+import type { BankedIncomeRow } from '../../lib/income/banked/types';
+import { TAX_YEAR_2026_27 } from '../../lib/tax-engine/config/taxYearConfig';
 
 const NO_SUPER = { concessional: 0, nonConcessional: 0 };
 const FY = '2025-26';
@@ -93,13 +98,28 @@ describe('MON-053 · Ring-0: a one-off income counts ONCE, never ×frequency', (
   });
 });
 
-describe('MON-053 · run-rate: the canonical income calculator excludes one-offs', () => {
-  it('a one-off contributes 0/mo and 0/yr to the run-rate', () => {
-    expect(getNetMonthlyIncome({ ...atoOneOff })).toBe(0);
-    expect(getNetAnnualIncome({ ...atoOneOff })).toBe(0);
+describe('MON-053 · run-rate: the banked engine excludes one-offs (T1-B producer)', () => {
+  const bankedTotals = (rows: BankedIncomeRow[]) =>
+    bankedTotalsFromResult(
+      buildBankedIncome({
+        income: rows,
+        properties: [],
+        derivedAgentExpenses: [],
+        transactions: [],
+        ctx: { config: TAX_YEAR_2026_27, repaymentIncome: null },
+      }),
+    );
+
+  it('a one-off contributes 0/mo to the banked run-rate (counted once, never ×frequency)', () => {
+    const totals = bankedTotals([atoOneOff as BankedIncomeRow]);
+    expect(totals.monthlyBanked).toBe(0);
+    expect(totals.monthlyGross).toBe(0);
   });
   it('a recurring row is unchanged', () => {
-    expect(getNetMonthlyIncome({ amount: 2000, frequency: 'MONTHLY', type: 'OTHER' })).toBe(2000);
+    const totals = bankedTotals([
+      { amount: 2000, frequency: 'MONTHLY', type: 'OTHER', isTaxable: true },
+    ]);
+    expect(totals.monthlyBanked).toBe(2000);
   });
 });
 

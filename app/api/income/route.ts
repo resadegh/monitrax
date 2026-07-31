@@ -218,6 +218,12 @@ export const POST = withPermission('income.write', async (request, auth) => {
         superGuaranteeRate,
         superGuaranteeAmount,
         salarySacrifice,
+        // MON-131 T1 FACT fields (D33): actualNetPay is per the ROW'S OWN
+        // frequency period (NOT already-annual); helpLoanDeclared is a
+        // tri-state — null = UNDETERMINED (absence of the flag is NOT
+        // evidence of absence of a loan; never defaulted).
+        actualNetPay,
+        helpLoanDeclared,
         // Phase 20: Investment-specific fields
         frankingPercentage,
         frankingCredits,
@@ -422,6 +428,11 @@ export const POST = withPermission('income.write', async (request, auth) => {
           superGuaranteeRate: toNumber(superGuaranteeRate),
           superGuaranteeAmount: toNumber(superGuaranteeAmount),
           salarySacrifice: toNumber(salarySacrifice),
+          // MON-131 T1 FACT fields (SALARY only; helpLoanDeclared stays a
+          // tri-state — only an explicit boolean is persisted, else null).
+          actualNetPay: type === 'SALARY' ? toNumber(actualNetPay) : null,
+          helpLoanDeclared:
+            type === 'SALARY' && typeof helpLoanDeclared === 'boolean' ? helpLoanDeclared : null,
           // Phase 20: Investment-specific fields
           frankingPercentage: toNumber(frankingPercentage),
           frankingCredits: toNumber(frankingCredits),

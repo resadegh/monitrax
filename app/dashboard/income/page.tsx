@@ -51,7 +51,10 @@ import { sumUnmatchedDeclaredAnnualIncome } from '@/lib/income/unmatchedDeclared
 import { activityFrequencyLabel } from '@/lib/properties/activityFrequencyLabel';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
-import { getNetAnnualIncome, getNetMonthlyIncome } from '@/lib/income/netIncomeCalculator';
+import { computeSalaryBanked } from '@/lib/income/banked/salaryBanked';
+import type { BankedIncomeRow } from '@/lib/income/banked/types';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { monthlyRunRate } from '@/lib/utils/frequencies';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import {
@@ -113,6 +116,10 @@ interface Income {
   superGuaranteeRate?: number | null;
   superGuaranteeAmount?: number | null;
   salarySacrifice?: number | null;
+  // MON-131 T1 FACT fields (D33): actualNetPay is per the row's OWN pay
+  // period; helpLoanDeclared is tri-state (null = undetermined, never assumed)
+  actualNetPay?: number | null;
+  helpLoanDeclared?: boolean | null;
   // Phase 20 Investment fields
   frankingPercentage?: number | null;
   frankingCredits?: number | null;
@@ -173,6 +180,9 @@ type IncomeFormData = {
   salaryType: 'GROSS' | 'NET' | null;
   payFrequency: string | null;
   salarySacrifice: number | null;
+  // MON-131 T1 FACT fields
+  actualNetPay: number | null;
+  helpLoanDeclared: boolean | null;
   frankingPercentage: number | null;
   // MON-076 Part A: "who earns this?" — the household member's entity.
   ownerEntityId: string | null;
@@ -218,6 +228,8 @@ function IncomePageContent() {
     salaryType: 'GROSS',
     payFrequency: null,
     salarySacrifice: null,
+    actualNetPay: null, // MON-131 T1 FACT
+    helpLoanDeclared: null, // MON-131 T1 — undetermined until answered
     frankingPercentage: null,
     ownerEntityId: null, // MON-076: null → server defaults to the primary
   });
@@ -351,16 +363,10 @@ function IncomePageContent() {
         });
       }
     } catch (error) {
-      // If calculation fails, show basic estimates
-      const annualAmount = convertToAnnual(formData.amount, formData.frequency);
-      const estimatedTax = annualAmount * 0.30; // Rough 30% estimate
-      const sg = annualAmount * 0.115; // 11.5% SG
-      setSalaryPreview({
-        grossAmount: formData.salaryType === 'GROSS' ? annualAmount : annualAmount / 0.7,
-        netAmount: formData.salaryType === 'NET' ? annualAmount : annualAmount * 0.7,
-        paygWithholding: estimatedTax,
-        superGuarantee: sg,
-      });
+      // MON-131 T1-B: the old fallback here INVENTED numbers (flat 30% tax,
+      // ÷0.7 gross-up) — a fabricated preview is worse than none (§19,
+      // CLAUDE.md 0.2: never invent a number). Preview simply unavailable.
+      setSalaryPreview(null);
     }
   };
 
@@ -557,6 +563,10 @@ function IncomePageContent() {
       submitData.salaryType = formData.salaryType;
       submitData.payFrequency = formData.payFrequency || formData.frequency;
       submitData.salarySacrifice = formData.salarySacrifice;
+      // MON-131 T1 FACT fields — actualNetPay per the row's own pay period;
+      // helpLoanDeclared stays null (undetermined) unless explicitly answered.
+      submitData.actualNetPay = formData.actualNetPay;
+      submitData.helpLoanDeclared = formData.helpLoanDeclared;
       // Calculated values will be computed on the backend
       if (salaryPreview) {
         submitData.grossAmount = salaryPreview.grossAmount;
@@ -677,6 +687,8 @@ function IncomePageContent() {
       salaryType: 'GROSS',
       payFrequency: null,
       salarySacrifice: null,
+      actualNetPay: null, // MON-131 T1
+      helpLoanDeclared: null, // MON-131 T1
       frankingPercentage: null,
       ownerEntityId: null, // MON-076
     });
@@ -702,6 +714,8 @@ function IncomePageContent() {
       salaryType: item.salaryType || 'GROSS',
       payFrequency: item.payFrequency || null,
       salarySacrifice: item.salarySacrifice || null,
+      actualNetPay: item.actualNetPay ?? null, // MON-131 T1
+      helpLoanDeclared: item.helpLoanDeclared ?? null, // MON-131 T1 tri-state
       frankingPercentage: item.frankingPercentage || null,
       ownerEntityId: (item as { ownerEntityId?: string | null }).ownerEntityId ?? null, // MON-076
     });
@@ -731,10 +745,26 @@ function IncomePageContent() {
   const convertToAnnual = (amount: number, frequency: string) =>
     toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'HALF_YEARLY');
 
-  // Get effective (after-tax) amounts using shared calculator
-  // This ensures income page and dashboard always show identical values
-  const getEffectiveAnnualAmount = (item: Income): number => getNetAnnualIncome(item);
-  const getEffectiveMonthlyAmount = (item: Income): number => getNetMonthlyIncome(item);
+  // MON-131 T1-B: effective (BANKED, D17) amounts from the ONE salary-banked
+  // engine — the netIncomeCalculator duplicate producer is deleted. Client
+  // context has no per-user repayment income → study-loan leg undetermined
+  // (flagged by the engine, never asserted). Non-salary rows show their
+  // one-off-gated declared run-rate (rental actuals-pooling is a server
+  // concern — the dashboard reads it from the master snapshot).
+  const getEffectiveMonthlyAmount = (item: Income): number => {
+    if (item.type === 'SALARY') {
+      return computeSalaryBanked(
+        item as unknown as BankedIncomeRow,
+        { config: getCurrentTaxYearConfig(), repaymentIncome: null },
+      ).bankedAnnual / 12;
+    }
+    return monthlyRunRate({
+      amount: item.amount,
+      frequency: item.frequency,
+      isRecurring: (item as { isRecurring?: boolean | null }).isRecurring,
+    });
+  };
+  const getEffectiveAnnualAmount = (item: Income): number => getEffectiveMonthlyAmount(item) * 12;
 
   // Calculate totals - use after-tax amounts for salaries
   const totalNetMonthly = filteredIncome.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
@@ -1958,6 +1988,56 @@ function IncomePageContent() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Pre-tax contributions to superannuation beyond employer SG
+                    </p>
+                  </div>
+
+                  {/* MON-131 T1 — FACT fields (D33/D17). A payslip fact always
+                      wins over any estimate; the study-loan answer is a
+                      tri-state and is never assumed either way. */}
+                  <div className="space-y-2">
+                    <Label htmlFor="actualNetPay">
+                      Actual pay received (optional)
+                    </Label>
+                    <Input
+                      id="actualNetPay"
+                      type="number"
+                      value={formData.actualNetPay ?? ''}
+                      onChange={(e) => setFormData({ ...formData, actualNetPay: e.target.value ? Number(e.target.value) : null })}
+                      placeholder="What lands in your account each pay"
+                      min="0"
+                      step="any"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      From your payslip or bank credit — the exact amount that reaches your
+                      account each {formData.frequency === 'ANNUAL' ? 'year' : formData.frequency.toLowerCase()} pay.
+                      When entered, this fact is used ahead of any estimate.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="helpLoanDeclared">Study loan (HELP/HECS/STSL)</Label>
+                    <Select
+                      value={formData.helpLoanDeclared === null ? 'UNKNOWN' : formData.helpLoanDeclared ? 'YES' : 'NO'}
+                      onValueChange={(v) =>
+                        setFormData({
+                          ...formData,
+                          helpLoanDeclared: v === 'UNKNOWN' ? null : v === 'YES',
+                        })
+                      }
+                    >
+                      <SelectTrigger id="helpLoanDeclared">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UNKNOWN">Not sure yet</SelectItem>
+                        <SelectItem value="YES">Yes — repayments come out of this pay</SelectItem>
+                        <SelectItem value="NO">No study loan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Study-loan repayments are withheld from pay above the repayment
+                      threshold. &ldquo;Not sure yet&rdquo; leaves this undetermined — nothing is
+                      assumed either way.
                     </p>
                   </div>
 

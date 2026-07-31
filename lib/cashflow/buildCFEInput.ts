@@ -18,9 +18,14 @@
  */
 
 import prisma from '@/lib/db';
-import { toMonthly } from '@/lib/utils/frequencies';
-import { Frequency } from '@/lib/types/prisma-enums';
-import { normalizeIncomeStream } from './incomeNormalizer';
+// MON-131 T1-B: per-stream after-tax income reads the ONE banked-income
+// producer's per-row attribution (D17) — `normalizeIncomeStream` (an
+// estimated-tax re-derivation, the salary-take-home duplicate class) is
+// deleted with `lib/cashflow/incomeNormalizer.ts`.
+import {
+  assembleBankedIncomeForUser,
+  bankedMonthlyPerRow,
+} from '@/lib/income/banked/assembly';
 import type {
   CFEInput,
   AccountBalance,
@@ -38,7 +43,7 @@ export async function buildCFEInput(
   userId: string,
   forecastDays: number = 90,
 ): Promise<CFEInput> {
-  const [accounts, transactions, recurringPayments, income, loans] =
+  const [accounts, transactions, recurringPayments, assembledBanked, loans] =
     await Promise.all([
       prisma.account.findMany({
         where: { userId },
@@ -53,9 +58,12 @@ export async function buildCFEInput(
         orderBy: { date: 'desc' },
       }),
       prisma.recurringPayment.findMany({ where: { userId, isActive: true } }),
-      prisma.income.findMany({ where: { userId } }),
+      assembleBankedIncomeForUser(userId),
       prisma.loan.findMany({ where: { userId }, include: { offsetAccount: true } }),
     ]);
+
+  const income = assembledBanked.raw.income;
+  const perRowBankedMonthly = bankedMonthlyPerRow(assembledBanked.banked, income);
 
   const accountBalances: AccountBalance[] = accounts.map((a: any) => ({
     accountId: a.id,
@@ -89,23 +97,20 @@ export async function buildCFEInput(
     isActive: rp.isActive,
   }));
 
-  // Tax-adjusted (AFTER-tax) income streams — the correct basis for a cash forecast.
-  const incomeStreams: IncomeStream[] = income.map((i: any) => {
-    const baseStream: IncomeStream = {
-      id: i.id,
-      name: i.name,
-      type: i.type,
-      monthlyAmount: toMonthly(Number(i.amount), i.frequency as Frequency),
-      frequency: i.frequency,
-      volatility: 0.1,
-      salaryType: i.salaryType || null,
-      grossAmount: i.grossAmount != null ? Number(i.grossAmount) : null,
-      netAmount: i.netAmount != null ? Number(i.netAmount) : null,
-      paygWithholding: i.paygWithholding != null ? Number(i.paygWithholding) : null,
-    };
-    const normalized = normalizeIncomeStream(baseStream);
-    return { ...baseStream, monthlyAmount: normalized.netMonthlyAmount };
-  });
+  // BANKED income streams (D17) — the correct basis for a cash forecast:
+  // the money that actually lands, from the ONE producer's per-row values.
+  const incomeStreams: IncomeStream[] = income.map((i: any) => ({
+    id: i.id,
+    name: i.name,
+    type: i.type,
+    monthlyAmount: perRowBankedMonthly.get(i.id) ?? 0,
+    frequency: i.frequency,
+    volatility: 0.1,
+    salaryType: i.salaryType || null,
+    grossAmount: i.grossAmount != null ? Number(i.grossAmount) : null,
+    netAmount: i.netAmount != null ? Number(i.netAmount) : null,
+    paygWithholding: i.paygWithholding != null ? Number(i.paygWithholding) : null,
+  }));
 
   const loanSchedules: LoanSchedule[] = loans.map((l: any) => ({
     loanId: l.id,
