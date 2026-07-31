@@ -4,11 +4,30 @@
 **changesNumbers: YES.** Reza reviews a before/after table and clicks the merge.
 
 **Read first, in order:**
-1. `docs/verification/runs/VR-045.md` — T1 closed. §7 records an open income divergence; it is not T2's.
-2. `docs/implementation/MON-131_TRANCHE_LEDGER.md` §2 (gates) and §3 (T2 row) and §4 (drift log, **D3**).
-3. `docs/issues/handoffs/CODE_BRIEF_MON-131_TRANCHE_1C_repair.md` §9 — how T1 failed and what caught it. **The same failure mode is available here.**
+1. **`CLAUDE.md` — in full, before anything else.** See §-1. This is not a formality.
+2. `docs/verification/runs/VR-045.md` — T1 closed. §7 records an open income divergence; it is not T2's.
+3. `docs/implementation/MON-131_TRANCHE_LEDGER.md` §2 (gates) and §3 (T2 row) and §4 (drift log, **D3**).
+4. `docs/issues/handoffs/CODE_BRIEF_MON-131_TRANCHE_1C_repair.md` §9 — how T1 failed and what caught it. **The same failure mode is available here.**
 
 ---
+
+## §-1 CLAUDE.md and the documentation duty — non-negotiable
+
+**Read `CLAUDE.md` in full before writing any code, and follow it.** It is the repository's operating contract: the documentation obligations, the changelog and `0·REF` workstream requirements, the Neo-sync protocol (§21.2.2), the promotion and gate rules (§20.6, §23.2.3, §24.2), and the registry discipline in `FIX_PROTOCOL.md`. Everything in this brief sits *inside* those rules, not beside them.
+
+**Across T1, documentation fell behind the code.** Reza has raised it directly: work was built and merged without the corresponding record being written. That is a CLAUDE.md violation on its own terms, and it is also a programme risk — this whole tranche plan exists because Monitrax accumulated numbers nobody could trace back to a decision. **Undocumented fixes are how that happens.**
+
+So, explicitly, for T2:
+
+1. **Every change is documented as it is made**, not reconstructed afterwards. What changed, which file, which decision or contract entry authorises it, and what number it moves.
+2. **Every deleted producer cites its contract entry.** "Deleted as dead" and "collapsed" are different claims and are published separately (D46).
+3. **The ledger is updated in the same PR as the code** — `MON-131_TRANCHE_LEDGER.md` §3's T2 row, with evidence in every cell. §1's rule stands: *no cell is filled without evidence, and an empty cell is information.*
+4. **Changelog + `0·REF` workstream entry**, per CLAUDE.md.
+5. **Neo-sync (§21.2.2)** — Neomatrix re-pin, NeoAudit ratchets, census re-run with was-and-now published. See §8.
+6. **The registry moves on evidence**, per `FIX_PROTOCOL.md`: MON-130 stays `FIXING` until a Ring-3 run records, and it never reaches `VERIFIED` on a passing unit test or a formula argument.
+7. **The PR body carries the before/after table** in Reza's language, plus the consumer enumeration from §3.1 and the §2.1 explanation. **The PR body is a deliverable, not a summary.**
+
+**A tranche that lands correct numbers with no record of how is not done.** If the documentation is not in the PR, the tranche is not finished — and I will say so in the Ring-3 run regardless of whether the numbers pass.
 
 ## §0 T2 is structurally the fix that just worked
 
@@ -133,6 +152,7 @@ The Matrix re-runs on Reza's account, identity asserted from a known figure firs
 5. **Identities hold on real data:** per-loan `interest + principal ≡ actual repayment` · the five per-loan costs sum to the aggregate · `committed − loans ≡ recurring expenses`.
 6. **§2.1 is resolved** — the 0.9370 factor is either explained as correct or fixed, with the arithmetic shown.
 7. **The D21/D26 asymmetry is pinned by a test**, both halves.
+8. **§-1 is satisfied** — ledger row filled with evidence, changelog and `0·REF` entered, Neo-sync complete, every deleted producer citing its contract entry, and the PR body carrying the before/after table and the consumer enumeration. **The Ring-3 run reports on this alongside the numbers.** Correct numbers with no record of how they were reached is a tranche that is not finished.
 
 **Any of 1, 2 or 3 failing → revert. Do not patch forward.** That contract has been exercised once and it held.
 
