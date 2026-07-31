@@ -185,6 +185,7 @@ export async function GET(request: NextRequest) {
   // The income leg is FROZEN at its T1 value — T2 moves the loan leg only.
   const monthlyIncome = qm.monthlyIncome;
   const newMonthlyCashflow = cf.monthlyCashflow - delta; // @financial-math-allowed: admin compare relay — replicates the T2 substitution to COMPUTE the declared after-value; not a user-facing producer (HR-3)
+  const newAnnualCashflow = cf.annualIncome - cf.annualExpenses - newMonthlyLoanCost * 12; // @financial-math-allowed: admin compare relay — the ANNUAL pair was MISSING from the first capture (the Matrix caught a $47,551.71 undeclared move that would have stopped the tranche at G7). Derived from annual components per VR-045 §2.1; not a user-facing producer (HR-3)
   const newSavingsRate = monthlyIncome > 0 ? (newMonthlyCashflow / monthlyIncome) * 100 : 0;
   const newDebtServiceRatio = monthlyIncome > 0 ? (newMonthlyLoanCost / monthlyIncome) * 100 : 0;
 
@@ -206,6 +207,19 @@ export async function GET(request: NextRequest) {
       before: r2(cf.monthlyCashflow),
       after: r2(newMonthlyCashflow),
       arithmetic: `income ${r2(monthlyIncome)} (T1, frozen) − expenses ${r2(cf.monthlyExpenses)} − loans ${r2(newMonthlyLoanCost)}`,
+    },
+    {
+      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualCashflow',
+      before: r2(cf.annualCashflow),
+      after: r2(newAnnualCashflow),
+      // @financial-math-allowed: the ×12 is inside the ARITHMETIC DESCRIPTION string. Income and expenses come from the snapshot's own ANNUAL fields; only the loan leg annualises, and it does so from the per-loan monthly COMPONENTS (each loan's annual = its own monthly × 12, summed) — not from a rounded monthly TOTAL, which is the VR-045 §2.1 defect. Admin relay, HR-3.
+      arithmetic: `annual components: income ${r2(cf.annualIncome)} − expenses ${r2(cf.annualExpenses)} − loans ${r2(newMonthlyLoanCost * 12)} — loan leg from per-loan monthly components; income/expenses from the snapshot's annual fields (VR-045 §2.1)`,
+    },
+    {
+      path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualSurplus',
+      before: r2(cf.annualSurplus),
+      after: r2(newAnnualCashflow),
+      arithmetic: 'mirrors cashflow.annualCashflow',
     },
     {
       path: 'lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.savingsRate', // @financial-math-allowed: this is a PATH STRING naming the declared quantity in the before/after contract, not a read of it (HR-3 admin relay)
@@ -277,6 +291,8 @@ export async function GET(request: NextRequest) {
       'SCAFFOLD-ONLY: reads both paths; changes no producer, consumer or rendered number.',
       '/dashboard/expenses per-loan rows are ALREADY canonical — T2 moves masterFinancialService ONTO them. If those rows move, that is a defect (T2 brief §5).',
       'effectiveRate is MON-142 evidence, surfaced only — no consumer applies it.',
+      'DEFERRAL (D18/X3, stated not omitted): savingsRate here is a straight substitution — the WHOLE loan payment is treated as spending. X3 separates PRINCIPAL out of spending and into saving, which changes the numerator SHAPE, not just its size. If X3 lands in T2 this figure moves again; if it does not, this deferral is the record of why. The split needs per-loan interest/principal, which MON-143 (offset netting) gates.',
+      'monthlyInterestFloor does NOT net the offset — MON-143, raised from this relay. The canonical producer is the only one of four that breaches D21 (Guildford floors at 1,964.67 vs 384.45, 5.1x). Latent today (Guildford resolves via ACTUALS) but it MUST be fixed before the migration, or every consumer inherits it.',
     ],
   });
 }
