@@ -55,11 +55,25 @@ Then, separately, a short human note answering only these:
 
 ---
 
-## §4b Status — this is now a RE-capture
+## §4b Status — this is the THIRD capture, and the first on the derivation sweep
 
-The first capture ran 2026-07-31 at `2627dcdf` and **succeeded**. It is being re-run because **the relay was incomplete**, not because the capture failed: `cashflow.annualCashflow` / `.annualSurplus` move by **$47,551.71** and were missing from the declared paths — an undeclared move that gate G7 stops the tranche on. The repaired relay ships in PR **#1559**; capture against a build that includes it.
+**Build precondition — check this before calling.** The capture MUST run against a production build
+containing commit **`915704f0`** (prod deploy `dpl_CKLMntXX4u8Fyefjoa8rdGhq7Nz8`, `READY` 2026-07-31
+21:44:41 UTC) **or later**. That build carries two things the earlier captures did not: the **derivation
+sweep** (#1561, `8bed66b6`) and the **MON-143 offset fix** in the canonical interest floor (#1562,
+`f7b685de`). A capture against an older build is void — it re-measures an instrument that has since been
+replaced.
 
-Two findings from the first run are already recorded and need no re-verification: **MON-143** (the canonical interest floor does not net the offset — D21) and the confirmation of §2.1's stale-rate diagnosis.
+**Why a third.** Capture 1 (`2627dcdf`) succeeded but the relay was incomplete — `cashflow.annualCashflow`
+/ `.annualSurplus` moved by **$47,551.71** and were undeclared. Capture 2 (`7be30bef`) confirmed that pair
+landed and then found **two more** undeclared movers, and reading the assembly surfaced a **fifth**. Three
+rounds, five misses: **the hand-written list was the defect, not any entry in it.** The list is gone. The
+relay now re-runs `calculateCashflow` and `calculateDebtMetrics` — the real engines, on master's real
+inputs — with the canonical per-loan cost substituted, and diffs every numeric leaf. The declaration is
+complete by construction. This capture is the sweep's first run.
+
+Findings already recorded, needing no re-verification: **MON-143** (the canonical interest floor did not
+net the offset — D21; **fixed** in #1562) and the confirmation of §2.1's stale-rate diagnosis (**MON-142**).
 
 ## §5 What I expect to see — stated in advance so a mismatch is informative
 
@@ -75,6 +89,22 @@ These are **falsifiable predictions**, not instructions. If the payload disagree
 | per-loan `newBasis` | mostly **`ACTUALS`**; `INTEREST_FLOOR` on the HECS row | HECS has no linked repayments, so it floors to interest |
 
 **If `moneyFlowSkip.skippedLoans` comes back empty**, my reading of line 382 was wrong and several statements I have made about entity money-flow need retracting. That is a genuinely useful outcome — report it plainly.
+
+### §5b What the sweep must produce — the point of this round
+
+| Field | Expected | Why |
+|---|---|---|
+| `cashflow.annualCashflow` / `.annualSurplus` | **180,572.50 → 133,020.79** | the $47,551.71 move (`304,158.61 − 17,786.31 − 153,351.51`) |
+| `paths[]` contents | the five the list kept missing, **without anyone naming them**: `cashflow.annualCashflow`, `cashflow.annualSurplus`, `cashflow.monthlySurplus`, `debt.metrics.monthlyRepayments`, `quickMetrics.monthlyLoanRepayments` | they are derived, not declared — the sweep finds them or it does not work |
+
+- **A SIXTH path nobody predicted is the sweep working, not a regression.** Report it plainly; do not
+  read it as breakage and do not leave it out.
+- **If `paths[]` is missing any of the five, the sweep is broken** — and that is the single most
+  important thing in the payload.
+
+**One MON-143 check.** The canonical interest floor now nets the linked offset (#1562). On live data
+Guildford resolves via ACTUALS and never reaches the floor, so **no per-loan `newMonthlyCost` should
+differ from capture 2**. If one does, say so — it is a real finding, not noise.
 
 ---
 
@@ -109,4 +139,14 @@ that wrong too — 13 accounts exist, so the bare call 400s.** §2 now carries t
 Matrix and provenance-checked to VR-042. Recorded as two successive errors rather than one clean fix,
 because the lesson is that I twice guessed at an environment fact instead of measuring it. (2) I had listed §5's figures as things to confirm, which invites confirmation bias in exactly the way VR-045 §2b nearly went wrong when a pre-declared expected answer almost buried a real result; they are now stated as falsifiable predictions with "do not adjust anything to fit these." (3) I had no identity check, because a relay feels safe — but VR-044's first attempt was voided by precisely this, so `loanCount === 5` is now a hard precondition.
 
+Amended 2026-07-31 for the third capture (#1564): §4b now carries the build precondition and states why a
+third run exists; §5b states what the sweep must produce. Both were live only in a chat handout until this
+amendment — §21.2.2 rule 4 forbids a session artefact existing outside the repo, and a Matrix opening this
+file instead of that paste would have run capture 2's instructions.
+
 **Coverage, stated precisely:** this handout produces the measured inputs for T2's contract. It verifies nothing, and it is not a Ring-3 run — no rendered surface is read and no correctness claim follows from it.
+
+**The sweep's own boundary:** it is complete for `cashflow.*`, `debt.metrics.*` and the `quickMetrics`
+mirrors. It does **not** sweep `byEntity`, health, or anything outside those blocks — gate G7 remains the
+backstop there. `quickMetrics` leaves are matched **by value**, not by assignment, so if two of them hold
+the same number a move could be attributed to the wrong leaf; flag it if you see it.

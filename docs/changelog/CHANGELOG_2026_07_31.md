@@ -323,3 +323,52 @@ on live data no loan both floors *and* carries an offset today. No Ring-3 run ap
 - [x] `npx tsc --noEmit` — clean
 - [x] `lint:financial-surfaces` · `lint:source-lock` · `census:producers:check` · `neomatrix:check` · `issues:check` · `mon131:check` — all PASS
 - [x] vitest — 148 passed across the neomatrix + registry + MON-143 suites
+
+---
+
+## Session: g8kra5 (cont.) — #1563 merged + verified; the record catches up with it
+
+### #1563 — the ledger backfill
+
+Merged `915704f0`. Production deploy `dpl_CKLMntXX4u8Fyefjoa8rdGhq7Nz8` went `BUILDING` 21:40:17 →
+**`READY` 21:44:41** UTC (§17.2 — deploy STATE checked; no runtime logs pulled, because the change was
+documentation and there is no behaviour to watch). Subscription dropped on merge.
+
+Content: #1562's SHA into ledger §6, and the T2 section's *"MON-143 gates the migration"* note flipped to
+RESOLVED with the original diagnosis kept beneath it. **MON-143 deliberately stays `FIXING`** — no
+rendered number moves on live data, so no Ring-3 run applies; its verification is the T2 migration run
+(§23.2.3: CI green is not verification).
+
+### What this PR fixes — four record gaps, found by auditing rather than assuming
+
+Reza asked whether everything had been documented as instructed. Checking rather than asserting found four:
+
+| Gap | Why it happened |
+|---|---|
+| Ledger §6 had no row for #1563 | structural — a backfill PR cannot record its own merge SHA |
+| No changelog session entry for #1563 | the day's log ended at the MON-143 session |
+| The hub's `Last updated` summary was semantically stale | it still read *"BLOCKED before the migration on: a RE-CAPTURE … and MON-143"* — both done. `check-plan-freshness` compares **dates**, so it passed and never read the content |
+| The third-capture handout existed only in chat | **§21.2.2 rule 4** — no session artefact may live outside the repo. The in-repo brief's §4b still described capture 2, so a Matrix opening the file instead of the paste would have run stale instructions |
+
+The fourth is the one with operational teeth; the other three are bookkeeping.
+
+### Files Modified
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — §6 rows for #1563 (`915704f0`) and this PR
+- `docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md` — §4b rewritten for the THIRD capture (build
+  precondition `915704f0`+, why a third exists); new §5b (what the sweep must produce, the five
+  previously-missed paths, "a sixth is the sweep working", the MON-143 no-change check); §8 records the
+  amendment and the sweep's coverage boundary
+- `docs/changelog/CHANGELOG_2026_07_31.md` — this entry
+- `docs/IMPLEMENTATION_PLAN.md` — hub summary corrected to the real T2 state
+
+### Where T2 stands
+MON-143 ✅ resolved · relay + sweep ✅ shipped · **G3 (the third capture) is the last gate** · D49 open
+and awaiting Reza (recommendation: resolve `check-binding-coverage`'s symbol anchor against source).
+
+### Build Status
+- [x] `mon131:check` · `check-plan-freshness` — PASS
+- [x] No code changed; no build or test surface affected
+
+### Coverage — stated precisely
+Verifies that the repo record matches the merged state and that the in-repo capture brief matches the
+capture about to be run. Verifies **nothing** about behaviour — this PR contains no code.
