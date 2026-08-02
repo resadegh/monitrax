@@ -4042,7 +4042,7 @@
       "title": "No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property",
       "status": "OPEN",
       "severity": "medium",
-      "changesNumbers": true,
+      "changesNumbers": false,
       "opened": "2026-08-02",
       "area": "properties",
       "plain": {
@@ -4054,7 +4054,7 @@
       "fixPRs": [],
       "test": null,
       "tracker": "neoaudit-run:MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03. | 2026-08-03: changesNumbers corrected true -> FALSE. The raise CLI received the STRING \"false\" and its parser only honours a real boolean, so the flag defaulted to true. No number moves for this issue — nothing is computed from a field that does not exist; the defect is that the answer has nowhere to live. Also recorded for scope: raised as part of MON-131 T5 gate work (the §5.2 facts audit), NOT a new workstream. Stays OPEN and untouched until the MON-131 tranches are done — filed so the finding is not lost, not queued for build."
     }
   ]
 }

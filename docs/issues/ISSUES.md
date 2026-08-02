@@ -137,7 +137,7 @@
 | MON-141 | 🔵 OPEN | 🟡 | no | /dashboard/income header and Home 'This month's budget' show two different monthly incomes ($22,579 vs $25,347) — the $33,216/yr rental-basis split is unnamed on both surfaces | — | n/a |
 | MON-142 | 🟡 DIAGNOSED | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
 | MON-143 | 🟠 FIXING | 🟠 | yes | resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement | ##1562 | ✅ |
-| MON-144 | 🔵 OPEN | 🟡 | yes | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | — |
+| MON-144 | 🔵 OPEN | 🟡 | no | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | n/a |
 
 ---
 
@@ -2386,12 +2386,12 @@ FOUND by the T2 relay capture (2026-07-31): the relay surfaces monthlyInterestFl
 
 ### MON-144 — No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: properties · opened 2026-08-02
+**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-08-02
 
 > **What was wrong:** Monitrax cannot record whether a co-owned property is run as a rental BUSINESS rather than held as a passive investment. That distinction changes the tax treatment, so Tranche 5's balance-sheet work cannot work it out from your data for any property — there is nowhere for the answer to live. Found by auditing the schema instead of asking you the question: an answer given in chat would not be a source of truth for anything.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `neoaudit-run:MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03. | 2026-08-03: changesNumbers corrected true -> FALSE. The raise CLI received the STRING "false" and its parser only honours a real boolean, so the flag defaulted to true. No number moves for this issue — nothing is computed from a field that does not exist; the defect is that the answer has nowhere to live. Also recorded for scope: raised as part of MON-131 T5 gate work (the §5.2 facts audit), NOT a new workstream. Stays OPEN and untouched until the MON-131 tranches are done — filed so the finding is not lost, not queued for build.
 

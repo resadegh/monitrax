@@ -153,3 +153,48 @@ figure looks stale, and today does not.
 ### Coverage — stated precisely
 Registers one defect and ships one verification instrument. Verifies nothing itself — the handout has not
 been run.
+
+---
+
+## Session: g8kra5 (cont.) — "fix the producer, never the number" + a scope correction
+
+### 1. The rule (Reza directive 2026-08-03) — CLAUDE.md §23.2, now rule #1
+
+> *"Not to fix the numbers themselves! Only fix the number producers, rules, engines, etc. The main
+> objective here is to remove duplicate derived-number producers."*
+
+A wrong number is a **symptom**; the defect is always the producer, the rule, the engine, or the fact
+feeding it. Change the producer and let every number follow.
+
+**Banned outright:** editing a stored value so a screen reads right · a correction/offset/fudge anywhere
+downstream · special-casing a surface · "adjusting" a declared `expectedMoves` value to match what
+shipped. **If a declared number does not land after a migration, that is a defect in the migration, not
+a number to nudge.**
+
+And the objective is sharper than "make the tile correct": a tile that reads correctly while three
+engines still compute its value has fixed **nothing** — the next change re-diverges them. One datum, one
+producer; the tile only ever reads it.
+
+Placed as **rule #1** of §23.2, ahead of REMOVE-THE-CULPRIT, because it is the more general statement:
+the culprit rule says don't wrap the broken producer, this one says don't touch the number at all.
+
+### 2. MON-144 — flag corrected, scope stated
+
+Reza asked whether new MONs are being created while MON-131 is the focus. One was: **MON-144**, raised
+today. MON-141/142/143 all predate the focus instruction (07-31).
+
+Checking it surfaced a defect in the entry itself: **`changesNumbers` read `true`, which is wrong.** The
+raise CLI received the string `"false"` and its parser only honours a real boolean, so the flag defaulted
+to `true`. No number moves for MON-144 — nothing is computed from a field that does not exist. Corrected
+to `false`, with the cause recorded in its notes so the CLI gap is visible.
+
+**Scope, stated in the entry:** MON-144 was raised *as part of MON-131 T5 gate work* (the §5.2 facts
+audit), not as a new workstream. It stays `OPEN` and untouched until the tranches are done — **filed so
+the finding is not lost, not queued for build.** Registry: 131 issues, gate green.
+
+### Files Modified
+- `CLAUDE.md` — §23.2 rule #1; the following rules renumbered
+- `docs/issues/ISSUES.{json,md}` — MON-144 `changesNumbers` → false + scope note
+
+### Coverage — stated precisely
+A rule and a flag correction. No code, no number, nothing verified.
