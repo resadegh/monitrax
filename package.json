@@ -34,6 +34,8 @@
     "neomatrix:proven": "node scripts/neomatrix/generate-proven-set.mjs",
     "census:producers": "node scripts/census/producers-census.mjs",
     "census:producers:check": "node scripts/census/producers-census.mjs --check",
+    "refnums:scoreboard": "node scripts/reference-numbers/scoreboard.mjs",
+    "refnums:check": "node scripts/reference-numbers/scoreboard.mjs --check",
     "issues:check": "node scripts/issues/check-issues.mjs",
     "issues:generate": "node scripts/issues/generate-issues-md.mjs",
     "issues:raise": "node scripts/issues/raise-issue.mjs",
