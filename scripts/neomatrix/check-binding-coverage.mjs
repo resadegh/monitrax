@@ -107,6 +107,58 @@ const claimedSymbol = (n) => {
   return n.id.split('.').pop();
 };
 
+/**
+ * D49 (Reza approved 2026-08-03) — resolve the symbol anchor against SOURCE,
+ * not against the frozen Layer 0.
+ *
+ * THE CATCH-22 THIS REMOVES. Layer 0 is frozen at `4ae03705`. When a modelled
+ * symbol genuinely moves inside its file, §21.2.1 REQUIRES re-pinning the
+ * semantic node to its true current line — but this gate resolved that line
+ * against Layer 0's stale record, so telling the truth failed the build. The
+ * documented escape (`neomatrix:graphify`) is a local-only CLI absent from this
+ * environment and from CI. Satisfy one gate, break the other.
+ *
+ * WHY NARROWING THIS GATE LOSES NOTHING. The property worth protecting — "Layer 1
+ * only claims things about code Layer 0 has actually seen" — is enforced by a
+ * DIFFERENT gate: `check-layer0-coverage`'s ANCHORED DRIFT check, which fails
+ * when an anchored file's bytes change without the extraction following. This
+ * gate answers a different question: "does the symbol live at the line the model
+ * claims?" Source is the only honest authority for that, because source is what
+ * the anchor points at. Resolving it against a months-old snapshot answered
+ * "did it live there in April?" — which nobody asked.
+ *
+ * BOTH FAILURE MODES SURVIVE, and now fire on truth rather than on a snapshot:
+ *   · DRIFT   — declared in source at a different line than the node claims.
+ *   · MISSING — not declared in source at all (renamed or deleted).
+ *
+ * Matches DECLARATIONS, never call sites: a function/class/const/let/var/type/
+ * interface/enum binding, an exported one, an object-literal or class-member
+ * key, or a Prisma model/field line. A bare mention of the name in a call or a
+ * comment must not satisfy an anchor — that would make the gate pass on
+ * coincidence.
+ */
+const declarationLines = (rel, symbol) => {
+  const txt = sourceLines(rel);
+  if (!txt) return null;
+  const esc = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Prisma anchors arrive qualified (`Model.field`); the declaration line is the field.
+  const tail = esc.includes('\\.') ? esc.split('\\.').pop() : esc;
+  const pats = [
+    new RegExp(`\\b(?:async\\s+)?function\\s+${esc}\\b`),
+    new RegExp(`\\b(?:const|let|var)\\s+${esc}\\b`),
+    new RegExp(`\\bclass\\s+${esc}\\b`),
+    new RegExp(`\\b(?:type|interface|enum)\\s+${esc}\\b`),
+    new RegExp(`\\bexport\\s+(?:default\\s+)?(?:async\\s+)?(?:function|const|class)\\s+${esc}\\b`),
+    // object-literal key / class member / method shorthand: `name:` `name(` `name =`
+    new RegExp(`^\\s*(?:public|private|protected|readonly|static|async|\\*)?\\s*${esc}\\s*[:(=]`),
+    // prisma model or field declaration
+    new RegExp(`^\\s*(?:model\\s+)?${tail}\\s+\\S`),
+  ];
+  const hits = [];
+  for (let i = 0; i < txt.length; i++) if (pats.some((p) => p.test(txt[i]))) hits.push(i + 1);
+  return hits;
+};
+
 export function checkBindingCoverage() {
   const sem = JSON.parse(readFileSync(SEM, 'utf8'));
   const l0 = JSON.parse(readFileSync(L0, 'utf8'));
@@ -136,6 +188,31 @@ export function checkBindingCoverage() {
   let onLine = 0;
   for (const n of anchored) {
     const want = claimedSymbol(n);
+
+    // ── D49: SOURCE is the authority for where a symbol lives ────────────────
+    // Resolved before the Layer-0 lookup, not after it, so a node re-pinned to
+    // its TRUE current line passes even while the frozen L0 still records the
+    // old one. See the declarationLines() header for why this loses nothing.
+    const declared = declarationLines(n.file, want);
+    if (declared && declared.length) {
+      if (declared.some((h) => Math.abs(h - n.line) <= TEXT_WINDOW)) {
+        onLine++;
+      } else {
+        drifted.push({
+          id: n.id,
+          file: n.file,
+          line: n.line,
+          symbol: want,
+          actual: declared.slice(0, 4),
+          via: 'source',
+        });
+      }
+      continue;
+    }
+
+    // No declaration found in source. Fall through to the Layer-0 record and
+    // the line-text tier — a symbol graphify extracts but these patterns miss
+    // (an unusual declaration shape) must not be reported as deleted.
     const inFile = byFile.get(n.file) || [];
     // prisma ids are fully qualified; ts symbols match on the label.
     const cands = inFile.filter(

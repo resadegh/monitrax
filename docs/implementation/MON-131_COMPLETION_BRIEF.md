@@ -296,15 +296,34 @@ the tranche at G7 and cannot be told apart from a mistake.
 Nothing below can be decided by Code. Each is either a guard change, a user-philosophy fork, or a fact
 only Reza holds.
 
-| # | Decision | Recommendation | Blocks |
+| # | Decision | Status | Effect |
 |---|---|---|---|
-| **D49** | `check-binding-coverage` resolves Layer-1 anchors against the **frozen Layer 0**, so re-pinning an anchor to its true current line fails the gate. Resolve against **source** instead? | **Yes.** The anchored-drift property is held by a *different* gate (`check-layer0-coverage`), so narrowing this one loses nothing. Otherwise all 7 T2 targets need hand-patched two-artifact edits. Fresh evidence: a one-file docs test hit this wall in #1566 — and the allowlist escape it used is **not** available to financial engines | **T2 migration** |
-| **MON-141** | `/dashboard/income` shows $22,579/mo, Home shows $25,347. Both internally correct; the whole gap is rental basis (DECLARED vs ACTUALS), unnamed on both | **Label both surfaces first** (no number moves). Converging them moves a number → tranche work | nothing yet |
-| **MON-142** | Stored 6.690% on both Bankwest IO loans; repayments imply ~6.268% | Two parts: **(a)** you correct the stored rates against the bank — only you can; **(b)** wire the effective-rate engine to *flag* staleness — changes numbers, so tranche work after T2 | nothing yet |
-| **T4 facts** | Do QS depreciation schedules exist? | If yes, ingest as facts (D44), don't compute | T4 |
-| **T5 facts** | Per property: rented out vs tenanted residence; any co-owned rental **business** | — | T5 |
-| **T6 facts** | Availability + available-days per property | — | T6 |
-| **T7 facts** | Total super balance · Div 293 exposure | — | T7 |
+| **D49** | Resolve `check-binding-coverage`'s symbol anchor against **source** rather than the frozen Layer 0 | ✅ **DECIDED 2026-08-03 — option A.** Implemented same day | **T2 migration unblocked.** It earned its keep immediately: resolving against source exposed **two anchors that were simply wrong** and had been passing for months — `input.InvestmentAccount.cashBalance` pointed at line 2271, which is `ELECTRIC` inside a *different* model, and `input.NetWorthSnapshot` pointed at a `createdAt` field 23 lines above the model it names. The old gate passed both because the frozen Layer 0 agreed with the stale line. Both re-pinned; 188/188, and the gate proven to still catch injected drift |
+| **MON-141** | Income page $22,579/mo vs Home $25,347 — the gap is entirely rental basis (DECLARED vs ACTUALS), unnamed on both | ✅ **DECIDED 2026-08-03 — label both surfaces.** Queued | No number moves. Each screen names the basis it shows, so the two stop reading as a contradiction |
+| **MON-142** | Stored 6.690% on both Bankwest IO loans; the repayments in the app imply ~6.268% | 🔬 **REFRAMED 2026-08-03 — the Matrix confirms it from the app's own data** (§5.1) | Code had told Reza to check with the bank. **That instruction was wrong**: the app already holds the repayment transactions the divergence is derived from |
+| **T4–T7 facts** | QS depreciation schedules · rented-out vs tenanted-residence + any co-owned rental *business* · per-property availability days · total super balance + Div 293 | 🔬 **REFRAMED 2026-08-03 — derive from the app, don't ask** | Reza: *"These can be provided by the Matrix by reviewing my real personal data through Monitrax."* That changes the work: for each fact, either it HAS a home in the schema (the Matrix reads it) or it does not — **and an absent home is itself a MON-131 finding**, a FACT the app cannot hold. Next action (Code): audit the schema per fact, then one handout to read the ones that exist |
+
+### §5.1 Why "ask Reza for the number" is usually the wrong instruction
+
+Reza, 2026-08-03: *"Why are the data and Monitrax stored numbers different? That's a red flag… you always
+have to work based on the data provided in the app, and that is why we are doing MON-131 — to respect
+SSOT and a single source for all numbers, one calc engine for each derived number, and the rest of the
+app, tiles and reports only call or use these single numbers or engines."*
+
+Applied to MON-142 that principle gives a sharper answer than the one Code first gave:
+
+- The **stored rate is a FACT** — asserted by a user or a document. One home, never derived.
+- The **implied rate is DERIVED** — one engine (`lib/calculations/effectiveLoanRate.ts`), from repayment
+  transactions already in the app.
+- When they diverge the app's job is to **surface the divergence**, not silently prefer one. Overwriting
+  the fact with the derivation would destroy the evidence that they disagreed.
+- **The divergence is a data-integrity finding the app should raise by itself** — and today it does not.
+  That is exactly what MON-142 is.
+
+So the next step is not "Reza rings the bank". It is: the Matrix confirms from live data that the
+divergence is real and consistent across both loans, then the engine gets wired to a surface so Monitrax
+tells its own user the stored rate looks stale. **Handout due (§3.0b): MON-142 rate-divergence
+verification.**
 
 **Note the shape of this table:** T4–T7 are not blocked on engineering. They are blocked on facts.
 Answering those four rows unblocks four tranches at once.

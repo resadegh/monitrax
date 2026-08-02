@@ -580,7 +580,22 @@ at its new line in the current file** — 17/17 nodes in both files land, includ
 never look at. A patch that only moved the two gated anchors would have passed CI and left the
 artifact selectively true.
 
-**The part that is NOT fixed, and matters more than this PR.** Every T2 migration target —
+**RESOLVED 2026-08-03 — Reza chose option A: the symbol gate resolves against SOURCE.**
+`check-binding-coverage` now finds the symbol's declaration in the current file and compares the node's
+claimed line to that, instead of to Layer 0's frozen record. The catch-22 is gone: re-pinning an anchor
+to its true line — which §21.2.1 requires — no longer fails a gate. Nothing is lost, because the property
+the old behaviour protected (Layer 1 only claims things about code Layer 0 has seen) is enforced by
+`check-layer0-coverage`'s ANCHORED DRIFT check, a different gate.
+
+**It found two wrong anchors on its first run.** `input.InvestmentAccount.cashBalance` claimed
+`prisma/schema.prisma:2271` — a line reading `ELECTRIC`, inside a *different* model — and
+`input.NetWorthSnapshot` claimed 3529, a `createdAt` field 23 lines above the model it names. Both had
+passed every build, because the frozen Layer 0 agreed with the stale line. Re-pinned to 2294 and 3552,
+verified in source. Gate back to 188/188, and re-verified to still fail on injected drift (a deliberate
++40-line perturbation was caught and named). The migration tax this drift entry describes is therefore
+gone — the seven T2 targets need no hand-patched artefacts.
+
+**What was NOT fixed (the original entry, kept because it is the reason the fix exists).** Every T2 migration target —
 `masterFinancialService`, `loanAggregator`, `moneyFlowService`, `contextBuilder`,
 `cashflowOrchestrator`, `propertyCashflow`, `loanCosts` — is Layer-1 anchored (checked: 169 anchor
 files). So the migration hits this on **every file it touches**, and each one needs the same manual
