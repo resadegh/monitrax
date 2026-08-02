@@ -152,7 +152,7 @@
       "kind": "input-field",
       "label": "NetWorthSnapshot (stored monthly)",
       "file": "prisma/schema.prisma",
-      "line": 3529,
+      "line": 3552,
       "layer": "db",
       "domain": "core",
       "trailStage": null,
@@ -163,9 +163,9 @@
       "authority": "prisma/schema.prisma — NetWorthSnapshot model (@@unique(userId, snapshotDate))",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "prisma/schema.prisma:3426",
+      "verifiedBy": "prisma/schema.prisma:3552 (re-pinned under D49 — read in source)",
       "workedExample": null,
-      "verifiedDate": "2026-06-24",
+      "verifiedDate": "2026-08-03",
       "status": "documented"
     },
     {
@@ -683,7 +683,7 @@
       "kind": "input-field",
       "label": "Investment account cash balance",
       "file": "prisma/schema.prisma",
-      "line": 2271,
+      "line": 2294,
       "layer": "db",
       "domain": "core",
       "trailStage": null,
@@ -694,9 +694,9 @@
       "authority": "prisma/schema.prisma — InvestmentAccount.cashBalance Float @default(0)",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "MON-013; tests/calculations/netWorthInvestmentCash.test.ts",
+      "verifiedBy": "prisma/schema.prisma:2294 (re-pinned under D49 — read in source)",
       "workedExample": "6 accounts holding $67,871 cash → added to total assets / net worth (previously omitted from master).",
-      "verifiedDate": "2026-07-07",
+      "verifiedDate": "2026-08-03",
       "status": "documented"
     },
     {
