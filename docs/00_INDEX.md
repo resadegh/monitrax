@@ -68,6 +68,11 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [08_BRAND_UI_DESIGN.md](architecture/08_BRAND_UI_DESIGN.md) | Visual design system, brand guidelines | ACTIVE |
 | [09_INFRASTRUCTURE_AND_DEPLOYMENT.md](architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md) | Infrastructure architecture | ACTIVE |
 | [AI_PROVIDER_STRATEGY.md](architecture/AI_PROVIDER_STRATEGY.md) | AI provider strategy — Gemini decision (Q-AI-PROVIDER 2026-05-16), provider-agnostic interface | ACTIVE |
+| [REFERENCE_NUMBERS_SCOREBOARD.md](architecture/REFERENCE_NUMBERS_SCOREBOARD.md) | **GENERATED** — producers per quantity, seed vs now, joined to the Neomatrix + quantity contracts. The one view of duplicate-calculator reconciliation. `npm run refnums:scoreboard` | ACTIVE |
+| [REFERENCE_NUMBERS.md](architecture/REFERENCE_NUMBERS.md) | The FACT/DERIVED register — what each reference number is and where it comes from | ACTIVE |
+| [NUMBER_INVENTORY.md](architecture/NUMBER_INVENTORY.md) | 68 named quantities, one verdict each (CLEAN / WRONG / UNNAMED / MULTIPLE) | ACTIVE |
+| [CALC_SSOT_WALL.md](architecture/CALC_SSOT_WALL.md) | The SSOT wall — canonical producers + the source-lock ratchet | ACTIVE |
+| [MATRIX_FIX_DISCIPLINE.md](architecture/MATRIX_FIX_DISCIPLINE.md) | Binding law for fix work — four clauses, holistic before fixing | ACTIVE |
 | [99_APPENDIX_GLOSSARY.md](architecture/99_APPENDIX_GLOSSARY.md) | Terminology reference | ACTIVE |
 
 ---
