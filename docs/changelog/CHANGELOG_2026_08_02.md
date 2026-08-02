@@ -355,3 +355,29 @@ that splitting instructions into a second store would itself violate SSOT.
 Validates the SHAPE and internal consistency of a returned result. It does **not** check that the
 numbers in it are true — that is the run itself, on live data. A well-formed FAIL passes this validator,
 which is the intended behaviour.
+
+---
+
+## Session: g8kra5 (cont.) — the YOUR-TASKS block (standing rule)
+
+**Reza, 2026-08-03:** *"You have to always tell me in plain and simple English what my tasks are and
+what I have to do, like merge PR → copy the handout to the Matrix, etc."*
+
+Added to **CLAUDE.md §19.5**, beside the plain-English trio it extends. Every reply that leaves work
+waiting on Reza ends with a short **ordered** list of *his* actions — his only, never what Code does
+next — each a plain imperative naming the concrete artefact ("Merge PR #1567", "Paste the handout at
+`docs/verification/briefs/X.md` to the Matrix", "Answer D49: A or B").
+
+Four rules keep it useful rather than decorative: only his actions; no jargon inside the step (reasoning
+goes above it); a decision item states the recommended option so he can answer in one word; and if
+nothing needs him, say **"Nothing needs you right now"** rather than dropping the block — so its absence
+is never ambiguous.
+
+It lives in CLAUDE.md because that loads every session. The failure it prevents: a reply ending in a
+wall of technical status, leaving him to work out his own next move.
+
+### Files Modified
+- `CLAUDE.md` — §19.5 gains the YOUR-TASKS rule
+
+### Coverage — stated precisely
+A communication rule. No code, no number, nothing verified.
