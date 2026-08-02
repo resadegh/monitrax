@@ -47,6 +47,16 @@ That id was confirmed 9/9 against Reza's own rendered screens in VR-042 (net wor
 
 **Return the ENTIRE JSON response, verbatim, in a single fenced ```json block.** Do not summarise it, do not round anything, do not omit fields you think are uninteresting. The payload is the deliverable.
 
+**Wrap it in the `matrix-result/v1` envelope** — the machine-consumable return format every handout now
+uses (added 2026-08-03; contract + field table: `docs/implementation/MON-131_COMPLETION_BRIEF.md`
+§3.0c). Code validates it with `npm run matrix:check -- <file.json>` **before** acting on it, so a
+result that cannot be trusted to say PASS or FAIL is rejected rather than interpreted. For this capture:
+`kind: "capture"`, `verdict: "CAPTURE_ONLY"`, the relay response verbatim in `payload`, `sha` set to the
+**full 40-character** commit the run executed against, `account.identityAssertion` carrying **both**
+expected and observed (`loanCount: 5`), and `coverage.notVerified` stating that no rendered surface was
+read and this is not a Ring-3 run. The human note below it is what Reza reads; the JSON is what Code
+consumes. **Never only the note.**
+
 Then, separately, a short human note answering only these:
 
 - Did `summary.loanCount` equal **5**?

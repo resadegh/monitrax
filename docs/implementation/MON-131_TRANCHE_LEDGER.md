@@ -9,6 +9,11 @@ workstream entry; this file holds per-tranche **gate state and evidence**.
 > disagree about where the programme is, **this file wins**, because every cell here must cite
 > evidence and the others may assert.
 
+> **Companion, not competitor: [`MON-131_COMPLETION_BRIEF.md`](MON-131_COMPLETION_BRIEF.md)** (opened
+> 2026-08-03, Reza's request for one document both agents keep current). It owns the **forward plan**
+> per tranche and the **shared Code + Matrix status log**. It owns nothing else — gate state and the
+> change record stay HERE, and its §0 says so explicitly. **If the two ever disagree, this ledger wins.**
+
 ## §1 The rule that makes this worth having
 
 **No cell is filled without evidence.** A PR number, a VR run doc, a census delta, a deploy id. Not a

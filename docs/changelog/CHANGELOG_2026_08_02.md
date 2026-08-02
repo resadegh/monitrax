@@ -193,3 +193,191 @@ VERIFIED is what the evidence supports.
 Removes a duplicate instrument and corrects two stale statuses. Verifies **no number** — no producer was
 deleted here, and the counts themselves are unchanged. `loanCost` is still 31; T2's migration is what
 moves it.
+
+---
+
+## Session: g8kra5 (cont.) — the MON-131 completion brief
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** MON-131's forward plan lived in three places and one head — the ledger's gate
+  tables, the Matrix's briefs, and whatever I was holding in context. Reza asked for one document both
+  agents keep current, so he can read status without asking either of us.
+- **What changed:** `docs/implementation/MON-131_COMPLETION_BRIEF.md` — the forward plan for T2→T7 plus
+  a shared Code/Matrix status log.
+- **What you'll see:** nothing in the app. One place that answers "where are we, what's left, what
+  needs me".
+
+### The objection raised before writing it — and how the design answers it
+
+A second MON-131 status document is **the exact defect removed earlier the same day**: two registers
+holding one fact drift, and `REFERENCE_NUMBERS.md`'s Census column had drifted 5× from the ratchet.
+The tranche ledger already says a second MON-131 history document would violate §12.2.1.
+
+So the brief owns **exactly one thing nothing else owns** — the forward plan and the shared log — and
+its §0 is a table naming the ONE home of every other fact (gate state → ledger §3, change record →
+ledger §6, issue status → ISSUES.json, counts → the census/scoreboard, run findings → VR files). It
+**links, never restates**, its status log is an **index** of VR runs rather than a copy of their
+numbers, and it states plainly: **if the brief and the ledger disagree, the ledger wins.**
+
+§7 also gives it an end: when MON-131 closes, the brief is retired, not archived. A completion brief
+that outlives its programme is the stale artefact §0 warns about.
+
+### What the brief contains
+- **§1 the finish line** — five conditions, ending at the complete Matrix sweep. Anything short is
+  progress, not completion
+- **§2 one-screen status** — and the honest headline: `loanCost` is still at **31 producers**
+- **§3 the method every tranche runs**, from what T1 and T2 actually paid for: censuses first, sweep
+  never list, declare before building, remove the culprit, ratchet + Neomatrix in the same PR — plus
+  the two constraints T2 discovered (feed unrounded; annual = `round(unrounded monthly × 12)`)
+- **§3.1–3.7** per tranche: survivor, defect, traps, next action
+- **§5 decisions waiting on Reza** — and the finding that fell out of writing it: **T4–T7 are not
+  blocked on engineering, they are blocked on facts only Reza holds** (QS schedules · property
+  rental-vs-residence · availability days · super balance + Div 293). Four answers unblock four tranches
+- **§6 the shared log** — both agents append; newest last; append-only
+
+### Files Modified
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — **NEW**
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — companion pointer + the precedence rule
+- `docs/00_INDEX.md` — the brief and the ledger both indexed (the ledger never had been)
+
+### Build Status
+- [x] `mon131:check` · `check-plan-freshness` · `refnums:check` — PASS
+
+### Coverage — stated precisely
+A plan and a log. Verifies **nothing**, changes no number, and asserts no gate state — every gate claim
+in it is a link to the ledger, which is where gate state is established by evidence.
+
+---
+
+## Session: g8kra5 (cont.) — the handout contract (standing process, Reza 2026-08-03)
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** handing over for verification was habit, not process. It held up until it didn't —
+  on 07-31 the third-capture instructions existed only in a chat message while the in-repo brief still
+  described the *second* capture. A Matrix opening the file would have run stale instructions.
+- **What changed:** the completion brief gains **§3.0b — the handout contract**, and the per-tranche
+  method gains a step for it.
+- **What you'll see:** after every build section, a committed handout, without having to ask.
+
+### The rule
+
+**No build section is done when the code merges. It is done when the handout for verifying it exists.**
+Code never declares a tranche verified on its own build passing (§23.2.3), so the loop now ends at the
+handover rather than at green CI. Every section ships two things: the change, and the instrument for
+checking it.
+
+§3.0b fixes seven properties every handout must carry — committed location (never chat-only), the
+minimum commit it must run against, a hard identity assertion checked *before* the payload is accepted,
+falsifiable predictions rather than "confirm these", the exact artefact to return, the `mustNotMove`
+regression guard, and the coverage boundary so a PASS is never read wider than it is. Each of those
+exists because something nearly went wrong without it — the stale-brief incident, the second T2 capture
+invalidated by its build precondition, and VR-044's near-miss on confirmation bias.
+
+It also separates the two kinds, which are not interchangeable: a **capture** (one GET at a compare
+relay, produces measurements, asks for no verdict) and a **Ring-3 verification** (reads rendered
+surfaces on live data after a merge, produces a PASS/FAIL recorded as a VR run).
+
+**Next handout due:** T2's Ring-3, when the migration merges. Its acceptance is already fixed by
+`.audit/expected-moves-t2.json` — 13 paths land exactly, `mustNotMove` byte-identical, and Home's budget
+tile reads $12,779 matching `/dashboard/expenses`.
+
+### Files Modified
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §3.0 steps 9–10; new §3.0b; per-tranche
+  "handout due" lines on T2 and T3
+
+### Build Status
+- [x] `mon131:check` · `check-plan-freshness` — PASS
+
+### Coverage — stated precisely
+Codifies a process. Verifies nothing and changes no number.
+
+---
+
+## Session: g8kra5 (cont.) — machine-consumable results + the session-start lock
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** verification results came back as prose, which has to be *interpreted* — and
+  interpretation is where a session assumes. And the handout rules lived in a document a session might
+  not re-read, which is how a rule drifts.
+- **What changed:** results now return as validated `matrix-result/v1` JSON, and both MON-131 documents
+  are session-start reads in CLAUDE.md.
+- **What you'll see:** results that cannot quietly contradict the note beside them.
+
+### 1. `matrix-result/v1` — the return format
+
+Every handout now ends with: *"Return one fenced ```json block conforming to `matrix-result/v1`, then
+your human note. The JSON is what Code consumes; the note is what Reza reads. Never only the note."*
+
+Validated with `npm run matrix:check -- <file.json>` **before** the result is acted on. Exit 0 means
+well-formed and self-consistent — **not** that it passed; a FAIL is a valid result. The validator
+refuses only a result that cannot be trusted to say either.
+
+Every rule exists because something already slipped past its absence:
+
+| Rule | What it catches |
+|---|---|
+| `sha` must be a full 40-char commit | The withdrawn T2 capture — taken at `8bed66b6`, *before* the MON-143 fix it was measuring |
+| `identityAssertion` needs expected **and** observed, `pass: true` | A payload captured against the admin's own empty account (VR-044's voided first attempt) |
+| Every check carries `observed` | "As expected" is not an observation |
+| `PASS` with any failed check → invalid | The most dangerous shape a result can take: it reads green |
+| `coverage.notVerified` **required** | §22.2.4 — a run implying it verified everything |
+| `PASS` + a `critical` finding → invalid | A contradiction someone would otherwise act on |
+
+Exercised against a good result (passes) and five failure modes — short sha, failed identity assertion,
+PASS-containing-a-failure, missing coverage boundary, ring3-with-zero-checks — each rejected with the
+reason, not a generic schema error.
+
+### 2. The session-start lock
+
+Reza: *"keep everything documented as critical instruction on every start so you don't drift and
+assume."* Both MON-131 documents are now in **CLAUDE.md Part 1 Step 1.5** — the mandatory session-start
+reads — with the two binding rules stated inline (§3.0b the handout contract, §3.0c the return format)
+and the precedence rule: **if the brief and the ledger disagree, the ledger wins.**
+
+CLAUDE.md is the right and only home for this: it is loaded every session, and §20.6 already records
+that splitting instructions into a second store would itself violate SSOT.
+
+### Files Modified
+- `scripts/verification/check-matrix-result.mjs` — **NEW.** The validator
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — **§3.0c** the return format + the rule table
+- `docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md` — §4 carries the envelope instruction
+- `CLAUDE.md` — Step 1.5 gains both MON-131 docs + the two binding rules
+- `package.json` — `matrix:check`
+
+### Build Status
+- [x] `matrix:check` on a valid result — PASS; five invalid shapes — correctly rejected
+- [x] `mon131:check` · `check-plan-freshness` · `refnums:check` · `issues:check` — PASS
+
+### Coverage — stated precisely
+Validates the SHAPE and internal consistency of a returned result. It does **not** check that the
+numbers in it are true — that is the run itself, on live data. A well-formed FAIL passes this validator,
+which is the intended behaviour.
+
+---
+
+## Session: g8kra5 (cont.) — the YOUR-TASKS block (standing rule)
+
+**Reza, 2026-08-03:** *"You have to always tell me in plain and simple English what my tasks are and
+what I have to do, like merge PR → copy the handout to the Matrix, etc."*
+
+Added to **CLAUDE.md §19.5**, beside the plain-English trio it extends. Every reply that leaves work
+waiting on Reza ends with a short **ordered** list of *his* actions — his only, never what Code does
+next — each a plain imperative naming the concrete artefact ("Merge PR #1567", "Paste the handout at
+`docs/verification/briefs/X.md` to the Matrix", "Answer D49: A or B").
+
+Four rules keep it useful rather than decorative: only his actions; no jargon inside the step (reasoning
+goes above it); a decision item states the recommended option so he can answer in one word; and if
+nothing needs him, say **"Nothing needs you right now"** rather than dropping the block — so its absence
+is never ambiguous.
+
+It lives in CLAUDE.md because that loads every session. The failure it prevents: a reply ending in a
+wall of technical status, leaving him to work out his own next move.
+
+### Files Modified
+- `CLAUDE.md` — §19.5 gains the YOUR-TASKS rule
+
+### Coverage — stated precisely
+A communication rule. No code, no number, nothing verified.
