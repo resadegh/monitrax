@@ -47,6 +47,8 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [implementation/02_UP_NEXT.md](implementation/02_UP_NEXT.md) | 📋 Up Next + Demo-Complete critical path |
 | [implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md](implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md) | ❓🚧🗑️↩️ Open Questions, Blocked, Dead Code, Reversed |
 | [implementation/04_RECENTLY_COMPLETED.md](implementation/04_RECENTLY_COMPLETED.md) | ✅ Rolling 30-day completion log |
+| [implementation/MON-131_COMPLETION_BRIEF.md](implementation/MON-131_COMPLETION_BRIEF.md) | **MON-131 forward plan + the shared Code/Matrix status log** — T2→T7, the per-tranche method, and what needs Reza. State of record stays in the tranche ledger |
+| [implementation/MON-131_TRANCHE_LEDGER.md](implementation/MON-131_TRANCHE_LEDGER.md) | MON-131 **state of record** — per-tranche gate evidence, the drift log, and every merged PR + SHA |
 
 ---
 

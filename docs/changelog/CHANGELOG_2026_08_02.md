@@ -193,3 +193,57 @@ VERIFIED is what the evidence supports.
 Removes a duplicate instrument and corrects two stale statuses. Verifies **no number** — no producer was
 deleted here, and the counts themselves are unchanged. `loanCost` is still 31; T2's migration is what
 moves it.
+
+---
+
+## Session: g8kra5 (cont.) — the MON-131 completion brief
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** MON-131's forward plan lived in three places and one head — the ledger's gate
+  tables, the Matrix's briefs, and whatever I was holding in context. Reza asked for one document both
+  agents keep current, so he can read status without asking either of us.
+- **What changed:** `docs/implementation/MON-131_COMPLETION_BRIEF.md` — the forward plan for T2→T7 plus
+  a shared Code/Matrix status log.
+- **What you'll see:** nothing in the app. One place that answers "where are we, what's left, what
+  needs me".
+
+### The objection raised before writing it — and how the design answers it
+
+A second MON-131 status document is **the exact defect removed earlier the same day**: two registers
+holding one fact drift, and `REFERENCE_NUMBERS.md`'s Census column had drifted 5× from the ratchet.
+The tranche ledger already says a second MON-131 history document would violate §12.2.1.
+
+So the brief owns **exactly one thing nothing else owns** — the forward plan and the shared log — and
+its §0 is a table naming the ONE home of every other fact (gate state → ledger §3, change record →
+ledger §6, issue status → ISSUES.json, counts → the census/scoreboard, run findings → VR files). It
+**links, never restates**, its status log is an **index** of VR runs rather than a copy of their
+numbers, and it states plainly: **if the brief and the ledger disagree, the ledger wins.**
+
+§7 also gives it an end: when MON-131 closes, the brief is retired, not archived. A completion brief
+that outlives its programme is the stale artefact §0 warns about.
+
+### What the brief contains
+- **§1 the finish line** — five conditions, ending at the complete Matrix sweep. Anything short is
+  progress, not completion
+- **§2 one-screen status** — and the honest headline: `loanCost` is still at **31 producers**
+- **§3 the method every tranche runs**, from what T1 and T2 actually paid for: censuses first, sweep
+  never list, declare before building, remove the culprit, ratchet + Neomatrix in the same PR — plus
+  the two constraints T2 discovered (feed unrounded; annual = `round(unrounded monthly × 12)`)
+- **§3.1–3.7** per tranche: survivor, defect, traps, next action
+- **§5 decisions waiting on Reza** — and the finding that fell out of writing it: **T4–T7 are not
+  blocked on engineering, they are blocked on facts only Reza holds** (QS schedules · property
+  rental-vs-residence · availability days · super balance + Div 293). Four answers unblock four tranches
+- **§6 the shared log** — both agents append; newest last; append-only
+
+### Files Modified
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — **NEW**
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — companion pointer + the precedence rule
+- `docs/00_INDEX.md` — the brief and the ledger both indexed (the ledger never had been)
+
+### Build Status
+- [x] `mon131:check` · `check-plan-freshness` · `refnums:check` — PASS
+
+### Coverage — stated precisely
+A plan and a log. Verifies **nothing**, changes no number, and asserts no gate state — every gate claim
+in it is a link to the ledger, which is where gate state is established by evidence.
