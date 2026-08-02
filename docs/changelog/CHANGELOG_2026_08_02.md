@@ -247,3 +247,48 @@ that outlives its programme is the stale artefact §0 warns about.
 ### Coverage — stated precisely
 A plan and a log. Verifies **nothing**, changes no number, and asserts no gate state — every gate claim
 in it is a link to the ledger, which is where gate state is established by evidence.
+
+---
+
+## Session: g8kra5 (cont.) — the handout contract (standing process, Reza 2026-08-03)
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** handing over for verification was habit, not process. It held up until it didn't —
+  on 07-31 the third-capture instructions existed only in a chat message while the in-repo brief still
+  described the *second* capture. A Matrix opening the file would have run stale instructions.
+- **What changed:** the completion brief gains **§3.0b — the handout contract**, and the per-tranche
+  method gains a step for it.
+- **What you'll see:** after every build section, a committed handout, without having to ask.
+
+### The rule
+
+**No build section is done when the code merges. It is done when the handout for verifying it exists.**
+Code never declares a tranche verified on its own build passing (§23.2.3), so the loop now ends at the
+handover rather than at green CI. Every section ships two things: the change, and the instrument for
+checking it.
+
+§3.0b fixes seven properties every handout must carry — committed location (never chat-only), the
+minimum commit it must run against, a hard identity assertion checked *before* the payload is accepted,
+falsifiable predictions rather than "confirm these", the exact artefact to return, the `mustNotMove`
+regression guard, and the coverage boundary so a PASS is never read wider than it is. Each of those
+exists because something nearly went wrong without it — the stale-brief incident, the second T2 capture
+invalidated by its build precondition, and VR-044's near-miss on confirmation bias.
+
+It also separates the two kinds, which are not interchangeable: a **capture** (one GET at a compare
+relay, produces measurements, asks for no verdict) and a **Ring-3 verification** (reads rendered
+surfaces on live data after a merge, produces a PASS/FAIL recorded as a VR run).
+
+**Next handout due:** T2's Ring-3, when the migration merges. Its acceptance is already fixed by
+`.audit/expected-moves-t2.json` — 13 paths land exactly, `mustNotMove` byte-identical, and Home's budget
+tile reads $12,779 matching `/dashboard/expenses`.
+
+### Files Modified
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §3.0 steps 9–10; new §3.0b; per-tranche
+  "handout due" lines on T2 and T3
+
+### Build Status
+- [x] `mon131:check` · `check-plan-freshness` — PASS
+
+### Coverage — stated precisely
+Codifies a process. Verifies nothing and changes no number.

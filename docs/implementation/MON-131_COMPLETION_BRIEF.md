@@ -105,7 +105,43 @@ Each tranche is the same loop. Where T1 or T2 paid for a lesson, it is named.
 7. **Ratchet test** at the lowest ring that would have caught the bug class (§23.2.2), plus the
    cross-surface propagation test §19.4 requires.
 8. **Neomatrix in the same PR** — nodes, edges, re-pinned anchors (§21.2.1).
-9. **Ring-3 on live data** — the Matrix. Then the registry moves, and the ledger records the SHA.
+9. **Hand over for verification — the handout is a build deliverable, not an afterthought** (§3.0b).
+10. **Ring-3 on live data** — the Matrix runs the handout. Then the registry moves, the ledger records
+    the SHA, and §6 gains a row.
+
+### §3.0b The handout contract — every build section ends with one
+
+**Standing process (Reza, 2026-08-03): no build section is "done" when the code merges. It is done when
+the handout for verifying it exists.** Code does not declare a tranche verified, and does not move an
+issue to VERIFIED, on its own build passing — that is §23.2.3, and it is why the loop ends here rather
+than at a green CI.
+
+Every build section therefore ships **two** things: the change, and the instrument for checking it.
+
+| Rule | Detail |
+|---|---|
+| **Where it lives** | `docs/verification/briefs/<NAME>.md`, **committed** — never chat-only. §21.2.2 rule 4. On 2026-07-31 the third-capture instructions existed only in a chat message while the in-repo brief still described the *second* capture; a Matrix opening the file would have run stale instructions against the wrong build. The chat copy is a convenience; the repo copy is the instrument |
+| **When** | In the same PR as the build it verifies, or immediately after — never later than the merge |
+| **Build precondition** | Every handout names the **minimum commit** it must run against, and why. A capture taken on an older build measures an instrument that has since been replaced (this is what invalidated the second T2 capture) |
+| **Identity assertion** | A hard precondition the Matrix checks *before* accepting any payload — e.g. `loanCount === 5`, net worth $3,401,782. Admin credentials open the door; they are not the account under test |
+| **Falsifiable predictions** | State expected values **in advance**, as predictions that can fail — with "do not adjust anything to fit these". A handout that asks the Matrix to *confirm* numbers invites confirmation bias |
+| **What to return** | The exact artefact — a verbatim payload, or per-surface rendered figures. Never a summary, never rounded |
+| **Regression guard** | The `mustNotMove` set, named up front. A fix that removes X but breaks Y is not a fix |
+| **Coverage boundary** | What the run does **not** verify, stated on the handout, so a PASS is never read wider than it is |
+
+**Two handout kinds, and they are not interchangeable:**
+- **Capture** — one authenticated GET against a compare relay. Produces *measurements* (the inputs to
+  `expectedMoves`). Asks for no verdict; the payload is the deliverable. Type specimen:
+  `MATRIX_T2_RELAY_CAPTURE.md`.
+- **Ring-3 verification** — reads the *rendered surfaces* on Reza's live account after a merge, checks
+  every declared path landed, nothing outside them moved, and the regression cluster is untouched.
+  Produces a **PASS/FAIL verdict** recorded as `docs/verification/runs/VR-NNN.md`. Type specimen:
+  `RING3_VR045_T1_REPAIR.md`.
+
+**The next handout due:** T2's Ring-3, when the migration merges. Its acceptance is already fixed by
+`.audit/expected-moves-t2.json` — 13 paths land exactly, the `mustNotMove` cluster is byte-identical,
+and Home's budget tile reads **$12,779**, matching `/dashboard/expenses`. Reza should not have to ask
+for it.
 
 **Two constraints T2 discovered that bind every later tranche:**
 
@@ -128,6 +164,8 @@ Each tranche is the same loop. Where T1 or T2 paid for a lesson, it is named.
 - **Blocked on:** **D49** (§5). Not on anything technical.
 - **Ring-3 after merge:** Home budget tile must read **$12,779**, matching `/dashboard/expenses`
   — the user-visible proof, and the same figure on both screens.
+- **Handout due (§3.0b):** the T2 Ring-3 brief, written when the migration merges. Capture handout
+  already shipped: `docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`.
 
 ### §3.2 T3 — expense run-rate (MON-129) · ready to plan
 
@@ -138,6 +176,7 @@ Each tranche is the same loop. Where T1 or T2 paid for a lesson, it is named.
 - **The trap the ledger names:** T3 legitimately *lowers* expenses. A directional entry like
   "expenses fall" would absorb a real MON-135 regression as expected. **Per-path arithmetic only.**
 - **Next action (Code):** the three censuses, then the T3 compare relay reusing the sweep.
+- **Handouts due (§3.0b):** a capture handout for the relay, then a Ring-3 brief after the migration.
 
 ### §3.3 T4 — tax constants + depreciation · blocked on facts
 
