@@ -3734,7 +3734,7 @@
     {
       "id": "MON-134",
       "title": "Health-score trend is fabricated — calculateTrend invents 7 months of history with Math.random() and derives IMPROVING/DECLINING/STABLE + changePercent from the noise",
-      "status": "FIXING",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": true,
       "opened": "2026-07-29",
@@ -3757,12 +3757,13 @@
         "NO app/ or components/ .tsx renders historicalTrend / trend.history / trend.direction / changePercent (targeted grep, 2026-07-29 — the fabricated values were API-served but not established as rendered)"
       ],
       "fixPRs": [
-        "#1530 (schema)",
-        "#PR-3 (read path — this PR)"
+        "#1529 (registry reconcile + D15)",
+        "#1530 (HealthScoreSnapshot schema + migration)",
+        "#1532 (read path — real calculateTrend + write-once recorder + guards)"
       ],
       "test": "tests/health/mon134TrendFromSnapshots.test.ts",
       "tracker": "neoaudit-run:relay-A3-c9a464c2",
-      "notes": "Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 15 moved — all under healthScore.trend/evidence.historicalTrend). Root cause verified at source: calculateTrend(currentScore) synthesises history as currentScore + (Math.random()-0.5)*5 and derives direction/changePercent from the invented series; the code comment admits it. Tranche-blocking for MON-131: a producer whose output differs on every call makes every golden-baseline diff STOP on noise. D15 (Reza 2026-07-29): score monthly from stored real snapshots (HealthScoreSnapshot, netWorthHistory pattern, formula-versioned); <2 snapshots → INSUFFICIENT_HISTORY, never a number; version-spanning trends show the break. Coverage boundary: grep of app/+components/ for historicalTrend/trend.history/changePercent found NO rendering surface — emitted by the canonical engine, served by /api/financial-health, consumed by cfo/intelligenceEngine; whether any screen renders it is established during the build, not assumed. | [2026-07-29] FIXING: schema #1530 (write-once HealthScoreSnapshot + formulaVersion) + read-path PR (calculateTrend(snapshots), INSUFFICIENT_HISTORY <2, D15 formula breaks, deterministic engine via injectable asOf + stable risk ids, Math.random ratchet-down allowlist under lib/). Ring-3 gate: relay A3 self-diff CLEAN on real data."
+      "notes": "Raised from the Matrix Relay A3 self-diff at c9a464c2 (1,767 leaves identical, 15 moved — all under healthScore.trend/evidence.historicalTrend). Root cause verified at source: calculateTrend(currentScore) synthesises history as currentScore + (Math.random()-0.5)*5 and derives direction/changePercent from the invented series; the code comment admits it. Tranche-blocking for MON-131: a producer whose output differs on every call makes every golden-baseline diff STOP on noise. D15 (Reza 2026-07-29): score monthly from stored real snapshots (HealthScoreSnapshot, netWorthHistory pattern, formula-versioned); <2 snapshots → INSUFFICIENT_HISTORY, never a number; version-spanning trends show the break. Coverage boundary: grep of app/+components/ for historicalTrend/trend.history/changePercent found NO rendering surface — emitted by the canonical engine, served by /api/financial-health, consumed by cfo/intelligenceEngine; whether any screen renders it is established during the build, not assumed. | [2026-07-29] FIXING: schema #1530 (write-once HealthScoreSnapshot + formulaVersion) + read-path PR (calculateTrend(snapshots), INSUFFICIENT_HISTORY <2, D15 formula breaks, deterministic engine via injectable asOf + stable risk ids, Math.random ratchet-down allowlist under lib/). Ring-3 gate: relay A3 self-diff CLEAN on real data. | 2026-08-03: FIXING -> VERIFIED. The status had been stale on main since the stack merged on 07-29 — the ledger recorded G6/G7/G8 all PASS while the registry still read FIXING with an unresolved \"#PR-3 (this PR)\" placeholder in fixPRs; the Matrix caught the lag. Acceptance evidence, unchanged from 07-29: G6 merged + deploy-verified (#1529/#1530/#1532), G7 relay A3 self-diff verdict CLEAN (1,767 leaves identical, 0 unexpected — the same instrument whose FIRST self-diff raised this issue), G8 Ring-3 capture confirming direction INSUFFICIENT_HISTORY with changePercent ABSENT from the object rather than zero. Ratchet: tests/health/mon134TrendFromSnapshots.test.ts (11 cases, in CI). NOT advanced to CLOSED: §23.2.6 promotion wants the parity-coverage growth and baseline update recorded alongside the ratchet test, and neither is evidenced for this issue — VERIFIED is what the evidence supports."
     },
     {
       "id": "MON-135",

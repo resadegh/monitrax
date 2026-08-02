@@ -126,3 +126,70 @@ fairest test of the programme so far.
 Renders the census, the Neomatrix join and the contract join, and fails CI if the rendering goes stale.
 It verifies **no number** and proves **no** quantity correct — it counts producers and reports what is
 unmapped. Correctness lives in the contracts, the calc-audit fixtures and the Ring-3 runs.
+
+---
+
+## Session: g8kra5 (cont.) — one instrument, one denominator (Matrix instruction, 2026-08-03)
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** three record defects the Matrix found on main. The worst: `REFERENCE_NUMBERS.md`
+  carried its own hand-recorded `Census` column, making it a **second instrument** measuring producer
+  counts — and it had drifted into contradicting the ratchet on the same quantity names, by up to 5×,
+  **in both directions**.
+- **What changed:** the column is gone; `.audit/producer-census.json` is the only instrument. Plus two
+  stale statuses corrected.
+- **What you'll see:** nothing in the app. Two registers can no longer disagree about how many
+  producers a quantity has, because there is only one now.
+
+### 1. The Census column — folded onto the ratchet
+
+| Quantity | `REFERENCE_NUMBERS.md` (hand, at `f13368ef`) | `producer-census.json` (ratchet) |
+|---|---:|---:|
+| medicareLevy | 4 | 20 |
+| cashflow | 27 | 57 |
+| loanCost | 24 | 31 |
+| depreciation | 22 | 15 |
+| superCap | 16 | 10 |
+
+**Neither column was lying.** They are different instruments — a one-off manual three-agent pass versus
+a pattern-based scan over a wider set of roots. That is precisely why one had to go: §12.2.1 does not
+say *keep the accurate one*, it says **one datum, one source**. Two instruments measuring one quantity
+is the defect, independent of which is closer to true. Verified before acting rather than taken on
+trust: both files read on main, five rows compared, the contradiction confirmed.
+
+The register now answers *"what is the quantity and which producer survives?"* and explicitly does not
+answer *"how many producers are there?"* — that has one instrument, rendered by the scoreboard.
+
+### 2. T3 gate G1 — stale ❌ on a merged precondition
+
+The T3 gate table read `G1 preconditions ❌ — MON-135 must merge first. Non-negotiable`. MON-135 merged
+in #1538 and is `VERIFIED` (VR-042 §1 PASS). **The same ledger already had a "MON-135 — DONE" section
+above it** — a document contradicting itself, which is how a cleared gate keeps reading as a blocker.
+
+### 3. MON-134 — registry stale at `FIXING` since 07-29
+
+The ledger recorded G6 merged + deploy-verified, G7 relay A3 self-diff `CLEAN`, G8 Ring-3 confirming
+`INSUFFICIENT_HISTORY` with `changePercent` **absent** rather than zero. The registry still read
+`FIXING`, with an unresolved `"#PR-3 (read path — this PR)"` placeholder where a PR number belonged.
+
+Advanced to **VERIFIED** with the real PRs (#1529 / #1530 / #1532). Checked before advancing rather
+than asserted: the linked ratchet test exists (`tests/health/mon134TrendFromSnapshots.test.ts`, 11
+cases), and the declared `semanticKey` resolves to a real node (`engine.aggregateEngine.generateHealthReport`
+@ `lib/health/aggregateEngine.ts:338`). **Not advanced to CLOSED** — §23.2.6 promotion also wants
+parity-coverage growth and a baseline update recorded, and neither is evidenced for this issue.
+VERIFIED is what the evidence supports.
+
+### Files Modified
+- `docs/architecture/REFERENCE_NUMBERS.md` — `Census` column removed from all 29 rows; the header note
+  records what was folded, the five contradicting values, and why "keep the accurate one" is the wrong fix
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — T3 G1 ❌ → ✅ with its evidence
+- `docs/issues/ISSUES.{json,md}` — MON-134 → VERIFIED, placeholder PR resolved
+
+### Build Status
+- [x] `issues:check` — PASS (130 issues valid) · `refnums:check` · `mon131:check` · `neomatrix:check` — PASS
+
+### Coverage — stated precisely
+Removes a duplicate instrument and corrects two stale statuses. Verifies **no number** — no producer was
+deleted here, and the counts themselves are unchanged. `loanCost` is still 31; T2's migration is what
+moves it.
