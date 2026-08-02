@@ -354,7 +354,7 @@ export async function GET(request: NextRequest) {
       '/dashboard/expenses per-loan rows are ALREADY canonical — T2 moves masterFinancialService ONTO them. If those rows move, that is a defect (T2 brief §5).',
       'effectiveRate is MON-142 evidence, surfaced only — no consumer applies it.',
       'DEFERRAL (D18/X3, stated not omitted): savingsRate here is a straight substitution — the WHOLE loan payment is treated as spending. X3 separates PRINCIPAL out of spending and into saving, which changes the numerator SHAPE, not just its size. If X3 lands in T2 this figure moves again; if it does not, this deferral is the record of why. The split needs per-loan interest/principal, which MON-143 (offset netting) gates.',
-      'monthlyInterestFloor does NOT net the offset — MON-143, raised from this relay. The canonical producer is the only one of four that breaches D21 (Guildford floors at 1,964.67 vs 384.45, 5.1x). Latent today (Guildford resolves via ACTUALS) but it MUST be fixed before the migration, or every consumer inherits it.',
+      'monthlyInterestFloor NOW NETS THE OFFSET — MON-143, raised from this relay and FIXED in #1562 (f7b685de). Guildford floors at 384.45 = (377,821.91 - 303,889.96) x 6.24% / 12, down from 1,964.67 on the full balance. No per-loan newMonthly moved, because the one loan carrying an offset resolves via ACTUALS and never reaches its floor — which is why the fix was latent and why closing it BEFORE the migration was the right order. (This note previously asserted the breach in the present tense; the Matrix flagged it at the 915704f0 capture rather than let a false statement about fixed behaviour ride into the contract.)',
     ],
   });
 }

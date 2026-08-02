@@ -1,0 +1,154 @@
+{
+  "_meta": {
+    "tranche": "T2 — loan cost (MON-130)",
+    "declaredAt": "2026-08-02",
+    "gate": "MON-131 ledger §2 G3 — expectedMoves declared. This file must exist and be committed BEFORE the first line of the T2 migration.",
+    "capture": {
+      "sha": "915704f0622d55de0c287ef341e82be475661a2b",
+      "capturedAt": "2026-07-31T23:36:58.553Z",
+      "userId": "91b6d7ce-d9f1-4ac0-96ce-fc958dca2a3c",
+      "loanCount": 5,
+      "endpoint": "GET /api/admin/matrix/golden-baseline/t2-loan-cost",
+      "payload": ".audit/captures/t2-loan-cost-915704f0.json",
+      "brief": "docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md",
+      "buildPreconditionSatisfied": "915704f0 contains the derivation sweep (#1561 8bed66b6) AND the MON-143 offset fix (#1562 f7b685de). An earlier capture stamped 8bed66b6 was WITHDRAWN by the Matrix for failing this precondition."
+    },
+    "contract": "Per-path, NEVER directional. Every after-value below was PRODUCED BY THE REAL ENGINE — the derivation sweep re-runs calculateCashflow and calculateDebtMetrics on live production inputs with the canonical per-loan cost substituted, then diffs every numeric leaf. No value here was hand-derived. Any move OUTSIDE these 13 paths is undeclared and STOPS the tranche (G7).",
+    "declarationMethod": "DERIVATION SWEEP, not a hand-written list. Three successive captures missed five paths between them because the paths were enumerated by name; the list was deleted (#1561) and replaced by the sweep, so the declaration is complete by construction. All five previously-missed paths appear below without having been named, plus quickMetrics.monthlyLoanRepayments.",
+    "feedContract": {
+      "rule": "The migration MUST feed calculateCashflow and calculateDebtMetrics the UNROUNDED canonical monthly cost per loan, at repaymentFrequency MONTHLY, for EVERY loan — no minRepayment filter.",
+      "why": "This is what the sweep measured (t2-loan-cost/route.ts:256-277). It is not a style preference: the per-loan costs ROUNDED to cents sum to 12,779.28, a full cent below the 12,779.29 the engine produced from unrounded inputs. Rounding per loan before summing shifts monthlyLoanRepayments by a cent and cascades into annualLoanRepayments (x12), annualCashflow, savingsRate and debtServiceRatio. On an exact-match contract that is a G7 failure.",
+      "alsoRequired": "The old input filtered out loans with no minRepayment (masterFinancialService.ts:1861) — which is exactly why both interest-only loans read $0 today. The canonical input carries every loan; the filter must be gone, not merely bypassed."
+    },
+    "roundingConvention": {
+      "engineRule": "cashflowOrchestrator.ts:259-266 — every ANNUAL leaf is round(UNROUNDED monthly x 12). Annual leaves are NOT derived from annual components.",
+      "t1NoteCorrected": "The T1 contract records 'Derive from annual components, never rounded-monthly x12' (.audit/expected-moves-t1.json declaredCorrections, authority VR-045 §2.1). The second half is right and was the real T1 lesson. The first half is NOT the engine's rule — it merely coincided at T1 (both give 180,572.50). At T2 they diverge by a cent: annual components give 133,020.79, the engine emits 133,020.78. This contract takes the MEASURED .78. Declaring .79 from the T1 phrasing would have failed G7 against the engine's own output.",
+      "verifiedAt": "lib/calculations/cashflowOrchestrator.ts:265 read in source 2026-08-02 (§19.2 — not recalled, not inferred from the payload)."
+    },
+    "mon143": {
+      "status": "Fixed in #1562 (f7b685de) and CONFIRMED by this capture.",
+      "evidence": "Guildford's monthlyInterestFloor moved 1,964.67 -> 384.45 = (377,821.91 - 303,889.96) x 6.24% / 12, and NO per-loan newMonthly changed between the 8bed66b6 and 915704f0 captures. The one loan carrying an offset is also the one that resolves via ACTUALS and never reaches its floor — which is why the fix moves nothing today and why closing it before the migration was the right order.",
+      "registry": "MON-143 stays FIXING. Its Ring-3 evidence is the T2 migration run itself (§23.2.3 — CI green is not verification)."
+    },
+    "deferrals": [
+      "D18/X3 — savingsRate below is a STRAIGHT SUBSTITUTION: the whole loan payment is treated as spending. X3 separates PRINCIPAL out of spending and into saving, which changes the numerator's SHAPE, not just its size. Declared here so the after-value is not later mistaken for the X3 answer.",
+      "MON-142 — effectiveRate is carried in the capture as evidence only (RATE_STALE on both interest-only loans, implied 6.2697% vs stored 6.690%). No consumer applies it; wiring it is a separate decision awaiting Reza."
+    ]
+  },
+  "expectedMoves": [
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyLoanRepayments",
+      "before": 8816.65,
+      "after": 12779.29,
+      "why": "the tranche's root move — masterFinancialService stops reading raw minRepayment and reads the canonical resolver",
+      "arithmetic": "2,789.71 + 6,196.65 + 2,518.34 + 1,191.25 + 83.33 summed UNROUNDED = 12,779.29 (the rounded per-loan values sum to 12,779.28 — see _meta.feedContract)"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlyCashflow",
+      "before": 15047.71,
+      "after": 11085.07,
+      "why": "cashflow absorbs the loan-cost delta; the income leg is FROZEN at its T1 value",
+      "arithmetic": "15,047.71 - 3,962.64 = 11,085.07"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.monthlySurplus",
+      "before": 15047.71,
+      "after": 11085.07,
+      "why": "alias of monthlyCashflow (cashflowOrchestrator.ts:256) — moves with it by construction",
+      "arithmetic": "identical to monthlyCashflow"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualLoanRepayments",
+      "before": 105799.8,
+      "after": 153351.51,
+      "why": "annual leaf = round(unrounded monthly x 12)",
+      "arithmetic": "round(12,779.29... x 12) = 153,351.51. NOT 12,779.29 x 12 = 153,351.48 — the engine multiplies the unrounded monthly"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualCashflow",
+      "before": 180572.5,
+      "after": 133020.78,
+      "why": "annual leaf = round(unrounded monthlyCashflow x 12). MEASURED, not derived — see _meta.roundingConvention",
+      "arithmetic": "round(11,085.06... x 12) = 133,020.78. Deriving from annual components (304,158.61 - 17,786.31 - 153,351.51 = 133,020.7878) would declare .79 and FAIL G7"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.annualSurplus",
+      "before": 180572.5,
+      "after": 133020.78,
+      "why": "alias of annualCashflow (cashflowOrchestrator.ts:266)",
+      "arithmetic": "identical to annualCashflow"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.savingsRate",
+      "before": 59.37,
+      "after": 43.73,
+      "why": "monthlyCashflow / monthlyNetIncome x 100 — falls because the numerator falls; the denominator is frozen at T1",
+      "arithmetic": "11,085.07 / 25,346.55 x 100 = 43.73. STRAIGHT SUBSTITUTION — see _meta.deferrals D18/X3"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.cashflow.debtServiceRatio",
+      "before": 34.78,
+      "after": 50.42,
+      "why": "monthlyLoanRepayments / monthlyNetIncome x 100 — rises with the true loan cost",
+      "arithmetic": "12,779.29 / 25,346.55 x 100 = 50.42"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.metrics.debtServiceRatio",
+      "before": 34.78,
+      "after": 50.42,
+      "why": "calculateDebtMetrics computes the same ratio from the same canonical input — the two must agree after the migration",
+      "arithmetic": "identical to cashflow.debtServiceRatio; a divergence between them post-migration is a defect, not a rounding artefact"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.metrics.monthlyRepayments",
+      "before": 8816.65,
+      "after": 12779.29,
+      "why": "one of the five paths the hand-written list missed — it sat in the same object as a path that WAS declared",
+      "arithmetic": "identical to cashflow.monthlyLoanRepayments"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyCashflow",
+      "before": 15047.71,
+      "after": 11085.07,
+      "why": "quickMetrics mirrors cashflow leaves (masterFinancialService.ts:2031+)",
+      "arithmetic": "mirror of cashflow.monthlyCashflow"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyLoanRepayments",
+      "before": 8816.65,
+      "after": 12779.29,
+      "why": "the FIFTH miss — no capture reached it until the sweep; found by reading the assembly, then reproduced by the sweep without being named",
+      "arithmetic": "mirror of cashflow.monthlyLoanRepayments"
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.savingsRate",
+      "before": 59.37,
+      "after": 43.73,
+      "why": "quickMetrics mirror",
+      "arithmetic": "mirror of cashflow.savingsRate"
+    }
+  ],
+  "mustNotMove": {
+    "why": "The regression cluster, confirmed ON SCREEN on Reza's account immediately before the capture (brief §E) rather than only against the engine that produced it. Any movement here that is not declared above STOPS the tranche (G7/G10): revert, do not patch forward.",
+    "values": {
+      "netWorth": 3401782,
+      "properties": 6,
+      "loans": 5,
+      "entityReza": 2651782,
+      "committedOutgoings": 14261,
+      "recurring": 1482,
+      "oneOff": 50840,
+      "lvr": 41.3,
+      "healthScore": 53,
+      "debtToIncome": 677,
+      "monthlyIncomeT1": 25346.55,
+      "perLoanRowsOnExpenses": "83.33 + 1,191.25 + 2,518.34 + 6,196.65 + 2,789.71 = 12,779.29 — ALREADY canonical on /dashboard/expenses. T2 moves masterFinancialService ONTO these rows; if a row moves, that is a defect, not a tranche effect."
+    },
+    "note": "monthlyIncomeT1 is FROZEN by T1 and is the denominator of both ratios above. If it moves during T2, the ratio after-values are void and the tranche stops — the move would be a T1 regression, not a T2 effect."
+  },
+  "acceptance": {
+    "rule": "Exact match, not close. Every path above must land on its after-value; nothing outside them may move; every mustNotMove value must be byte-identical.",
+    "coverageBoundary": "The sweep is complete for cashflow.*, debt.metrics.* and the quickMetrics mirrors. It does NOT sweep byEntity, health, or anything outside those blocks — G7's full-tree diff remains the backstop there. quickMetrics leaves were matched by VALUE, not by assignment; all three declared leaves hold distinct values on this dataset (11,085.07 / 12,779.29 / 43.73), so mis-attribution is not live today but is not structurally excluded.",
+    "ring3": "A Ring-3 real-data run on the rendered surfaces verifies the migration after merge. CI green is not verification (§23.2.3)."
+  }
+}
