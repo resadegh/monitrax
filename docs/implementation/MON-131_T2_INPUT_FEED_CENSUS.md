@@ -77,3 +77,57 @@ Recorded now rather than held, so the next session inherits the map instead of r
 
 **Coverage, stated precisely:** establishes what each of seven producers is fed, read in source. It does
 **not** yet enumerate all 31 sites, and it verifies no number.
+
+---
+
+## Appendix — the exact 31 `loanCost` sites
+
+Produced by `node scripts/census/producers-census.mjs --list` (the census's own output, not a
+re-derivation). This is the authoritative work-list for the T2 migration.
+
+**Do not substitute a grep for this list.** A `minRepayment`-arithmetic grep over `lib/ app/
+components/` returns a *different* set: it misses ten sites the census catches — `riskRadar` (×2),
+`scoreCalculator` (×3), `debtPlanner` (×2) and the `calc-audit` decimal mirrors (×3) — because those
+derive a loan cost without the literal `minRepayment` arithmetic the grep keys on. It also counts
+matching *lines* where the census counts deriving *functions*, so the two totals are not comparable
+and neither is a check on the other. Migrating from the grep would silently leave those ten behind.
+
+| Site | Line |
+|---|---|
+| `app/api/calculate/cashflow/route.ts:transformLoanData` | 120 |
+| `app/api/cashflow/intelligence/route.ts:calculateMonthlyLoanRepayments` | 129 |
+| `app/api/cashflow/summary/route.ts:buildSummaryInput` | 33 |
+| `app/api/cfo/scenarios/context/route.ts:fetchLoanViews` | 59 |
+| `app/api/cfo/scenarios/run/route.ts:fetchLoanViews` | 62 |
+| `app/api/loans/route.ts:lastTxDate` | 17 |
+| `app/api/portfolio/snapshot/route.ts:calculateLinkageHealth` | 117 |
+| `app/api/transactions/[id]/link/route.ts:learnCanonicalFromLink` | 51 |
+| `app/dashboard/properties/[id]/page.tsx:RecentActivityCard` | 817 |
+| `app/dashboard/properties/page.tsx:findUrgency` | 1281 |
+| `components/onboarding/wizard/types.ts:frequencyToAnnual` | 876 |
+| `components/transactions/TransactionLinkDialog.tsx:formatDate` | 855 |
+| `lib/calc-audit/engines/decimal-cfo-score-risk.ts:calculateCashflowStrengthFloat` | 64 |
+| `lib/calc-audit/engines/decimal-cfo-score-risk.ts:calculateDebtCoverageFloat` | 85 |
+| `lib/calc-audit/engines/decimal-cfo-score-risk.ts:calculateSavingsRateFloat` | 184 |
+| `lib/calculations/loanAggregator.ts:aggregateLoanRepayments` | 69 |
+| `lib/calculations/loanAggregator.ts:aggregateLoanRepaymentsDecimal` | 213 |
+| `lib/calculations/propertyCashflow.ts:resolveLoanMonthlyCost` | 206 |
+| `lib/calculations/propertyCashflow.ts:txFor` | 178 |
+| `lib/cfo/aiAdvisor.ts:fetchLoanViews` | 360 |
+| `lib/cfo/riskRadar.ts:detectCashflowShortfallRisks` | 192 |
+| `lib/cfo/riskRadar.ts:detectDebtRatioDeteriorationRisks` | 304 |
+| `lib/cfo/scoreCalculator.ts:calculateCashflowStrength` | 125 |
+| `lib/cfo/scoreCalculator.ts:calculateDebtCoverage` | 159 |
+| `lib/cfo/scoreCalculator.ts:calculateSavingsRate` | 326 |
+| `lib/planning/debtPlanner.ts:calculateMinRepaymentIO` | 156 |
+| `lib/planning/debtPlanner.ts:simulateRepayments` | 306 |
+| `lib/reports/contextBuilder.ts:fetchLoanData` | 373 |
+| `lib/services/masterFinancialService.ts:computeMasterFinancialSnapshot` | 1762 |
+| `lib/services/moneyFlowService.ts:getMoneyFlow` | 222 |
+| `lib/testing/normalizer.ts:normalizeScenario` | 339 |
+
+**Coverage, stated precisely:** this appendix enumerates every site the census counts, with its
+`file:function` and declaration line. It does **not** classify each site producer-vs-consumer — that
+needs each function's body read in full (a declaration-line window is not sufficient, since the
+census flags a match anywhere in the body). That classification is the remaining Stage-1 step before
+the migration is written.
