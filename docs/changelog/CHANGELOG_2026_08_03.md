@@ -68,3 +68,133 @@ comment must not satisfy an anchor, or the gate passes on coincidence.
 Proves the gate resolves anchors against source, still fails on drift, and that two specific anchors
 were wrong and are now right. It does **not** re-verify the other 186 anchors' semantic correctness —
 they resolve to the named symbol at the claimed line, which is what the gate checks and all it checks.
+
+---
+
+## Session: g8kra5 (cont.) — the schema audit behind the four "facts"
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** the brief listed four facts as *"blocked on Reza"*. That framing was Code's, and it
+  was wrong in the same way the MON-142 instruction was — it assumed the app couldn't answer.
+- **What changed:** audited `prisma/schema.prisma` per fact. **Five of six already have a home.** The
+  sixth has none, which makes it a finding rather than a question.
+- **What you'll see:** nothing yet. Four tranches stop waiting on you.
+
+| Fact | Home | Verdict |
+|---|---|---|
+| QS depreciation schedules | ✅ `DepreciationSchedule` (per property: category · assetName · cost · startDate · rate · method) | Matrix reads it. **D11 lives here** — `rate Float` carries no unit, the open 100× ambiguity T4 must close |
+| Rented out vs tenanted residence | ✅ `Property.type` — HOME / INVESTMENT / RENTAL | Matrix reads it |
+| Per-property availability days | ✅ `Property.genuinelyAvailableForRent` + `availableDaysPerYear` — added by T1 under X7/D43 | Matrix reads whether **populated** (nullable) |
+| Total super balance | ✅ DERIVED — Σ `SuperannuationAccount.currentBalance` | Derive, never ask |
+| Division 293 exposure | ✅ DERIVED — income + concessional contributions; `TaxPosition.division293Tax` exists | Derive |
+| **Co-owned property held as a rental BUSINESS** | ❌ **NONE** — `OwnershipGroup`/`OwnershipStake` hold co-ownership *shares*; nothing records the tax characterisation (D42 C1) | **A MON-131 finding: a FACT the app cannot hold** |
+
+**This is what the instruction was for.** Five facts became reads. The sixth became a defect — strictly
+more useful, because a number typed into a chat window is not a source of truth for anything, and D42 C1
+changes the tax treatment.
+
+### Also: #1568 merged
+D49 shipped. `affa74f3`. The T2 migration is unblocked.
+
+### Files Modified
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §5 row resolved; new §5.2 with the audit table
+
+### Coverage — stated precisely
+Establishes whether each fact has a **home in the schema**, read in source. It does **not** establish
+whether the fields are **populated** on Reza's account — that is the Matrix read, and for
+`availableDaysPerYear` (nullable, added recently) empty is the likely answer.
+
+---
+
+## Session: g8kra5 (cont.) — MON-144 raised; the MON-142 verification handout
+
+### MON-144 — a FACT the app cannot hold
+
+The one gap the §5.2 schema audit found is now registered. `OwnershipGroup`/`OwnershipStake` record
+co-ownership **shares**; nothing records whether a co-owned property is run as a rental **business**
+rather than held passively. D42 C1 says that changes the tax treatment, so **T5 cannot determine it from
+data for any property**. `changesNumbers: false` — no number moves today; the defect is that the answer
+has nowhere to live. Registry: 131 issues, gate green.
+
+### The MON-142 handout — `docs/verification/briefs/MATRIX_MON142_RATE_DIVERGENCE.md`
+
+First handout written under the §3.0b contract and the §3.0c return format. Carries all seven required
+properties: committed location, build precondition (`affa74f3`+), identity assertion before any number is
+read, falsifiable predictions, the exact artefact to return, the `mustNotMove` cluster, and the coverage
+boundary.
+
+**Part A** confirms the divergence from the app's own data: stored **6.690%** on both Bankwest IO loans
+vs an implied **≈6.2697%**. The load-bearing prediction is that the divergence is **−0.42026 pp,
+identical on both** — two loans drifting by exactly the same amount is what one lender changing one rate
+looks like; two drifting differently would mean something else is wrong, and the handout says to report
+that rather than round them together. It also asks whether *anything* surfaces the staleness (predicted
+`false` — that absence **is** MON-142).
+
+**Part B** folds in the five schema reads T4–T7 need. These carry **no prediction**: `expected` is the
+literal `"UNKNOWN — report observed"`, with an explicit instruction not to invent one. For
+`availableDaysPerYear` — nullable and added only in T1 — empty is a legitimate finding.
+
+**What it deliberately cannot settle**, stated in §6: which rate is *correct*. The bank's actual rate is
+outside the app. What it settles is that Monitrax holds enough evidence to tell its own user the stored
+figure looks stale, and today does not.
+
+### Files Modified
+- `docs/issues/ISSUES.{json,md}` — MON-144 raised
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §5.2 row now cites MON-144
+- `docs/verification/briefs/MATRIX_MON142_RATE_DIVERGENCE.md` — **NEW**
+
+### Also recorded
+#1568's production deploy `dpl_6eBsqhFWYJYg9qi1psbkP17nQuCX` → **READY**. D49's gate change is live.
+
+### Build Status
+- [x] `issues:check` — PASS (131 valid) · `mon131:check` · `refnums:check` — PASS
+
+### Coverage — stated precisely
+Registers one defect and ships one verification instrument. Verifies nothing itself — the handout has not
+been run.
+
+---
+
+## Session: g8kra5 (cont.) — "fix the producer, never the number" + a scope correction
+
+### 1. The rule (Reza directive 2026-08-03) — CLAUDE.md §23.2, now rule #1
+
+> *"Not to fix the numbers themselves! Only fix the number producers, rules, engines, etc. The main
+> objective here is to remove duplicate derived-number producers."*
+
+A wrong number is a **symptom**; the defect is always the producer, the rule, the engine, or the fact
+feeding it. Change the producer and let every number follow.
+
+**Banned outright:** editing a stored value so a screen reads right · a correction/offset/fudge anywhere
+downstream · special-casing a surface · "adjusting" a declared `expectedMoves` value to match what
+shipped. **If a declared number does not land after a migration, that is a defect in the migration, not
+a number to nudge.**
+
+And the objective is sharper than "make the tile correct": a tile that reads correctly while three
+engines still compute its value has fixed **nothing** — the next change re-diverges them. One datum, one
+producer; the tile only ever reads it.
+
+Placed as **rule #1** of §23.2, ahead of REMOVE-THE-CULPRIT, because it is the more general statement:
+the culprit rule says don't wrap the broken producer, this one says don't touch the number at all.
+
+### 2. MON-144 — flag corrected, scope stated
+
+Reza asked whether new MONs are being created while MON-131 is the focus. One was: **MON-144**, raised
+today. MON-141/142/143 all predate the focus instruction (07-31).
+
+Checking it surfaced a defect in the entry itself: **`changesNumbers` read `true`, which is wrong.** The
+raise CLI received the string `"false"` and its parser only honours a real boolean, so the flag defaulted
+to `true`. No number moves for MON-144 — nothing is computed from a field that does not exist. Corrected
+to `false`, with the cause recorded in its notes so the CLI gap is visible.
+
+**Scope, stated in the entry:** MON-144 was raised *as part of MON-131 T5 gate work* (the §5.2 facts
+audit), not as a new workstream. It stays `OPEN` and untouched until the tranches are done — **filed so
+the finding is not lost, not queued for build.** Registry: 131 issues, gate green.
+
+### Files Modified
+- `CLAUDE.md` — §23.2 rule #1; the following rules renumbered
+- `docs/issues/ISSUES.{json,md}` — MON-144 `changesNumbers` → false + scope note
+
+### Coverage — stated precisely
+A rule and a flag correction. No code, no number, nothing verified.

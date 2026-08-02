@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**130 total** · 71 open · 🔵 31 · 🟡 4 · 🟠 28 · 🟢 8 · ✅ 58
+**131 total** · 72 open · 🔵 32 · 🟡 4 · 🟠 28 · 🟢 8 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -137,6 +137,7 @@
 | MON-141 | 🔵 OPEN | 🟡 | no | /dashboard/income header and Home 'This month's budget' show two different monthly incomes ($22,579 vs $25,347) — the $33,216/yr rental-basis split is unnamed on both surfaces | — | n/a |
 | MON-142 | 🟡 DIAGNOSED | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
 | MON-143 | 🟠 FIXING | 🟠 | yes | resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement | ##1562 | ✅ |
+| MON-144 | 🔵 OPEN | 🟡 | no | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | n/a |
 
 ---
 
@@ -2382,4 +2383,15 @@ FOUND while investigating T2 brief §2.1 (the 0.9370 factor). The averaging algo
 - **Detail:** `neoaudit-run:T2-relay-capture`
 
 FOUND by the T2 relay capture (2026-07-31): the relay surfaces monthlyInterestFloor per loan, and the Matrix spotted Guildford floored on the FULL 377,821.91 rather than 377,821.91 - 303,889.96 = 73,931.95. VERIFIED FOUR-WAY IN SOURCE: propertyLoanInterest.ts:87 nets the offset; debt-analysis/route.ts:465 nets (effectiveBalance); portfolioEngine.ts:428 nets (effectivePrincipal); resolveLoanMonthlyCost:199 does NOT. The CANONICAL producer is the only one of four that breaches D21. LATENT TODAY: Guildford resolves via ACTUALS so it never floors, and no rendered number is currently wrong. It becomes live the moment an offset loan loses its linked repayments. WHY IT GATES T2: the tranche migrates every loan-cost consumer ONTO this producer. Shipping T2 first would propagate a known D21 breach to every surface at once. Fix BEFORE the migration, or the migration inherits it. SHAPE OF THE FIX: CashflowLoan carries no offset field, so the fix threads offsetBalance through the type and every feed. loanCosts.ts already queries the loan; the relay proves offsetAccount.currentBalance is reachable. FIXED in #1562: propertyCashflow.ts interestBearing = max(0, principal - max(0, offsetBalance)); CashflowLoan gained offsetBalance; loanCosts.ts now fetches offsets itself (MON-140 input-feed shape) so the engine cannot be starved by a caller. Ratchet: tests/calculations/loanInterestOffsetNetting.test.ts pins the corrected floor, pins the pre-fix 1,964.67 as WRONG, and pins the D21/D26 asymmetry both halves so a later "tidy-up" has to argue with it. STAYS FIXING until a Ring-3 run records (§23.2.3) - no rendered number moves today, so the Ring-3 evidence is the T2 migration run, not a separate one.
+
+### MON-144 — No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: properties · opened 2026-08-02
+
+> **What was wrong:** Monitrax cannot record whether a co-owned property is run as a rental BUSINESS rather than held as a passive investment. That distinction changes the tax treatment, so Tranche 5's balance-sheet work cannot work it out from your data for any property — there is nowhere for the answer to live. Found by auditing the schema instead of asking you the question: an answer given in chat would not be a source of truth for anything.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neoaudit-run:MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03. | 2026-08-03: changesNumbers corrected true -> FALSE. The raise CLI received the STRING "false" and its parser only honours a real boolean, so the flag defaulted to true. No number moves for this issue — nothing is computed from a field that does not exist; the defect is that the answer has nowhere to live. Also recorded for scope: raised as part of MON-131 T5 gate work (the §5.2 facts audit), NOT a new workstream. Stays OPEN and untouched until the MON-131 tranches are done — filed so the finding is not lost, not queued for build.
 
