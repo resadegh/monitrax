@@ -13,6 +13,12 @@
       "PAYG withheld $11,129 stays OUT of the regression cluster (start-gate §4; VR-043 §5.3 gives it its arithmetic: it MOVES to 43,004 via the §1.1 scope decision).",
       "The master snapshot's serialized field names are retained this tranche (T1-A record) — no path removals are declared. Any removed leaf in the G7 diff is a defect."
     ],
+    "conventionClarification": {
+      "addedAt": "2026-08-02",
+      "by": "T2 declaration (.audit/expected-moves-t2.json _meta.roundingConvention)",
+      "changesNoValueInThisFile": true,
+      "note": "The declaredCorrections entry below says 'Derive from annual components, never rounded-monthly×12.' The second half is right and remains the lesson. The FIRST half is not the engine's rule — it coincided at T1. cashflowOrchestrator.ts:259-266 computes every annual leaf as round(UNROUNDED monthly × 12). At T1 both methods give 180,572.50, so the phrasing was never tested; at T2 they diverge by a cent (annual components 133,020.79 vs the engine's measured 133,020.78) and following this phrasing would have failed G7. Clarified here so no later tranche inherits it as a rule. No T1 value changes."
+    },
     "declaredCorrections": [
       {
         "date": "2026-07-31",
