@@ -4036,6 +4036,25 @@
       "test": "tests/calculations/loanInterestOffsetNetting.test.ts",
       "tracker": "neoaudit-run:T2-relay-capture",
       "notes": "FOUND by the T2 relay capture (2026-07-31): the relay surfaces monthlyInterestFloor per loan, and the Matrix spotted Guildford floored on the FULL 377,821.91 rather than 377,821.91 - 303,889.96 = 73,931.95. VERIFIED FOUR-WAY IN SOURCE: propertyLoanInterest.ts:87 nets the offset; debt-analysis/route.ts:465 nets (effectiveBalance); portfolioEngine.ts:428 nets (effectivePrincipal); resolveLoanMonthlyCost:199 does NOT. The CANONICAL producer is the only one of four that breaches D21. LATENT TODAY: Guildford resolves via ACTUALS so it never floors, and no rendered number is currently wrong. It becomes live the moment an offset loan loses its linked repayments. WHY IT GATES T2: the tranche migrates every loan-cost consumer ONTO this producer. Shipping T2 first would propagate a known D21 breach to every surface at once. Fix BEFORE the migration, or the migration inherits it. SHAPE OF THE FIX: CashflowLoan carries no offset field, so the fix threads offsetBalance through the type and every feed. loanCosts.ts already queries the loan; the relay proves offsetAccount.currentBalance is reachable. FIXED in #1562: propertyCashflow.ts interestBearing = max(0, principal - max(0, offsetBalance)); CashflowLoan gained offsetBalance; loanCosts.ts now fetches offsets itself (MON-140 input-feed shape) so the engine cannot be starved by a caller. Ratchet: tests/calculations/loanInterestOffsetNetting.test.ts pins the corrected floor, pins the pre-fix 1,964.67 as WRONG, and pins the D21/D26 asymmetry both halves so a later \"tidy-up\" has to argue with it. STAYS FIXING until a Ring-3 run records (§23.2.3) - no rendered number moves today, so the Ring-3 evidence is the T2 migration run, not a separate one."
+    },
+    {
+      "id": "MON-144",
+      "title": "No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property",
+      "status": "OPEN",
+      "severity": "medium",
+      "changesNumbers": true,
+      "opened": "2026-08-02",
+      "area": "properties",
+      "plain": {
+        "issue": "Monitrax cannot record whether a co-owned property is run as a rental BUSINESS rather than held as a passive investment. That distinction changes the tax treatment, so Tranche 5's balance-sheet work cannot work it out from your data for any property — there is nowhere for the answer to live. Found by auditing the schema instead of asking you the question: an answer given in chat would not be a source of truth for anything."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03."
     }
   ]
 }

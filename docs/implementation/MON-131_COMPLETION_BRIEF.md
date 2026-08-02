@@ -332,7 +332,7 @@ per fact says he was right in five cases out of six — and the sixth is a findi
 | Per-property availability days | ✅ `Property.genuinelyAvailableForRent` + `availableDaysPerYear` — added by T1 itself under X7/D43 | The Matrix reads whether they are **populated**; nullable, so absence is the likely answer |
 | Total super balance | ✅ DERIVED — Σ `SuperannuationAccount.currentBalance` | Never a question. Derive it |
 | Division 293 exposure | ✅ DERIVED — income + concessional contributions; `TaxPosition.division293Tax` already exists | Derive it |
-| **Co-owned property held as a rental BUSINESS** | ❌ **NO HOME.** `OwnershipGroup` / `OwnershipStake` capture co-ownership *shares*, but nothing records the **tax characterisation** — business vs passive investment (D42 C1), which changes the treatment | **A MON-131 finding: a FACT the app cannot hold.** Asking Reza in chat would paper over it; the fix is a field, and until there is one, T5 cannot determine this from data for any property |
+| **Co-owned property held as a rental BUSINESS** | ❌ **NO HOME.** `OwnershipGroup` / `OwnershipStake` capture co-ownership *shares*, but nothing records the **tax characterisation** — business vs passive investment (D42 C1), which changes the treatment | **MON-144, raised 2026-08-03.** A FACT the app cannot hold. Asking Reza in chat would paper over it; the fix is a field, and until there is one, T5 cannot determine this from data for any property |
 
 **This is the shape the instruction was meant to produce.** Five facts stop being questions and become
 reads. The sixth stops being a question and becomes a defect — which is strictly more useful, because a

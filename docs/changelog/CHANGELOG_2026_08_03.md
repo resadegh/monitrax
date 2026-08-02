@@ -104,3 +104,52 @@ D49 shipped. `affa74f3`. The T2 migration is unblocked.
 Establishes whether each fact has a **home in the schema**, read in source. It does **not** establish
 whether the fields are **populated** on Reza's account — that is the Matrix read, and for
 `availableDaysPerYear` (nullable, added recently) empty is the likely answer.
+
+---
+
+## Session: g8kra5 (cont.) — MON-144 raised; the MON-142 verification handout
+
+### MON-144 — a FACT the app cannot hold
+
+The one gap the §5.2 schema audit found is now registered. `OwnershipGroup`/`OwnershipStake` record
+co-ownership **shares**; nothing records whether a co-owned property is run as a rental **business**
+rather than held passively. D42 C1 says that changes the tax treatment, so **T5 cannot determine it from
+data for any property**. `changesNumbers: false` — no number moves today; the defect is that the answer
+has nowhere to live. Registry: 131 issues, gate green.
+
+### The MON-142 handout — `docs/verification/briefs/MATRIX_MON142_RATE_DIVERGENCE.md`
+
+First handout written under the §3.0b contract and the §3.0c return format. Carries all seven required
+properties: committed location, build precondition (`affa74f3`+), identity assertion before any number is
+read, falsifiable predictions, the exact artefact to return, the `mustNotMove` cluster, and the coverage
+boundary.
+
+**Part A** confirms the divergence from the app's own data: stored **6.690%** on both Bankwest IO loans
+vs an implied **≈6.2697%**. The load-bearing prediction is that the divergence is **−0.42026 pp,
+identical on both** — two loans drifting by exactly the same amount is what one lender changing one rate
+looks like; two drifting differently would mean something else is wrong, and the handout says to report
+that rather than round them together. It also asks whether *anything* surfaces the staleness (predicted
+`false` — that absence **is** MON-142).
+
+**Part B** folds in the five schema reads T4–T7 need. These carry **no prediction**: `expected` is the
+literal `"UNKNOWN — report observed"`, with an explicit instruction not to invent one. For
+`availableDaysPerYear` — nullable and added only in T1 — empty is a legitimate finding.
+
+**What it deliberately cannot settle**, stated in §6: which rate is *correct*. The bank's actual rate is
+outside the app. What it settles is that Monitrax holds enough evidence to tell its own user the stored
+figure looks stale, and today does not.
+
+### Files Modified
+- `docs/issues/ISSUES.{json,md}` — MON-144 raised
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §5.2 row now cites MON-144
+- `docs/verification/briefs/MATRIX_MON142_RATE_DIVERGENCE.md` — **NEW**
+
+### Also recorded
+#1568's production deploy `dpl_6eBsqhFWYJYg9qi1psbkP17nQuCX` → **READY**. D49's gate change is live.
+
+### Build Status
+- [x] `issues:check` — PASS (131 valid) · `mon131:check` · `refnums:check` — PASS
+
+### Coverage — stated precisely
+Registers one defect and ships one verification instrument. Verifies nothing itself — the handout has not
+been run.
