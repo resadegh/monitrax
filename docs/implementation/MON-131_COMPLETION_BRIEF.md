@@ -138,6 +138,68 @@ Every build section therefore ships **two** things: the change, and the instrume
   Produces a **PASS/FAIL verdict** recorded as `docs/verification/runs/VR-NNN.md`. Type specimen:
   `RING3_VR045_T1_REPAIR.md`.
 
+### §3.0c The return format — results come back machine-consumable
+
+**Standing process (Reza, 2026-08-03): every handout tells the Matrix to return its result in a form
+Code can consume directly.** Prose has to be *interpreted*, and interpretation is where a session
+assumes. Three near-misses already came from exactly that: a capture accepted before anyone checked the
+build it ran against (it predated the fix it was measuring), a PASS whose coverage boundary was never
+stated, and a handout answered against the wrong account.
+
+So every handout ends with this instruction, and the result is validated before it is acted on:
+
+> **Return one fenced ```json block conforming to `matrix-result/v1`, then your human note.**
+> The JSON is what Code consumes; the note is what Reza reads. Never only the note.
+
+```json
+{
+  "schema": "matrix-result/v1",
+  "handout": "docs/verification/briefs/<the brief you ran>.md",
+  "kind": "capture | ring3",
+  "runId": "VR-046 | null",
+  "sha": "<full 40-char commit the run executed against>",
+  "capturedAt": "<ISO timestamp>",
+  "account": {
+    "userId": "<the ?userId= scoped account>",
+    "identityAssertion": {
+      "expected": { "loanCount": 5, "netWorth": 3401782 },
+      "observed": { "loanCount": 5, "netWorth": 3401782 },
+      "pass": true
+    }
+  },
+  "verdict": "PASS | FAIL | CAPTURE_ONLY",
+  "checks": [
+    { "id": "home.budget.loans", "surface": "/dashboard (budget tile)",
+      "expected": 12779, "observed": 12779, "pass": true }
+  ],
+  "findings": [
+    { "severity": "critical | high | medium | low | observation",
+      "summary": "…", "evidence": "…" }
+  ],
+  "payload": "<verbatim response for a capture; null for a ring3 run>",
+  "coverage": { "verified": "…", "notVerified": "…" }
+}
+```
+
+**Validate before consuming:** `npm run matrix:check -- <file.json>`. Exit 0 means the result is
+well-formed and self-consistent — **not** that it passed; read `verdict`. A FAIL is a valid result. The
+validator refuses only a result that cannot be trusted to say either, and each rule exists because
+something already slipped past its absence:
+
+| The rule | What it catches |
+|---|---|
+| `sha` must be a full 40-char commit | The withdrawn T2 capture — taken at `8bed66b6`, *before* the MON-143 fix it was meant to reflect |
+| `identityAssertion` needs expected **and** observed, `pass: true` | A payload captured against the admin's own empty account. A bare `pass: true` asserts nothing |
+| Every check carries `observed` | *"As expected"* is not an observation |
+| `PASS` with any failed check → invalid | The most dangerous shape a result can take, because it reads green |
+| `FAIL` needs a failed check or a finding | A verdict with nothing behind it |
+| `coverage.notVerified` is **required** | §22.2.4 — a run that implies it verified everything. "Everything" is never the answer |
+| `PASS` + a `critical` finding → invalid | A contradiction that must be resolved before anyone acts on it |
+| `kind: capture` must be `CAPTURE_ONLY` and carry a payload | A capture asks for no verdict; the measurements are the deliverable |
+
+Both authors gain from it: Code ingests without guessing, and Reza gets a note that cannot quietly
+disagree with the data beside it.
+
 **The next handout due:** T2's Ring-3, when the migration merges. Its acceptance is already fixed by
 `.audit/expected-moves-t2.json` — 13 paths land exactly, the `mustNotMove` cluster is byte-identical,
 and Home's budget tile reads **$12,779**, matching `/dashboard/expenses`. Reza should not have to ask

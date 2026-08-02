@@ -105,7 +105,13 @@ docs/implementation/01_ACTIVE_WORKSTREAMS.md
 docs/implementation/02_UP_NEXT.md
 docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md
 docs/implementation/04_RECENTLY_COMPLETED.md
+docs/implementation/MON-131_COMPLETION_BRIEF.md   <- WHILE MON-131 IS LIVE: the forward plan + the handout contract (§3.0b/§3.0c). READ IT EVERY SESSION.
+docs/implementation/MON-131_TRANCHE_LEDGER.md     <- MON-131 state of record — gate evidence + every merged PR. If it and the brief disagree, the LEDGER WINS.
 ```
+
+> **MON-131 is the first-priority programme (Reza, 2026-08-03: "I want to focus on fixing MON-131 completely before moving to other issues"), so its two documents are session-start reads, not task-time reads.** Two rules in the brief bind EVERY build, and both exist because they already slipped once when they lived only in chat:
+> - **§3.0b — a build section is not done when the code merges. It is done when the handout for verifying it exists** (committed at `docs/verification/briefs/`, naming the minimum commit it must run against, its identity assertion, its falsifiable predictions, its `mustNotMove` guard and its coverage boundary). Code NEVER declares a tranche verified on its own build passing (§23.2.3).
+> - **§3.0c — verification results come back as `matrix-result/v1` JSON**, validated with `npm run matrix:check -- <file>` BEFORE being acted on. A result read as prose is a result interpreted, and interpretation is where a session assumes.
 
 > Since 2026-06-15 (finding F-8) the plan is a thin **hub** + **spokes**. Read the hub first (it's small), then the spoke(s) relevant to your task. The hub remains the canonical entry point.
 

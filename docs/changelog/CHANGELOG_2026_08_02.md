@@ -292,3 +292,66 @@ tile reads $12,779 matching `/dashboard/expenses`.
 
 ### Coverage — stated precisely
 Codifies a process. Verifies nothing and changes no number.
+
+---
+
+## Session: g8kra5 (cont.) — machine-consumable results + the session-start lock
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** verification results came back as prose, which has to be *interpreted* — and
+  interpretation is where a session assumes. And the handout rules lived in a document a session might
+  not re-read, which is how a rule drifts.
+- **What changed:** results now return as validated `matrix-result/v1` JSON, and both MON-131 documents
+  are session-start reads in CLAUDE.md.
+- **What you'll see:** results that cannot quietly contradict the note beside them.
+
+### 1. `matrix-result/v1` — the return format
+
+Every handout now ends with: *"Return one fenced ```json block conforming to `matrix-result/v1`, then
+your human note. The JSON is what Code consumes; the note is what Reza reads. Never only the note."*
+
+Validated with `npm run matrix:check -- <file.json>` **before** the result is acted on. Exit 0 means
+well-formed and self-consistent — **not** that it passed; a FAIL is a valid result. The validator
+refuses only a result that cannot be trusted to say either.
+
+Every rule exists because something already slipped past its absence:
+
+| Rule | What it catches |
+|---|---|
+| `sha` must be a full 40-char commit | The withdrawn T2 capture — taken at `8bed66b6`, *before* the MON-143 fix it was measuring |
+| `identityAssertion` needs expected **and** observed, `pass: true` | A payload captured against the admin's own empty account (VR-044's voided first attempt) |
+| Every check carries `observed` | "As expected" is not an observation |
+| `PASS` with any failed check → invalid | The most dangerous shape a result can take: it reads green |
+| `coverage.notVerified` **required** | §22.2.4 — a run implying it verified everything |
+| `PASS` + a `critical` finding → invalid | A contradiction someone would otherwise act on |
+
+Exercised against a good result (passes) and five failure modes — short sha, failed identity assertion,
+PASS-containing-a-failure, missing coverage boundary, ring3-with-zero-checks — each rejected with the
+reason, not a generic schema error.
+
+### 2. The session-start lock
+
+Reza: *"keep everything documented as critical instruction on every start so you don't drift and
+assume."* Both MON-131 documents are now in **CLAUDE.md Part 1 Step 1.5** — the mandatory session-start
+reads — with the two binding rules stated inline (§3.0b the handout contract, §3.0c the return format)
+and the precedence rule: **if the brief and the ledger disagree, the ledger wins.**
+
+CLAUDE.md is the right and only home for this: it is loaded every session, and §20.6 already records
+that splitting instructions into a second store would itself violate SSOT.
+
+### Files Modified
+- `scripts/verification/check-matrix-result.mjs` — **NEW.** The validator
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — **§3.0c** the return format + the rule table
+- `docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md` — §4 carries the envelope instruction
+- `CLAUDE.md` — Step 1.5 gains both MON-131 docs + the two binding rules
+- `package.json` — `matrix:check`
+
+### Build Status
+- [x] `matrix:check` on a valid result — PASS; five invalid shapes — correctly rejected
+- [x] `mon131:check` · `check-plan-freshness` · `refnums:check` · `issues:check` — PASS
+
+### Coverage — stated precisely
+Validates the SHAPE and internal consistency of a returned result. It does **not** check that the
+numbers in it are true — that is the run itself, on live data. A well-formed FAIL passes this validator,
+which is the intended behaviour.
