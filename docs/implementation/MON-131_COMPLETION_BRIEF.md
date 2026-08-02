@@ -301,7 +301,7 @@ only Reza holds.
 | **D49** | Resolve `check-binding-coverage`'s symbol anchor against **source** rather than the frozen Layer 0 | ✅ **DECIDED 2026-08-03 — option A.** Implemented same day | **T2 migration unblocked.** It earned its keep immediately: resolving against source exposed **two anchors that were simply wrong** and had been passing for months — `input.InvestmentAccount.cashBalance` pointed at line 2271, which is `ELECTRIC` inside a *different* model, and `input.NetWorthSnapshot` pointed at a `createdAt` field 23 lines above the model it names. The old gate passed both because the frozen Layer 0 agreed with the stale line. Both re-pinned; 188/188, and the gate proven to still catch injected drift |
 | **MON-141** | Income page $22,579/mo vs Home $25,347 — the gap is entirely rental basis (DECLARED vs ACTUALS), unnamed on both | ✅ **DECIDED 2026-08-03 — label both surfaces.** Queued | No number moves. Each screen names the basis it shows, so the two stop reading as a contradiction |
 | **MON-142** | Stored 6.690% on both Bankwest IO loans; the repayments in the app imply ~6.268% | 🔬 **REFRAMED 2026-08-03 — the Matrix confirms it from the app's own data** (§5.1) | Code had told Reza to check with the bank. **That instruction was wrong**: the app already holds the repayment transactions the divergence is derived from |
-| **T4–T7 facts** | QS depreciation schedules · rented-out vs tenanted-residence + any co-owned rental *business* · per-property availability days · total super balance + Div 293 | 🔬 **REFRAMED 2026-08-03 — derive from the app, don't ask** | Reza: *"These can be provided by the Matrix by reviewing my real personal data through Monitrax."* That changes the work: for each fact, either it HAS a home in the schema (the Matrix reads it) or it does not — **and an absent home is itself a MON-131 finding**, a FACT the app cannot hold. Next action (Code): audit the schema per fact, then one handout to read the ones that exist |
+| **T4–T7 facts** | QS depreciation schedules · rented-out vs tenanted-residence + any co-owned rental *business* · per-property availability days · total super balance + Div 293 | ✅ **AUDITED 2026-08-03 — §5.2. Five of six already have a home; one is a real gap** | Reza was right that these come from the app. Nothing here needs typing into chat |
 
 ### §5.1 Why "ask Reza for the number" is usually the wrong instruction
 
@@ -319,6 +319,24 @@ Applied to MON-142 that principle gives a sharper answer than the one Code first
   the fact with the derivation would destroy the evidence that they disagreed.
 - **The divergence is a data-integrity finding the app should raise by itself** — and today it does not.
   That is exactly what MON-142 is.
+
+### §5.2 The schema audit behind the four "facts" — read in source, 2026-08-03
+
+Reza's instruction was to derive these from the app rather than ask him. Auditing `prisma/schema.prisma`
+per fact says he was right in five cases out of six — and the sixth is a finding worth having.
+
+| Fact | Home in the schema | Verdict |
+|---|---|---|
+| QS depreciation schedules | ✅ `DepreciationSchedule` — per property: `category` · `assetName` · `cost` · `startDate` · `rate` · `method` (PRIME_COST / DIMINISHING_VALUE) | The Matrix reads whether rows exist per property. **Note D11 lives here**: `rate Float` carries no unit in the type — 2.5 or 0.025 is the open 100× ambiguity T4 must close |
+| Rented out vs tenanted residence | ✅ `Property.type` — `HOME` / `INVESTMENT` / `RENTAL` (RENTAL = *user is renting it*, not owning) | The Matrix reads it |
+| Per-property availability days | ✅ `Property.genuinelyAvailableForRent` + `availableDaysPerYear` — added by T1 itself under X7/D43 | The Matrix reads whether they are **populated**; nullable, so absence is the likely answer |
+| Total super balance | ✅ DERIVED — Σ `SuperannuationAccount.currentBalance` | Never a question. Derive it |
+| Division 293 exposure | ✅ DERIVED — income + concessional contributions; `TaxPosition.division293Tax` already exists | Derive it |
+| **Co-owned property held as a rental BUSINESS** | ❌ **NO HOME.** `OwnershipGroup` / `OwnershipStake` capture co-ownership *shares*, but nothing records the **tax characterisation** — business vs passive investment (D42 C1), which changes the treatment | **A MON-131 finding: a FACT the app cannot hold.** Asking Reza in chat would paper over it; the fix is a field, and until there is one, T5 cannot determine this from data for any property |
+
+**This is the shape the instruction was meant to produce.** Five facts stop being questions and become
+reads. The sixth stops being a question and becomes a defect — which is strictly more useful, because a
+number typed into a chat window is not a source of truth for anything.
 
 So the next step is not "Reza rings the bank". It is: the Matrix confirms from live data that the
 divergence is real and consistent across both loans, then the engine gets wired to a surface so Monitrax

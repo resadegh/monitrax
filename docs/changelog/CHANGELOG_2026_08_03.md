@@ -68,3 +68,39 @@ comment must not satisfy an anchor, or the gate passes on coincidence.
 Proves the gate resolves anchors against source, still fails on drift, and that two specific anchors
 were wrong and are now right. It does **not** re-verify the other 186 anchors' semantic correctness —
 they resolve to the named symbol at the claimed line, which is what the gate checks and all it checks.
+
+---
+
+## Session: g8kra5 (cont.) — the schema audit behind the four "facts"
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** the brief listed four facts as *"blocked on Reza"*. That framing was Code's, and it
+  was wrong in the same way the MON-142 instruction was — it assumed the app couldn't answer.
+- **What changed:** audited `prisma/schema.prisma` per fact. **Five of six already have a home.** The
+  sixth has none, which makes it a finding rather than a question.
+- **What you'll see:** nothing yet. Four tranches stop waiting on you.
+
+| Fact | Home | Verdict |
+|---|---|---|
+| QS depreciation schedules | ✅ `DepreciationSchedule` (per property: category · assetName · cost · startDate · rate · method) | Matrix reads it. **D11 lives here** — `rate Float` carries no unit, the open 100× ambiguity T4 must close |
+| Rented out vs tenanted residence | ✅ `Property.type` — HOME / INVESTMENT / RENTAL | Matrix reads it |
+| Per-property availability days | ✅ `Property.genuinelyAvailableForRent` + `availableDaysPerYear` — added by T1 under X7/D43 | Matrix reads whether **populated** (nullable) |
+| Total super balance | ✅ DERIVED — Σ `SuperannuationAccount.currentBalance` | Derive, never ask |
+| Division 293 exposure | ✅ DERIVED — income + concessional contributions; `TaxPosition.division293Tax` exists | Derive |
+| **Co-owned property held as a rental BUSINESS** | ❌ **NONE** — `OwnershipGroup`/`OwnershipStake` hold co-ownership *shares*; nothing records the tax characterisation (D42 C1) | **A MON-131 finding: a FACT the app cannot hold** |
+
+**This is what the instruction was for.** Five facts became reads. The sixth became a defect — strictly
+more useful, because a number typed into a chat window is not a source of truth for anything, and D42 C1
+changes the tax treatment.
+
+### Also: #1568 merged
+D49 shipped. `affa74f3`. The T2 migration is unblocked.
+
+### Files Modified
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §5 row resolved; new §5.2 with the audit table
+
+### Coverage — stated precisely
+Establishes whether each fact has a **home in the schema**, read in source. It does **not** establish
+whether the fields are **populated** on Reza's account — that is the Matrix read, and for
+`availableDaysPerYear` (nullable, added recently) empty is the likely answer.
