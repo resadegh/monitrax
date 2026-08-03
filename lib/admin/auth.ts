@@ -498,6 +498,14 @@ export function extractAdminToken(request: Request): string | null {
         return [key, value.join('=')];
       })
     );
+    // @deprecated 2026-08-03 (MON-155): NOTHING WRITES THIS COOKIE. The only
+    // other reference on main is app/api/admin/auth/logout/route.ts:25, which
+    // clears it. Admin auth has been GCP/Bearer since dfcafba1 (2026-04-12),
+    // and every working relay call has carried an Authorization header from a
+    // page-context fetch. This branch reads as a live alternative and is not
+    // one — VR-047B's first attempt trusted it, diagnosed the relay as
+    // unreachable, and nearly shipped an auth change for a defect that did not
+    // exist. Delete it or implement it; do not leave it half-present.
     if (cookies['admin_session']) {
       return cookies['admin_session'];
     }

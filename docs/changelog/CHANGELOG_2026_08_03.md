@@ -443,3 +443,96 @@ auditor before it reached us.
 The admin handout is amended to run **PART A only**, returning `sectionsNotRun: ["PART B"]` and verdict
 `PARTIAL` — the rule this same PR added, applied to its own companion document on the first occasion
 it had one.
+
+---
+
+## Session: `sbpfhc` — VR-047B consumed: T2's Ring-3 closes, and two findings are acted on
+
+### Changes Made
+
+- **Type**: Verification consumption + relay fix + registry
+- **Scope**: `docs/verification/runs/` · the three T2 handouts · `golden-baseline/t2-loan-cost` relay · `lib/admin/auth.ts` · the MON-131 ledger / brief / hub
+- **Description**: VR-047B returned the producer half of T2's Ring-3 from the second Chrome profile. PART A passed in full, so **G8 is closed** on VR-047 + VR-047B together. Two of its findings were verified in source and acted on; a third, earlier VR-047B is withdrawn in full.
+
+### What passed, and why it needed a separate run
+
+VR-047 read the rendered surfaces from Reza's own session and could not reach §2, §2b or the build
+precondition — all three need the admin relay, and the account-first law forbids opening it in that
+profile. VR-047B ran exactly those from a second profile:
+
+- **Build precondition** — `paths: []`, zero moves on `cashflow.*` and `debt.*`. That is the migration
+  having landed, not the relay going quiet: master *is* the canonical producer now, so the relay
+  compares the canonical path against itself.
+- **All 15 declared paths landed**, including both exactness traps the declaration was written to
+  survive — `annualLoanRepayments` **153,351.51** (not …48, because the engine multiplies the
+  *unrounded* monthly) and `annualCashflow` **133,020.78** (not .79).
+- **The four-expression identity HOLDS.** `cashflow.monthlyLoanRepayments`,
+  `debt.metrics.monthlyRepayments`, `debt.summary.totalRepayments` and
+  `quickMetrics.monthlyLoanRepayments` are built by four different expressions inside one service.
+  Three are byte-equal at **12,779.292814353912**; the fourth is that value rounded at the producer.
+  Before T2 they agreed only because they all read the same wrong thing — which is exactly why a
+  correct-looking tile could never have established this, and why the run was worth the second profile.
+- **`byType`** keys unchanged (HOME · INVESTMENT · STUDENT), summing bit-identical to the total. The
+  T1-frozen income denominator is unmoved at 25,346.550650921665, and all five per-loan costs are
+  byte-identical to the `915704f0` capture with MON-143's offset-netted floor intact.
+
+### Finding 2 — fixed, after checking the mechanism rather than trusting the report
+
+The report said the relay "annualises the rounded monthly". Reading the route first showed something
+adjacent but sharper: it compared `cf.monthlyLoanRepayments` — **rounded** by the orchestrator —
+against the **unrounded** canonical sum. Pre-migration that mismatch was invisible against a $3,962.64
+delta. Post-migration both arms are the same producer, so the 0.0028 residue *is* the signal, surfacing
+as `0.00` monthly beside `0.03` annually. The route now reads `debt.summary.totalRepayments`, comparing
+like with like. The underlying shape — one quantity carried at two precisions inside a single snapshot —
+is registered as **MON-154** rather than papered over at the reader.
+
+### The withdrawal, recorded in full because the near-miss is the lesson
+
+An earlier VR-047B returned **FAIL** with `failureClass: INSTRUMENT_UNREACHABLE` and recommended
+shipping an auth change. It had called the relay by address-bar navigation instead of a page-context
+`fetch(url, { credentials: 'include' })`, and read the resulting `SESSION_INVALID` as an app defect.
+Reza refused the diagnosis — *"you never had this issue in the past month — what has changed?"* — and
+reading the transcript rather than reasoning from memory settled it: **all 39 successful relay calls
+ever made used the fetch form; not one used navigation.** No code change was needed and none was made.
+
+Two things followed, both in this PR. **MON-155**: `extractAdminToken` (`lib/admin/auth.ts:501`) really
+does read an `admin_session` cookie that nothing writes — that half-present branch is what made the
+wrong story plausible — now tagged `@deprecated` with the evidence. And **every T2 handout now states
+the fetch form explicitly**; the old `GET <url>` phrasing reads as "navigate here" and is unrunnable
+that way.
+
+### What is deliberately NOT claimed
+
+- **G7 is HALF, not ✅.** The 15 declared paths are verified live, but the whole-tree
+  `MOVED-UNDECLARED` sweep has not run. These are two different instruments:
+  `GET /golden-baseline/t2-loan-cost` re-runs the T2 blocks only and is structurally blind to a move in
+  the health / CFO / risk / reports subtrees. The three-outcome verdict G7 names comes from
+  `POST /golden-baseline/diff`, and that call is the one action left on the gate.
+- **MON-130 stays `FIXING`.** Its kept half is verified, but its registered scope is twelve producers
+  and thirty sites remain. Lever 2 hides the surfaces those feed, which makes them out of **v1 scope** —
+  it does not make them **fixed**. Narrowing the issue is a scope call for Reza, recorded as **D50**.
+- **MON-143 → VERIFIED**, on its own numbers rather than by inheritance: Guildford's floor reads 384.45
+  against a 303,889.96 offset with no per-loan cost moved.
+
+### Files Modified
+
+- `app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts` — compare the unrounded producer value
+- `lib/admin/auth.ts` — `@deprecated` tag on the dead `admin_session` read (MON-155)
+- `docs/verification/runs/VR-047B.md` — new run record
+- `docs/verification/briefs/{RING3_T2_LOAN_COST,MATRIX_T2_ADMIN_RELAY,MATRIX_T2_RELAY_CAPTURE}.md` — the fetch form
+- `docs/issues/ISSUES.json` + `.md` — MON-143 VERIFIED; MON-154, MON-155 raised
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — G7 🟡 / **G8 ✅** / G10 ✅ / G11 🟡, §6 row
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §2, §5 (D50), §6 status log
+- `docs/IMPLEMENTATION_PLAN.md` — hub
+
+### Testing
+
+- [x] `npm run matrix:check -- <VR-047B payload>` → exit 0 (`kind=ring3 · verdict=PARTIAL · sha=c485b050 · 4 checks`) — the `PARTIAL` rule shipped that morning, working on its first real use
+- [x] `npm run issues:check`
+- [x] `npm run neomatrix:check`
+- [x] `npm run lint:source-lock` · `npm run lint:financial-surfaces` · producer census
+- [x] Full vitest suite
+
+**Coverage boundary.** This session verifies the T2 producer tree on live data and repairs the relay's
+own comparison. It verifies **no** rendered surface (VR-047 did that), does **not** run the whole-tree
+undeclared-move sweep, and touches **no** loan-cost producer outside `masterFinancialService`.

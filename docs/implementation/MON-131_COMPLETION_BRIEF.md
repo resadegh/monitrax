@@ -65,7 +65,7 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 | Tranche | Quantity | State | The one thing standing in the way |
 |---|---|---|---|
 | T1 | income | **DONE** | — (VR-045 PASS; four issues VERIFIED) |
-| **T2** | **loan cost** | **MIGRATED (master); awaiting Ring 3** | the **Ring-3 run** — `RING3_T2_LOAN_COST.md`, on Reza's live data |
+| **T2** | **loan cost** | **Ring 3 ✅ PASSED** (VR-047 + VR-047B) | the **whole-tree `MOVED-UNDECLARED` sweep** — `POST /golden-baseline/diff`, one call |
 | T3 | expense run-rate | ready to plan | G1 cleared 08-03; needs its censuses |
 | T4 | tax constants + depreciation | blocked on FACTS | QS depreciation schedules (Reza) |
 | T5 | balance sheet | blocked on FACTS | property rental-vs-residence classification (Reza) |
@@ -73,9 +73,13 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 | T7 | budget remainder | blocked on FACTS | total super balance · Div 293 exposure (Reza) |
 | Closing | the sweep | — | everything above |
 
-**T2's gates:** G2 ✅ · **G3 ✅** (`.audit/expected-moves-t2.json`, 13 measured paths, merged in #1565)
-· MON-143 ✅ fixed · G5 ❌ (cross-collateralised / fixed / mixed-purpose loans — facts) · G7–G11 pending
-the migration.
+**T2's gates:** G2 ✅ · **G3 ✅** (`.audit/expected-moves-t2.json`, amended to 15 paths as the migration
+PR's opening commit) · G5 ✅ (all three loan facts answered from `prisma/schema.prisma`; nothing asked of
+Reza) · G6 ✅ (#1575 merged `1e2317b`, prod READY) · **G8 ✅** (VR-047 rendered half + VR-047B producer
+half — the four-expression identity holds) · G9 ✅ · G10 ✅ · **G7 🟡 and G11 🟡**. Both halves are the
+same honesty: G7's declared paths are verified live but the whole-tree undeclared-move sweep has not run,
+and G11 has MON-143 VERIFIED while MON-130 stays FIXING because thirty producer sites remain — Lever 2
+hides those surfaces, which is out of v1 scope, not fixed.
 
 **The headline number:** `loanCost` sat at **31 producers** and is now at **30** — the programme's first
 real producer deletion (the earlier fall was a measurement correction, and the census history now says
@@ -313,6 +317,7 @@ only Reza holds.
 | **MON-141** | Income page $22,579/mo vs Home $25,347 — the gap is entirely rental basis (DECLARED vs ACTUALS), unnamed on both | ✅ **DECIDED 2026-08-03 — label both surfaces.** Queued | No number moves. Each screen names the basis it shows, so the two stop reading as a contradiction |
 | **MON-142** | Stored 6.690% on both Bankwest IO loans; the repayments in the app imply ~6.268% | 🔬 **REFRAMED 2026-08-03 — the Matrix confirms it from the app's own data** (§5.1) | Code had told Reza to check with the bank. **That instruction was wrong**: the app already holds the repayment transactions the divergence is derived from |
 | **T4–T7 facts** | QS depreciation schedules · rented-out vs tenanted-residence + any co-owned rental *business* · per-property availability days · total super balance + Div 293 | ✅ **AUDITED 2026-08-03 — §5.2. Five of six already have a home; one is a real gap** | Reza was right that these come from the app. Nothing here needs typing into chat |
+| **D50** | **MON-130's scope after Lever 2.** Its kept half is verified (VR-047B — `masterFinancialService`, the producer the property pages read, all four expressions agreeing). Its *registered* scope is twelve producers, and **thirty sites still read raw `minRepayment`**. Lever 2 hides the surfaces those feed. **(A) Narrow MON-130 to its kept surface** so it closes on evidence already in hand, and raise a **new** issue carrying the thirty. **(B) Leave it open** at full scope until the sites are actually collapsed. **Recommendation: A** — a hidden surface is an exposure control, not a defect control (`MON_131_SCOPE_FILTER.md`'s own words), and an issue whose title no longer matches what was verified is how an over-claim gets made later. A splits the two honestly; B leaves a VERIFIED-but-not-closable issue sitting on the board indefinitely | ⏳ **Waiting on Reza** | Neither option changes a number. A lets T2 close cleanly and moves the residue to a named successor; B keeps one issue spanning both, and T2 cannot reach G11 ✅ |
 
 ### §5.1 Why "ask Reza for the number" is usually the wrong instruction
 
@@ -384,6 +389,8 @@ this is an index, not a copy** (§0). Never paste a VR run's numbers here; link 
 | 08-03 | Matrix | **VR-047** — T2 Ring-3, account-first half. Home's budget tile reads **$12,779**, matching `/dashboard/expenses`; regression cluster byte-identical incl. `healthScore` 53 | **PASS — SCOPED**; §2/§2b not run (admin relay) | `docs/verification/runs/VR-047.md` |
 | 08-03 | Code | **VR-047 consumed** — 5 findings registered (MON-149…153); the handout's mis-specified §3 saving-rate row withdrawn; `matrix:check` tightened so a PASS cannot have skipped a section; **T2-B scaffold** (the `loanCostBasis` seam + compare relay, moving nothing) | — | `MATRIX_T2_ADMIN_RELAY.md` |
 | 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `1e2317b` | ledger §6 · `RING3_T2_LOAN_COST.md` |
+| 08-03 | Matrix | **VR-047B** — T2 Ring-3, admin-relay half, at `c485b05`. Build precondition `paths: []`; all 15 declared paths landed with both exactness traps; **the four-expression identity HOLDS** (three leaves byte-equal at `12,779.292814353912`, the fourth that value rounded at the producer); `byType` keys unchanged, sum bit-identical. PART B parked by Lever 2 | **PARTIAL** — every executed check passed; `sectionsNotRun: ["PART B"]` | `docs/verification/runs/VR-047B.md` |
+| 08-03 | Code | **VR-047B consumed — G8 CLOSED.** T2's Ring-3 passes on VR-047 + VR-047B together; **MON-143 → VERIFIED**. Relay's rounded-vs-unrounded comparison fixed (verified in source first — the reported mechanism was close but not exact); **MON-154** + **MON-155** raised; all three handouts now state the page-context fetch form after an earlier VR-047B nearly shipped an auth change for a non-defect. **MON-130 stays `FIXING`** — kept half verified, 30 sites remain | — | ledger §3 T2 · `VR-047B.md` |
 
 ---
 

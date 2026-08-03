@@ -240,7 +240,21 @@ export async function GET(request: NextRequest) {
   // ---- the declared paths T2 will move -----------------------------------
   const cf = snapshot.cashflow;
   const qm = snapshot.quickMetrics;
-  const oldMonthlyLoan = cf.monthlyLoanRepayments;
+  // VR-047B finding 2 — compare LIKE WITH LIKE, or the residue becomes noise.
+  //
+  // This read `cf.monthlyLoanRepayments`, which the orchestrator ROUNDS to
+  // cents, against `newMonthlyLoanCost`, which is the UNROUNDED sum. Before
+  // the migration that mismatch was invisible: the delta was $3,962.64 and the
+  // sub-cent residue vanished in it. After it, both arms are the same producer
+  // and the residue IS the whole signal — 12,779.292814… − 12,779.29 =
+  // 0.0028…, which rounds to `deltaMonthly: 0` and `deltaAnnual: 0.03`. Two
+  // fields of one summary disagreeing about whether anything moved, in the
+  // instrument whose job is to say exactly that.
+  //
+  // `debt.summary.totalRepayments` is the same quantity carried UNROUNDED
+  // (VR-047B proved they are bit-equal once rounded), so it is the honest
+  // left-hand side. Falls back to the rounded leaf if the block is absent.
+  const oldMonthlyLoan = snapshot.debt?.summary?.totalRepayments ?? cf.monthlyLoanRepayments;
   const delta = newMonthlyLoanCost - oldMonthlyLoan;
 
   // The income leg is FROZEN at its T1 value — T2 moves the loan leg only.
