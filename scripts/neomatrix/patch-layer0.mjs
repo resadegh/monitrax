@@ -134,6 +134,15 @@ function relocate(lines, symbol, guess) {
   return hits.reduce((best, h) => (Math.abs(h - guess) < Math.abs(best - guess) ? h : best), hits[0]);
 }
 
+// Capture each artefact's existing indentation BEFORE parsing, so the write
+// below can reproduce it rather than impose one (see the write call).
+const indentOf = (path) => {
+  const m = /\n(\s+)"/.exec(readFileSync(path, 'utf8').slice(0, 400));
+  return m ? m[1].length : 0;
+};
+const graphIndent = indentOf(GRAPH);
+const manifestIndent = indentOf(MANIFEST);
+
 const graph = JSON.parse(readFileSync(GRAPH, 'utf8'));
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
 
@@ -271,6 +280,15 @@ if (DRY) {
   process.exit(0);
 }
 
-writeFileSync(GRAPH, `${JSON.stringify(graph, null, 2)}\n`);
-writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
-console.log('\n✓ wrote structural-graph.json + content-manifest.json (builtAtCommit left honest)');
+// Write each file back in the SHAPE IT ALREADY HAD. `graphify-layer0.mjs`
+// emits the structural graph minified (`JSON.stringify(…, null, 0)`), and a
+// pretty-printed rewrite turns a five-line semantic change into a 272,706-line
+// diff — unreviewable, and a gratuitous rewrite of a generated artefact. The
+// manifest is currently pretty-printed on main (an earlier hand-patch), so
+// indentation is DETECTED per file (above, before parsing) rather than assumed
+// for either.
+writeFileSync(GRAPH, `${JSON.stringify(graph, null, graphIndent)}\n`);
+writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, manifestIndent)}\n`);
+console.log(
+  `\n✓ wrote structural-graph.json (indent ${graphIndent}) + content-manifest.json (indent ${manifestIndent}) — builtAtCommit left honest`,
+);
