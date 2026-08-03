@@ -57,7 +57,35 @@ export function validateMatrixResult(r) {
   // ── the build it ran against ──────────────────────────────────────────────
   // This is the field that would have caught the withdrawn T2 capture: it was
   // taken at 8bed66b6, BEFORE the MON-143 fix it was supposed to reflect.
-  if (!SHA_RE.test(r.sha ?? '')) err('sha must be the full 40-char commit the run executed against');
+  // RULE A (Reza, 2026-08-03) — the account-first carve-out. VR-046 F3 surfaced a
+  // genuine contradiction between two standing rules: a Ring-3 run MUST be
+  // account-first (read Reza's own screens; opening /admin in the same profile is
+  // what voided VR-044's first attempt AND VR-046's), yet the deployed commit is
+  // exposed ONLY by the admin relay. A compliant account-first run therefore could
+  // not satisfy this field. Null sha is now permitted under THREE conditions, all
+  // required — the carve-out is narrow by construction, because a run that silently
+  // omits its build is exactly the shape that let the withdrawn T2 capture (taken at
+  // 8bed66b6, BEFORE the MON-143 fix it claimed to reflect) look valid.
+  //   1. kind === 'ring3'      — relay/golden captures READ the relay, so they have
+  //                              no excuse; they still require a real sha.
+  //   2. sha === null          — explicitly null, never absent/undefined/''. An
+  //                              omitted field is an oversight; null is a claim.
+  //   3. shaNote states why    — a substantive reason (>= 40 chars), so the gap is
+  //                              recorded and auditable rather than waved through.
+  const shaNote = typeof r.shaNote === 'string' ? r.shaNote.trim() : '';
+  const accountFirstExemption =
+    r.kind === 'ring3' && r.sha === null && shaNote.length >= 40;
+  if (!accountFirstExemption && !SHA_RE.test(r.sha ?? '')) {
+    if (r.sha === null && r.kind === 'ring3') {
+      err(
+        'sha is null but the account-first exemption is not met — supply a shaNote (>= 40 chars) stating why the deployed commit could not be read',
+      );
+    } else if (r.sha === null) {
+      err(`sha is null, but the account-first exemption applies only to kind:ring3 (this is kind:${r.kind})`);
+    } else {
+      err('sha must be the full 40-char commit the run executed against (or explicitly null for an account-first ring3 run, with a shaNote)');
+    }
+  }
   if (!r.capturedAt) err('capturedAt missing (ISO timestamp)');
 
   // ── identity: admin credentials are not the account under test ────────────
@@ -146,5 +174,10 @@ if (!ok) {
   process.exit(1);
 }
 console.log(
-  `✓ matrix-result well-formed · kind=${parsed.kind} · verdict=${parsed.verdict} · sha=${parsed.sha.slice(0, 8)} · ${(parsed.checks ?? []).length} check(s)`,
+  // sha may legitimately be null under the Rule A account-first exemption above —
+  // `.slice()` on it would throw on the SUCCESS path, turning a valid result into a
+  // crash. Surfaced by VR-046 F3 in the same breath as the rule itself.
+  `✓ matrix-result well-formed · kind=${parsed.kind} · verdict=${parsed.verdict} · sha=${
+    parsed.sha ? parsed.sha.slice(0, 8) : 'null (account-first)'
+  } · ${(parsed.checks ?? []).length} check(s)`,
 );
