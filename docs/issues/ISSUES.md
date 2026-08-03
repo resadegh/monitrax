@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**135 total** · 75 open · 🔵 34 · 🟡 4 · 🟠 29 · 🟢 8 · ✅ 59
+**140 total** · 80 open · 🔵 39 · 🟡 4 · 🟠 29 · 🟢 8 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -142,6 +142,11 @@
 | MON-146 | 🔵 OPEN | 🟡 | yes | /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%) | — | — |
 | MON-147 | 🔵 OPEN | 🟢 | no | Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error | — | n/a |
 | MON-148 | ✅ CLOSED | 🟡 | no | Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days | ##1575 | n/a |
+| MON-149 | 🔵 OPEN | 🟡 | yes | HOME (Laguna) renders two recurring rental income rows but counts only one — ANNUAL RENT $902 against $7,848/mo of rendered income; ~$6,948/yr uncounted in its cashflow, yield and tax position | — | — |
+| MON-150 | 🔵 OPEN | 🟡 | yes | Thornland Lot 1 and Lot 2 each claim depreciation of exactly $12,799/yr from identically-named, identically-sized documents — possible duplicate QS schedule worth ~$4,736/yr at the marginal rate | — | — |
+| MON-151 | 🔵 OPEN | 🟢 | yes | The per-property tax position derives interest as stored rate x FULL balance, ignoring the linked offset — the same D21 breach MON-143 fixed in the loan-cost floor, in a different producer | — | — |
+| MON-152 | 🔵 OPEN | 🟢 | yes | The Hunter Premium insurance expense renders as $797/mo on one card and $812/mo on two others, on the same day — same metric, two values | — | — |
+| MON-153 | 🔵 OPEN | 🟡 | yes | Three different health scores render across the app — 53 on Home and CFO (matching), 56 in the /cashflow header, and 25 in the AI advisor prose on that same page | — | — |
 
 ---
 
@@ -2479,4 +2484,59 @@ CAVEAT ON THE EVIDENCE: the runtime read TIMED OUT (curl 28) after 464 bytes, so
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: docs/financial-logic/graph/structural/structural-graph.json. Expected: Every Layer-0 node names a symbol that exists in the file it points at.. Actual: services_masterfinancialservice_adjustpropertyrentalincome pointed at lib/services/masterFinancialService.ts:1066 with three edges. adjustPropertyRentalIncome was DELETED by MON-131 T1-B in 86f467f — tests/tax/rentalTaxDedup.test.ts:96 even asserts the source no longer contains it. check-layer0-coverage.mjs compares the FILE SET and per-file HASHES, so a node describing deleted code inside an otherwise-current file is invisible to it.. || FOUND by running scripts/neomatrix/patch-layer0.mjs (new in #1575) for the first time: it verifies every node of a touched file against source and refused to write until this one was explained. The tool exists because of D49 — graphify is a local-only CLI absent from CI and from these containers, so every MON-131 tranche has to patch Layer 0 by hand; d5c9434f and 4aab376e each did it with a throwaway script. This commits that operation with the verification built in. CLOSED in the same PR: the ghost is pruned and the tool that found it is committed. NOT claimed: the gate itself is unchanged, so a ghost in a file no tranche happens to touch is still invisible. The durable fix is a CI-runnable symbol check or a CI-runnable extractor (D49's own recommendation) — recorded here rather than built, because widening a gate is its own change with its own blast radius. || RENUMBERED 2026-08-03: raised as MON-147 on this branch while main independently took that id for the DEP0169 runtime-log finding (ae70524). Main's numbering wins; this is MON-148.
+
+### MON-149 — HOME (Laguna) renders two recurring rental income rows but counts only one — ANNUAL RENT $902 against $7,848/mo of rendered income; ~$6,948/yr uncounted in its cashflow, yield and tax position
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: properties · opened 2026-08-03
+
+> **What was wrong:** A verification check found a mismatch on app/dashboard/properties/[id] — ANNUAL RENT / CASHFLOW-YR vs the Cashflow rhythm rows (expected A property's annual rent counts every recurring income row attached to it., got The detail page lists 'Rental income +$75/mo' and ANNUAL RENT $902 (75x12=900) while its OWN Cashflow rhythm shows TWO monthly recurring rows: Hipcampcom ...-glkcwmw +$75 and Hipcampcom ...-s2bo3dz +$579. The list tile says '2 income'. CASHFLOW/YR -$8,668 reconciles exactly as 902 - 9,570 — i.e. on the single row only. If the $579 row belongs to this property, ~$6,948/yr of rental income is uncounted in its cashflow, its yield (0.12%) and its tax position. Byte-identical before and after the T2 migration, so pre-existing, not a regression. Found by VR-047.).
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] — ANNUAL RENT / CASHFLOW-YR vs the Cashflow rhythm rows. Expected: A property's annual rent counts every recurring income row attached to it.. Actual: The detail page lists 'Rental income +$75/mo' and ANNUAL RENT $902 (75x12=900) while its OWN Cashflow rhythm shows TWO monthly recurring rows: Hipcampcom ...-glkcwmw +$75 and Hipcampcom ...-s2bo3dz +$579. The list tile says '2 income'. CASHFLOW/YR -$8,668 reconciles exactly as 902 - 9,570 — i.e. on the single row only. If the $579 row belongs to this property, ~$6,948/yr of rental income is uncounted in its cashflow, its yield (0.12%) and its tax position. Byte-identical before and after the T2 migration, so pre-existing, not a regression. Found by VR-047..
+
+### MON-150 — Thornland Lot 1 and Lot 2 each claim depreciation of exactly $12,799/yr from identically-named, identically-sized documents — possible duplicate QS schedule worth ~$4,736/yr at the marginal rate
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-08-03
+
+> **What was wrong:** A verification check found a mismatch on app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown (expected Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged., got Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047.).
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown. Expected: Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged.. Actual: Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047..
+
+### MON-151 — The per-property tax position derives interest as stored rate x FULL balance, ignoring the linked offset — the same D21 breach MON-143 fixed in the loan-cost floor, in a different producer
+
+**🔵 OPEN** · 🟢 low · changes numbers: **yes** · area: tax · opened 2026-08-03
+
+> **What was wrong:** A verification check found a mismatch on lib/tax-engine deductible-interest fallback rendered on app/dashboard/properties/[id] (expected Interest accrues on the balance NET of the offset (D21) — the rule MON-143 established for the canonical loan-cost floor., got Backing interest out of each property's rendered tax sentence returns stored-rate x FULL balance to the dollar on all four loan-bearing properties: Guildford 23,576 vs 377,822 x 6.24% = 23,576.09; Thornland Lot 1 61,465 vs 947,076 x 6.49% = 61,465.23; Broadbeach 15,253 vs 15,253.20; Thornland Lot 2 32,246 vs 32,245.80. Guildford carries a $303,890 offset (balances states 'Net after offset: -$73,932'), so interest at 6.24% on the offset balance is $4,613, not $23,576. This is the THEORETICAL fallback the ledger already names at propertyLoanInterest.ts:85 as an un-wired site. Guildford is the primary residence so deductibility is apportioned anyway — the arithmetic is the finding, not a tax conclusion. Found by VR-047.).
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/tax-engine deductible-interest fallback rendered on app/dashboard/properties/[id]. Expected: Interest accrues on the balance NET of the offset (D21) — the rule MON-143 established for the canonical loan-cost floor.. Actual: Backing interest out of each property's rendered tax sentence returns stored-rate x FULL balance to the dollar on all four loan-bearing properties: Guildford 23,576 vs 377,822 x 6.24% = 23,576.09; Thornland Lot 1 61,465 vs 947,076 x 6.49% = 61,465.23; Broadbeach 15,253 vs 15,253.20; Thornland Lot 2 32,246 vs 32,245.80. Guildford carries a $303,890 offset (balances states 'Net after offset: -$73,932'), so interest at 6.24% on the offset balance is $4,613, not $23,576. This is the THEORETICAL fallback the ledger already names at propertyLoanInterest.ts:85 as an un-wired site. Guildford is the primary residence so deductibility is apportioned anyway — the arithmetic is the finding, not a tax conclusion. Found by VR-047..
+
+### MON-152 — The Hunter Premium insurance expense renders as $797/mo on one card and $812/mo on two others, on the same day — same metric, two values
+
+**🔵 OPEN** · 🟢 low · changes numbers: **yes** · area: expenses · opened 2026-08-03
+
+> **What was wrong:** A verification check found a mismatch on app/dashboard/properties/[id] EXPENSES card vs its own Cashflow rhythm row vs /dashboard/expenses vs Home WHERE YOUR MONEY GOES (expected One expense renders one monthly figure everywhere., got HOME (Laguna) detail EXPENSES card: '1 recurring - $9,570/yr - $797/mo' (9,570/12 = 797.50). The SAME page's Cashflow rhythm row: 'Hunter Premium MONTHLY -$812'. /dashboard/expenses: 'INSURANCE $812'. Home's WHERE YOUR MONEY GOES: 'Hunter Premium $797/mo'. Two figures for one expense across four surfaces — the annualised-then-divided path vs the stored monthly. Small, but it is the same-metric-different-value class the canonical sweep names explicitly. Found by VR-047.).
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] EXPENSES card vs its own Cashflow rhythm row vs /dashboard/expenses vs Home WHERE YOUR MONEY GOES. Expected: One expense renders one monthly figure everywhere.. Actual: HOME (Laguna) detail EXPENSES card: '1 recurring - $9,570/yr - $797/mo' (9,570/12 = 797.50). The SAME page's Cashflow rhythm row: 'Hunter Premium MONTHLY -$812'. /dashboard/expenses: 'INSURANCE $812'. Home's WHERE YOUR MONEY GOES: 'Hunter Premium $797/mo'. Two figures for one expense across four surfaces — the annualised-then-divided path vs the stored monthly. Small, but it is the same-metric-different-value class the canonical sweep names explicitly. Found by VR-047..
+
+### MON-153 — Three different health scores render across the app — 53 on Home and CFO (matching), 56 in the /cashflow header, and 25 in the AI advisor prose on that same page
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: health · opened 2026-08-03
+
+> **What was wrong:** A verification check found a mismatch on app/(dashboard)/cashflow header + its NEXT BEST ACTION copy, vs /dashboard and /dashboard/cfo (expected D13 records the health engines as FOUR QUESTIONS to be NAMED separately rather than reconciled — so different numbers are acceptable ONLY if each says which question it answers., got /cashflow renders 'HEALTH 56 - MODERATE' in its header while its own NEXT BEST ACTION copy says 'your financial health score is currently at a concerning 25/100'. Home and My Guide both read 53 / Grade C, so the MON-030 parity gate PASSES. The defect is that D13's deliberate multiplicity reaches the user UNLABELLED, plus one figure (25) that reconciles to nothing else on the page. Found by VR-047.).
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/(dashboard)/cashflow header + its NEXT BEST ACTION copy, vs /dashboard and /dashboard/cfo. Expected: D13 records the health engines as FOUR QUESTIONS to be NAMED separately rather than reconciled — so different numbers are acceptable ONLY if each says which question it answers.. Actual: /cashflow renders 'HEALTH 56 - MODERATE' in its header while its own NEXT BEST ACTION copy says 'your financial health score is currently at a concerning 25/100'. Home and My Guide both read 53 / Grade C, so the MON-030 parity gate PASSES. The defect is that D13's deliberate multiplicity reaches the user UNLABELLED, plus one figure (25) that reconciles to nothing else on the page. Found by VR-047..
 

@@ -170,7 +170,8 @@ So every handout ends with this instruction, and the result is validated before 
       "pass": true
     }
   },
-  "verdict": "PASS | FAIL | CAPTURE_ONLY",
+  "verdict": "PASS | PARTIAL | FAIL | CAPTURE_ONLY",
+  "sectionsNotRun": [],
   "checks": [
     { "id": "home.budget.loans", "surface": "/dashboard (budget tile)",
       "expected": 12779, "observed": 12779, "pass": true }
@@ -198,6 +199,7 @@ something already slipped past its absence:
 | `FAIL` needs a failed check or a finding | A verdict with nothing behind it |
 | `coverage.notVerified` is **required** | §22.2.4 — a run that implies it verified everything. "Everything" is never the answer |
 | `PASS` + a `critical` finding → invalid | A contradiction that must be resolved before anyone acts on it |
+| `sectionsNotRun[]` is **required** on a ring3, and a non-empty one forbids `PASS` — use `PARTIAL` | **VR-047**: verdict PASS while its own findings said the DECIDING section had never run (§2 needs the admin relay, which the account-first law forbids opening in that profile). Every existing rule passed it — no check had failed, and the finding was `high`, not `critical`. A run that could not complete its handout still read green. Making "what did not run" a FIELD rather than prose in the coverage note is what turns it from something read into something checked |
 | `kind: capture` must be `CAPTURE_ONLY` and carry a payload | A capture asks for no verdict; the measurements are the deliverable |
 
 Both authors gain from it: Code ingests without guessing, and Reza gets a note that cannot quietly
@@ -378,6 +380,8 @@ this is an index, not a copy** (§0). Never paste a VR run's numbers here; link 
 | 08-02 | Matrix | Found 3 record defects on main (Census column · T3-G1 · MON-134) | all 3 confirmed against main | #1566 |
 | 08-03 | Code | Scoreboard + Census fold + T3-G1 + MON-134 → VERIFIED (#1566) | merged `b733c829` | ledger §6 |
 | 08-03 | Code | **This brief opened** | — | — |
+| 08-03 | Matrix | **VR-047** — T2 Ring-3, account-first half. Home's budget tile reads **$12,779**, matching `/dashboard/expenses`; regression cluster byte-identical incl. `healthScore` 53 | **PASS — SCOPED**; §2/§2b not run (admin relay) | `docs/verification/runs/VR-047.md` |
+| 08-03 | Code | **VR-047 consumed** — 5 findings registered (MON-149…153); the handout's mis-specified §3 saving-rate row withdrawn; `matrix:check` tightened so a PASS cannot have skipped a section; **T2-B scaffold** (the `loanCostBasis` seam + compare relay, moving nothing) | — | `MATRIX_T2_ADMIN_RELAY.md` |
 | 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `1e2317b` | ledger §6 · `RING3_T2_LOAN_COST.md` |
 
 ---
