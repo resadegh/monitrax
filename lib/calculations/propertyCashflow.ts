@@ -188,6 +188,30 @@ export interface ResolvedLoanCost {
   usedActuals: boolean;
   /** True when neither actuals nor a manual repayment existed → interest floor. */
   flooredToInterest: boolean;
+  /**
+   * MON-131 T2 / VR-046 F1c — the date of the LATEST linked repayment this
+   * resolution consumed, or `null` when the cost did not come from actuals.
+   *
+   * WHY it exists: this resolver is actuals-first with **no recency
+   * requirement**. A repayment from an earlier rate epoch is taken as today's
+   * cost, silently. VR-046 caught it live on Broadbeach — same loan, same day:
+   * the tax position said $1,271/mo (stored rate × balance, today) while the
+   * loan cost said $1,191/mo (repayments from before the rate moved). Neither
+   * producer is wrong for its own definition; they read **different points in
+   * time**, and nothing on screen said so. Recording *when* the evidence is
+   * from is the smallest honest fix, and it is the input MON-142's staleness
+   * alert needs once MON-145 gives the stored rate a date.
+   *
+   * Only the AGE is recorded here, deliberately. The COST basis is already
+   * fully expressible from `usedActuals` + `flooredToInterest`, and the RATE
+   * basis already has exactly one producer (`effectiveLoanRate.basis`).
+   * Copying either into this shape would be a second producer of a fact that
+   * already has one (§12.2.1).
+   *
+   * NO CONSUMER TODAY — it moves no rendered number. Declared as a structural
+   * addition in `.audit/expected-moves-t2.json`.
+   */
+  actualsThroughDate: Date | null;
 }
 
 /**
@@ -226,11 +250,22 @@ export function resolveLoanMonthlyCost(
   // Never silently $0: if neither actuals nor a manual repayment exist, floor
   // to interest (the minimum true cost of carrying the loan).
   const flooredToInterest = !(r.monthly > 0);
+  // VR-046 F1c — WHEN the evidence is from. Only meaningful when the cost came
+  // from actuals; a declared or floored cost consumed no transaction, so the
+  // honest answer there is `null`, never "today".
+  const actualsThroughDate =
+    r.usedActuals && !flooredToInterest && transactions.length > 0
+      ? transactions.reduce<Date>(
+          (latest, t) => (new Date(t.date).getTime() > latest.getTime() ? new Date(t.date) : latest),
+          new Date(transactions[0].date),
+        )
+      : null;
   return {
     monthly: flooredToInterest ? monthlyInterest : r.monthly,
     monthlyInterest,
     usedActuals: r.usedActuals,
     flooredToInterest,
+    actualsThroughDate,
   };
 }
 

@@ -198,3 +198,105 @@ the finding is not lost, not queued for build.** Registry: 131 issues, gate gree
 
 ### Coverage — stated precisely
 A rule and a flag correction. No code, no number, nothing verified.
+
+---
+
+## Session: sbpfhc — MON-131 T2: the loan-cost migration (part A)
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** Home said your loans cost **$8,817 a month**; the Spending page said **$12,779** —
+  the same five loans, on the same day. `masterFinancialService` built its loan figure by reading the
+  "minimum repayment" field and **skipping any loan where that field was empty**. It is empty for an
+  interest-only loan, so both interest-only Bankwest loans and the HECS debt counted as costing **$0**
+  while interest was charged on them every month. The two that survived were costed from the declared
+  *plan* rather than from the repayments actually made.
+- **What changed:** Home's loan figure now comes from the one engine the Spending page already used —
+  actual repayments where they exist, the declared amount next, the interest actually accruing as the
+  floor. The skip rule is **deleted, not widened**: an empty field can no longer make a loan invisible.
+- **What you'll see:** Home's `THIS MONTH'S BUDGET` tile reads **$12,779**, matching the Spending page.
+  Two figures that follow from it also move, and that is correct: **Saved** falls from about $15,048 to
+  **$11,085**, and your saving rate from 59.4% to **43.7%**. Net worth stays **$3,401,782** and the
+  health score stays **53**. One thing deliberately does **not** change yet — the entity money-flow
+  Sankey still leaves those three loans out, so it will disagree with Home until T2-B lands.
+
+### The declaration was amended BEFORE the migration, and why that mattered
+
+The derivation sweep diffs three blocks: `cashflow.*`, `debt.metrics.*` and the quickMetrics mirrors.
+`snapshot.debt` has **two** children — `summary` and `metrics` — and only `metrics` was swept. But
+`masterFinancialService` assigns `quickMetrics.monthlyLoanRepayments = debtSummary.totalRepayments`, and
+that leaf **is** declared. So `debt.summary.totalRepayments` moved by construction while sitting outside
+the contract, and shipping it would have produced a `MOVED-UNDECLARED` at G7 that could not be told apart
+from a mistake.
+
+Found by reading the assembly, not by a capture — which is the point: the sweep is complete *for the
+blocks it sweeps*, and the failure mode is an unswept sibling. Two paths added (13 → 15) as the PR's
+**opening commit**, so the G3 "declare before building" ordering is visible in the history rather than
+asserted. The relay's sweep now diffs `snapshot.debt` whole, so the class cannot recur.
+
+`healthScore` was **checked rather than assumed** — `buildHealthScore` is fed the moved figure. Its
+savings-rate component is `min(max(rate × 5, 0), 100)`: 59.37 × 5 before, 43.73 × 5 after, both clamping
+to 100. Debt-to-income reads principal, emergency fund reads the actuals outflow, net worth is untouched.
+So `mustNotMove: healthScore 53` stands — computed, not hoped for.
+
+### Scope: one producer, not thirty-one
+
+`loanCost` goes **31 → 30**, not 31 → 1, and the census history now says so in the entry itself. T2's
+contract measures the `masterFinancialService` leaves and nothing else. The other 30 sites feed
+`moneyFlow`'s per-entity flow, the CFO score and risk trees, reports, the debt planner and the health
+tree — every one a **separate golden-baseline capture** this sweep never touched. Migrating them here
+would have moved undeclared numbers by construction, which the completion brief §4 forbids. They are
+**T2-B**, and T2-B needs its own capture and its own `expectedMoves` — the same loop, not a shortcut.
+
+### Two instrument findings, both from the gates rather than from reading
+
+1. **The producer census reported phantom producers on my own edits — twice.** A named arrow helper
+   (`const canonicalMonthlyCost = (id) => …`) split the census's function unit and re-attributed matches
+   across the halves, reading as +1 producer on four unrelated quantities. Then comment prose matched the
+   text-based patterns: a line beginning `// 12,779.29` satisfies the frequency-arithmetic regex, and
+   naming the quantities in a comment satisfied the identifier-near-arithmetic one. Both were **removed
+   rather than seeded** — re-seeding would have locked a phantom rise into the ratchet in the PR whose
+   whole purpose is driving that count down. Both traps are recorded in the code at the migration site.
+2. **MON-147 — Layer 0 carried a node for a function deleted in T1-B.**
+   `adjustPropertyRentalIncome()` was removed in `86f467f` (there is a test asserting the source no longer
+   contains it), yet Layer 0 still pointed at `masterFinancialService.ts:1066` with three edges. The
+   coverage gate reconciles the **file set** and **per-file hashes**, never symbols, so a false entry
+   inside an otherwise-current file is invisible to it. Found by the new patch tool on its first run.
+
+### Files modified
+
+- `.audit/expected-moves-t2.json` — the amendment: 2 paths, `structuralAdditions`, `scopeOfThisTranchesMigration`
+- `lib/services/masterFinancialService.ts` — the migration; the filter deleted; one canonical array feeding both loan legs
+- `lib/calculations/propertyCashflow.ts` — `ResolvedLoanCost.actualsThroughDate` (VR-046 F1c; no consumer, moves nothing)
+- `app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts` — sweep widened to `snapshot.debt` whole; `type` selected so `byType` is measured
+- `tests/golden/ring2.loanCostFeed.test.ts` — **new**, the Ring-2 ratchet
+- `scripts/neomatrix/patch-layer0.mjs` — **new**, D49's Layer-0 tax with verification built in
+- `docs/verification/briefs/RING3_T2_LOAN_COST.md` — **new**, the §3.0b handout
+- `.audit/producer-census.json` · `.audit/source-lock-exceptions.json` · `docs/architecture/REFERENCE_NUMBERS_SCOREBOARD.md` — ratchets
+- `docs/financial-logic/graph/*` — Neo-sync: the new edge, 4 re-pinned anchors, the pruned ghost
+- `docs/issues/ISSUES.{json,md}` — MON-130 → FIXING (partial, with the full sweep); MON-147 raised + closed
+- `docs/implementation/*` · `docs/IMPLEMENTATION_PLAN.md` — ledger row, gate table, brief, workstream
+
+### Gate (§20.6)
+
+`Gate (§20.6): Document 10/10 (MON-131_COMPLETION_BRIEF §3.0/§3.0b · MON-131_TRANCHE_LEDGER §2 · expected-moves-t2.json · MON-131_T2_INPUT_FEED_CENSUS · CLAUDE.md §12.2.1/§19.4/§21.2.1/§23.2) · Requirements 10/10 · Logic 10/10`
+
+The self-review changed the shape of the work twice. The first plan migrated all 31 sites, which the
+contract forbids by construction — reading `expected-moves-t2.json` against the golden-baseline registry
+showed that `moneyFlow`, the CFO trees and the health tree are separately captured, so the PR would have
+stopped its own tranche at G7. The second plan migrated `masterFinancialService` and stopped, which would
+have shipped an undeclared `debt.summary` move for exactly the same reason — caught by reading the
+assembly rather than trusting the sweep's coverage.
+
+### Coverage — stated precisely
+
+Verifies, at Ring 2 on known data: that an interest-only loan with no declared repayment reaches the
+snapshot at its interest floor; that the actuals feed reaches master; that all four loan-cost leaves equal
+the canonical resolver's total; that the feed is unrounded; and that the byType split sums to it. Gates
+green: `tsc`, `lint:financial-surfaces`, `lint:source-lock`, `census:producers:check`, `neomatrix:check`,
+`refnums:check`, `issues:check`, `mon131:check`, and 4,433 vitest tests.
+
+It does **NOT** verify any rendered number on Reza's account — that is the Ring-3 run, and CI green is not
+verification (§23.2.3). It does **NOT** verify the declared after-values themselves (that is the derivation
+sweep at `915704f0`). It does **NOT** touch the other 30 loan-cost producers, and it does **NOT** close
+MON-130, MON-143 or MON-142.

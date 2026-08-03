@@ -34,7 +34,11 @@
 
 import prisma from '@/lib/db';
 import { buildEntityBreakdown, type EntityPosition } from '@/lib/calculations/entityBreakdown';
-import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { computePropertyCashflow, type CashflowLoan } from '@/lib/calculations/propertyCashflow';
+// MON-131 T2 — the ONE loan-cost feed. This service holds no loan transactions
+// or offset balances of its own, so it MUST NOT resolve costs from its own
+// rows; the service that owns those feeds does it (§12.2.1, MON-140).
+import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
 import { propertyActualsWindowStart } from '@/lib/calculations/propertyActualsWindow';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { computeLiquidCash } from '@/lib/calculations/liquidCash';
@@ -1841,10 +1845,55 @@ async function computeMasterFinancialSnapshot(
     expenses: data.expenses,
   });
 
+  // ---------------------------------------------------------------------
+  // MON-131 T2 — the ONE loan-cost feed for this snapshot.
+  //
+  // `resolveLoanCostsForUser` is the only producer that fetches what the
+  // calculation actually needs: it batch-loads each loan's reconciled
+  // repayments over the canonical trailing-12-month window AND its offset
+  // balance, then resolves each loan through `resolveLoanMonthlyCost`. This
+  // service's own `select` (line ~702) carries neither, so handing the engine
+  // its rows directly would starve it — the MON-028 / MON-140 "same engine,
+  // different inputs" shape. Resolved ONCE here, consumed by every loan leg
+  // below.
+  //
+  // UNROUNDED, per .audit/expected-moves-t2.json _meta.feedContract: the
+  // per-loan costs rounded to cents sum to $12,779.28, a full cent below the
+  // $12,779.29 the engine produces from unrounded inputs, and that cent
+  // cascades into annualLoanRepayments, annualCashflow, savingsRate and
+  // debtServiceRatio. Round at the leaf, never at the input.
+  //
+  // TWO EDITING TRAPS in this block, both hit while writing it, both recorded
+  // so the next session does not pay for them again. The producer census
+  // (`scripts/census/producers-census.mjs`) reads RAW TEXT and does not
+  // exclude comments — a documented property of the instrument, which
+  // MON-131_T2_INPUT_FEED_CENSUS.md already records for four of its own 31
+  // sites.
+  //   1. Money figures above carry a `$` on purpose. A comment line whose text
+  //      begins with a bare two-digit number reads as frequency arithmetic
+  //      (the slash of the comment marker plus the digits), and books this
+  //      function as a new producer of three unrelated run-rate quantities.
+  //   2. The cost lookup below is INLINE rather than a named arrow helper.
+  //      The census splits a file into units at `const NAME = (...) =>`, so
+  //      one here would cut this function in two and re-attribute its matches
+  //      across the halves — read as +1 producer on four quantities while
+  //      nothing had been added. Keep it inline.
+  // Neither is cosmetic: both made the ratchet report phantom producers in a
+  // PR whose entire purpose is driving that count down.
+  // ---------------------------------------------------------------------
+  const resolvedLoanCosts = await resolveLoanCostsForUser(
+    userId,
+    data.loans as unknown as CashflowLoan[],
+  );
+  const canonicalLoanLegs = data.loans.map(l => ({
+    minRepayment: resolvedLoanCosts.get(l.id ?? '')?.monthly ?? 0,
+    repaymentFrequency: 'MONTHLY' as const,
+  }));
+
   // Calculate cashflow — income legs are the BANKED totals (MON-137 fixed:
   // the orchestrator's second withholding producer is deleted; identity
-  // cashflow.grossIncome ≡ income.grossTotal by construction). Expense/loan
-  // legs unchanged (T3/T2 own those).
+  // cashflow.grossIncome ≡ income.grossTotal by construction). Expense leg
+  // unchanged (T3 owns it); the loan leg is T2's, canonical as of this PR.
   const cashflowInput = {
     incomeTotals: bankedTotalsFromResult(banked),
     // MON-011: savings rate reflects ongoing recurring spend — one-off
@@ -1857,20 +1906,39 @@ async function computeMasterFinancialSnapshot(
         frequency: e.frequency,
         isEssential: e.isEssential,
       })),
-    loans: data.loans
-      .filter(l => l.minRepayment && l.repaymentFrequency)
-      .map(l => ({
-        minRepayment: l.minRepayment!,
-        repaymentFrequency: l.repaymentFrequency!,
-      })),
+    // MON-131 T2 — the loan leg is the CANONICAL per-loan cost, unrounded,
+    // for EVERY loan.
+    //
+    // What was here: `data.loans.filter(l => l.minRepayment && l.repaymentFrequency)`
+    // mapped to the raw declared repayment. Two defects in one expression.
+    // (1) The FILTER: a loan with no declared repayment was dropped entirely,
+    // so both interest-only loans and HECS contributed $0 while the borrower
+    // is charged interest every month — Home read $8,816.65 against
+    // /dashboard/expenses' $12,779.29 for the same five loans on the same day.
+    // (2) The raw read: `minRepayment` is the PLAN, not the cost. The
+    // canonical resolver is actuals-first (reconciled repayments → declared →
+    // interest floor net of offset, D21/MON-143).
+    //
+    // The filter is DELETED, not bypassed (.audit/expected-moves-t2.json
+    // _meta.feedContract.alsoRequired) — a `.filter(...)` left in place with a
+    // wider predicate is the same defect one edit away from returning.
+    //
+    // `canonicalLoanLegs` is built ONCE and fed to BOTH the cashflow engine and
+    // the debt aggregation below. Building it twice is exactly the MON-140
+    // one-engine-two-feeds shape T1 already paid for.
+    loans: canonicalLoanLegs,
   };
   const cashflow = calculateCashflow(cashflowInput);
 
-  // Calculate debt metrics
+  // Calculate debt metrics — same canonical legs, same unrounded values.
   const loanInputs = data.loans.map(l => ({
     principal: l.principal,
-    minRepayment: l.minRepayment || 0,
-    repaymentFrequency: l.repaymentFrequency || 'MONTHLY',
+    // T2: the canonical monthly cost, at MONTHLY frequency so the aggregator's
+    // `toMonthly`/`toAnnual` conversion is the identity on it. `type` and
+    // `propertyId` are preserved unchanged so `byType` keys and the
+    // property attribution are untouched by this migration.
+    minRepayment: resolvedLoanCosts.get(l.id ?? '')?.monthly ?? 0,
+    repaymentFrequency: 'MONTHLY',
     interestRateAnnual: l.interestRateAnnual,
     type: l.type,
     isInterestOnly: l.isInterestOnly,
