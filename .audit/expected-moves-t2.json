@@ -13,7 +13,7 @@
       "brief": "docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md",
       "buildPreconditionSatisfied": "915704f0 contains the derivation sweep (#1561 8bed66b6) AND the MON-143 offset fix (#1562 f7b685de). An earlier capture stamped 8bed66b6 was WITHDRAWN by the Matrix for failing this precondition."
     },
-    "contract": "Per-path, NEVER directional. Every after-value below was PRODUCED BY THE REAL ENGINE — the derivation sweep re-runs calculateCashflow and calculateDebtMetrics on live production inputs with the canonical per-loan cost substituted, then diffs every numeric leaf. No value here was hand-derived. Any move OUTSIDE these 13 paths is undeclared and STOPS the tranche (G7).",
+    "contract": "Per-path, NEVER directional. Every after-value below was PRODUCED BY THE REAL ENGINE — the derivation sweep re-runs calculateCashflow and calculateDebtMetrics on live production inputs with the canonical per-loan cost substituted, then diffs every numeric leaf. No value here was hand-derived. Any move OUTSIDE these paths is undeclared and STOPS the tranche (G7). AMENDED 2026-08-03: 13 swept paths + 2 added by reading the assembly before the migration — see _meta.declarationAmendment.",
     "declarationMethod": "DERIVATION SWEEP, not a hand-written list. Three successive captures missed five paths between them because the paths were enumerated by name; the list was deleted (#1561) and replaced by the sweep, so the declaration is complete by construction. All five previously-missed paths appear below without having been named, plus quickMetrics.monthlyLoanRepayments.",
     "feedContract": {
       "rule": "The migration MUST feed calculateCashflow and calculateDebtMetrics the UNROUNDED canonical monthly cost per loan, at repaymentFrequency MONTHLY, for EVERY loan — no minRepayment filter.",
@@ -29,6 +29,28 @@
       "status": "Fixed in #1562 (f7b685de) and CONFIRMED by this capture.",
       "evidence": "Guildford's monthlyInterestFloor moved 1,964.67 -> 384.45 = (377,821.91 - 303,889.96) x 6.24% / 12, and NO per-loan newMonthly changed between the 8bed66b6 and 915704f0 captures. The one loan carrying an offset is also the one that resolves via ACTUALS and never reaches its floor — which is why the fix moves nothing today and why closing it before the migration was the right order.",
       "registry": "MON-143 stays FIXING. Its Ring-3 evidence is the T2 migration run itself (§23.2.3 — CI green is not verification)."
+    },
+    "declarationAmendment": {
+      "amendedAt": "2026-08-03",
+      "amendedBy": "Code, in the migration PR — as its FIRST commit, before a line of migration was written (G3 ordering preserved and visible in the git history).",
+      "what": "Two paths added to expectedMoves — `debt.summary.totalRepayments` and `debt.summary.byType.*.repayments` — plus the `structuralAdditions` block below.",
+      "whyTheSweepMissedThem": "The sweep diffs three blocks: `cashflow.*`, `debt.metrics.*` and the quickMetrics mirrors (t2-loan-cost/route.ts — `diffNumericLeaves(snapshot.debt?.metrics, newDebtMetrics, 'debt.metrics')`). `snapshot.debt` has TWO children: `summary` (from `aggregateLoanRepayments`) and `metrics` (from `calculateDebtMetrics`). Only `metrics` was swept. This is the same class of miss the hand-written list made — an unswept sibling of a swept block — and it is the reason the sweep itself is now widened (see `relayWidened`).",
+      "howItWasFound": "Reading the assembly before writing the migration, not from a capture. `masterFinancialService.ts:2039` assigns `quickMetrics.monthlyLoanRepayments = debtSummary.totalRepayments` — the SAME expression. That leaf IS declared (8,816.65 -> 12,779.29), so `debt.summary.totalRepayments` moves by construction and was undeclared. Shipping it would have produced a MOVED-UNDECLARED at G7 that could not be told apart from a mistake.",
+      "healthScoreChecked": "`buildHealthScore` (masterFinancialService.ts:1321) is fed `debtSummary.totalRepayments`, so it was checked rather than assumed. Its savings-rate component is `min(max(savingsRate x 5, 0), 100)`: 59.37 x 5 = 296.85 BEFORE and 43.73 x 5 = 218.65 AFTER — both clamp to 100. debtToIncome reads `totalPrincipal` (unmoved), emergencyFund reads the ACTUALS outflow (unmoved), netWorth unmoved. `healthScore` therefore stays 53 and its mustNotMove entry stands. Computed, not asserted (§19.2).",
+      "relayWidened": "The T2 relay's sweep now diffs `snapshot.debt` WHOLE (both children) instead of `snapshot.debt.metrics` alone, so the next capture measures what this amendment had to derive. The Ratchet applied to the declaration instrument (§23.2.2)."
+    },
+    "structuralAdditions": {
+      "why": "Leaves ADDED by this tranche. Not moves — nothing that existed changed value — but they change the shape of a captured tree, so they are declared rather than discovered at G7.",
+      "items": [
+        {
+          "path": "lib/calculations/propertyCashflow.ts:ResolvedLoanCost.actualsThroughDate",
+          "kind": "new field, nullable Date",
+          "value": "the date of the LATEST linked repayment the resolution consumed; null when the cost did not come from actuals",
+          "why": "VR-046 F1c, added to T2 scope on Reza's instruction 2026-08-03 (T2 INPUT-FEED census, final section). `resolveLoanMonthlyCost` is actuals-first with NO recency requirement, so a repayment from an earlier rate epoch silently becomes today's canonical cost — the Broadbeach case (loan cost $1,191/mo on old-epoch actuals vs tax position $1,271/mo on the stored rate). Recording the age while the producers collapse is cheap; retrofitting means re-opening the producer.",
+          "scopeRead": "The census asks for the basis AND the age. Only the AGE is added here, deliberately: the COST basis is already fully expressible from the existing `usedActuals` / `flooredToInterest` pair, and the RATE basis already has one producer (`effectiveLoanRate.basis`). Copying either into `ResolvedLoanCost` would create a second producer of a fact that already has one (§12.2.1). If Reza meant a wider record, this is the line to redirect.",
+          "consumers": "NONE today — it is the input MON-142's staleness alert needs once MON-145 gives the stored rate a date. It moves no rendered number."
+        }
+      ]
     },
     "deferrals": [
       "D18/X3 — savingsRate below is a STRAIGHT SUBSTITUTION: the whole loan payment is treated as spending. X3 separates PRINCIPAL out of spending and into saving, which changes the numerator's SHAPE, not just its size. Declared here so the after-value is not later mistaken for the X3 answer.",
@@ -107,6 +129,23 @@
       "arithmetic": "identical to cashflow.monthlyLoanRepayments"
     },
     {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.summary.totalRepayments",
+      "before": 8816.65,
+      "after": 12779.29,
+      "why": "ADDED BY AMENDMENT (see _meta.declarationAmendment). `aggregateLoanRepayments(loanInputs,'monthly').totalRepayments` — the SAME expression masterFinancialService.ts:2039 assigns to the already-declared quickMetrics.monthlyLoanRepayments. It moves by construction; the sweep never reached it because it diffed debt.metrics, not debt.summary.",
+      "arithmetic": "identical to quickMetrics.monthlyLoanRepayments — sum of the unrounded canonical per-loan costs at MONTHLY frequency = 12,779.29. EXACT, by identity with a measured path; not a fresh derivation.",
+      "measured": true
+    },
+    {
+      "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.debt.summary.byType.*.repayments",
+      "before": "the per-type split of 8,816.65",
+      "after": "the per-type split of 12,779.29",
+      "why": "ADDED BY AMENDMENT. Same aggregation, partitioned by `loan.type`. The keys do not change (the migration substitutes each loan's cost; it does not touch `type`), and the three loans that previously contributed 0 now contribute their canonical cost to whichever type they carry.",
+      "arithmetic": "For each type key K: after(K) = sum of the canonical monthly costs of the loans of type K. The five canonical per-loan costs are 2,789.71 / 6,196.65 / 2,518.34 / 1,191.25 / 83.33 (capture perLoan). CONSTRAINT that holds regardless of the split: sum over all keys = 12,779.29, matching debt.summary.totalRepayments.",
+      "measured": false,
+      "notMeasuredBecause": "The capture's `perLoan` rows carry name / principal / isInterestOnly / basis but NOT `type`, so the per-key split cannot be derived from the committed payload. Declared as the constraint above rather than as five invented numbers — a guessed split would be a fabricated after-value, which is worse than an honestly-bounded one. The widened relay measures it on the next capture, and the Ring-3 handout asks the Matrix to RETURN the split as an observation."
+    },
+    {
       "pathPrefix": "lib/services/masterFinancialService.ts:getMasterFinancialSnapshot.quickMetrics.monthlyCashflow",
       "before": 15047.71,
       "after": 11085.07,
@@ -148,7 +187,8 @@
   },
   "acceptance": {
     "rule": "Exact match, not close. Every path above must land on its after-value; nothing outside them may move; every mustNotMove value must be byte-identical.",
-    "coverageBoundary": "The sweep is complete for cashflow.*, debt.metrics.* and the quickMetrics mirrors. It does NOT sweep byEntity, health, or anything outside those blocks — G7's full-tree diff remains the backstop there. quickMetrics leaves were matched by VALUE, not by assignment; all three declared leaves hold distinct values on this dataset (11,085.07 / 12,779.29 / 43.73), so mis-attribution is not live today but is not structurally excluded.",
+    "coverageBoundary": "The sweep is complete for cashflow.*, debt.metrics.* and the quickMetrics mirrors. It does NOT sweep byEntity, health, or anything outside those blocks — G7's full-tree diff remains the backstop there. quickMetrics leaves were matched by VALUE, not by assignment; all three declared leaves hold distinct values on this dataset (11,085.07 / 12,779.29 / 43.73), so mis-attribution is not live today but is not structurally excluded. AMENDED 2026-08-03: debt.summary was an unswept sibling of a swept block — its two paths are now declared and the relay is widened to diff `snapshot.debt` whole. byEntity and health remain unswept: byEntity is fed `data.loans` RAW and the migration does not change that feed, so it does not move; health WAS checked by hand (both savings-rate scores clamp at 100) and does not move either. Neither is a claim that they are covered — the full-tree diff is still the backstop.",
+    "scopeOfThisTranchesMigration": "T2 migrates the masterFinancialService loan legs ONLY — the one producer whose after-values this contract measures. The other loanCost producers (moneyFlowService:382's minRepayment skip worth $3,792.92/mo on the entity flow, reports/contextBuilder:392, lib/cfo/scoreCalculator + riskRadar, lib/planning/debtPlanner, buildHealthInput:104) each move numbers on surfaces this sweep does NOT cover — moneyFlow, CFO scores, risks and the health tree are separate captures in the golden-baseline registry. Migrating them inside this PR would produce MOVED-UNDECLARED at G7 by construction. They need their own sweep and their own declaration (T2-B), per the completion brief §4: never fixed silently inside a migration PR.",
     "ring3": "A Ring-3 real-data run on the rendered surfaces verifies the migration after merge. CI green is not verification (§23.2.3)."
   }
 }
