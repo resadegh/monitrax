@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**140 total** · 80 open · 🔵 39 · 🟡 4 · 🟠 29 · 🟢 8 · ✅ 59
+**140 total** · 79 open · 🔵 38 · 🟡 4 · 🟠 29 · 🟢 8 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -143,7 +143,7 @@
 | MON-147 | 🔵 OPEN | 🟢 | no | Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error | — | n/a |
 | MON-148 | ✅ CLOSED | 🟡 | no | Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days | ##1575 | n/a |
 | MON-149 | 🔵 OPEN | 🟡 | yes | HOME (Laguna) renders two recurring rental income rows but counts only one — ANNUAL RENT $902 against $7,848/mo of rendered income; ~$6,948/yr uncounted in its cashflow, yield and tax position | — | — |
-| MON-150 | 🔵 OPEN | 🟡 | yes | Thornland Lot 1 and Lot 2 each claim depreciation of exactly $12,799/yr from identically-named, identically-sized documents — possible duplicate QS schedule worth ~$4,736/yr at the marginal rate | — | — |
+| MON-150 | ❌ RETRACTED | 🟡 | no | Thornland Lot 1 and Lot 2 each claim depreciation of exactly $12,799/yr from identically-named, identically-sized documents — possible duplicate QS schedule worth ~$4,736/yr at the marginal rate | — | n/a |
 | MON-151 | 🔵 OPEN | 🟢 | yes | The per-property tax position derives interest as stored rate x FULL balance, ignoring the linked offset — the same D21 breach MON-143 fixed in the loan-cost floor, in a different producer | — | — |
 | MON-152 | 🔵 OPEN | 🟢 | yes | The Hunter Premium insurance expense renders as $797/mo on one card and $812/mo on two others, on the same day — same metric, two values | — | — |
 | MON-153 | 🔵 OPEN | 🟡 | yes | Three different health scores render across the app — 53 on Home and CFO (matching), 56 in the /cashflow header, and 25 in the AI advisor prose on that same page | — | — |
@@ -2498,14 +2498,18 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 
 ### MON-150 — Thornland Lot 1 and Lot 2 each claim depreciation of exactly $12,799/yr from identically-named, identically-sized documents — possible duplicate QS schedule worth ~$4,736/yr at the marginal rate
 
-**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: tax · opened 2026-08-03
+**❌ RETRACTED** · 🟡 medium · changes numbers: **no** · area: tax · opened 2026-08-03 · closed 2026-08-03
 
-> **What was wrong:** A verification check found a mismatch on app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown (expected Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged., got Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047.).
+> **What was wrong:** Two of your properties each claimed exactly the same depreciation — $12,799 a year — from documents with the same name and the same file size. From inside the app that looks like one report attached twice, which would mean the same deduction counted twice.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** Nothing to fix. Reza confirmed 2026-08-03 that the two Thornland lots are IDENTICAL DUPLEXES, so identical schedules are the correct answer, not a duplicate. Retracted rather than closed-as-fixed, because nothing was wrong.
+>
+> **What you should see:** No change anywhere. Your depreciation total of $30,006 stands, and both $12,799 claims are legitimate.
+
+- **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown. Expected: Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged.. Actual: Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047..
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown. Expected: Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged.. Actual: Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047.. || RETRACTED 2026-08-03 on Reza's answer: 'the depreciation schedule for both properties are the same as they are identical duplexes.' Two identical builds on adjacent subdivided lots produce identical QS figures — the agreement to the dollar is the EXPECTED result, not the suspicious one. Recorded rather than deleted because the reasoning is worth keeping: identical-buildings and one-report-attached-twice are INDISTINGUISHABLE from inside the app (same figure, same filename, same file size), and only the owner can tell them apart. The one artefact that would settle it from the documents alone is whether the QS report names both lots or one; not requested, because Reza has answered the question the finding asked. The finding was raised as a question, not asserted as a defect, and that was the right call — the alternative was ~$4,736/yr of double-claimed deduction going to an auditor first.
 
 ### MON-151 — The per-property tax position derives interest as stored rate x FULL balance, ignoring the linked offset — the same D21 breach MON-143 fixed in the loan-cost floor, in a different producer
 

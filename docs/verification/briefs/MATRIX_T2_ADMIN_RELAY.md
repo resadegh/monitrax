@@ -3,11 +3,21 @@
 **Prepared by:** Code session (Opus 5), 2026-08-03 · **Kind:** `capture` (measurements, not a verdict)
 **Why it exists:** VR-047 ran the account-first half of the T2 Ring-3 and passed everything it could
 reach, but `§2`, `§2b` and the build precondition all need the admin relay — and the account-first law
-forbids opening admin in the same browser profile. This handout is the admin half. It also captures
-**T2-B**, so one admin session settles both.
+forbids opening admin in the same browser profile. This handout is the admin half.
 
-> **Two jobs, one sitting. Do PART A first** — if the build precondition fails, PART B's measurements
-> would be taken against the wrong build and would have to be thrown away.
+> ## ⚠️ PART B IS PARKED — run PART A only
+>
+> **Reza's decision, 2026-08-03 (Lever 2 of `docs/strategy/MON-131_SCOPE_FILTER.md`): strip the
+> Money-Flow Sankey widget from `/dashboard/activity` and keep only its intake path.** That removes
+> `moneyFlowService`'s loan leg from the v1 surface, and with it the reason to capture, declare and
+> migrate T2-B.
+>
+> **PART A still runs, and is unaffected by that decision.** It verifies `masterFinancialService`,
+> which feeds the property pages — kept scope under every lever. It is what moves MON-130 and MON-143
+> to `VERIFIED`.
+>
+> PART B is kept below rather than deleted: the T2-B scaffold is merged and inert, so if the widget is
+> ever un-hidden the capture is one request away. **Do not run it today.**
 
 ---
 
@@ -132,6 +142,11 @@ well-formed and self-consistent, **not** that it passed — read `verdict`. A FA
 **If PART A passes in full,** MON-130 and MON-143 can finally move `FIXING → VERIFIED`, citing VR-047
 (the rendered half) and VR-047B (the producer half) together. Neither half is sufficient alone, and
 that is the point of running both.
+
+**`sectionsNotRun[]` is required** (added after VR-047, which returned PASS while its own findings said
+the deciding section had never run). For a PART-A-only session that is `["PART B — parked by Reza's
+Lever 2 decision"]`, and the verdict is `PARTIAL`, not `PASS` — an honest partial is a first-class
+result; what the validator now refuses is a partial wearing PASS.
 
 ---
 

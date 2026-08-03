@@ -417,3 +417,29 @@ loan at its hand-computed interest floor, landing on the owning entity. Gates gr
 It does **NOT** verify any rendered number, does **NOT** declare T2-B's `expectedMoves` (that needs the
 capture), does **NOT** change the default basis, and does **NOT** complete VR-047 — that needs the
 admin session.
+
+### Two Reza decisions, both narrowing the finish line (session `sbpfhc`)
+
+**Lever 2 taken.** `/dashboard/activity` keeps its **intake path** and loses the **Money-Flow Sankey
+widget**. That removes `moneyFlowService`'s loan leg from the v1 surface, so **T2-B's capture,
+declaration and migration are parked**. The scaffold merged in this PR stays — it is inert (the
+default basis is unchanged) and the capture is one request away if the widget is ever un-hidden.
+
+What survives is the scope filter's own sharper finding: `loanCost` is **SPLIT**, and its kept half is
+`masterFinancialService` feeding the property pages — which #1575 already migrated. **T2's kept half is
+done, pending VR-047's §2 confirming the four expressions agree.**
+
+**MON-150 retracted.** Reza: *"the depreciation schedule for both properties are the same as they are
+identical duplexes."* Two identical builds on adjacent subdivided lots produce identical QS figures, so
+agreement to the dollar is the **expected** result, not the suspicious one. Retracted rather than
+closed-as-fixed, because nothing was wrong.
+
+Kept in the registry with the reasoning attached, because the two cases are **indistinguishable from
+inside the app** — same figure, same filename, same file size — and only the owner can tell them
+apart. Raising it as a question rather than asserting a defect was the right call in both directions:
+if it had been one report attached twice, ~$4,736/yr of double-claimed deduction would have reached an
+auditor before it reached us.
+
+The admin handout is amended to run **PART A only**, returning `sectionsNotRun: ["PART B"]` and verdict
+`PARTIAL` — the rule this same PR added, applied to its own companion document on the first occasion
+it had one.

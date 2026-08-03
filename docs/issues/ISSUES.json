@@ -4191,13 +4191,15 @@
     {
       "id": "MON-150",
       "title": "Thornland Lot 1 and Lot 2 each claim depreciation of exactly $12,799/yr from identically-named, identically-sized documents — possible duplicate QS schedule worth ~$4,736/yr at the marginal rate",
-      "status": "OPEN",
+      "status": "RETRACTED",
       "severity": "medium",
-      "changesNumbers": true,
+      "changesNumbers": false,
       "opened": "2026-08-03",
       "area": "tax",
       "plain": {
-        "issue": "A verification check found a mismatch on app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown (expected Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged., got Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047.)."
+        "issue": "Two of your properties each claimed exactly the same depreciation — $12,799 a year — from documents with the same name and the same file size. From inside the app that looks like one report attached twice, which would mean the same deduction counted twice.",
+        "fix": "Nothing to fix. Reza confirmed 2026-08-03 that the two Thornland lots are IDENTICAL DUPLEXES, so identical schedules are the correct answer, not a duplicate. Retracted rather than closed-as-fixed, because nothing was wrong.",
+        "check": "No change anywhere. Your depreciation total of $30,006 stands, and both $12,799 claims are legitimate."
       },
       "rootCause": [],
       "semanticKeys": [],
@@ -4205,7 +4207,8 @@
       "fixPRs": [],
       "test": null,
       "tracker": "docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism",
-      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown. Expected: Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged.. Actual: Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047.."
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/[id] DEPRECIATION/YR + /dashboard/cfo deductions breakdown. Expected: Two adjacent subdivided lots may have similar schedules, but agreeing to the DOLLAR with identically-sized source files warrants checking before a return is lodged.. Actual: Lot 1 (value $910,000, purchased $700,000) and Lot 2 (value $900,000, purchased $0) BOTH render DEPRECIATION/YR $12,799 and '1 depreciation schedule - Capital works + plant - $12,799', and both carry a document named 'Depreciation Schedulle', 2.3 MB, 24 July 2026. Both are counted: CFO deductions reads 'Depreciation: $30,006' and 4,408 + 12,799 + 12,799 = 30,006 exactly. NOT PROVEN by inspection — this is a data question only Reza can settle by opening the two PDFs. Raised so it is not found by an auditor instead. Found by VR-047.. || RETRACTED 2026-08-03 on Reza's answer: 'the depreciation schedule for both properties are the same as they are identical duplexes.' Two identical builds on adjacent subdivided lots produce identical QS figures — the agreement to the dollar is the EXPECTED result, not the suspicious one. Recorded rather than deleted because the reasoning is worth keeping: identical-buildings and one-report-attached-twice are INDISTINGUISHABLE from inside the app (same figure, same filename, same file size), and only the owner can tell them apart. The one artefact that would settle it from the documents alone is whether the QS report names both lots or one; not requested, because Reza has answered the question the finding asked. The finding was raised as a question, not asserted as a defect, and that was the right call — the alternative was ~$4,736/yr of double-claimed deduction going to an auditor first.",
+      "closed": "2026-08-03"
     },
     {
       "id": "MON-151",
