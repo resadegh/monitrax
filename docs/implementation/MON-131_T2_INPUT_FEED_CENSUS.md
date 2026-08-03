@@ -92,42 +92,59 @@ derive a loan cost without the literal `minRepayment` arithmetic the grep keys o
 matching *lines* where the census counts deriving *functions*, so the two totals are not comparable
 and neither is a check on the other. Migrating from the grep would silently leave those ten behind.
 
-| Site | Line |
-|---|---|
-| `app/api/calculate/cashflow/route.ts:transformLoanData` | 120 |
-| `app/api/cashflow/intelligence/route.ts:calculateMonthlyLoanRepayments` | 129 |
-| `app/api/cashflow/summary/route.ts:buildSummaryInput` | 33 |
-| `app/api/cfo/scenarios/context/route.ts:fetchLoanViews` | 59 |
-| `app/api/cfo/scenarios/run/route.ts:fetchLoanViews` | 62 |
-| `app/api/loans/route.ts:lastTxDate` | 17 |
-| `app/api/portfolio/snapshot/route.ts:calculateLinkageHealth` | 117 |
-| `app/api/transactions/[id]/link/route.ts:learnCanonicalFromLink` | 51 |
-| `app/dashboard/properties/[id]/page.tsx:RecentActivityCard` | 817 |
-| `app/dashboard/properties/page.tsx:findUrgency` | 1281 |
-| `components/onboarding/wizard/types.ts:frequencyToAnnual` | 876 |
-| `components/transactions/TransactionLinkDialog.tsx:formatDate` | 855 |
-| `lib/calc-audit/engines/decimal-cfo-score-risk.ts:calculateCashflowStrengthFloat` | 64 |
-| `lib/calc-audit/engines/decimal-cfo-score-risk.ts:calculateDebtCoverageFloat` | 85 |
-| `lib/calc-audit/engines/decimal-cfo-score-risk.ts:calculateSavingsRateFloat` | 184 |
-| `lib/calculations/loanAggregator.ts:aggregateLoanRepayments` | 69 |
-| `lib/calculations/loanAggregator.ts:aggregateLoanRepaymentsDecimal` | 213 |
-| `lib/calculations/propertyCashflow.ts:resolveLoanMonthlyCost` | 206 |
-| `lib/calculations/propertyCashflow.ts:txFor` | 178 |
-| `lib/cfo/aiAdvisor.ts:fetchLoanViews` | 360 |
-| `lib/cfo/riskRadar.ts:detectCashflowShortfallRisks` | 192 |
-| `lib/cfo/riskRadar.ts:detectDebtRatioDeteriorationRisks` | 304 |
-| `lib/cfo/scoreCalculator.ts:calculateCashflowStrength` | 125 |
-| `lib/cfo/scoreCalculator.ts:calculateDebtCoverage` | 159 |
-| `lib/cfo/scoreCalculator.ts:calculateSavingsRate` | 326 |
-| `lib/planning/debtPlanner.ts:calculateMinRepaymentIO` | 156 |
-| `lib/planning/debtPlanner.ts:simulateRepayments` | 306 |
-| `lib/reports/contextBuilder.ts:fetchLoanData` | 373 |
-| `lib/services/masterFinancialService.ts:computeMasterFinancialSnapshot` | 1762 |
-| `lib/services/moneyFlowService.ts:getMoneyFlow` | 222 |
-| `lib/testing/normalizer.ts:normalizeScenario` | 339 |
+| # | File | Census label | Decl | **True match line(s)** |
+|---|---|---|---|---|
+| 1 | `app/api/calculate/cashflow/route.ts` | `transformLoanData` | 120 | **123** |
+| 2 | `app/api/cashflow/intelligence/route.ts` | `calculateMonthlyLoanRepayments` | 129 | **140** |
+| 3 | `app/api/cashflow/summary/route.ts` | `buildSummaryInput` | 33 | **74** |
+| 4 | `app/api/cfo/scenarios/context/route.ts` | `fetchLoanViews` | 59 | **84** |
+| 5 | `app/api/cfo/scenarios/run/route.ts` | `fetchLoanViews` | 62 | **87** |
+| 6 | `app/api/loans/route.ts` | `lastTxDate` ⚠️ | 17 | **126** |
+| 7 | `app/api/portfolio/snapshot/route.ts` | `calculateLinkageHealth` ⚠️ | 117 | **675** |
+| 8 | `app/api/transactions/[id]/link/route.ts` | `learnCanonicalFromLink` ⚠️ | 51 | **1966** |
+| 9 | `app/dashboard/properties/[id]/page.tsx` | `RecentActivityCard` | 817 | **872** |
+| 10 | `app/dashboard/properties/page.tsx` | `findUrgency` ⚠️ | 1281 | **1364** |
+| 11 | `components/onboarding/wizard/types.ts` | `frequencyToAnnual` ⚠️ | 876 | **933** |
+| 12 | `components/transactions/TransactionLinkDialog.tsx` | `formatDate` ⚠️ | 855 | **1390** |
+| 13 | `lib/calc-audit/engines/decimal-cfo-score-risk.ts` | `calculateCashflowStrengthFloat` | 64 | **71** |
+| 14 | `lib/calc-audit/engines/decimal-cfo-score-risk.ts` | `calculateDebtCoverageFloat` | 85 | **88** |
+| 15 | `lib/calc-audit/engines/decimal-cfo-score-risk.ts` | `calculateSavingsRateFloat` | 184 | **192** |
+| 16 | `lib/calculations/loanAggregator.ts` | `aggregateLoanRepayments` | 69 | **90** |
+| 17 | `lib/calculations/loanAggregator.ts` | `aggregateLoanRepaymentsDecimal` | 213 | **234** |
+| 18 | `lib/calculations/propertyCashflow.ts` | `resolveLoanMonthlyCost` | 206 | **218** |
+| 19 | `lib/calculations/propertyCashflow.ts` | `txFor` | 178 | **184** |
+| 20 | `lib/cfo/aiAdvisor.ts` | `fetchLoanViews` | 360 | **388, 390, 391** |
+| 21 | `lib/cfo/riskRadar.ts` | `detectCashflowShortfallRisks` | 192 | **202** |
+| 22 | `lib/cfo/riskRadar.ts` | `detectDebtRatioDeteriorationRisks` | 304 | **310** |
+| 23 | `lib/cfo/scoreCalculator.ts` | `calculateCashflowStrength` | 125 | **132** |
+| 24 | `lib/cfo/scoreCalculator.ts` | `calculateDebtCoverage` | 159 | **165** |
+| 25 | `lib/cfo/scoreCalculator.ts` | `calculateSavingsRate` | 326 | **334** |
+| 26 | `lib/planning/debtPlanner.ts` | `calculateMinRepaymentIO` ⚠️ | 156 | **161** |
+| 27 | `lib/planning/debtPlanner.ts` | `simulateRepayments` | 306 | **389, 427** |
+| 28 | `lib/reports/contextBuilder.ts` | `fetchLoanData` | 373 | **392** |
+| 29 | `lib/services/masterFinancialService.ts` | `computeMasterFinancialSnapshot` | 1762 | **1872** |
+| 30 | `lib/services/moneyFlowService.ts` | `getMoneyFlow` | 222 | **382** |
+| 31 | `lib/testing/normalizer.ts` | `normalizeScenario` | 339 | **399** |
 
 **Coverage, stated precisely:** this appendix enumerates every site the census counts, with its
 `file:function` and declaration line. It does **not** classify each site producer-vs-consumer — that
 needs each function's body read in full (a declaration-line window is not sufficient, since the
 census flags a match anywhere in the body). That classification is the remaining Stage-1 step before
 the migration is written.
+
+### Label drift — why the work-list is the match line, not the function name
+
+7 of the 31 labels (⚠️ above) name the **wrong function**. The census's
+`functionUnits` splitter defines a body as everything from one recognised `FN_START` to the next, so
+when a declaration form isn't recognised, its code is absorbed into the preceding unit and the match
+is reported under that neighbour's name. Cross-checked here by brace-matching each real body: in all
+7 cases the match sits *after* the labelled function closes.
+
+Every one of the 31 matches is real code — nothing here is a false positive, and the census count is
+sound. What is unreliable is the **label**. A migration that navigated by function name would find
+nothing at 7 of the 31 sites and could record them as already-clean. Use the true match line.
+
+**Coverage, stated precisely:** every site is located to an exact line, and each is confirmed to
+contain the census pattern. This does **not** establish what each site *does* with the value — a
+match may derive a cost, aggregate one already derived, or guard on it. That per-site read is the
+remaining Stage-1 step, and it must start from these lines rather than the labels.
