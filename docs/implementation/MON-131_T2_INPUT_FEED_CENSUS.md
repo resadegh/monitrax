@@ -201,3 +201,39 @@ rather than inferred from the totals — and it is exactly what the `_meta.feedC
 what each site *does*; it does **not** establish that the 15 derivations produce equal values today
 (they demonstrably do not), nor that the 8 feeds carry sufficient inputs (the census above shows
 they do not). It verifies no number.
+
+---
+
+## T2 scope addition — record the rate basis and the age of the actuals (VR-046 / F1c)
+
+**Added on Reza's instruction, 2026-08-03**, from VR-046's F1c finding.
+
+`resolveLoanMonthlyCost` is actuals-first with **no recency requirement**. A linked repayment is taken
+as today's cost regardless of its age, so a repayment from an earlier rate epoch silently becomes the
+canonical figure. VR-046 shows this live on Broadbeach, same loan, same day:
+
+| Producer | Basis | Value |
+|---|---|---|
+| tax position | stored rate × balance (today's rate) | $1,271/mo |
+| loan cost | actuals-first (repayments from the earlier epoch) | $1,191/mo |
+
+Neither producer is wrong for its own definition — they read **different points in time**, and no
+surface says so.
+
+**This does NOT block T2.** The contract is measured on live data and will be verified on the same
+live data; the 13 declared paths and the 12,779.29 after-value stand. It is a property of the
+canonical resolver, not a defect in the contract.
+
+**What T2 must add:** the migration records, alongside each resolved cost, **which basis produced it**
+(charged-interest ledger / interest-only repayment / stored rate) and **the age of the actuals
+consumed**. That pair is exactly the input MON-142's alert needs once MON-145 gives the rate a date.
+Recording it while the 31 sites collapse onto one producer is cheap; retrofitting it afterwards means
+re-opening the producer.
+
+**Pre-declared data movement (not a regression).** If Reza imports statements at the current rate,
+Broadbeach's canonical cost moves 1,191.25 → ~1,271.10 and Thornland Lot 2 2,518.34 → ~2,687.15
+(+$248.66/mo combined) **with no code change**. Declaring it here so a later Ring-3 run reads it as
+expected data movement rather than a T2 regression.
+
+**Coverage, stated precisely:** this records a scope requirement and a forecast. It verifies no
+number, and the forecast figures are the Matrix's arithmetic, not a source-read of the producer.

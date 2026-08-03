@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**131 total** · 72 open · 🔵 32 · 🟡 4 · 🟠 28 · 🟢 8 · ✅ 58
+**133 total** · 74 open · 🔵 34 · 🟡 4 · 🟠 28 · 🟢 8 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -135,9 +135,11 @@
 | MON-139 | 🔵 OPEN | 🟡 | no | Home dashboard renders declared income tiles beside actuals tiles without a basis label — the two contradict on real data | — | n/a |
 | MON-140 | 🟢 VERIFIED | 🔴 | yes | masterFinancialService fed the ONE banked engine a select-narrowed income row missing isRecurring — one-off rows annualised x12 ($158,401.44/yr) while moneyFlow read the same engine correctly | ##1548 (merged 2026-07-31) | ✅ |
 | MON-141 | 🔵 OPEN | 🟡 | no | /dashboard/income header and Home 'This month's budget' show two different monthly incomes ($22,579 vs $25,347) — the $33,216/yr rental-basis split is unnamed on both surfaces | — | n/a |
-| MON-142 | 🟡 DIAGNOSED | 🟠 | yes | Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor | — | — |
+| MON-142 | 🟡 DIAGNOSED | 🟠 | yes | MON-142 (RE-DIAGNOSED VR-046): the stored 6.690% is CURRENT and correct — the repayments are historical, from a lower-rate epoch. The defect is that Loan.interestRateAnnual is UNDATED, so the app renders a contradiction instead of a rate history | — | — |
 | MON-143 | 🟠 FIXING | 🟠 | yes | resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement | ##1562 | ✅ |
 | MON-144 | 🔵 OPEN | 🟡 | no | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | n/a |
+| MON-145 | 🔵 OPEN | 🟠 | yes | Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change | — | — |
+| MON-146 | 🔵 OPEN | 🟡 | yes | /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%) | — | — |
 
 ---
 
@@ -2348,22 +2350,22 @@ NOT a duplicate of MON-023 (that is the EXPENSE engine ignoring isRecurring; iss
 
 Found by VR-045 §7 (not in the declared T1 set, and not in any prior regression baseline, so it CANNOT be called new). Both surfaces reconcile internally: 12,476 + 10,102 = 22,578 and 12,476.29 + 12,870.26 = 25,346.55. VR-043 §4 already established the two rental figures as LEGITIMATELY DISTINCT quantities — so the defect is not the values, it is that two different totals are both presented as monthly income with neither naming its basis. The app DOES explain the split in a banner on /dashboard/income ("$57,200 of your declared income across 3 sources has no matching transactions yet. Home and Cashflow show your last-12-months actuals... while your Tax estimate uses the declared gross"), which is why this is raised as a naming/design question rather than a number defect. DECISION FOR REZA (VR-045 §7): designed two-basis presentation needing D6 naming on both surfaces, or collapse to one? Tranche assignment follows that call.
 
-### MON-142 — Loan.interestRateAnnual is stale — bank charged ~6.268% while Monitrax stores 6.690% on both Bankwest IO loans; the stored rate feeds the deductible-interest THEORETICAL fallback and the loan-cost interest floor
+### MON-142 — MON-142 (RE-DIAGNOSED VR-046): the stored 6.690% is CURRENT and correct — the repayments are historical, from a lower-rate epoch. The defect is that Loan.interestRateAnnual is UNDATED, so the app renders a contradiction instead of a rate history
 
 **🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-07-31
 
-> **What was wrong:** Monitrax has 6.690% stored for your two Bankwest interest-only loans, but the repayments actually in your data imply the bank charged about 6.268%. Both loans point at the SAME real rate, which is what you would expect from one lender changing one rate — you confirmed rates moved and that you do not recall updating them here. Nothing in the app tells you the stored rate has gone stale.
+> **What was wrong:** Monitrax stores 6.690% for your two Bankwest interest-only loans, and your repayments imply about 6.268%. Neither figure is wrong. 6.690% is your rate today; 6.268% is what you were paying when those repayments were made, before the bank moved the rate. The app cannot say that, because the rate is stored as one number with no date on it while every repayment is dated — so instead of showing you a history, it shows you a contradiction.
 >
-> **What changed:** PARTIALLY BUILT. One engine now works out what rate a loan is ACTUALLY at, from evidence: the interest your bank charged (from the loan statement) beats an interest-only repayment, which beats the rate typed into Monitrax. When the evidence disagrees with the typed rate by more than 0.10%, it is flagged as out of date. It does NOT overwrite what you typed — it tells you they disagree. Nothing reads it yet, so no number on screen has moved.
+> **What changed:** The earlier diagnosis had this backwards: it treated the stored rate as the stale figure and proposed warning you it was out of date. It is not stale. The real fix is to give the rate a date (tracked as MON-145) so the app can compare repayments against the rate that applied WHEN they were made, and then tell you which side is behind — rather than assuming.
 >
-> **What you should see:** Nothing on screen changes in this step. The next step wires it in, and THAT will move your deductible interest and any loan cost that currently falls back to the typed rate — you will see that as a before/after table before it ships.
+> **What you should see:** Nothing on screen changes yet. When it lands you will see a note saying your repayments imply a different rate than the one on file, naming the date the rate changed, instead of the two figures silently disagreeing.
 
-- **Root cause:** `prisma/schema.prisma:1671`, `lib/tax-engine/deductions/propertyLoanInterest.ts:85`, `lib/calculations/propertyCashflow.ts:199`
+- **Root cause:** `prisma/schema.prisma:1671`, `lib/calculations/effectiveLoanRate.ts:130`
 - **Neomatrix:** `engine.loans.resolveEffectiveLoanRate`, `engine.tax.deductiblePropertyLoanInterest`, `engine.propertyCashflow.resolveLoanMonthlyCost`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-045`
 
-FOUND while investigating T2 brief §2.1 (the 0.9370 factor). The averaging algorithm was CLEARED first: calculateMonthlyAverage uses totalDays = daysSpan + avgInterval (= N x interval), so monthly = payment/interval x 30.4375 — a probe of 12 monthly payments at contractual interest returns ratio 1.00000 EXACTLY. So the factor is not in the code; it is the stored rate. Arithmetic: 1191x12/228000 = 6.268% and 2518x12/482000 = 6.269% — the same implied rate from two different balances, which a per-loan data error could not produce. Stored 6.690% overstates by 0.422pp = $961/yr Broadbeach + $2,032/yr Lot 2 = $2,993/yr combined. EXPOSURE IS CONDITIONAL, stated precisely: propertyLoanInterest is ACTUALS-FIRST (uses the Phase 51 LoanTransaction INTEREST_CHARGED sum when present) and only falls back to the stored rate when that ledger is empty. Reza reports ~2 months of data, so the ledger is likely sparse and the fallback likely live — NOT CONFIRMED without a relay capture of LoanTransaction rows. 14 files read interestRateAnnual, incl. loanDecisionSupport (21), debtPlanner (10), loanAggregator (9), the tax engine (10 across two files). The loan-cost interest FLOOR uses it too, so any loan without linked repayments carries the stale rate into its rendered cost. NOT a T2 blocker: T2 migrates onto the ACTUALS path, which this does not affect. DECISION FOR REZA on approach.
+FOUND while investigating T2 brief §2.1 (the 0.9370 factor). The averaging algorithm was CLEARED first: calculateMonthlyAverage uses totalDays = daysSpan + avgInterval (= N x interval), so monthly = payment/interval x 30.4375 — a probe of 12 monthly payments at contractual interest returns ratio 1.00000 EXACTLY. So the factor is not in the code; it is the stored rate. Arithmetic: 1191x12/228000 = 6.268% and 2518x12/482000 = 6.269% — the same implied rate from two different balances, which a per-loan data error could not produce. Stored 6.690% overstates by 0.422pp = $961/yr Broadbeach + $2,032/yr Lot 2 = $2,993/yr combined. EXPOSURE IS CONDITIONAL, stated precisely: propertyLoanInterest is ACTUALS-FIRST (uses the Phase 51 LoanTransaction INTEREST_CHARGED sum when present) and only falls back to the stored rate when that ledger is empty. Reza reports ~2 months of data, so the ledger is likely sparse and the fallback likely live — NOT CONFIRMED without a relay capture of LoanTransaction rows. 14 files read interestRateAnnual, incl. loanDecisionSupport (21), debtPlanner (10), loanAggregator (9), the tax engine (10 across two files). The loan-cost interest FLOOR uses it too, so any loan without linked repayments carries the stale rate into its rendered cost. NOT a T2 blocker: T2 migrates onto the ACTUALS path, which this does not affect. DECISION FOR REZA on approach.VR-046 (2026-08-03): RE-DIAGNOSED on Reza's ruling — 'repayments are from before the interest rates were changed. I have changed the interest rates on app but have not updated the transactions.' The arrow was backwards. The prior finding F1 (deductible interest overstated ~$2,983.92/yr, ~$1,104/yr tax) is WITHDRAWN by the Matrix itself: it assumed the transactions were the truth and the rate stale. For a FY26-27 FORWARD projection, stored-rate x balance is the correct method and the tax page's 15,253 / 32,246 stand.,VR-046 corroboration: the two loans' implied rates agree to 1.07e-07 across two different balances — one lender changing one rate, not a per-loan data-entry slip.,Root cause reassigned to the schema asymmetry (see MON-145): Loan.interestRateAnnual is a scalar with no effective-from, while LoanTransaction.date is dated. MON-142's alert is the FIRST CONSUMER of the dated rate, so it is blocked on MON-145.,NOT verified by VR-046: which rate the bank actually charged. That is outside the app; the run establishes only that the two figures disagree, and that they disagree identically across both loans.Reza rule 2026-08-03 (full text on MON-145): actuals are the source of truth for the period they cover; declared rate where no actuals exist, which always includes forward projections. Confirms the D17 FACT hierarchy in effectiveLoanRate.ts (charged-interest ledger -> IO repayment -> stored rate) AND confirms the F1 withdrawal: the tax page's forward figures 15,253 / 32,246 correctly use the declared rate.
 
 ### MON-143 — resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement
 
@@ -2394,4 +2396,29 @@ FOUND by the T2 relay capture (2026-07-31): the relay surfaces monthlyInterestFl
 - **Detail:** `neoaudit-run:MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma (Property / OwnershipGroup / OwnershipStake). Evidence/run: MON-131_COMPLETION_BRIEF.md §5.2 schema audit, 2026-08-03. | 2026-08-03: changesNumbers corrected true -> FALSE. The raise CLI received the STRING "false" and its parser only honours a real boolean, so the flag defaulted to true. No number moves for this issue — nothing is computed from a field that does not exist; the defect is that the answer has nowhere to live. Also recorded for scope: raised as part of MON-131 T5 gate work (the §5.2 facts audit), NOT a new workstream. Stays OPEN and untouched until the MON-131 tranches are done — filed so the finding is not lost, not queued for build.
+
+### MON-145 — Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-08-03
+
+> **What was wrong:** Your loan interest rate is stored as a single number with no date attached, but every repayment has a date. When your bank changes the rate, the old rate is overwritten and the app can no longer explain why older repayments imply a different rate — it shows a contradiction instead of a history.
+>
+> **What changed:** Give the interest rate a date, so the app can hold a history instead of one number. Then each repayment is read against the rate that applied when it was made, and anything looking forward uses your current rate — because there are no transactions for the future yet.
+>
+- **Root cause:** `prisma/schema.prisma:1671`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-046`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma. Evidence/run: VR-046.REZA RULE (2026-08-03), binding on rate resolution: 'the actuals (transactions) will be the source of truth; in the absence of actuals the declared rate should be used. Note that the rates from the bank change and the applied rate to the past transactions might be different to the current existing rate in the app.' PERIOD-SCOPED, not a flat precedence: actuals are authoritative FOR THE PERIOD THEY COVER (they evidence the rate in force then); the declared rate is authoritative where no actuals exist — which ALWAYS includes the future. A forward projection therefore uses the DECLARED rate, because there are no actuals for a period that has not happened. Applying 'actuals win' to a forward projection would project FY26-27 at the superseded 6.2697% and resurrect the withdrawn VR-046 F1 claim. This rule is unimplementable while the rate is an undated scalar — 'the rate in force when this transaction occurred' has no representation until MON-145 lands.
+
+### MON-146 — /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%)
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: loans · opened 2026-08-03
+
+> **What was wrong:** The Expenses page says your investment loans are at 0.0669% when they are at 6.69% — it is printing the raw decimal with a percent sign after it. Every other screen shows it correctly, so this is a display bug on one page, and no calculated number is affected by it.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `neoaudit-run:VR-046`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/expenses/page.tsx. Evidence/run: VR-046.
 
