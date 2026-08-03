@@ -147,6 +147,15 @@ export function validateMatrixResult(r) {
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
+// Guarded so this module can be IMPORTED (by tests) without running the CLI.
+// Without it, `import { validateMatrixResult }` hits the no-argv path below and
+// calls process.exit(2) — a module that exits when imported cannot be tested,
+// which is why Rule A shipped hand-verified in #1573. Same convention as
+// scripts/census/producers-census.mjs.
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+if (isMain) runCli();
+
+function runCli() {
 const file = process.argv[2];
 if (!file) {
   console.error('usage: node scripts/verification/check-matrix-result.mjs <file.json>');
@@ -181,3 +190,4 @@ console.log(
     parsed.sha ? parsed.sha.slice(0, 8) : 'null (account-first)'
   } · ${(parsed.checks ?? []).length} check(s)`,
 );
+}

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**133 total** · 74 open · 🔵 34 · 🟡 4 · 🟠 28 · 🟢 8 · ✅ 58
+**134 total** · 75 open · 🔵 35 · 🟡 4 · 🟠 28 · 🟢 8 · ✅ 58
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -140,6 +140,7 @@
 | MON-144 | 🔵 OPEN | 🟡 | no | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | n/a |
 | MON-145 | 🔵 OPEN | 🟠 | yes | Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change | — | — |
 | MON-146 | 🔵 OPEN | 🟡 | yes | /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%) | — | — |
+| MON-147 | 🔵 OPEN | 🟢 | no | Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error | — | n/a |
 
 ---
 
@@ -2433,4 +2434,23 @@ Consumer confirmed at source: propertyLoanInterest.ts:87 (theoretical branch) ap
 - **Detail:** `neoaudit-run:VR-046`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/expenses/page.tsx. Evidence/run: VR-046.
+
+### MON-147 — Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error
+
+**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: observability · opened 2026-08-03
+
+> **What was wrong:** Your production logs record a Node deprecation warning as an ERROR every time a function starts. Nothing is broken and no number is affected, but it means the error count you would look at to spot a real problem is never zero, so a genuine error is harder to notice.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neoaudit-run:VR-046`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: scripts/vercel-logs.sh. Evidence/run: VR-046.
+
+EVIDENCE (VR-046 post-merge runtime read, 2026-08-03): `01:31:30  error  function  (node:4) [DEP0169] DeprecationWarning: \`url.parse()\` behavior is not standardized and prone to errors that have security implications.` Vercel classifies it at ERROR level.
+
+SOURCE NOT YET IDENTIFIED — stated as unknown rather than guessed. `grep -rE "url\\.parse\\(|require\\('url'\\)|from 'url'" lib/ app/ scripts/` returns ZERO hits, so this is NOT our code; it originates in a dependency or the platform runtime. Pinning it needs the emitting frame (run Node with --trace-deprecation, or bisect deps), which was not done here.
+
+NOT A NUMBER DEFECT: no rendered value is affected, which is why changesNumbers is false. The cost is observability — an error rate that is never zero makes a real error harder to see, which is the same class of harm as a noisy alarm.
+
+CAVEAT ON THE EVIDENCE: the runtime read TIMED OUT (curl 28) after 464 bytes, so this is a partial sample. It is enough to prove the warning is emitted at error level; it is NOT enough to establish frequency (the 'every cold start' in the title is inferred from the warning's nature, not measured).
 

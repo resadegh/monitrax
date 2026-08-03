@@ -4099,6 +4099,25 @@
       "test": null,
       "tracker": "neoaudit-run:VR-046",
       "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/expenses/page.tsx. Evidence/run: VR-046."
+    },
+    {
+      "id": "MON-147",
+      "title": "Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error",
+      "status": "OPEN",
+      "severity": "low",
+      "changesNumbers": false,
+      "opened": "2026-08-03",
+      "area": "observability",
+      "plain": {
+        "issue": "Your production logs record a Node deprecation warning as an ERROR every time a function starts. Nothing is broken and no number is affected, but it means the error count you would look at to spot a real problem is never zero, so a genuine error is harder to notice."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": null,
+      "tracker": "neoaudit-run:VR-046",
+      "notes": "Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: scripts/vercel-logs.sh. Evidence/run: VR-046.\n\nEVIDENCE (VR-046 post-merge runtime read, 2026-08-03): `01:31:30  error  function  (node:4) [DEP0169] DeprecationWarning: \\`url.parse()\\` behavior is not standardized and prone to errors that have security implications.` Vercel classifies it at ERROR level.\n\nSOURCE NOT YET IDENTIFIED — stated as unknown rather than guessed. `grep -rE \"url\\\\.parse\\\\(|require\\\\('url'\\\\)|from 'url'\" lib/ app/ scripts/` returns ZERO hits, so this is NOT our code; it originates in a dependency or the platform runtime. Pinning it needs the emitting frame (run Node with --trace-deprecation, or bisect deps), which was not done here.\n\nNOT A NUMBER DEFECT: no rendered value is affected, which is why changesNumbers is false. The cost is observability — an error rate that is never zero makes a real error harder to see, which is the same class of harm as a noisy alarm.\n\nCAVEAT ON THE EVIDENCE: the runtime read TIMED OUT (curl 28) after 464 bytes, so this is a partial sample. It is enough to prove the warning is emitted at error level; it is NOT enough to establish frequency (the 'every cold start' in the title is inferred from the warning's nature, not measured)."
     }
   ]
 }
