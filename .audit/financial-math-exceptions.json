@@ -6,56 +6,56 @@
       "line": 1475,
       "pattern": "FREQUENCY_CONVERSION",
       "reason": "UI-only display formatting (annual→monthly per-expense)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/admin/matrix/golden-baseline/t1-income/route.ts",
       "line": 109,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "admin compare relay — replicates the T1-B flip formula to COMPUTE the declared after-value (expense/loan legs unchanged); not a user-facing producer (HR-3)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/admin/matrix/golden-baseline/t1-income/route.ts",
       "line": 171,
       "pattern": "DECLARED_CASHFLOW_SOURCE",
       "reason": "a PATH STRING for the expected-moves declaration, not a cashflow read",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts",
-      "line": 246,
+      "line": 249,
       "pattern": "FREQUENCY_CONVERSION",
       "reason": "admin compare relay — the ANNUAL pair was MISSING from the first capture (the Matrix caught a $47,551.71 undeclared move that would have stopped the tranche at G7). Derived from annual components per VR-045 §2.1; not a user-facing producer (HR-3)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts",
-      "line": 246,
+      "line": 249,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "admin compare relay — the ANNUAL pair was MISSING from the first capture (the Matrix caught a $47,551.71 undeclared move that would have stopped the tranche at G7). Derived from annual components per VR-045 §2.1; not a user-facing producer (HR-3)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/dashboard/insights/route.ts",
       "line": 496,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "declared-plan lifestyle fallback when no trailing actuals (§19.1)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/dashboard/insights/route.ts",
       "line": 595,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "declared outgoings context for the tile delta subtext (app/api; §19.1 plan side)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     },
     {
       "file": "app/api/dashboard/insights/route.ts",
       "line": 597,
       "pattern": "INLINE_ARITHMETIC",
       "reason": "declared outgoings context for the tile delta subtext (app/api; §19.1 plan side)",
-      "recordedAt": "2026-08-03T02:12:18.380Z"
+      "recordedAt": "2026-08-03T02:56:03.034Z"
     }
   ]
 }

@@ -65,7 +65,7 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 | Tranche | Quantity | State | The one thing standing in the way |
 |---|---|---|---|
 | T1 | income | **DONE** | — (VR-045 PASS; four issues VERIFIED) |
-| **T2** | **loan cost** | **IN BUILD** | **D49** — every migration target is Layer-1 anchored |
+| **T2** | **loan cost** | **MIGRATED (master); awaiting Ring 3** | the **Ring-3 run** — `RING3_T2_LOAN_COST.md`, on Reza's live data |
 | T3 | expense run-rate | ready to plan | G1 cleared 08-03; needs its censuses |
 | T4 | tax constants + depreciation | blocked on FACTS | QS depreciation schedules (Reza) |
 | T5 | balance sheet | blocked on FACTS | property rental-vs-residence classification (Reza) |
@@ -77,8 +77,11 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 · MON-143 ✅ fixed · G5 ❌ (cross-collateralised / fixed / mixed-purpose loans — facts) · G7–G11 pending
 the migration.
 
-**The headline number:** `loanCost` sits at **31 producers**. T2 takes it to one. That single figure is
-the fairest test of this programme so far, and it has not moved yet.
+**The headline number:** `loanCost` sat at **31 producers** and is now at **30** — the programme's first
+real producer deletion (the earlier fall was a measurement correction, and the census history now says
+which is which). T2's contract measures the `masterFinancialService` leaves only, so its migration moves
+that one producer; the other 30 feed surfaces the sweep never covered and need their own declaration
+(**T2-B**). 30 is not 1, and the distance is the point of tracking it.
 
 ---
 
@@ -223,11 +226,17 @@ for it.
 - **Declared:** 13 paths, measured at `915704f0`. Δ **+$3,962.64/month · +$47,551.71/year**.
 - **The migration:** `loanCost` 31 producer sites → one. Every consumer reads
   `resolveLoanCostsForUser`; the `minRepayment` filter is deleted, not bypassed.
-- **Blocked on:** **D49** (§5). Not on anything technical.
+- **Migration merged (PR #1575) for `masterFinancialService` — the one producer this contract measures.**
+  The `.filter(l => l.minRepayment && l.repaymentFrequency)` is deleted, not widened; both loan legs are
+  fed one unrounded canonical array.
+- **Declaration amended to 15 paths before the first line of migration** — `debt.summary` was an unswept
+  sibling of a swept block and moved by construction. The relay's sweep is widened so the class cannot recur.
+- **Blocked on:** nothing. **Next:** the Ring-3 run, then **T2-B** (the remaining 30 producers, each
+  needing its own capture + `expectedMoves`).
 - **Ring-3 after merge:** Home budget tile must read **$12,779**, matching `/dashboard/expenses`
   — the user-visible proof, and the same figure on both screens.
-- **Handout due (§3.0b):** the T2 Ring-3 brief, written when the migration merges. Capture handout
-  already shipped: `docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`.
+- **Handout shipped (§3.0b):** `docs/verification/briefs/RING3_T2_LOAN_COST.md`. Capture handout:
+  `docs/verification/briefs/MATRIX_T2_RELAY_CAPTURE.md`.
 
 ### §3.2 T3 — expense run-rate (MON-129) · ready to plan
 
@@ -369,6 +378,7 @@ this is an index, not a copy** (§0). Never paste a VR run's numbers here; link 
 | 08-02 | Matrix | Found 3 record defects on main (Census column · T3-G1 · MON-134) | all 3 confirmed against main | #1566 |
 | 08-03 | Code | Scoreboard + Census fold + T3-G1 + MON-134 → VERIFIED (#1566) | merged `b733c829` | ledger §6 |
 | 08-03 | Code | **This brief opened** | — | — |
+| 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `PENDING` | ledger §6 · `RING3_T2_LOAN_COST.md` |
 
 ---
 

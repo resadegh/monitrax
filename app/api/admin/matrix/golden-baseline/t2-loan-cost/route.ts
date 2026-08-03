@@ -53,7 +53,7 @@ import { resolveEffectiveLoanRate } from '@/lib/calculations/effectiveLoanRate';
 import { calculateCashflow } from '@/lib/calculations/cashflowOrchestrator';
 import { assembleBankedIncomeForUser } from '@/lib/income/banked/assembly';
 import { bankedTotalsFromResult } from '@/lib/income/banked/aggregator';
-import { calculateDebtMetrics } from '@/lib/calculations/loanAggregator';
+import { aggregateLoanRepayments, calculateDebtMetrics } from '@/lib/calculations/loanAggregator';
 import { toMonthly } from '@/lib/utils/frequencies';
 import type { Frequency } from '@/lib/types/prisma-enums';
 
@@ -147,6 +147,9 @@ export async function GET(request: NextRequest) {
     select: {
       id: true, name: true, principal: true, interestRateAnnual: true,
       minRepayment: true, repaymentFrequency: true, isInterestOnly: true,
+      // `type` keys aggregateLoanRepayments' byType breakdown — added when the
+      // sweep widened to debt.summary, so the split is measured, not bucketed.
+      type: true,
       ownerEntityId: true, offsetAccountId: true,
       offsetAccount: { select: { currentBalance: true } },
     },
@@ -264,23 +267,44 @@ export async function GET(request: NextRequest) {
     loans: canonicalLoanLegs,
   } as never);
 
-  const newDebtMetrics = calculateDebtMetrics(
-    loanRows.map((l) => ({
-      principal: Number(l.principal ?? 0),
-      minRepayment: resolved.get(l.id)?.monthly ?? 0,
-      repaymentFrequency: 'MONTHLY',
-      interestRateAnnual: Number(l.interestRateAnnual ?? 0),
-      isInterestOnly: l.isInterestOnly ?? false,
-      ownerEntityId: l.ownerEntityId,
-    })),
-    monthlyIncome,
-  );
+  // The canonical debt legs, built ONCE and fed to BOTH debt producers — the
+  // same shape masterFinancialService builds. `type` is carried because
+  // `aggregateLoanRepayments` keys its `byType` breakdown on it; omitting it
+  // would bucket every loan under 'Other' and mis-measure the split this sweep
+  // now diffs.
+  const canonicalDebtLegs = loanRows.map((l) => ({
+    principal: Number(l.principal ?? 0),
+    minRepayment: resolved.get(l.id)?.monthly ?? 0,
+    repaymentFrequency: 'MONTHLY',
+    interestRateAnnual: Number(l.interestRateAnnual ?? 0),
+    type: l.type,
+    isInterestOnly: l.isInterestOnly ?? false,
+    ownerEntityId: l.ownerEntityId,
+  }));
 
+  const newDebtMetrics = calculateDebtMetrics(canonicalDebtLegs, monthlyIncome);
+
+  // WIDENED 2026-08-03 (MON-131 T2 migration PR). `snapshot.debt` has TWO
+  // children — `summary` (aggregateLoanRepayments) and `metrics`
+  // (calculateDebtMetrics) — and this sweep sampled only `metrics`. The unswept
+  // sibling hid a real mover: masterFinancialService.ts assigns
+  // `quickMetrics.monthlyLoanRepayments = debtSummary.totalRepayments`, so the
+  // summary moved by construction while never appearing in a capture. Declared
+  // by hand in `.audit/expected-moves-t2.json` _meta.declarationAmendment;
+  // measured HERE from now on, so the class cannot recur.
+  //
+  // The sweep now recomputes BOTH debt producers and diffs `snapshot.debt`
+  // whole. Note what this becomes AFTER the T2 migration merges: master itself
+  // reads the canonical resolver, so old and new coincide and every block
+  // should report ZERO moves. That is not the relay going quiet — it is a live
+  // parity probe, and a non-empty `moves` on a post-migration build means a
+  // producer has drifted back off the canonical resolver.
+  const newDebtSummary = aggregateLoanRepayments(canonicalDebtLegs, 'monthly');
   const cashflowMoves = diffNumericLeaves(cf, newCashflow, 'cashflow');
   const debtMoves = diffNumericLeaves(
-    snapshot.debt?.metrics ?? {},
-    newDebtMetrics,
-    'debt.metrics',
+    snapshot.debt ?? {},
+    { summary: newDebtSummary, metrics: newDebtMetrics },
+    'debt',
   );
 
   // quickMetrics MIRRORS cashflow leaves (masterFinancialService.ts:2031+), so
