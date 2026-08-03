@@ -21,7 +21,7 @@
 
 This run is only meaningful against a build that **contains the T2 migration**. Verify both:
 
-- the deployed `sha` reported by the relay is the merge commit of **PR #1574** (or a later commit on `main` that contains it); and
+- the deployed `sha` reported by the relay is the merge commit of **PR #1575** (or a later commit on `main` that contains it); and
 - `GET /api/admin/matrix/golden-baseline/t2-loan-cost?userId=…` returns **`moves: []`** for the `cashflow.*` and `debt.*` blocks.
 
 That second check is the sharper one and it is worth understanding why. Before the migration the relay compared the **old** producer against the **new** one and reported 15 moves. After it, master *is* the new producer, so the same relay compares the canonical path against itself: **zero moves is the migration having landed**, and any remaining move means a producer is still off the canonical resolver. A capture taken against an older build measures an instrument that has since been replaced — that is what invalidated the second T2 capture, and it is why this precondition is stated before the predictions rather than after.
