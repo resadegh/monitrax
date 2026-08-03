@@ -323,3 +323,123 @@ the identical limitation MON-147's own registry entry records. So "no new errors
 that returned, not the full retention window. And **no rendered number is verified by any of this**:
 that is the Ring-3 run (`docs/verification/briefs/RING3_T2_LOAN_COST.md`), and CI green is never
 verification (§23.2.3). MON-130 and MON-143 stay `FIXING`.
+
+---
+
+## Session: sbpfhc (cont.) — VR-047 consumed; T2-B scaffolded
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** two things. The entity money-flow chart still leaves your two interest-only loans
+  and HECS out entirely — **$3,792.92 a month** — so now that Home has been fixed, the two screens
+  visibly disagree. And separately: the verification run that checked the T2 fix could only do half its
+  job, because reading the internal figures needs an admin login and signing into admin in the same
+  browser window silently replaces your session.
+- **What changed:** the money-flow service can now be asked for either the old figure or the correct
+  one, with the old one still the default, so the effect of switching can be **measured on your real
+  data before anything moves**. Nothing you see changes yet — that is deliberate. The verification
+  checker also got stricter: a run must now list which sections it did not do, and one that skipped a
+  section can no longer report itself as a clean pass.
+- **What you'll see:** **nothing new on any screen.** This is measurement and record-keeping. The
+  money-flow chart still shows the understated figure until its own declaration is written from the
+  capture.
+
+### VR-047 — a PASS that is honestly half
+
+The deciding row landed: Home's `THIS MONTH'S BUDGET · Loans` reads **$12,779**, matching
+`/dashboard/expenses`. The downstream figures reconcile to their derivations rather than to remembered
+values, and the regression cluster is byte-identical — **including `healthScore` 53**, which the
+migration PR predicted by computing the clamp instead of hoping.
+
+**§2, §2b and the build precondition were not run.** All three need the admin relay; VR-044 §7 forbids
+opening it in the account's own profile. The Matrix drew the right distinction: *a rendered $12,779
+does not establish that all four internal expressions agree to the cent.* MON-130 and MON-143 stay
+`FIXING`. Recorded at `docs/verification/runs/VR-047.md`; the admin half is
+`docs/verification/briefs/MATRIX_T2_ADMIN_RELAY.md`.
+
+### Five findings registered
+
+**MON-149** Laguna renders two recurring income rows and counts one (~$6,948/yr uncounted in its
+cashflow, yield and tax position) · **MON-150** Thornland Lot 1 and Lot 2 each claim depreciation of
+exactly $12,799 from identically-named, identically-sized files — worth ~$4,736/yr at the marginal
+rate if it is one schedule attached twice, and only Reza's PDFs can settle it · **MON-151** the
+per-property tax position derives interest on the FULL balance, ignoring the offset — MON-143's D21
+breach living in a second producer · **MON-152** one insurance expense renders $797 on one card and
+$812 on three others · **MON-153** three health scores render (53 / 56 / 25).
+
+MON-149 and MON-151 are byte-identical across the migration: surfaced by the sweep, **not** caused by
+T2.
+
+### Two corrections the run forced
+
+1. **VR-046's B4 was wrong.** It reported that no surface renders a total super balance;
+   `/dashboard/investments/super` does. **T7's blocking fact is therefore readable: $0.** The earlier
+   run checked two paths, missed on both, and generalised.
+2. **The handout's §3 saving-rate row was mis-specified** — no Home surface renders
+   `cashflow.savingsRate`; Home shows the trailing-12-month actuals (1.9%, and 1.9% before the
+   migration too). Withdrawn with the reasoning kept, because a prediction that *cannot* land is worse
+   than a wrong one: it forces the run to choose between a false PASS and a false FAIL.
+
+### The validator now catches the shape VR-047 had
+
+`matrix:check` gains `PARTIAL` and requires `sectionsNotRun[]` on every ring3 result; a non-empty one
+forbids `PASS`. VR-047 satisfied every prior rule — no check had failed, and its finding was `high`,
+not `critical` — while stating plainly that the deciding section never ran. Making "what did not run"
+a **field** rather than prose in the coverage note is what turns it from something read into something
+checked. Five tests pin it (`tests/verification/matrixResultContract.test.ts`, 21 total).
+
+### T2-B scaffold — measured before moved
+
+`getMoneyFlow` gains a `loanCostBasis` seam: `DECLARED` (default, byte-identical) or `CANONICAL`
+(reads `resolveLoanCostsForUser`). The compare relay
+`/api/admin/matrix/golden-baseline/t2b-money-flow` runs **both arms of the real engine** on the same
+live data and diffs every numeric leaf.
+
+The seam is inside the producer rather than replicated in the relay on purpose. `getMoneyFlow` is not
+a pure engine taking injectable legs — it fetches its own loan rows and does the per-entity
+aggregation, the surplus flooring and the edge building inline. A relay that re-implemented any of
+that would be comparing a replica to the original, which is the MON-035 parity failure: a checker
+sharing a source with the thing it checks cannot see them diverge.
+
+**Why the declaration cannot be a hand-list.** Surplus is floored at zero, so raising the loan leg does
+*not* move each entity by the delta — an entity already at zero absorbs nothing, one above zero
+absorbs part, and `totalOutflow` can stop equalling `totalIncome`. Which entity lands where is a
+property of live data. T2's own list missed five paths across three rounds; this one is a sweep.
+
+### Coverage — stated precisely
+
+Verifies at Ring 2 that the seam is inert on `DECLARED` (whole-tree serialised comparison, plus a
+non-vacuity guard so it cannot pass on two empty trees) and that `CANONICAL` un-skips an interest-only
+loan at its hand-computed interest floor, landing on the owning entity. Gates green: `tsc`,
+`lint:financial-surfaces`, `lint:source-lock`, `census:producers:check`, `lint:ai-grounding`,
+`neomatrix:check`, `refnums:check`, `issues:check`, `mon131:check`.
+
+It does **NOT** verify any rendered number, does **NOT** declare T2-B's `expectedMoves` (that needs the
+capture), does **NOT** change the default basis, and does **NOT** complete VR-047 — that needs the
+admin session.
+
+### Two Reza decisions, both narrowing the finish line (session `sbpfhc`)
+
+**Lever 2 taken.** `/dashboard/activity` keeps its **intake path** and loses the **Money-Flow Sankey
+widget**. That removes `moneyFlowService`'s loan leg from the v1 surface, so **T2-B's capture,
+declaration and migration are parked**. The scaffold merged in this PR stays — it is inert (the
+default basis is unchanged) and the capture is one request away if the widget is ever un-hidden.
+
+What survives is the scope filter's own sharper finding: `loanCost` is **SPLIT**, and its kept half is
+`masterFinancialService` feeding the property pages — which #1575 already migrated. **T2's kept half is
+done, pending VR-047's §2 confirming the four expressions agree.**
+
+**MON-150 retracted.** Reza: *"the depreciation schedule for both properties are the same as they are
+identical duplexes."* Two identical builds on adjacent subdivided lots produce identical QS figures, so
+agreement to the dollar is the **expected** result, not the suspicious one. Retracted rather than
+closed-as-fixed, because nothing was wrong.
+
+Kept in the registry with the reasoning attached, because the two cases are **indistinguishable from
+inside the app** — same figure, same filename, same file size — and only the owner can tell them
+apart. Raising it as a question rather than asserting a defect was the right call in both directions:
+if it had been one report attached twice, ~$4,736/yr of double-claimed deduction would have reached an
+auditor before it reached us.
+
+The admin handout is amended to run **PART A only**, returning `sectionsNotRun: ["PART B"]` and verdict
+`PARTIAL` — the rule this same PR added, applied to its own companion document on the first occasion
+it had one.

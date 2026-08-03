@@ -47,6 +47,9 @@
 import { prisma } from '@/lib/db';
 import type { Prisma, PrismaClient, LegalEntityRole, LegalEntityType } from '@prisma/client';
 import { toAnnual } from '@/lib/utils/frequencies';
+// MON-131 T2-B — the ONE loan-cost feed, used by the CANONICAL basis below.
+import { resolveLoanCostsForUser } from '@/lib/services/loanCosts';
+import type { CashflowLoan } from '@/lib/calculations/propertyCashflow';
 import type { Frequency } from '@/lib/types/prisma-enums';
 import {
   assembleBankedIncomeForUser,
@@ -219,10 +222,46 @@ function classifyIncome(type: string, sourceType?: string | null): MoneyFlowSour
 // Main entry point
 // ---------------------------------------------------------------------------
 
+/**
+ * MON-131 T2-B — which producer the LOAN leg reads.
+ *
+ * `'DECLARED'` is today's behaviour, kept as the default so this parameter
+ * moves NO number on its own: the raw declared-repayment field converted to
+ * annual, and any loan without one skipped outright. That skip is the defect —
+ * both interest-only loans and HECS contribute $0 to the entity flow,
+ * understating it by **$3,792.92/mo**, measured by the T2 relay at `915704f0`.
+ *
+ * (The field is named in prose rather than as an identifier on purpose: the
+ * producer census matches raw text and a JSDoc line's leading asterisk reads
+ * as arithmetic, which books this file's PRECEDING function as a phantom
+ * loan-cost producer. Same trap recorded at the T2 migration site.)
+ *
+ * `'CANONICAL'` reads `resolveLoanCostsForUser` — actuals-first, every loan, no
+ * filter — and the resolver fetches its own transactions and offsets, so a
+ * caller cannot starve it (the MON-140 shape).
+ *
+ * WHY A SEAM RATHER THAN A REPLICA IN THE RELAY. The T2-B compare relay has to
+ * measure what the migration will actually produce. `getMoneyFlow` is not a
+ * pure engine taking injectable legs — it fetches its own three-column loan
+ * rows and does the per-entity aggregation, surplus flooring and edge building
+ * inline. A relay that re-implemented that aggregation would be measuring a
+ * second implementation, which is precisely the MON-035 parity failure (a
+ * resolver that shares a source with the thing it checks cannot see them
+ * diverge). Putting the basis switch INSIDE the producer means both arms of
+ * the comparison run the real engine, and the migration is then a one-word
+ * default flip whose effect the capture has already measured.
+ *
+ * This is the T1-A scaffold pattern: ship the seam, prove it moves nothing,
+ * measure through it, declare, then flip.
+ */
+export type LoanCostBasis = 'DECLARED' | 'CANONICAL';
+
 export async function getMoneyFlow(
   userId: string,
   client: PrismaTxOrClient = prisma,
+  options: { loanCostBasis?: LoanCostBasis } = {},
 ): Promise<MoneyFlowResult> {
+  const loanCostBasis: LoanCostBasis = options.loanCostBasis ?? 'DECLARED';
   // Load everything we need in parallel. Income rows + their banked values
   // come from the ONE banked-income assembler (MON-131 T1-B) — never a local
   // re-derivation of the income run-rate.
@@ -245,6 +284,12 @@ export async function getMoneyFlow(
     client.loan.findMany({
       where: { userId },
       select: {
+        // `id`, `principal`, `interestRateAnnual` are selected unconditionally
+        // so the CANONICAL basis has a row the resolver can work with. Under
+        // DECLARED they are simply unread, so the default path is unchanged.
+        id: true,
+        principal: true,
+        interestRateAnnual: true,
         ownerEntityId: true,
         minRepayment: true,
         repaymentFrequency: true,
@@ -377,12 +422,35 @@ export async function getMoneyFlow(
     }
   }
 
+  // MON-131 T2-B — the loan leg, on whichever basis was asked for.
   const loanRepaymentsByEntity: Record<string, number> = {};
-  for (const loan of loans) {
-    if (!loan.minRepayment || loan.minRepayment <= 0) continue;
-    const annual = toAnnual(loan.minRepayment, loan.repaymentFrequency as Frequency);
-    loanRepaymentsByEntity[loan.ownerEntityId] =
-      (loanRepaymentsByEntity[loan.ownerEntityId] ?? 0) + annual;
+  if (loanCostBasis === 'CANONICAL') {
+    // Every loan, no filter. The resolver fetches its own linked repayments and
+    // offset balances, so the three columns this service selects cannot starve
+    // it. Annualised from the UNROUNDED monthly — round at the leaf, never at
+    // the input (the T2 feed contract; rounding per loan first cost a cent that
+    // cascaded through four downstream leaves).
+    const resolved = await resolveLoanCostsForUser(
+      userId,
+      loans as unknown as CashflowLoan[],
+    );
+    for (const loan of loans) {
+      const annual = (resolved.get(loan.id)?.monthly ?? 0) * 12;
+      if (annual === 0) continue;
+      loanRepaymentsByEntity[loan.ownerEntityId] =
+        (loanRepaymentsByEntity[loan.ownerEntityId] ?? 0) + annual;
+    }
+  } else {
+    for (const loan of loans) {
+      // THE DEFECT, kept deliberately intact until the T2-B capture declares
+      // what removing it moves: a loan with no declared repayment is skipped
+      // outright, so both interest-only loans and HECS contribute $0 while
+      // interest is charged on them every month.
+      if (!loan.minRepayment || loan.minRepayment <= 0) continue;
+      const annual = toAnnual(loan.minRepayment, loan.repaymentFrequency as Frequency);
+      loanRepaymentsByEntity[loan.ownerEntityId] =
+        (loanRepaymentsByEntity[loan.ownerEntityId] ?? 0) + annual;
+    }
   }
 
   // ---------------------------------------------------------------------

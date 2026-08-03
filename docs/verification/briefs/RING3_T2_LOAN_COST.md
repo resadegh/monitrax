@@ -86,10 +86,24 @@ This path is declared with a **constraint**, not a value: the per-type figures m
 |---|---|---|
 | Home · `THIS MONTH'S BUDGET · Saved` | `= cashflow.monthlyCashflow` | ~**$11,085** (was $15,048) |
 | Daily spending budget | `Saved ÷ days in the current month` | falls with `Saved` |
-| Saving-rate copy anywhere on Home | `= cashflow.savingsRate` | **43.7%** (was 59.4%) |
+| ~~Saving-rate copy anywhere on Home~~ | ~~`= cashflow.savingsRate`~~ | **WITHDRAWN — see below** |
 | Any rendered debt-service ratio | `= 50.42%` | rises from 34.78% |
 
-A run that flags these four as regressions has produced false failures — that is exactly what VR-045 caught happening once.
+A run that flags these as regressions has produced false failures — that is exactly what VR-045 caught happening once.
+
+> **The saving-rate row is WITHDRAWN (corrected 2026-08-03 after VR-047).** It was mis-specified and
+> could not land: **no Home surface renders `cashflow.savingsRate`.** Home's SAVING RATE tile and the
+> HEALTH panel's Savings sub-metric both read the trailing-12-month **ACTUALS** basis — 1.9% against
+> "AU median around 24%", derived from ANNUAL INCOME $239K vs ANNUAL OUTGOINGS $234K. It read 1.9%
+> *before* the migration too, so "was 59.4%" was never true of anything on screen. `43.73` is correct
+> in the producer tree and simply is not rendered there; it is checked in §2, where it belongs.
+>
+> Recorded rather than quietly deleted, because the failure mode is instructive: a prediction that
+> **cannot** land is worse than a wrong one. It forces the run to choose between a false PASS and a
+> false FAIL, and either answer teaches the next session something untrue. VR-047 refused both and
+> reported the mis-specification — the right handling, and the reason this row is now struck rather
+> than re-numbered. (The underlying "declared tile beside an actuals tile with no basis label" is the
+> MON-139 class and is not T2's to fix.)
 
 ---
 
@@ -158,7 +172,8 @@ Pre-declared so this run does not repeat the VR-029 false-fail.
       "pass": false
     }
   },
-  "verdict": "PASS | FAIL",
+  "verdict": "PASS | PARTIAL | FAIL",
+  "sectionsNotRun": [],
   "checks": [
     { "id": "cashflow.monthlyLoanRepayments", "surface": "relay producer tree",
       "expected": 12779.29, "observed": null, "pass": false },

@@ -40,6 +40,7 @@ const base = (over: Record<string, unknown> = {}) => ({
     },
   },
   verdict: 'PASS',
+  sectionsNotRun: [],
   checks: [{ id: 'A1', expected: 1, observed: 1, pass: true }],
   coverage: {
     verified: 'Asserts the loan count and one check on the account under test.',
@@ -114,5 +115,47 @@ describe('matrix-result/v1 — the exemption did not weaken the other gates', ()
 
   it('still requires checks[] — a verification with nothing checked is not a verification', () => {
     expect(problems(base({ checks: [] })).length).toBeGreaterThan(0);
+  });
+});
+
+// ── the PARTIAL rule (added after VR-047) ───────────────────────────────────
+//
+// VR-047 returned PASS while its own findings said the deciding section had
+// never run. Nothing caught it: no check had failed, and the finding was
+// `high`, not `critical`. These pin the door that was open.
+//
+// NOTE these assert the WHOLE result (`.ok`), not a filtered slice of the
+// errors like the Rule-A tests above — so they need a handout that actually
+// exists on disk, which `base()`'s placeholder does not.
+const real = (over: Record<string, unknown> = {}) =>
+  base({ handout: 'docs/verification/briefs/RING3_T2_LOAN_COST.md', ...over });
+
+describe('a ring3 PASS cannot have skipped a handout section', () => {
+  it('REJECTS PASS when sectionsNotRun is non-empty — that is PARTIAL', () => {
+    const r = validateMatrixResult(real({ verdict: 'PASS', sectionsNotRun: ['§2', '§2b'] }));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/use PARTIAL/);
+  });
+
+  it('ACCEPTS the same run as PARTIAL', () => {
+    expect(validateMatrixResult(real({ verdict: 'PARTIAL', sectionsNotRun: ['§2', '§2b'] })).ok).toBe(true);
+  });
+
+  it('REJECTS PARTIAL with nothing named — it must say which section did not run', () => {
+    const r = validateMatrixResult(real({ verdict: 'PARTIAL', sectionsNotRun: [] }));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/say which section/);
+  });
+
+  it('REJECTS a ring3 result that omits sectionsNotRun entirely', () => {
+    const withOut = real();
+    delete (withOut as Record<string, unknown>).sectionsNotRun;
+    const r = validateMatrixResult(withOut);
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/sectionsNotRun/);
+  });
+
+  it('still ACCEPTS a complete run: PASS with sectionsNotRun []', () => {
+    expect(validateMatrixResult(real()).ok).toBe(true);
   });
 });

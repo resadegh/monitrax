@@ -4738,7 +4738,7 @@
       "kind": "engine",
       "label": "Money flow (income → spend → save)",
       "file": "lib/services/moneyFlowService.ts",
-      "line": 222,
+      "line": 259,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
