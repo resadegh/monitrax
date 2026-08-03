@@ -257,7 +257,7 @@ would have moved undeclared numbers by construction, which the completion brief 
    naming the quantities in a comment satisfied the identifier-near-arithmetic one. Both were **removed
    rather than seeded** — re-seeding would have locked a phantom rise into the ratchet in the PR whose
    whole purpose is driving that count down. Both traps are recorded in the code at the migration site.
-2. **MON-147 — Layer 0 carried a node for a function deleted in T1-B.**
+2. **MON-148 — Layer 0 carried a node for a function deleted in T1-B.**
    `adjustPropertyRentalIncome()` was removed in `86f467f` (there is a test asserting the source no longer
    contains it), yet Layer 0 still pointed at `masterFinancialService.ts:1066` with three edges. The
    coverage gate reconciles the **file set** and **per-file hashes**, never symbols, so a false entry
@@ -274,7 +274,7 @@ would have moved undeclared numbers by construction, which the completion brief 
 - `docs/verification/briefs/RING3_T2_LOAN_COST.md` — **new**, the §3.0b handout
 - `.audit/producer-census.json` · `.audit/source-lock-exceptions.json` · `docs/architecture/REFERENCE_NUMBERS_SCOREBOARD.md` — ratchets
 - `docs/financial-logic/graph/*` — Neo-sync: the new edge, 4 re-pinned anchors, the pruned ghost
-- `docs/issues/ISSUES.{json,md}` — MON-130 → FIXING (partial, with the full sweep); MON-147 raised + closed
+- `docs/issues/ISSUES.{json,md}` — MON-130 → FIXING (partial, with the full sweep); MON-148 raised + closed (renumbered from MON-147 — main took that id for the DEP0169 finding while this branch was open)
 - `docs/implementation/*` · `docs/IMPLEMENTATION_PLAN.md` — ledger row, gate table, brief, workstream
 
 ### Gate (§20.6)

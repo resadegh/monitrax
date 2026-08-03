@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**134 total** · 74 open · 🔵 33 · 🟡 4 · 🟠 29 · 🟢 8 · ✅ 59
+**135 total** · 75 open · 🔵 34 · 🟡 4 · 🟠 29 · 🟢 8 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -140,7 +140,8 @@
 | MON-144 | 🔵 OPEN | 🟡 | no | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | n/a |
 | MON-145 | 🔵 OPEN | 🟠 | yes | Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change | — | — |
 | MON-146 | 🔵 OPEN | 🟡 | yes | /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%) | — | — |
-| MON-147 | ✅ CLOSED | 🟡 | no | Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days | ##1575 | n/a |
+| MON-147 | 🔵 OPEN | 🟢 | no | Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error | — | n/a |
+| MON-148 | ✅ CLOSED | 🟡 | no | Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days | ##1575 | n/a |
 
 ---
 
@@ -2442,7 +2443,26 @@ Consumer confirmed at source: propertyLoanInterest.ts:87 (theoretical branch) ap
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/expenses/page.tsx. Evidence/run: VR-046.
 
-### MON-147 — Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days
+### MON-147 — Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error
+
+**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: observability · opened 2026-08-03
+
+> **What was wrong:** Your production logs record a Node deprecation warning as an ERROR every time a function starts. Nothing is broken and no number is affected, but it means the error count you would look at to spot a real problem is never zero, so a genuine error is harder to notice.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `neoaudit-run:VR-046`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: scripts/vercel-logs.sh. Evidence/run: VR-046.
+
+EVIDENCE (VR-046 post-merge runtime read, 2026-08-03): `01:31:30  error  function  (node:4) [DEP0169] DeprecationWarning: \`url.parse()\` behavior is not standardized and prone to errors that have security implications.` Vercel classifies it at ERROR level.
+
+SOURCE NOT YET IDENTIFIED — stated as unknown rather than guessed. `grep -rE "url\\.parse\\(|require\\('url'\\)|from 'url'" lib/ app/ scripts/` returns ZERO hits, so this is NOT our code; it originates in a dependency or the platform runtime. Pinning it needs the emitting frame (run Node with --trace-deprecation, or bisect deps), which was not done here.
+
+NOT A NUMBER DEFECT: no rendered value is affected, which is why changesNumbers is false. The cost is observability — an error rate that is never zero makes a real error harder to see, which is the same class of harm as a noisy alarm.
+
+CAVEAT ON THE EVIDENCE: the runtime read TIMED OUT (curl 28) after 464 bytes, so this is a partial sample. It is enough to prove the warning is emitted at error level; it is NOT enough to establish frequency (the 'every cold start' in the title is inferred from the warning's nature, not measured).
+
+### MON-148 — Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days
 
 **✅ CLOSED** · 🟡 medium · changes numbers: **no** · area: tooling · opened 2026-08-03 · closed 2026-08-03
 
@@ -2458,5 +2478,5 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboar
 - **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `docs/blueprint/NEOAUDIT.md#5-the-ratchet-zero-fail-mechanism`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: docs/financial-logic/graph/structural/structural-graph.json. Expected: Every Layer-0 node names a symbol that exists in the file it points at.. Actual: services_masterfinancialservice_adjustpropertyrentalincome pointed at lib/services/masterFinancialService.ts:1066 with three edges. adjustPropertyRentalIncome was DELETED by MON-131 T1-B in 86f467f — tests/tax/rentalTaxDedup.test.ts:96 even asserts the source no longer contains it. check-layer0-coverage.mjs compares the FILE SET and per-file HASHES, so a node describing deleted code inside an otherwise-current file is invisible to it.. || FOUND by running scripts/neomatrix/patch-layer0.mjs (new in #1575) for the first time: it verifies every node of a touched file against source and refused to write until this one was explained. The tool exists because of D49 — graphify is a local-only CLI absent from CI and from these containers, so every MON-131 tranche has to patch Layer 0 by hand; d5c9434f and 4aab376e each did it with a throwaway script. This commits that operation with the verification built in. CLOSED in the same PR: the ghost is pruned and the tool that found it is committed. NOT claimed: the gate itself is unchanged, so a ghost in a file no tranche happens to touch is still invisible. The durable fix is a CI-runnable symbol check or a CI-runnable extractor (D49's own recommendation) — recorded here rather than built, because widening a gate is its own change with its own blast radius.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: docs/financial-logic/graph/structural/structural-graph.json. Expected: Every Layer-0 node names a symbol that exists in the file it points at.. Actual: services_masterfinancialservice_adjustpropertyrentalincome pointed at lib/services/masterFinancialService.ts:1066 with three edges. adjustPropertyRentalIncome was DELETED by MON-131 T1-B in 86f467f — tests/tax/rentalTaxDedup.test.ts:96 even asserts the source no longer contains it. check-layer0-coverage.mjs compares the FILE SET and per-file HASHES, so a node describing deleted code inside an otherwise-current file is invisible to it.. || FOUND by running scripts/neomatrix/patch-layer0.mjs (new in #1575) for the first time: it verifies every node of a touched file against source and refused to write until this one was explained. The tool exists because of D49 — graphify is a local-only CLI absent from CI and from these containers, so every MON-131 tranche has to patch Layer 0 by hand; d5c9434f and 4aab376e each did it with a throwaway script. This commits that operation with the verification built in. CLOSED in the same PR: the ghost is pruned and the tool that found it is committed. NOT claimed: the gate itself is unchanged, so a ghost in a file no tranche happens to touch is still invisible. The durable fix is a CI-runnable symbol check or a CI-runnable extractor (D49's own recommendation) — recorded here rather than built, because widening a gate is its own change with its own blast radius. || RENUMBERED 2026-08-03: raised as MON-147 on this branch while main independently took that id for the DEP0169 runtime-log finding (ae70524). Main's numbering wins; this is MON-148.
 
