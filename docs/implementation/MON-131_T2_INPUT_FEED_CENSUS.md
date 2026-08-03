@@ -148,3 +148,56 @@ nothing at 7 of the 31 sites and could record them as already-clean. Use the tru
 contain the census pattern. This does **not** establish what each site *does* with the value — a
 match may derive a cost, aggregate one already derived, or guard on it. That per-site read is the
 remaining Stage-1 step, and it must start from these lines rather than the labels.
+
+---
+
+## Stage-1 classification — what each of the 31 sites actually does
+
+Read at the true match line (above), not inferred from the function label.
+
+### Correction to the previous commit
+
+The prior commit stated *"every one of the 31 matches is real code — nothing here is a false
+positive."* **That is wrong, and this section supersedes it.** Reading each site shows four sites
+that are not loan-cost derivations at all:
+
+| Site | Match | Why it is not a producer |
+|---|---|---|
+| `app/api/loans/route.ts:126` | comment text | a comment *describing* the rule ("read `resolvedCost` instead of re-deriving from raw minRepayment") |
+| `lib/calculations/propertyCashflow.ts:184` | JSDoc | doc comment on the `ResolvedLoanCost` interface |
+| `lib/planning/debtPlanner.ts:161` | JSDoc | `/** Validate and correct minRepayment if needed */` |
+| `lib/planning/debtPlanner.ts:389` | different field | reads `minRepaymentMonthly` (already monthly), not the raw field |
+
+The census pattern is text-based and does not exclude comments, so prose about the rule matches the
+same way code implementing it does. The count of 31 is therefore an **upper bound** on producers.
+I asserted otherwise before reading the sites; the correct claim was available only after reading.
+
+### The classification
+
+| Class | Count | Migration treatment |
+|---|---|---|
+| **Not a producer** — comment / doc / different field | 4 | none; exclude from the work-list |
+| **Match heuristic** — compares a transaction amount to `minRepayment` to suggest a link | 2 | none; not a money number shown to the user |
+| **Raw display** — renders `minRepayment` directly as a cost | 2 | read the canonical resolver (source-lock class) |
+| **Input feed** — copies raw fields into a DTO handed to an engine | 8 | the starve-the-engine risk; feed must carry what the engine needs |
+| **True derivation** — computes a monthly/annual cost from raw fields | 15 | migrate onto the one engine |
+
+4 + 2 + 2 + 8 + 15 = 31.
+
+### Direct source confirmation of the $0 mechanism
+
+`lib/services/moneyFlowService.ts:382`:
+
+```
+if (!loan.minRepayment || loan.minRepayment <= 0) continue;
+```
+
+Loans with no `minRepayment` are **skipped outright**, so an interest-only loan or a HECS debt
+contributes nothing. This is the mechanism behind the $3,792.92 understatement, read in source
+rather than inferred from the totals — and it is exactly what the `_meta.feedContract` in
+`.audit/expected-moves-t2.json` forbids ("every loan, no `minRepayment` filter").
+
+**Coverage, stated precisely:** every site is classified from its own match line. This establishes
+what each site *does*; it does **not** establish that the 15 derivations produce equal values today
+(they demonstrably do not), nor that the 8 feeds carry sufficient inputs (the census above shows
+they do not). It verifies no number.
