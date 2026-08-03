@@ -300,3 +300,26 @@ It does **NOT** verify any rendered number on Reza's account — that is the Rin
 verification (§23.2.3). It does **NOT** verify the declared after-values themselves (that is the derivation
 sweep at `915704f0`). It does **NOT** touch the other 30 loan-cost producers, and it does **NOT** close
 MON-130, MON-143 or MON-142.
+
+### Post-merge verification (§17.2) — session `sbpfhc`
+
+PR #1575 merged as **`1e2317b`**. Production deploy `dpl_Feqx7P9kdnVY7jKPuKgd52QafPuf` reached **READY**,
+which means `vercel-build` ran the full gate chain against production — `lint:financial-surfaces`,
+`lint:source-lock`, `census:producers:check`, `lint:ai-grounding`, `neomatrix:check`, `prisma migrate
+deploy`, then `next build` — since they are `&&`-chained.
+
+Runtime log read: the only `error`-level line returned is
+
+```
+07:58:04  error  function  (node:4) [DEP0169] DeprecationWarning: `url.parse()` behavior is not
+standardized and prone to errors that have security implications.
+```
+
+which is **pre-existing and already registered as MON-147** on main (raised by a different session
+earlier the same day). No new error pattern appeared after the merge.
+
+**Coverage caveat, stated rather than glossed.** The runtime-log request timed out after 468 bytes —
+the identical limitation MON-147's own registry entry records. So "no new errors" describes the window
+that returned, not the full retention window. And **no rendered number is verified by any of this**:
+that is the Ring-3 run (`docs/verification/briefs/RING3_T2_LOAN_COST.md`), and CI green is never
+verification (§23.2.3). MON-130 and MON-143 stay `FIXING`.

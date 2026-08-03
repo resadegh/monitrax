@@ -378,7 +378,7 @@ this is an index, not a copy** (§0). Never paste a VR run's numbers here; link 
 | 08-02 | Matrix | Found 3 record defects on main (Census column · T3-G1 · MON-134) | all 3 confirmed against main | #1566 |
 | 08-03 | Code | Scoreboard + Census fold + T3-G1 + MON-134 → VERIFIED (#1566) | merged `b733c829` | ledger §6 |
 | 08-03 | Code | **This brief opened** | — | — |
-| 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `PENDING` | ledger §6 · `RING3_T2_LOAN_COST.md` |
+| 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `1e2317b` | ledger §6 · `RING3_T2_LOAN_COST.md` |
 
 ---
 
