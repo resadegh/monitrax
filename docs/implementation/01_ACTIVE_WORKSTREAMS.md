@@ -50,6 +50,12 @@
 - **Risk:** highest-touch programme in the repo; controlled by the golden baseline (undeclared movement = STOP), the census ratchet, per-tranche Ring-3, and the Phase A Reza gate on every semantic.
 - **Blocking:** the Matrix's registry-reconciliation PR (issue ids) + golden-baseline capture (real data) before any number-moving tranche.
 
+### 0·SIMP. PROD Simplification — the first Monitrax (property scoreboard v1)
+- **Status:** 📋 PLAN LANDED (#1584, merged 2026-08-04) — P0 in progress.
+- **Started:** 2026-08-04 · **Owner:** Code (build) · Reza (switches, merges, P0.4 answer) · Matrix (golden self-diff verdicts, Ring-3).
+- **Spec of record:** `docs/strategy/PROD_SIMPLIFICATION_PLAN.md` — a TRACKING doc; its cursor block is the state, its checkboxes are the progress. This entry is a pointer, not a duplicate (SSOT).
+- **Why:** Reza's 8 rulings + 3 directives (plan §0), Q-SCOPE-1 (#1577), scope filter. Simplification runs BEFORE MON-131 T3 (sequence change 2026-08-04).
+
 ### 0·WALL. Calc-SSOT Wall Part 1 — freeze drift + remediate recent-fix drift (MON-081…086)
 
 - **Status:** 🟡 **BUILT (Parts A + B1/B2/B3, one draft PR) — awaiting Reza's merge (changesNumbers), then the Matrix's CROSS-SURFACE Ring-3 on live data.**

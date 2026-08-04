@@ -240,3 +240,31 @@ id, and a future "dismiss this risk" feature would break silently on the first r
 rendered surface and **no number's correctness** — a reference records what the app currently produces,
 including anything currently wrong (the `moneyFlowService` leg is captured on the DECLARED basis and
 understates by $3,792.92/month exactly as MON-156 declares, deliberately). Closes **nothing** for T2.
+
+---
+
+## Session: prod-simplification-p0-p1 (Code, Fable 5)
+
+### Changes Made — PR-A (P0: freeze & preconditions; docs/trackers ONLY)
+- **Type**: Docs / process
+- **Scope**: PROD Simplification plan P0 (`docs/strategy/PROD_SIMPLIFICATION_PLAN.md` §5)
+- **Description**: Landed the tracker rows the planning PR could not carry (P0.1), the scope-freeze
+  rule (P0.2), the CLAUDE.md §13.6 D-7 amendment (P0.3), and the registry re-count (P0.6). P0.4
+  (Vercel Preview env check) and P0.5 (merge #1577) are Reza-side and flagged as such in the plan —
+  #1577 was still open (draft) at PR time; noted, not blocking.
+
+### Files Modified — PR-A
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — 0·SIMP workstream entry added directly after 0·REF (carry text verbatim)
+- `STATE.md` — PROD SIMPLIFICATION cursor row + SCOPE FREEZE rule (both verbatim) at the top of §C RESUME CURSOR
+- `docs/IMPLEMENTATION_PLAN.md` — hub `Last updated` bumped with the P0 landing note
+- `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md` — Q-SCOPE-1 row landed (from PR #1577's body, the standing gotcha) with status ✅ DECIDED 2026-08-04 → plan §0
+- `CLAUDE.md` — §13.6 exception (Reza 2026-08-04): one-way PROD→dev copy of Reza's own data for hidden-module dev; sunsets permanently the day any CDR/Basiq-sourced data lands in PROD
+- `docs/strategy/PROD_SIMPLIFICATION_PLAN.md` — P0.1/P0.2/P0.3/P0.6 ticked with evidence; P0.4/P0.5 annotated Reza-side; cursor block updated; §9 session-log line appended
+- `docs/changelog/CHANGELOG_2026_08_04.md` — this entry
+
+### P0.6 evidence
+Registry at `e588a837`: **65 OPEN/FIXING (🔵 38 + 🟠 27), 5 critical, 146 total** vs 63 OPEN/FIXING,
+6 critical, 135 total at filter HEAD `1e2317b6` (+2 / −1 critical / +11 total).
+
+### Build Status — PR-A
+- Docs-only; no product code, no schema, no number moves (`changesNumbers: NO`).
