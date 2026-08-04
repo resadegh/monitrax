@@ -4340,15 +4340,15 @@
     {
       "id": "MON-157",
       "title": "The golden-baseline REFERENCE was persisted as a hash, never as a tree — so no tranche can run the whole-tree declared-vs-undeclared diff retrospectively (T2 G7 is unclosable because of it)",
-      "status": "DIAGNOSED",
+      "status": "VERIFIED",
       "severity": "high",
       "changesNumbers": false,
       "opened": "2026-08-04",
       "area": "verification",
       "plain": {
         "issue": "Every tranche is supposed to end with one check: 'did any number move that we did not say would move?' Answering it needs a full snapshot of every number from BEFORE the change, to compare against. We only ever kept a fingerprint of that snapshot, not the snapshot itself. A fingerprint tells you something changed; it cannot tell you WHAT. So for the loan-cost work, that final check cannot be run at all — the 'before' picture no longer exists anywhere.",
-        "fix": "Not fixed yet. The capture tool already writes the full snapshot and its own output says 'COMMIT IT' — it simply was never committed, because the tool needs a database connection that the build container does not have, and the browser-based relay that CAN reach the database returned the snapshot into a chat session that ended. The fix is to commit the full tree, from the relay, as the reference artefact.",
-        "check": "Nothing on any screen. What changes is that the next tranche can answer 'did anything move that we did not declare?' with a verdict instead of a shrug."
+        "fix": "The full snapshot is now captured and committed at `.audit/golden-baseline-12954ff.json`, and a test in CI fails the build if it ever goes missing again or stops matching its own fingerprint. So the next tranche can answer 'did anything move that we did not declare?' with a verdict instead of a shrug.",
+        "check": "Nothing on any screen. Note the limit honestly: this fixes the check for the NEXT piece of work. It cannot answer the question for the loan-cost work already done, because the 'before' picture for that one no longer exists."
       },
       "rootCause": [
         "scripts/matrix/golden-baseline.mjs:97",
@@ -4356,11 +4356,64 @@
         "lib/matrix/goldenBaseline.ts:244"
       ],
       "semanticKeys": [],
+      "downstreamConsumers": [
+        "scripts/matrix/golden-baseline.mjs --diff — reads oldDoc.captures; the committed file is written in that exact document shape so no adaptation is needed. VERIFIED by running the real diffBaselines over the committed file: CLEAN, unchanged=1756",
+        "POST /api/admin/matrix/golden-baseline/diff — takes the reference as its `baseline` body field; this is the call that produces G7's three-outcome verdict. UNBLOCKED for T3 by this artefact",
+        "G7 for T3 (expense run-rate) and every tranche after it — the gate that asks 'did any number move that we did not declare?'. Was unrunnable; is now runnable",
+        "G7 for T2 (loan cost) — NOT unblocked, and deliberately so: the pre-T2 tree is gone and cannot be re-captured, so T2's G7 stays HALF permanently (Reza, 2026-08-04)",
+        "tests/matrix/goldenBaselineRelay.test.ts (the MON-157 describe block) — the Ratchet; fails the build if the reference goes missing, loses the CLI shape, lights its captureErrors tripwire, stops matching its own treeHash, or fails to diff CLEAN",
+        "docs/verification/runs/VR-048.md — the run record carrying the integrity evidence and the negative control"
+      ],
+      "fixPRs": [
+        "#NEXT"
+      ],
+      "test": "tests/matrix/goldenBaselineRelay.test.ts",
+      "tracker": "neoaudit-run:VR-047B",
+      "notes": "VERIFIED IN SOURCE 2026-08-04, not inferred. (1) diffBaselines(oldTree, newTree, expectedMoves) (lib/matrix/goldenBaseline.ts:244) flattens BOTH sides to numeric leaves — it requires a TREE on the old side; a hash cannot be diffed. (2) The relay's committable artefact is ?format=hash (route.ts:84), whose own comment states the tradeoff exactly: 'a matching treeHash proves nothing moved anywhere. Localising a mismatch still needs the full tree.' For a tranche that MOVES declared numbers the hash necessarily mismatches, so localisation is always required and the tree is always needed. (3) The CLI (golden-baseline.mjs:97) DOES write the full tree to .audit/ and prints 'COMMIT IT' — but `git log --all` over '.audit/golden-baseline*' returns NOTHING: no such file has ever been committed, on any branch, in the repository's history. The reference for T1's end state exists only as the string '347006b9…' in the prose of docs/verification/runs/VR-045.md. CONSEQUENCE, concrete: T2's G7 cannot be closed retrospectively. The pre-T2 tree is gone (the code has changed and the live data has moved on), so the three-outcome verdict CLEAN / EXPECTED_ONLY / STOP is unobtainable for T2 and its G7 stands at HALF permanently, with the declared paths verified live (VR-047B A2) and the whole-tree question unanswered. WHY IT PERSISTED: this is a §21.2.2 rule-4 failure — the artefact lived in a session rather than in the repo. It survived four tranches because the hash was sufficient for the CLEAN case and nobody hit the localisation case until a tranche moved numbers on purpose. FIX PATH: the MATRIX_T2_G7_REFERENCE_CAPTURE handout returns the full ~282 KB tree from the relay to be committed as .audit/golden-baseline-<sha>.json, which makes T3's G7 runnable as designed. That closes the hole forward; it cannot reopen T2's. || VERIFIED 2026-08-04 by VR-048. The Matrix captured the tree at 12954fff via the admin relay and it is committed at .audit/golden-baseline-12954ff.json in the CLI's own document shape (meta/renderedPartC/captures), so `golden-baseline.mjs --diff` reads it without adaptation. Integrity verified INDEPENDENTLY rather than accepted: the reassembled tree was re-hashed with the real hashBaseline() and matches the capture's own treeHash 0d6753ef… exactly — which also proves Call 1's and Call 2's separate server-side captures were numerically identical, since either a lost leaf or a divergence between them would have broken the match. The committed file was then run back through the real diffBaselines locally: CLEAN, unchanged=1756, matching the Matrix's server-side self-diff exactly. captureErrors [] across all 8 trees. RATCHET (§23.2.2): the MON-157 block in tests/matrix/goldenBaselineRelay.test.ts fails the build when no reference is committed, when it lacks the CLI's document shape, when its captureErrors tripwire is lit, when its recorded treeHash no longer matches a re-hash of its own captures, or when it fails to diff CLEAN. Negative control run — with the file moved aside the suite fails on 'No .audit/golden-baseline-<sha>.json is committed'; restored, 5/5 pass. NOT CLOSED, and this is the load-bearing limit: this fixes G7 FORWARD only. T2's G7 stays HALF permanently because the pre-T2 tree is gone and cannot be re-captured — no artefact taken today can answer a question about a state that no longer exists (Reza, 2026-08-04: 'this capture establishes the reference for T3, not a close for T2'). || The ratchet lives in the EXISTING relay suite rather than a new file, per §22.2 rule 2 (a new correctness check is a fixture on the existing engine's suite, never a parallel silo). It was first written as its own file; folding it in also avoids dragging prisma plus eight engine modules into a second vitest worker for no benefit."
+    },
+    {
+      "id": "MON-158",
+      "title": "riskRadar mints a fresh UUID and detectedAt on every scan — risk identities are not stable across runs",
+      "status": "DIAGNOSED",
+      "severity": "low",
+      "changesNumbers": false,
+      "opened": "2026-08-04",
+      "area": "cfo",
+      "plain": {
+        "issue": "Every time the app works out your financial risks, it gives each one a brand-new identity — a fresh random ID and a fresh timestamp — even when it is the very same risk it found a minute ago. Nothing is wrong with the risks themselves or with any number; they simply have no lasting name.",
+        "fix": "Not fixed yet. Each risk needs an identity derived from what it IS — its type plus the account, loan or property it concerns — rather than a random value minted at read time, and its timestamp should be when the risk was first seen rather than when the page was loaded.",
+        "check": "Nothing to check — no number and no wording changes. It matters for what cannot be built today: if we added a 'dismiss this risk' button now, the risk would reappear on the next refresh under a new identity, and the dismissal would be lost."
+      },
+      "rootCause": [
+        "lib/cfo/riskRadar.ts:605"
+      ],
+      "semanticKeys": [],
       "downstreamConsumers": [],
       "fixPRs": [],
       "test": "",
-      "tracker": "neoaudit-run:VR-047B",
-      "notes": "VERIFIED IN SOURCE 2026-08-04, not inferred. (1) diffBaselines(oldTree, newTree, expectedMoves) (lib/matrix/goldenBaseline.ts:244) flattens BOTH sides to numeric leaves — it requires a TREE on the old side; a hash cannot be diffed. (2) The relay's committable artefact is ?format=hash (route.ts:84), whose own comment states the tradeoff exactly: 'a matching treeHash proves nothing moved anywhere. Localising a mismatch still needs the full tree.' For a tranche that MOVES declared numbers the hash necessarily mismatches, so localisation is always required and the tree is always needed. (3) The CLI (golden-baseline.mjs:97) DOES write the full tree to .audit/ and prints 'COMMIT IT' — but `git log --all` over '.audit/golden-baseline*' returns NOTHING: no such file has ever been committed, on any branch, in the repository's history. The reference for T1's end state exists only as the string '347006b9…' in the prose of docs/verification/runs/VR-045.md. CONSEQUENCE, concrete: T2's G7 cannot be closed retrospectively. The pre-T2 tree is gone (the code has changed and the live data has moved on), so the three-outcome verdict CLEAN / EXPECTED_ONLY / STOP is unobtainable for T2 and its G7 stands at HALF permanently, with the declared paths verified live (VR-047B A2) and the whole-tree question unanswered. WHY IT PERSISTED: this is a §21.2.2 rule-4 failure — the artefact lived in a session rather than in the repo. It survived four tranches because the hash was sufficient for the CLEAN case and nobody hit the localisation case until a tranche moved numbers on purpose. FIX PATH: the MATRIX_T2_G7_REFERENCE_CAPTURE handout returns the full ~282 KB tree from the relay to be committed as .audit/golden-baseline-<sha>.json, which makes T3's G7 runnable as designed. That closes the hole forward; it cannot reopen T2's."
+      "tracker": "neoaudit-run:VR-048",
+      "notes": "Found by VR-048 (the golden-baseline reference capture) and VERIFIED IN SOURCE before registering (§19.2): lib/cfo/riskRadar.ts:605 createRisk() sets id: crypto.randomUUID() and detectedAt: new Date() on every call, and risks are recomputed on every scanForRisks — so two scans of identical data never produce identical risk objects. EVIDENCE from the run: 19 leaves differed between the run's two captures, ALL non-numeric — masterFinancialService.calculatedAt plus risks.N.id and risks.N.detectedAt across riskRadar. ZERO numeric leaves differed; the self-diff verdict was CLEAN with unchanged=1756. CANNOT AFFECT A VERDICT, and this is why the severity is low rather than higher: diffBaselines flattens to NUMERIC leaves, and these are strings — the golden-baseline gate is structurally blind to them. IMPACT TODAY IS NIL, stated from the consumer list rather than assumed: the only consumers are app/api/cfo/advice/chat/route.ts and lib/cfo/aiAdvisor.ts, both of which pass risks straight to the LLM and discard them; nothing persists a risk by id, so there is no dismissal or acknowledgement state to lose. WHAT IT ACTUALLY COSTS is optionality: no consumer CAN key off a risk id, and a future 'dismiss this risk' or 'risk first seen on' feature would break silently on the first re-scan. The fix is a derived identity (type + related entity ids) plus a first-seen timestamp, which is a design decision about persistence, not a one-line change — hence DIAGNOSED rather than queued."
+    },
+    {
+      "id": "MON-159",
+      "title": "The full vitest suite intermittently aborts with a Prisma query-engine panic (engine.rs:74, exit 134) — measured at 2 failures in 6 runs, and it invites misattribution",
+      "status": "DIAGNOSED",
+      "severity": "medium",
+      "changesNumbers": false,
+      "opened": "2026-08-04",
+      "area": "tooling",
+      "plain": {
+        "issue": "Running the whole test suite sometimes stops dead partway through with a crash inside the database library, instead of finishing and reporting results. It is random — roughly one run in three — and it lands in a different place each time. No test is actually failing when it happens.",
+        "fix": "Not fixed yet. The crash is in Prisma's native query engine, not in our code, and the likely cause is that engine being loaded inside test workers that never use a database. The direction is to stop those workers loading it at all, rather than to retry the suite until it goes green.",
+        "check": "Nothing on any screen. What it costs is trust in a red build: a session that sees this crash after adding something will reasonably assume they broke it, and spend an hour rewriting working code."
+      },
+      "rootCause": [],
+      "semanticKeys": [],
+      "downstreamConsumers": [],
+      "fixPRs": [],
+      "test": "",
+      "tracker": "neoaudit-run:VR-048",
+      "notes": "MEASURED, not impressionistic, and measured only because it was nearly misdiagnosed TWICE in one session. While adding the MON-157 ratchet the full suite aborted; the obvious inference was that the new test caused it, and two rounds of restructuring followed (moving the JSON parse out of collection scope, then caching it) — each looked like it helped and neither did. Running the suite SIX times with the new block absent settled it: 2 failures in 6 (runs 3 and 6), versus 3 in 10 with the block present. Indistinguishable. The change was innocent. SIGNATURE: `thread '<unnamed>' panicked at query-engine/query-engine-node-api/src/engine.rs:74:45` -> `core/src/panicking.rs:221:5` -> `thread caused non-unwinding panic. aborting.` -> exit 134 (SIGABRT). A non-unwinding panic in Rust cannot be caught by the Node host, which is why the whole run dies rather than one test failing. NON-DETERMINISTIC IN POSITION: the last file to report differed on every abort (tax-engine/divisions/reformSkeletons, calc-audit/findingService, calculations/financial), so it is not one bad test — it is the engine being initialised or torn down in a worker where it has no business existing. Prisma 5.22.0. WHY IT MATTERS BEYOND ANNOYANCE: an intermittent red build that lands on a different file each time is the ideal environment for a wrong conclusion. Two costs, both real: a session blames its own change and rewrites working code (happened twice here), or a session learns to re-run until green and stops reading failures at all — which is how a genuine regression ships. NOT YET INVESTIGATED, and stated rather than guessed: which import path pulls the real PrismaClient into worker processes that mock @/lib/db, and whether a global test-setup mock or a vitest pool/isolation setting removes it. That is the fix's first question, not its answer. || rootCause is deliberately EMPTY, following the MON-147 precedent: the panic is inside Prisma's native query engine, so there is no line in this codebase verified to cause it, and guessing one (`tests/setup.ts` does not even exist; vitest.config declares no setupFiles) would put an unverified anchor into the registry — the exact §19.2 failure the four-step audit exists to prevent. It gets a rootCause when someone traces which import pulls the real PrismaClient into a mocked worker, not before."
     }
   ]
 }
