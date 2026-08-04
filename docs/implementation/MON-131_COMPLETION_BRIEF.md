@@ -65,7 +65,7 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 | Tranche | Quantity | State | The one thing standing in the way |
 |---|---|---|---|
 | T1 | income | **DONE** | — (VR-045 PASS; four issues VERIFIED) |
-| **T2** | **loan cost** | **G8/G10/G11 ✅** — Ring 3 passed (VR-047 + VR-047B) | **G7 is unclosable** — the pre-T2 reference tree was never committed (MON-157). Nothing left to *do*; it stays HALF |
+| **T2** | **loan cost** | **DONE with a named gap** — G8/G10/G11 ✅ | **G7 permanently HALF** and settled by Reza 2026-08-04 — the pre-T2 tree never existed, so nothing can close it. Not to be re-litigated |
 | T3 | expense run-rate | ready to plan | G1 cleared 08-03; needs its censuses |
 | T4 | tax constants + depreciation | blocked on FACTS | QS depreciation schedules (Reza) |
 | T5 | balance sheet | blocked on FACTS | property rental-vs-residence classification (Reza) |
@@ -75,7 +75,7 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 
 **T2's gates:** G2 ✅ · G3 ✅ (`.audit/expected-moves-t2.json`, amended to 15 paths as the migration PR's opening commit) · G5 ✅ · G6 ✅ (#1575 merged `1e2317b`, prod READY) · **G8 ✅** (VR-047 rendered half + VR-047B producer half — the four-expression identity holds) · G9 ✅ · G10 ✅ · **G11 ✅** (MON-143 and a narrowed MON-130 both VERIFIED on their own numbers; the residue is MON-156) · **G7 🟡 permanently**.
 
-That last one is not a queued task. The whole-tree `MOVED-UNDECLARED` diff needs the pre-T2 **tree**, and only its **hash** was ever kept — no golden-baseline tree has ever been committed to this repository, on any branch. The pre-T2 tree cannot be re-captured. **MON-157** records it; `MATRIX_G7_REFERENCE_CAPTURE.md` fixes it forward so T3's G7 runs as designed.
+That last one is not a queued task and never becomes one. **Reza settled it on 2026-08-04:** *"T2's G7 stays HALF so it isn't re-litigated: this capture establishes the reference for T3, not a close for T2."* The whole-tree diff needs the pre-T2 **tree**; only its **hash** was ever kept, and it cannot be re-captured now that the code has changed and the live data has moved on. **MON-157** records it and is **VERIFIED — fixed forward only**: VR-048 captured the tree at `12954fff` and it is committed at `.audit/golden-baseline-12954ff.json`, the first golden-baseline tree ever committed to this repo, with a Ratchet that fails the build if it goes missing again. **T3's G7 runs as designed.**
 
 **The headline number:** `loanCost` sat at **31 producers** and is now at **30** — the programme's first
 real producer deletion (the earlier fall was a measurement correction, and the census history now says
@@ -393,6 +393,9 @@ this is an index, not a copy** (§0). Never paste a VR run's numbers here; link 
 | 08-03 | Reza | **PR #1580 merged** (`e3a3715`); prod deploy READY | — | ledger §6 |
 | 08-04 | Reza | **D50 answered — option A.** Narrow MON-130 to the surface its evidence covers; carry the residue as a new issue | decisions | ledger §3 T2 G11 |
 | 08-04 | Code | **D50-A implemented + the G7 handout, which turned out to be a different handout.** MON-130 narrowed → **VERIFIED**, residue → **MON-156** (11 producers / ~30 sites), **G11 ✅**. Writing the G7 call Reza asked for exposed that it cannot be run: `diffBaselines` needs the pre-T2 **tree** and only its **hash** was ever kept — **no golden-baseline tree has ever been committed, on any branch** (**MON-157**). T2's G7 is HALF permanently. Shipped `MATRIX_G7_REFERENCE_CAPTURE.md` instead, which commits the reference forward so **T3's G7 runs as designed** | — | `MATRIX_G7_REFERENCE_CAPTURE.md` |
+| 08-04 | Reza | **PR #1581 merged** (`e5017ba`); prod READY. Ran the G7 reference-capture handout and returned **VR-048** | — | `VR-048.md` |
+| 08-04 | Reza | **T2's G7 is settled as permanently HALF** — *"this capture establishes the reference for T3, not a close for T2"* | decision | ledger §3 T2 G7 |
+| 08-04 | Code | **VR-048 consumed.** First golden-baseline tree ever committed (`12954fff`, 8 trees, `captureErrors: []`, 1,755+1 leaves, `treeHash 0d6753ef…`), integrity re-hashed independently, self-diff CLEAN through the real `diffBaselines`. **MON-157 → VERIFIED** (forward only). Ratchet + negative control shipped. **MON-158** raised (unstable risk identities; non-numeric, no verdict impact) and **MON-159** (the full suite aborts intermittently on a Prisma query-engine panic — blamed on the new ratchet twice, then measured at 2 failures in 6 runs with it ABSENT; pre-existing) | — | `VR-048.md` |
 
 ---
 

@@ -109,3 +109,134 @@ issue teaches sessions to work around gates.
 **Coverage boundary.** This session changes **no code** — no producer, no engine, no rendered number. It
 records a scope decision, opens two issues, and ships one handout. It verifies **nothing** on its own;
 the handout it produces is what will be verified, by the Matrix, in a later run.
+
+---
+
+## Session: `sbpfhc` (cont.) — VR-048 consumed: the first committed reference tree, and T2's G7 settled
+
+### Changes Made
+
+- **Type**: Verification consumption + a reference artefact + a Ratchet test
+- **Scope**: `.audit/golden-baseline-12954ff.json` (new) · `tests/matrix/` · `docs/verification/runs/` ·
+  registry · the MON-131 ledger / brief / hub
+- **Description**: The Matrix ran `MATRIX_G7_REFERENCE_CAPTURE.md` and returned **VR-048**. All ten
+  checks passed. The tree is committed — **the first golden-baseline tree ever committed to this
+  repository** — and guarded by a Ratchet. Reza settled T2's G7 at the same time.
+
+### Reza's ruling, recorded where the next session reads first
+
+> *"Tell Code that T2's G7 stays HALF so it isn't re-litigated: this capture establishes the reference
+> for T3, not a close for T2."*
+
+The reason is structural, not procedural. G7's verdict comes from diffing the **pre-change** tree against
+a fresh one. T2's pre-change tree never existed as a file — only its hash — and it cannot be re-captured:
+the code has changed and the live data has moved on. **No artefact captured today can answer a question
+about a state that is gone.** It is written into the ledger's G7 cell, the brief's §2, the hub and
+MON-157's notes, each phrased so a future session finds the reasoning rather than just the verdict.
+
+### What VR-048 established
+
+8 trees · `captureErrors: []` · **1,755 hashed leaves + 1 volatile = 1,756** ·
+`treeHash 0d6753ef330156c8a6c09e8ad517caf34aac73b64f9c0230c6556873f8361cf7` · sha `12954fff`.
+
+Committed at `.audit/golden-baseline-12954ff.json` in the **CLI's own document shape**
+(`meta` / `renderedPartC` / `captures`) so `golden-baseline.mjs --diff`, which reads `oldDoc.captures`,
+finds it without adaptation.
+
+**Integrity verified independently, not accepted.** The reassembled tree was re-hashed with the *real*
+`hashBaseline()` from `lib/matrix/goldenBaseline.ts` — never a re-implementation (§12.2.1) — and matches
+exactly, `perTree` identical on all eight keys. That proves something stronger than "the paste survived":
+Call 1 and Call 2 were **separate** server-side captures, so an equal hash also proves the two were
+numerically identical. Either a lost leaf or a divergence between the captures would have broken it. The
+committed file was then run back through the real `diffBaselines` locally — **CLEAN, `unchanged = 1756`**
+— matching the Matrix's server-side self-diff figure exactly.
+
+**The 1,755 / 1,756 pair is not a discrepancy.** `hashBaseline` reports `leafCount` *excluding* volatile
+calendar leaves; `diffBaselines` computes `unchanged` from the full map. 1,755 + 1 = 1,756, exactly.
+Checked rather than waved through, because two leaf counts differing by one is also the shape a silently
+dropped leaf takes.
+
+**Against VR-045's 1,759** at `3cdaa8c4`: −4, legitimate — T1's income flip retired an `OTHER` subtree
+and T2 changed `debt.summary` coverage. The handout wrote 1,759 as an order-of-magnitude check
+explicitly, not a prediction.
+
+### The Ratchet (§23.2.2)
+
+MON-157's class is *"the instrument's reference lived in a session instead of the repo"*, and it survived
+four tranches undetected. The ratchet is a `describe` block in `tests/matrix/goldenBaselineRelay.test.ts` — the suite that already
+covers this module, per §22.2 rule 2 (a new correctness check is a fixture on the existing engine's
+suite, never a parallel silo). It fails when no reference is committed, when the document lacks the CLI's shape, when
+the `captureErrors` tripwire is lit, when the recorded `treeHash` no longer matches a re-hash of its own
+captures, or when it fails to diff CLEAN through the real `diffBaselines`.
+
+**Negative control run** — with the reference moved aside the block fails on *"No
+`.audit/golden-baseline-<sha>.json` is committed"*; restored, it passes. A ratchet that has not been seen
+to fail is not a ratchet.
+
+### MON-159 — a pre-existing flake this session nearly took the blame for
+
+Recorded in full because the wrong conclusion was reached **twice** before the right one.
+
+Adding the ratchet, the **full** suite aborted with `exit 134` — a Prisma query-engine panic
+(`query-engine-node-api/src/engine.rs:74`, *"thread caused non-unwinding panic"*). The obvious inference
+was that the new test caused it, and two rounds of restructuring followed: moving the 455 KB `JSON.parse`
+out of vitest's collection phase, then caching it to a single parse. **Each looked like it helped;
+neither did.**
+
+Six runs with the block **absent** settled it: **2 failures in 6**, against 3 in 10 with it present —
+indistinguishable. The change was innocent and the flake is pre-existing. The abort lands at a different
+test file each time (`reformSkeletons`, `findingService`, `financial`), so it is not one bad test but the
+engine being initialised or torn down in workers that mock the database and never use it.
+
+**MON-159** (medium) carries the measurement, the exact panic signature, and what has *not* been
+investigated. Its `rootCause` is deliberately **empty** — the MON-147 precedent: the panic is inside
+Prisma's native engine, no line in this codebase is verified to cause it, and inventing an anchor is the
+§19.2 failure the four-step audit exists to prevent. It matters beyond annoyance: an intermittent red
+build landing somewhere different each time either makes a session rewrite working code, or teaches it to
+re-run until green and stop reading failures — and the second is how a real regression ships.
+
+### MON-158 — the run's one finding
+
+`riskRadar` mints a fresh UUID and `detectedAt` on every scan, so two captures on identical code and data
+are never byte-identical. **Verified in source before registering** (§19.2): `lib/cfo/riskRadar.ts:605`,
+`createRisk()` sets `id: crypto.randomUUID()` and `detectedAt: new Date()` on every call.
+
+Scoped honestly rather than inflated. It **cannot** affect a verdict — `diffBaselines` flattens to
+*numeric* leaves and these are strings; the run's evidence was 19 differing leaves, **all non-numeric**,
+zero numeric. Impact **today is nil**, stated from the consumer list rather than assumed: the only
+consumers are the CFO advice chat route and `aiAdvisor`, both of which pass risks to the LLM and discard
+them, and nothing persists a risk by id. What it costs is optionality — no consumer *can* key off a risk
+id, and a future "dismiss this risk" feature would break silently on the first re-scan.
+
+### Registry
+
+- **MON-157 → VERIFIED**, fixed **forward only**, with the downstream sweep naming both what this
+  unblocks (T3's G7, the CLI's `--diff`, the diff route) and what it deliberately does not (T2's G7).
+- **MON-158** opened, DIAGNOSED, `changesNumbers: false`.
+
+### Files Modified
+
+- `.audit/golden-baseline-12954ff.json` — **new**, the reference tree (455 KB)
+- `tests/matrix/goldenBaselineRelay.test.ts` — the Ratchet, folded into the existing suite (§22.2 rule 2)
+- `docs/verification/runs/VR-048.md` — **new**
+- `docs/issues/ISSUES.json` + `.md` — MON-157 VERIFIED; MON-158, MON-159 raised
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — G7 cell, T2 heading, §6 row, `#1581`/`e5017ba` backfill
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §2, §6
+- `docs/IMPLEMENTATION_PLAN.md` — hub
+
+### Testing
+
+- [x] `npm run matrix:check` on the VR-048 payload → exit 0 (`kind=capture · verdict=CAPTURE_ONLY · sha=12954fff · 10 checks`)
+- [x] Independent re-hash of the reassembled tree → matches `treeHash` exactly
+- [x] `diffBaselines(captures, captures, [])` on the committed file → CLEAN, `unchanged=1756`
+- [x] New Ratchet: passes · **negative control**: fails with the reference removed
+- [x] Full suite 4465 passed / 69 skipped — with the **MON-159** caveat stated above: the suite aborts
+      intermittently for a pre-existing reason, measured at 2/6 with this change absent
+- [x] `npm run issues:check` — 146 valid
+- [x] `npm run neomatrix:check` · `lint:source-lock` · `lint:financial-surfaces` · census (`loanCost` 30)
+- [x] `npx tsc --noEmit` · `npx vitest run`
+
+**Coverage boundary.** Verifies a reference artefact and the diff chain that consumes it. Verifies **no**
+rendered surface and **no number's correctness** — a reference records what the app currently produces,
+including anything currently wrong (the `moneyFlowService` leg is captured on the DECLARED basis and
+understates by $3,792.92/month exactly as MON-156 declares, deliberately). Closes **nothing** for T2.
