@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { runAdvisorQuery } from '@/lib/ai/tax-advisor/runAdvisorQuery';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 interface AskRequestBody {
   question: string;
@@ -27,6 +28,8 @@ interface AskRequestBody {
 }
 
 export const POST = withPermission('report.read', async (request: NextRequest, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
   let body: AskRequestBody;
   try {
     body = (await request.json()) as AskRequestBody;

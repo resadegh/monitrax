@@ -37,6 +37,7 @@ import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { calculateEquity as calcPropertyEquity } from '@/lib/utils/calculations';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
@@ -193,6 +194,9 @@ const EMPTY_RENEWALS = {
 type ViewMode = 'tiles' | 'list';
 
 function PropertiesPageContent() {
+  // PROD Simplification P1: the per-item Strategy tab is a MODULE_STRATEGY
+  // surface (plan §2.2 'per-item tabs') — hidden until the flag is ON.
+  const strategyModuleEnabled = useModuleEnabled('MODULE_STRATEGY');
   const { token } = useAuth();
   const router = useRouter();
   const { openLinkedEntity } = useCrossModuleNavigation();
@@ -1150,10 +1154,12 @@ function PropertiesPageContent() {
                   <TabsTrigger value="overview" className="shrink-0">Details</TabsTrigger>
                   <TabsTrigger value="cashflow" className="shrink-0">Financials</TabsTrigger>
                   <TabsTrigger value="loans" className="shrink-0">Loans</TabsTrigger>
-                  <TabsTrigger value="strategy" className="shrink-0">
-                    <Lightbulb className="h-3 w-3 mr-1" />
-                    Strategy
-                  </TabsTrigger>
+                  {strategyModuleEnabled && (
+                    <TabsTrigger value="strategy" className="shrink-0">
+                      <Lightbulb className="h-3 w-3 mr-1" />
+                      Strategy
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="linked" className="shrink-0">
                     <Link2 className="h-3 w-3 mr-1" />
                     Linked
@@ -1757,13 +1763,15 @@ function PropertiesPageContent() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="strategy" className="mt-4">
-                  <EntityStrategyTab
-                    entityType="property"
-                    entityId={selectedProperty.id}
-                    entityName={selectedProperty.name}
-                  />
-                </TabsContent>
+                {strategyModuleEnabled && (
+                  <TabsContent value="strategy" className="mt-4">
+                    <EntityStrategyTab
+                      entityType="property"
+                      entityId={selectedProperty.id}
+                      entityName={selectedProperty.name}
+                    />
+                  </TabsContent>
+                )}
 
                 <TabsContent value="linked" className="mt-4">
                   <LinkedDataPanel

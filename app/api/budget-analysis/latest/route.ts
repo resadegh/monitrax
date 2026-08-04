@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 // Analysis is considered stale after 30 days
 const STALE_DAYS = 30;
@@ -19,6 +20,8 @@ const STALE_DAYS = 30;
 // =============================================================================
 
 export const GET = withPermission('expense.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
 

@@ -32,6 +32,7 @@ import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { toCgtEntityType, type PropertyOwner } from '@/lib/cfo/scenarios/propertyDisposalCgt';
 import type { PropertyTaxContext } from '@/lib/cfo/scenarios/types';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 /**
  * Phase 45 PR 2.A.1 — un-deduplicated super accounts for the Div 296
@@ -213,6 +214,8 @@ async function fetchPropertyTaxContexts(
 }
 
 export const POST = withPermission('report.read', async (request: NextRequest, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
   let body: { type?: string; params?: Record<string, unknown> };
   try {
     body = await request.json();

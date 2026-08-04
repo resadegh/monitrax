@@ -25,6 +25,7 @@ import {
 import { buildCFEInput } from '@/lib/cashflow/buildCFEInput';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 // Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
 
@@ -149,6 +150,8 @@ async function buildCOEInput(
  * Note: 'lite' mode returns minimal data for faster loading on cold starts
  */
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
       const { searchParams } = new URL(request.url);

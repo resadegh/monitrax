@@ -8,6 +8,7 @@
  * Uses ONLY real calculated numbers - no hallucination.
  */
 
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 import { monthlyRunRate } from '@/lib/utils/frequencies';
 import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 import { NextResponse } from 'next/server';
@@ -549,6 +550,8 @@ function buildForecastSummary(
 // =============================================================================
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
 

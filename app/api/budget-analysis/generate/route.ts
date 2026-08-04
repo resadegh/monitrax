@@ -48,6 +48,7 @@ import {
   calculateBenchmarkExpenses,
 } from '@/lib/budget-analysis/aiPrompt';
 import { VariableExpenseResponse } from '@/lib/budget-analysis/types';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 // MON-125: bump when the money basis changes — a cached analysis generated
 // under an older basis is invalid (its AI estimate was anchored on the old
@@ -66,6 +67,8 @@ function loanBasisLabel(cost: ResolvedLoanCost): string {
 // =============================================================================
 
 export const POST = withPermission('expense.write', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
       const body = await request.json().catch(() => ({}));

@@ -21,8 +21,11 @@
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { getCandidatesForUser } from '@/lib/services/askAProfessionalService';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { searchParams } = new URL(request.url);
   const context = searchParams.get('context') ?? undefined;
 

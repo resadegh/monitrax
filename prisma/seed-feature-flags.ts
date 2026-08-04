@@ -15,6 +15,7 @@
  */
 
 import { prisma } from '../lib/db';
+import { MODULE_REGISTRY } from '../lib/featureFlags/moduleRegistry';
 
 interface FlagSeed {
   key: string;
@@ -34,6 +35,21 @@ const FLAGS: FlagSeed[] = [
     description:
       'Master switch for Basiq Open Banking surfaces. When OFF (default), all "Connect bank account" buttons, the Basiq onboarding tile, the consumer balances Basiq panel, and the bank-connections settings section are HIDDEN from end-user UI. The /api/basiq/* routes ALSO refuse with 503 BASIQ_DISABLED (defense in depth). Flip ON only after Basiq accreditation is complete and live keys are configured.',
   },
+  // ── PROD Simplification module keys (PROD_SIMPLIFICATION_PLAN.md §2.2) ──
+  // Every key ships enabled:false — OFF *is* the v1 ship state (hidden).
+  // Meaning (nav hrefs, route prefixes, API prefixes, return stage) lives
+  // in lib/featureFlags/moduleRegistry.ts; these rows hold ONLY on/off.
+  // Re-enabling is an R-stage gate (plan §5), not a casual toggle.
+  ...MODULE_REGISTRY.map((m) => ({
+    key: m.key,
+    name: m.label,
+    description:
+      `PROD Simplification module switch (returns at R-stage ${m.returnStage}). ` +
+      'When OFF (the v1 default), the module is hidden: nav entries drop, its routes 404 ' +
+      '(Home redirects to /dashboard/properties), and its audited API prefixes refuse with ' +
+      '503 MODULE_DISABLED. Re-enable = R-stage gate per docs/strategy/PROD_SIMPLIFICATION_PLAN.md §5 ' +
+      '(producers converged + Ring-3 PASS on live data + Reza’s switch).',
+  })),
 ];
 
 export async function runFeatureFlagSeed(): Promise<void> {

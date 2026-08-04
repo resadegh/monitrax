@@ -23,6 +23,7 @@ import {
 import { monthlyRunRate } from '@/lib/utils/frequencies';
 import { totalLoanMonthlyCost } from '@/lib/services/loanCosts';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 // Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
 
@@ -181,6 +182,8 @@ async function buildSummaryInput(userId: string) {
 // =============================================================================
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
 
@@ -262,6 +265,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
 // =============================================================================
 
 export const POST = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
 

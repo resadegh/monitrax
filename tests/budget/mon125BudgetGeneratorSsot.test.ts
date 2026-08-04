@@ -63,6 +63,12 @@ const LOANS = [
     createdAnalyses: [] as Array<Record<string, unknown>>,
   };
   const prismaMock = {
+  // PROD Simplification P1 (2026-08-04): the route now carries the
+  // MODULE_HOUSEHOLD gate — served enabled so the suite keeps testing
+  // the generator itself (gating is covered by tests/featureFlags/*).
+  globalFeatureFlag: {
+    findUnique: async () => ({ enabled: true }),
+  },
   budgetAnalysis: {
     findFirst: async () => null,
     create: async ({ data }: { data: Record<string, unknown> }) => {

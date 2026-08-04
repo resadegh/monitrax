@@ -5,6 +5,7 @@
  * GET /api/strategy/forecast - Generate multi-year financial forecast
  */
 
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
@@ -19,6 +20,8 @@ import {
 // =============================================================================
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
     const { searchParams } = new URL(request.url);
@@ -89,6 +92,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
 // =============================================================================
 
 export const POST = withPermission('settings.write', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
     const body = await request.json();

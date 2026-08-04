@@ -10,12 +10,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 // =============================================================================
 // API Handler
 // =============================================================================
 
 export const POST = withPermission('expense.write', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
       const body = await request.json();

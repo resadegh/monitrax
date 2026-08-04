@@ -8,11 +8,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET single recommendation with full details
 export const GET = withPermission<RouteContext>('report.read', async (_request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const { id } = await context!.params;
     const userId = auth.userId;
@@ -51,6 +54,8 @@ export const GET = withPermission<RouteContext>('report.read', async (_request, 
 
 // PATCH recommendation (accept/dismiss)
 export const PATCH = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const { id } = await context!.params;
     const userId = auth.userId;
@@ -119,6 +124,8 @@ export const PATCH = withPermission<RouteContext>('settings.write', async (reque
 
 // DELETE recommendation
 export const DELETE = withPermission<RouteContext>('settings.write', async (_request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const { id } = await context!.params;
     const userId = auth.userId;

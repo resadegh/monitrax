@@ -21,6 +21,7 @@ import {
 // shared builder excludes transfers and uses after-tax income, so stress tests
 // now forecast on the same basis as /cashflow.
 import { buildCFEInput } from '@/lib/cashflow/buildCFEInput';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 /**
  * GET /api/cashflow/stress-test
@@ -31,6 +32,8 @@ import { buildCFEInput } from '@/lib/cashflow/buildCFEInput';
  * Returns stress test results across predefined scenarios
  */
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
       const { searchParams } = new URL(request.url);
@@ -115,6 +118,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
  * Run a custom stress test scenario
  */
 export const POST = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
       const body = await request.json();

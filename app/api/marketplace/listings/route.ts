@@ -12,6 +12,7 @@
  * Ask-a-Pro flow (Phase 32C PR4b/4c) which surfaces only their org's roster
  * — see IMPLEMENTATION_PLAN.md "leaky funnel" guardrail.
  */
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 import { NextRequest, NextResponse } from 'next/server';
 import { browsePublic } from '@/lib/services/marketplaceService';
 import type {
@@ -66,6 +67,8 @@ const VALID_SPECIALISATIONS: ProfessionalSpecialisation[] = [
 ];
 
 export async function GET(request: NextRequest) {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { searchParams } = new URL(request.url);
   const disciplineParam = searchParams.get('discipline');
   const regionParam = searchParams.get('region');

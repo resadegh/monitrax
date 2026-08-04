@@ -9,12 +9,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 // =============================================================================
 // GET - Fetch User Preferences
 // =============================================================================
 
 export const GET = withPermission('report.read', async (_request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
 
@@ -60,6 +63,8 @@ export const GET = withPermission('report.read', async (_request, auth) => {
 // =============================================================================
 
 export const PUT = withPermission('settings.write', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
     const body = await request.json();

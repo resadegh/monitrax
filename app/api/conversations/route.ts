@@ -20,8 +20,11 @@ import {
   listConversationsForUser,
 } from '@/lib/services/conversationService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { searchParams } = new URL(request.url);
   const hidden = searchParams.get('hidden') === 'true';
 
@@ -44,6 +47,8 @@ interface EnsureBody {
 }
 
 export const POST = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   let body: EnsureBody;
   try {
     body = (await request.json()) as EnsureBody;

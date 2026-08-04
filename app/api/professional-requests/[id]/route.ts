@@ -13,6 +13,7 @@ import {
   ProfessionalRequestServiceError,
 } from '@/lib/services/professionalRequestService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,8 @@ interface ActionBody {
 }
 
 export const POST = withPermission<RouteContext>('report.read', async (request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   let body: ActionBody;
   try {

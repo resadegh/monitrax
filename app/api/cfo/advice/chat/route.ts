@@ -28,6 +28,7 @@ import { computeCFOComponents, scanForRisks, generateActions } from '@/lib/cfo';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { groundNarrative } from '@/lib/neobrain/verifyNarrativeFigures';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 const CHAT_SYSTEM_PROMPT = `You are the Personal CFO inside Monitrax,
 continuing an interactive conversation with the user about their advice
@@ -58,6 +59,8 @@ interface ChatBody {
 }
 
 export const POST = withPermission('report.read', async (request: NextRequest, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
   let body: ChatBody;
   try {
     body = await request.json();
@@ -235,6 +238,8 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
 // GET — return chat history for the user's active advice doc (for
 // page-load hydration).
 export const GET = withPermission('report.read', async (_request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
   try {
     const advice = await prisma.aIAdviceDocument.findFirst({
       where: { userId: auth.userId, expiresAt: { gt: new Date() } },

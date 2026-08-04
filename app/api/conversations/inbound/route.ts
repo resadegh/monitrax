@@ -45,6 +45,7 @@
  * CLAUDE.md §12.5 (input validation at system boundaries), §13.3
  * (no CDR-raw data in audit metadata).
  */
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import {
@@ -80,6 +81,8 @@ function auditReject(reason: string, extra?: Record<string, unknown>) {
 }
 
 export async function POST(request: NextRequest) {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const isProduction = process.env.NODE_ENV === 'production';
 
   // 1. Shared secret — `?secret=` query param or `x-inbound-secret` header.

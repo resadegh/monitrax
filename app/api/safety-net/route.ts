@@ -19,8 +19,11 @@ import prisma from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import { computeSafetyScore } from '@/lib/calculations/safetyScore';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SAFETY_NET');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
 

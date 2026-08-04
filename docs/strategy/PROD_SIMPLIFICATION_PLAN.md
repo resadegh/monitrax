@@ -97,6 +97,32 @@ Onboarding wizard steps for hidden modules: trimmed as part of P4's rebuild (not
 - Gate candidates: `cashflow`, `budget`, `budget-analysis`, `safety-net`, `cfo`, `ai-advisor`, `ask-a-pro`, `tax` (audit: the pack must read tax LIB code server-side, not the gated route), `investments`, `strategy`, `conversations`, `professional-requests`, `marketplace`, `portal`, `household-profile`, `household-members`, `household-pets`, `debt-planner` (if present), `financial-health`, `dashboard`, `wealth-graph`, `money-flow` (Sankey feed — intake side stays), `master-snapshot` (**audit carefully** — master consumes property engine one-way; no kept surface should need it, but verify before gating).
 - Never gated: everything the kept table (§2.1) reaches, plus `auth`, `admin`, `feature-flags`, `onboarding`, `setup`, `health`, `verify`, `intake`, `categories`, `categorisation`, `rental-reconciliation`, `unified-transactions`, `linkage`, `storage`, `search`, `settings`, `stripe`, `reports`, `portfolio`.
 
+**✅ P1.2 AUDIT COMPLETE (2026-08-04, PR-B — the FINAL gate table; every verdict from a grep of kept pages/components/hooks/lib at `e588a837`):**
+
+| Prefix | Verdict | Module key | Evidence (kept callers, or why gated) |
+|---|---|---|---|
+| `cashflow` | **GATE** | MODULE_HOUSEHOLD | callers only in hidden `/cashflow` page + `/dashboard/plan` |
+| `budget` | **GATE** | MODULE_HOUSEHOLD | zero callers anywhere (`/api/budget/comparison`, `/health` orphaned) |
+| `budget-analysis` | **GATE** | MODULE_HOUSEHOLD | callers: budget-analysis / debt-planner / plan pages — all hidden |
+| `safety-net` | **GATE** | MODULE_SAFETY_NET | sole caller is the hidden safety-net page |
+| `cfo` | **GATE** | MODULE_CFO | callers: cfo pages + `AIAdviceSection` (cfo-only import) |
+| `ai-advisor` | **GATE** | MODULE_CFO | sole caller `cfo/ask` |
+| `financial-health` | **GATE** | MODULE_CFO | ZERO fetch callers anywhere (orphan route; doc-comment refs only) |
+| `ask-a-pro` | **GATE** | MODULE_SOCIAL | callers only via `/marketplace` pages + a CFO card — both hidden (marketplace routes added to MODULE_SOCIAL, see below) |
+| `conversations` | **GATE** (except `retention-sweep`) | MODULE_SOCIAL | callers hidden. **Exception:** `/api/conversations/retention-sweep` stays OPEN — data-retention deletion must keep running while the module is hidden |
+| `professional-requests` | **GATE** | MODULE_SOCIAL | callers: requests page + marketplace compose dialog — hidden |
+| `marketplace` | **GATE** | MODULE_SOCIAL | callers: `/marketplace` pages only. **Audit finding:** those pages were in NO §2.2 route list — added `/marketplace` to MODULE_SOCIAL routePrefixes so they hide with their API instead of rendering against 503s |
+| `wealth-graph` | **GATE** | MODULE_ENTITIES | consumers: Home widgets + entities page — both hidden. NOTE: if MODULE_HOME returns (R4) before MODULE_ENTITIES (R5), revisit |
+| `money-flow` | **GATE** | MODULE_HOME | zero callers of any kind; the activity Sankey reads `/api/master-snapshot`; the portal mirror is a different prefix |
+| `strategy` | **GATE** | MODULE_STRATEGY | its only kept-surface callers are the per-item Strategy tabs (properties page, LoanDetailDialog), which P1 client-gates behind the SAME key — coherent by construction |
+| `tax` | **KEEP-OPEN** | — | the onboarding wizard (kept shell) writes `/api/tax/super` (`lib/onboarding/superSync.ts:97,222,233,244`). Reports never fetch `/api/tax` — `lib/reports/contextBuilder.ts:26-27` imports tax lib code directly ✓ (the §2.3 careful-case confirmed) |
+| `master-snapshot` | **KEEP-OPEN** | — | **the careful-case verdict flipped by audit:** kept callers exist — `hooks/useTrailStage.ts:53` ← `TrailStagePill` ← the SIDEBAR (every kept page), `app/dashboard/activity/page.tsx:623`, `ConsumerMoneyFlowSankey.tsx:175` (still mounted at activity:803) |
+| `investments` | **KEEP-OPEN** | — | account pickers on kept dialogs: `ExpenseDialog.tsx:241`, `TransferDestinationSheet.tsx:95`, `CreateExpenseFromRecurring.tsx:151`, + wizard `investmentsSync.ts` |
+| `portal` | **KEEP-OPEN** | — | `FeedbackChatDrawer.tsx` (kept shell, every page) calls `/api/portal/feedback*`. The `/portal/**` PAGES are hidden by the MODULE_ORG_PORTAL route guard |
+| `household-profile` / `household-members` / `household-pets` | **KEEP-OPEN** | — | wizard `householdSync.ts` (shell-mounted) + `OwnershipPicker.tsx:98` on kept asset/property/loan/account dialogs |
+| `dashboard` | **KEEP-OPEN** | — | `app/dashboard/balances/page.tsx:617` → `/api/dashboard/hidden-wealth` (kept Hidden-Wealth lens) |
+| `debt-planner` | **N/A** | — | no `/api/debt-planner` exists; the page reads `/api/budget-analysis` (gated) |
+
 ---
 
 ## 3. Module registry design (no schema change — stated per brief §7.3)
@@ -153,17 +179,17 @@ The Edit / Overrides / "Create Override" controls have no `onClick` and no API; 
 - [x] **P0.6 Registry re-count** — refresh issue counts vs the 63/135 quoted at the filter HEAD; record the delta here. ✅ 2026-08-04 at `e588a837` (from `docs/issues/ISSUES.json`): **65 OPEN/FIXING (🔵 38 + 🟠 27), 5 critical, 146 total** — vs 63 OPEN/FIXING, 6 critical, 135 total at `1e2317b6`. Delta: +2 OPEN/FIXING · −1 critical · +11 total (MON-149…153 among those raised since).
 **Gate:** all boxes ticked. **Model: Fable 5** (mechanical, doc-heavy). **Reza:** P0.4 answer + merges.
 
-### P1 — The module gate build *(product code; flips NOTHING — all keys ship `enabled:false` and PROD behaviour is unchanged until Reza flicks switches)* — 📋
-- [ ] P1.1 `moduleRegistry.ts` + `moduleGate.ts` + alias (§3-4)
-- [ ] P1.2 **API audit** (§2.3 rule) — final gate table recorded in §2.3 of this file, same PR
-- [ ] P1.3 Nav filtering + `mobileMoreItems` fix
-- [ ] P1.4 Layout guards + API guards + MODULE_HOME redirect
-- [ ] P1.5 `/api/feature-flags/modules` + `useModuleEnabled`
-- [ ] P1.6 Unconditional cache invalidation
-- [ ] P1.7 Seed all keys `enabled:false`
-- [ ] P1.8 Admin Modules panel (§4.4) + dead-control removal (§4.5)
-- [ ] P1.9 Tests: gate unit tests (fail-closed, keyed cache, invalidation), nav-filter tests, guard 404/503/redirect tests
-- [ ] **P1.10 ACCEPTANCE: golden-baseline self-diff = `CLEAN`** against `.audit/golden-baseline-12954ff.json` (via the Matrix relay `POST /api/admin/matrix/golden-baseline/diff`, or `npx tsx scripts/matrix/golden-baseline.mjs` with DATABASE_URL). **Any numeric leaf moved ⇒ a producer changed ⇒ DEFECT; the phase STOPS** (held doctrine #2). Run once with all flags off (ship state) and once with flags on in Preview (dev DB) — both must be CLEAN.
+### P1 — The module gate build *(product code; flips NOTHING — all keys ship `enabled:false` and PROD behaviour is unchanged until Reza flicks switches)* — 🟡 BUILT (PR-B); P1.10 with the Matrix
+- [x] P1.1 `moduleRegistry.ts` + `moduleGate.ts` + alias (§3-4) ✅ 2026-08-04, PR-B — 13 keys; keyed Map cache 30s TTL fail-closed; `isBasiqEnabled`/`invalidateBasiqGateCache` preserved as thin delegations (ONE cached reader, §12.2.1; zero call-site churn).
+- [x] P1.2 **API audit** (§2.3 rule) — final gate table recorded in §2.3 of this file, same PR ✅ 2026-08-04 — 14 GATE prefixes / 6 KEEP-OPEN / 1 N/A; both careful cases resolved (`tax`: reports import lib code, only the wizard's `/api/tax/super` is a kept HTTP caller → KEEP-OPEN; `master-snapshot`: kept callers FOUND — sidebar TrailStagePill + activity page → KEEP-OPEN).
+- [x] P1.3 Nav filtering + `mobileMoreItems` fix ✅ 2026-08-04 — `moduleKey` on `NavItem`/`NavChild`/`MobileTabBarItem`; `filterNavByModules` (one filter rule) consumed by EditorialSidebar, EditorialBottomNav, MoreSheet, MobileTabBar, SectionTabsRow; `mobileMoreItems` non-null `.find()`s replaced with a Boolean-filtered builder.
+- [x] P1.4 Layout guards + API guards + MODULE_HOME redirect ✅ 2026-08-04 — 20 new `layout.tsx` guards + the portal layout; 38 route files / 60+ handlers guarded with `moduleApiGuard` (503 `MODULE_DISABLED`); root `/dashboard` page split into a server wrapper (`redirect('/dashboard/properties')` when MODULE_HOME off) + `HomeClient.tsx` (moved verbatim). Exception recorded: `/api/conversations/retention-sweep` stays open (data-retention deletion continues while hidden).
+- [x] P1.5 `/api/feature-flags/modules` + `useModuleEnabled` ✅ 2026-08-04 — public one-call flag map + `ModuleGateProvider`/`useModuleEnabled`/`useEnabledModules` (Basiq client pattern, starts hidden), mounted in DashboardLayout.
+- [x] P1.6 Unconditional cache invalidation ✅ 2026-08-04 — the PATCH hook now calls `invalidateFlagCache(key)` for EVERY flag (was Basiq-hard-coded).
+- [x] P1.7 Seed all keys `enabled:false` ✅ 2026-08-04 — all 13 §2.2 keys seeded from `MODULE_REGISTRY`; the never-overwrite-`enabled` update path preserved exactly.
+- [x] P1.8 Admin Modules panel (§4.4) + dead-control removal (§4.5) ✅ 2026-08-04 — row per registry key (label · HIDDEN/LIVE · return stage · last-flipped time+actor from `updatedAt`/`updatedBy` · the working toggle); freeze-rule copy on the panel; dead Edit/Overrides buttons, "Create Override" card and Rollout/Tiers/Overrides display columns removed (UI only, schema untouched).
+- [x] P1.9 Tests ✅ 2026-08-04 — 38 new tests in `tests/featureFlags/` (gate fail-closed/keyed-cache/invalidation/alias · nav-key inventory + filter + mobileMoreItems no-throw · guard 503/404 + MODULE_HOME redirect + registry invariants incl. "never gate a KEEP-OPEN prefix"). Full suite 313 files / 4,503 tests green (golden fixtures serve module flags enabled:true so Ring-2 route tests keep exercising the handlers as-live; gating covered by the new suite).
+- [ ] **P1.10 ACCEPTANCE: golden-baseline self-diff = `CLEAN`** against `.audit/golden-baseline-12954ff.json` (via the Matrix relay `POST /api/admin/matrix/golden-baseline/diff`, or `npx tsx scripts/matrix/golden-baseline.mjs` with DATABASE_URL). **Any numeric leaf moved ⇒ a producer changed ⇒ DEFECT; the phase STOPS** (held doctrine #2). Run once with all flags off (ship state) and once with flags on in Preview (dev DB) — both must be CLEAN. ⏳ **HANDBACK to Matrix HQ (2026-08-04):** PR-B is open with CI-relevant gates green locally; verdicts (verdict + treeHash + HEAD, both runs) get recorded in the PR body before Reza merges.
 **Gate:** P1.10 CLEAN recorded (verdict + treeHash in the PR body). **Model: Fable 5.** Touches no `lib/calculations/**` producer — if a diff says otherwise, that IS the defect.
 
 ### P2 — The flip *(PROD state change; Reza's hands on the switches)* — 📋
@@ -238,3 +264,4 @@ Ruled by Reza 2026-08-04 with the counter-recommendation surfaced (brief §5.3).
 
 - 2026-08-04 · Cowork (Fable 5) · Plan created; §0 rulings taken; HEAD `e90a9195`.
 - 2026-08-04 · Code (Fable 5) · PR-A: P0.1/P0.2/P0.3/P0.6 landed (P0.4/P0.5 flagged Reza-side); #1577 noted still-open. HEAD `e588a837`.
+- 2026-08-04 · Code (Fable 5) · PR-B: P1.1–P1.9 built (registry · gate · nav filter · 20 layout guards + 38 guarded API routes · modules endpoint + client context · unconditional invalidation · seed · admin Modules panel · 38 tests); §2.3 final audit table recorded; P1.10 handed back to Matrix. Neomatrix: 1 anchor re-pinned + 6 nodes re-verified + Layer-0 allowlist/manifest per local-CLI precedent. HEAD `e588a837`.
