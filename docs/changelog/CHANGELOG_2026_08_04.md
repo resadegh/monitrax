@@ -317,3 +317,10 @@ filter, the guard helpers' 503/404/redirect contracts, and the registry invarian
 every one of the 60+ guarded handlers end-to-end (they share the two guard helpers verbatim), the
 rendered 404 page, the admin panel UI interactions, or the P1.10 golden self-diff — that acceptance is
 the Matrix's run, recorded before merge.
+
+### Fix-up (PR-B, same day): preview build failure — 3 stale financial-math baseline anchors
+The Vercel preview build failed in `lint:financial-surfaces`: the guard-insertion line shifts moved
+3 grandfathered `.audit/financial-math-baseline.json` entries (intelligence:452→453, safety-net:75→78,
+79→82). Re-anchored the 3 entries — same debt, same count (32 grandfathered), zero new violations.
+Process note: the earlier local gate run chained commands with `;` and read tails, which masked this
+lint's non-zero exit — re-ran the whole chain with `&&` semantics before pushing (all green).
