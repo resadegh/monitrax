@@ -324,3 +324,12 @@ The Vercel preview build failed in `lint:financial-surfaces`: the guard-insertio
 79→82). Re-anchored the 3 entries — same debt, same count (32 grandfathered), zero new violations.
 Process note: the earlier local gate run chained commands with `;` and read tails, which masked this
 lint's non-zero exit — re-ran the whole chain with `&&` semantics before pushing (all green).
+
+### Fix-up 2 (PR-B, same day): playwright (UAT) — 3 failures were the hide working as designed
+`uat.spec.ts` exercises Home net worth, the CFO sell-property What-If, and the Home entity-value
+widget — all hidden modules in the v1 ship state, so the flows 404/redirect and the assertions
+failed. Hidden ≠ deleted: that UAT coverage is what guards each module's R-stage return, so the fix
+enables all 13 module flags in the EMULATOR-ONLY e2e DB seed (`tests/e2e/seed-emulator.ts` — refuses
+to run without `FIREBASE_AUTH_EMULATOR_HOST`; never dev/prod). Gating itself stays covered by
+`tests/featureFlags/*`. §12.11 note: the upsert's update path sets `enabled:true` on flag rows in the
+synthetic per-job e2e database only — no user data, no dev/prod reachability.
