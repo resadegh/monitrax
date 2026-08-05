@@ -300,3 +300,239 @@ It does **NOT** verify any rendered number on Reza's account — that is the Rin
 verification (§23.2.3). It does **NOT** verify the declared after-values themselves (that is the derivation
 sweep at `915704f0`). It does **NOT** touch the other 30 loan-cost producers, and it does **NOT** close
 MON-130, MON-143 or MON-142.
+
+### Post-merge verification (§17.2) — session `sbpfhc`
+
+PR #1575 merged as **`1e2317b`**. Production deploy `dpl_Feqx7P9kdnVY7jKPuKgd52QafPuf` reached **READY**,
+which means `vercel-build` ran the full gate chain against production — `lint:financial-surfaces`,
+`lint:source-lock`, `census:producers:check`, `lint:ai-grounding`, `neomatrix:check`, `prisma migrate
+deploy`, then `next build` — since they are `&&`-chained.
+
+Runtime log read: the only `error`-level line returned is
+
+```
+07:58:04  error  function  (node:4) [DEP0169] DeprecationWarning: `url.parse()` behavior is not
+standardized and prone to errors that have security implications.
+```
+
+which is **pre-existing and already registered as MON-147** on main (raised by a different session
+earlier the same day). No new error pattern appeared after the merge.
+
+**Coverage caveat, stated rather than glossed.** The runtime-log request timed out after 468 bytes —
+the identical limitation MON-147's own registry entry records. So "no new errors" describes the window
+that returned, not the full retention window. And **no rendered number is verified by any of this**:
+that is the Ring-3 run (`docs/verification/briefs/RING3_T2_LOAN_COST.md`), and CI green is never
+verification (§23.2.3). MON-130 and MON-143 stay `FIXING`.
+
+---
+
+## Session: sbpfhc (cont.) — VR-047 consumed; T2-B scaffolded
+
+### What was wrong / What changed / What you'll see
+
+- **What was wrong:** two things. The entity money-flow chart still leaves your two interest-only loans
+  and HECS out entirely — **$3,792.92 a month** — so now that Home has been fixed, the two screens
+  visibly disagree. And separately: the verification run that checked the T2 fix could only do half its
+  job, because reading the internal figures needs an admin login and signing into admin in the same
+  browser window silently replaces your session.
+- **What changed:** the money-flow service can now be asked for either the old figure or the correct
+  one, with the old one still the default, so the effect of switching can be **measured on your real
+  data before anything moves**. Nothing you see changes yet — that is deliberate. The verification
+  checker also got stricter: a run must now list which sections it did not do, and one that skipped a
+  section can no longer report itself as a clean pass.
+- **What you'll see:** **nothing new on any screen.** This is measurement and record-keeping. The
+  money-flow chart still shows the understated figure until its own declaration is written from the
+  capture.
+
+### VR-047 — a PASS that is honestly half
+
+The deciding row landed: Home's `THIS MONTH'S BUDGET · Loans` reads **$12,779**, matching
+`/dashboard/expenses`. The downstream figures reconcile to their derivations rather than to remembered
+values, and the regression cluster is byte-identical — **including `healthScore` 53**, which the
+migration PR predicted by computing the clamp instead of hoping.
+
+**§2, §2b and the build precondition were not run.** All three need the admin relay; VR-044 §7 forbids
+opening it in the account's own profile. The Matrix drew the right distinction: *a rendered $12,779
+does not establish that all four internal expressions agree to the cent.* MON-130 and MON-143 stay
+`FIXING`. Recorded at `docs/verification/runs/VR-047.md`; the admin half is
+`docs/verification/briefs/MATRIX_T2_ADMIN_RELAY.md`.
+
+### Five findings registered
+
+**MON-149** Laguna renders two recurring income rows and counts one (~$6,948/yr uncounted in its
+cashflow, yield and tax position) · **MON-150** Thornland Lot 1 and Lot 2 each claim depreciation of
+exactly $12,799 from identically-named, identically-sized files — worth ~$4,736/yr at the marginal
+rate if it is one schedule attached twice, and only Reza's PDFs can settle it · **MON-151** the
+per-property tax position derives interest on the FULL balance, ignoring the offset — MON-143's D21
+breach living in a second producer · **MON-152** one insurance expense renders $797 on one card and
+$812 on three others · **MON-153** three health scores render (53 / 56 / 25).
+
+MON-149 and MON-151 are byte-identical across the migration: surfaced by the sweep, **not** caused by
+T2.
+
+### Two corrections the run forced
+
+1. **VR-046's B4 was wrong.** It reported that no surface renders a total super balance;
+   `/dashboard/investments/super` does. **T7's blocking fact is therefore readable: $0.** The earlier
+   run checked two paths, missed on both, and generalised.
+2. **The handout's §3 saving-rate row was mis-specified** — no Home surface renders
+   `cashflow.savingsRate`; Home shows the trailing-12-month actuals (1.9%, and 1.9% before the
+   migration too). Withdrawn with the reasoning kept, because a prediction that *cannot* land is worse
+   than a wrong one: it forces the run to choose between a false PASS and a false FAIL.
+
+### The validator now catches the shape VR-047 had
+
+`matrix:check` gains `PARTIAL` and requires `sectionsNotRun[]` on every ring3 result; a non-empty one
+forbids `PASS`. VR-047 satisfied every prior rule — no check had failed, and its finding was `high`,
+not `critical` — while stating plainly that the deciding section never ran. Making "what did not run"
+a **field** rather than prose in the coverage note is what turns it from something read into something
+checked. Five tests pin it (`tests/verification/matrixResultContract.test.ts`, 21 total).
+
+### T2-B scaffold — measured before moved
+
+`getMoneyFlow` gains a `loanCostBasis` seam: `DECLARED` (default, byte-identical) or `CANONICAL`
+(reads `resolveLoanCostsForUser`). The compare relay
+`/api/admin/matrix/golden-baseline/t2b-money-flow` runs **both arms of the real engine** on the same
+live data and diffs every numeric leaf.
+
+The seam is inside the producer rather than replicated in the relay on purpose. `getMoneyFlow` is not
+a pure engine taking injectable legs — it fetches its own loan rows and does the per-entity
+aggregation, the surplus flooring and the edge building inline. A relay that re-implemented any of
+that would be comparing a replica to the original, which is the MON-035 parity failure: a checker
+sharing a source with the thing it checks cannot see them diverge.
+
+**Why the declaration cannot be a hand-list.** Surplus is floored at zero, so raising the loan leg does
+*not* move each entity by the delta — an entity already at zero absorbs nothing, one above zero
+absorbs part, and `totalOutflow` can stop equalling `totalIncome`. Which entity lands where is a
+property of live data. T2's own list missed five paths across three rounds; this one is a sweep.
+
+### Coverage — stated precisely
+
+Verifies at Ring 2 that the seam is inert on `DECLARED` (whole-tree serialised comparison, plus a
+non-vacuity guard so it cannot pass on two empty trees) and that `CANONICAL` un-skips an interest-only
+loan at its hand-computed interest floor, landing on the owning entity. Gates green: `tsc`,
+`lint:financial-surfaces`, `lint:source-lock`, `census:producers:check`, `lint:ai-grounding`,
+`neomatrix:check`, `refnums:check`, `issues:check`, `mon131:check`.
+
+It does **NOT** verify any rendered number, does **NOT** declare T2-B's `expectedMoves` (that needs the
+capture), does **NOT** change the default basis, and does **NOT** complete VR-047 — that needs the
+admin session.
+
+### Two Reza decisions, both narrowing the finish line (session `sbpfhc`)
+
+**Lever 2 taken.** `/dashboard/activity` keeps its **intake path** and loses the **Money-Flow Sankey
+widget**. That removes `moneyFlowService`'s loan leg from the v1 surface, so **T2-B's capture,
+declaration and migration are parked**. The scaffold merged in this PR stays — it is inert (the
+default basis is unchanged) and the capture is one request away if the widget is ever un-hidden.
+
+What survives is the scope filter's own sharper finding: `loanCost` is **SPLIT**, and its kept half is
+`masterFinancialService` feeding the property pages — which #1575 already migrated. **T2's kept half is
+done, pending VR-047's §2 confirming the four expressions agree.**
+
+**MON-150 retracted.** Reza: *"the depreciation schedule for both properties are the same as they are
+identical duplexes."* Two identical builds on adjacent subdivided lots produce identical QS figures, so
+agreement to the dollar is the **expected** result, not the suspicious one. Retracted rather than
+closed-as-fixed, because nothing was wrong.
+
+Kept in the registry with the reasoning attached, because the two cases are **indistinguishable from
+inside the app** — same figure, same filename, same file size — and only the owner can tell them
+apart. Raising it as a question rather than asserting a defect was the right call in both directions:
+if it had been one report attached twice, ~$4,736/yr of double-claimed deduction would have reached an
+auditor before it reached us.
+
+The admin handout is amended to run **PART A only**, returning `sectionsNotRun: ["PART B"]` and verdict
+`PARTIAL` — the rule this same PR added, applied to its own companion document on the first occasion
+it had one.
+
+---
+
+## Session: `sbpfhc` — VR-047B consumed: T2's Ring-3 closes, and two findings are acted on
+
+### Changes Made
+
+- **Type**: Verification consumption + relay fix + registry
+- **Scope**: `docs/verification/runs/` · the three T2 handouts · `golden-baseline/t2-loan-cost` relay · `lib/admin/auth.ts` · the MON-131 ledger / brief / hub
+- **Description**: VR-047B returned the producer half of T2's Ring-3 from the second Chrome profile. PART A passed in full, so **G8 is closed** on VR-047 + VR-047B together. Two of its findings were verified in source and acted on; a third, earlier VR-047B is withdrawn in full.
+
+### What passed, and why it needed a separate run
+
+VR-047 read the rendered surfaces from Reza's own session and could not reach §2, §2b or the build
+precondition — all three need the admin relay, and the account-first law forbids opening it in that
+profile. VR-047B ran exactly those from a second profile:
+
+- **Build precondition** — `paths: []`, zero moves on `cashflow.*` and `debt.*`. That is the migration
+  having landed, not the relay going quiet: master *is* the canonical producer now, so the relay
+  compares the canonical path against itself.
+- **All 15 declared paths landed**, including both exactness traps the declaration was written to
+  survive — `annualLoanRepayments` **153,351.51** (not …48, because the engine multiplies the
+  *unrounded* monthly) and `annualCashflow` **133,020.78** (not .79).
+- **The four-expression identity HOLDS.** `cashflow.monthlyLoanRepayments`,
+  `debt.metrics.monthlyRepayments`, `debt.summary.totalRepayments` and
+  `quickMetrics.monthlyLoanRepayments` are built by four different expressions inside one service.
+  Three are byte-equal at **12,779.292814353912**; the fourth is that value rounded at the producer.
+  Before T2 they agreed only because they all read the same wrong thing — which is exactly why a
+  correct-looking tile could never have established this, and why the run was worth the second profile.
+- **`byType`** keys unchanged (HOME · INVESTMENT · STUDENT), summing bit-identical to the total. The
+  T1-frozen income denominator is unmoved at 25,346.550650921665, and all five per-loan costs are
+  byte-identical to the `915704f0` capture with MON-143's offset-netted floor intact.
+
+### Finding 2 — fixed, after checking the mechanism rather than trusting the report
+
+The report said the relay "annualises the rounded monthly". Reading the route first showed something
+adjacent but sharper: it compared `cf.monthlyLoanRepayments` — **rounded** by the orchestrator —
+against the **unrounded** canonical sum. Pre-migration that mismatch was invisible against a $3,962.64
+delta. Post-migration both arms are the same producer, so the 0.0028 residue *is* the signal, surfacing
+as `0.00` monthly beside `0.03` annually. The route now reads `debt.summary.totalRepayments`, comparing
+like with like. The underlying shape — one quantity carried at two precisions inside a single snapshot —
+is registered as **MON-154** rather than papered over at the reader.
+
+### The withdrawal, recorded in full because the near-miss is the lesson
+
+An earlier VR-047B returned **FAIL** with `failureClass: INSTRUMENT_UNREACHABLE` and recommended
+shipping an auth change. It had called the relay by address-bar navigation instead of a page-context
+`fetch(url, { credentials: 'include' })`, and read the resulting `SESSION_INVALID` as an app defect.
+Reza refused the diagnosis — *"you never had this issue in the past month — what has changed?"* — and
+reading the transcript rather than reasoning from memory settled it: **all 39 successful relay calls
+ever made used the fetch form; not one used navigation.** No code change was needed and none was made.
+
+Two things followed, both in this PR. **MON-155**: `extractAdminToken` (`lib/admin/auth.ts:501`) really
+does read an `admin_session` cookie that nothing writes — that half-present branch is what made the
+wrong story plausible — now tagged `@deprecated` with the evidence. And **every T2 handout now states
+the fetch form explicitly**; the old `GET <url>` phrasing reads as "navigate here" and is unrunnable
+that way.
+
+### What is deliberately NOT claimed
+
+- **G7 is HALF, not ✅.** The 15 declared paths are verified live, but the whole-tree
+  `MOVED-UNDECLARED` sweep has not run. These are two different instruments:
+  `GET /golden-baseline/t2-loan-cost` re-runs the T2 blocks only and is structurally blind to a move in
+  the health / CFO / risk / reports subtrees. The three-outcome verdict G7 names comes from
+  `POST /golden-baseline/diff`, and that call is the one action left on the gate.
+- **MON-130 stays `FIXING`.** Its kept half is verified, but its registered scope is twelve producers
+  and thirty sites remain. Lever 2 hides the surfaces those feed, which makes them out of **v1 scope** —
+  it does not make them **fixed**. Narrowing the issue is a scope call for Reza, recorded as **D50**.
+- **MON-143 → VERIFIED**, on its own numbers rather than by inheritance: Guildford's floor reads 384.45
+  against a 303,889.96 offset with no per-loan cost moved.
+
+### Files Modified
+
+- `app/api/admin/matrix/golden-baseline/t2-loan-cost/route.ts` — compare the unrounded producer value
+- `lib/admin/auth.ts` — `@deprecated` tag on the dead `admin_session` read (MON-155)
+- `docs/verification/runs/VR-047B.md` — new run record
+- `docs/verification/briefs/{RING3_T2_LOAN_COST,MATRIX_T2_ADMIN_RELAY,MATRIX_T2_RELAY_CAPTURE}.md` — the fetch form
+- `docs/issues/ISSUES.json` + `.md` — MON-143 VERIFIED; MON-154, MON-155 raised
+- `docs/implementation/MON-131_TRANCHE_LEDGER.md` — G7 🟡 / **G8 ✅** / G10 ✅ / G11 🟡, §6 row
+- `docs/implementation/MON-131_COMPLETION_BRIEF.md` — §2, §5 (D50), §6 status log
+- `docs/IMPLEMENTATION_PLAN.md` — hub
+
+### Testing
+
+- [x] `npm run matrix:check -- <VR-047B payload>` → exit 0 (`kind=ring3 · verdict=PARTIAL · sha=c485b050 · 4 checks`) — the `PARTIAL` rule shipped that morning, working on its first real use
+- [x] `npm run issues:check`
+- [x] `npm run neomatrix:check`
+- [x] `npm run lint:source-lock` · `npm run lint:financial-surfaces` · producer census
+- [x] Full vitest suite
+
+**Coverage boundary.** This session verifies the T2 producer tree on live data and repairs the relay's
+own comparison. It verifies **no** rendered surface (VR-047 did that), does **not** run the whole-tree
+undeclared-move sweep, and touches **no** loan-cost producer outside `masterFinancialService`.

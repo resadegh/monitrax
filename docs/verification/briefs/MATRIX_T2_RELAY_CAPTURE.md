@@ -26,6 +26,18 @@ GET https://<prod-host>/api/admin/matrix/golden-baseline/t2-loan-cost
 
 **The explicit `?userId=` IS REQUIRED — corrected 2026-07-31 after the first capture.** This handout originally said to omit it and let the route auto-resolve a sole user. That is wrong in this environment: **13 accounts exist**, so the bare call returns `400 MULTIPLE_USERS` and the auto-resolve path is unusable. Call:
 
+> **HOW to call a relay — this line is load-bearing.** Run it as a **page-context fetch from an
+> already-authenticated admin tab**:
+> ```js
+> await fetch('<url>', { credentials: 'include' }).then(r => r.json())
+> ```
+> **Do NOT navigate to the URL in the address bar.** Admin auth is Bearer/GCP, not cookie-based, so a
+> navigation arrives unauthenticated and returns `SESSION_INVALID`. Every one of the 39 relay calls
+> that has ever succeeded used the page-context fetch; not one used navigation. VR-047B's first
+> attempt navigated, read the failure as an app defect, and nearly shipped an auth change to fix
+> something that was not broken. (`lib/admin/auth.ts:501` reads an `admin_session` cookie that
+> nothing writes — MON-155 — which is what made the wrong story plausible.)
+
 ```
 GET /api/admin/matrix/golden-baseline/t2-loan-cost?userId=91b6d7ce-d9f1-4ac0-96ce-fc958dca2a3c
 ```

@@ -24,6 +24,18 @@ This run is only meaningful against a build that **contains the T2 migration**. 
 - the deployed `sha` reported by the relay is the merge commit of **PR #1575** (or a later commit on `main` that contains it); and
 - `GET /api/admin/matrix/golden-baseline/t2-loan-cost?userId=…` returns **`moves: []`** for the `cashflow.*` and `debt.*` blocks.
 
+> **HOW to call a relay — this line is load-bearing.** Run it as a **page-context fetch from an
+> already-authenticated admin tab**:
+> ```js
+> await fetch('<url>', { credentials: 'include' }).then(r => r.json())
+> ```
+> **Do NOT navigate to the URL in the address bar.** Admin auth is Bearer/GCP, not cookie-based, so a
+> navigation arrives unauthenticated and returns `SESSION_INVALID`. Every one of the 39 relay calls
+> that has ever succeeded used the page-context fetch; not one used navigation. VR-047B's first
+> attempt navigated, read the failure as an app defect, and nearly shipped an auth change to fix
+> something that was not broken. (`lib/admin/auth.ts:501` reads an `admin_session` cookie that
+> nothing writes — MON-155 — which is what made the wrong story plausible.)
+
 That second check is the sharper one and it is worth understanding why. Before the migration the relay compared the **old** producer against the **new** one and reported 15 moves. After it, master *is* the new producer, so the same relay compares the canonical path against itself: **zero moves is the migration having landed**, and any remaining move means a producer is still off the canonical resolver. A capture taken against an older build measures an instrument that has since been replaced — that is what invalidated the second T2 capture, and it is why this precondition is stated before the predictions rather than after.
 
 ---
@@ -86,10 +98,24 @@ This path is declared with a **constraint**, not a value: the per-type figures m
 |---|---|---|
 | Home · `THIS MONTH'S BUDGET · Saved` | `= cashflow.monthlyCashflow` | ~**$11,085** (was $15,048) |
 | Daily spending budget | `Saved ÷ days in the current month` | falls with `Saved` |
-| Saving-rate copy anywhere on Home | `= cashflow.savingsRate` | **43.7%** (was 59.4%) |
+| ~~Saving-rate copy anywhere on Home~~ | ~~`= cashflow.savingsRate`~~ | **WITHDRAWN — see below** |
 | Any rendered debt-service ratio | `= 50.42%` | rises from 34.78% |
 
-A run that flags these four as regressions has produced false failures — that is exactly what VR-045 caught happening once.
+A run that flags these as regressions has produced false failures — that is exactly what VR-045 caught happening once.
+
+> **The saving-rate row is WITHDRAWN (corrected 2026-08-03 after VR-047).** It was mis-specified and
+> could not land: **no Home surface renders `cashflow.savingsRate`.** Home's SAVING RATE tile and the
+> HEALTH panel's Savings sub-metric both read the trailing-12-month **ACTUALS** basis — 1.9% against
+> "AU median around 24%", derived from ANNUAL INCOME $239K vs ANNUAL OUTGOINGS $234K. It read 1.9%
+> *before* the migration too, so "was 59.4%" was never true of anything on screen. `43.73` is correct
+> in the producer tree and simply is not rendered there; it is checked in §2, where it belongs.
+>
+> Recorded rather than quietly deleted, because the failure mode is instructive: a prediction that
+> **cannot** land is worse than a wrong one. It forces the run to choose between a false PASS and a
+> false FAIL, and either answer teaches the next session something untrue. VR-047 refused both and
+> reported the mis-specification — the right handling, and the reason this row is now struck rather
+> than re-numbered. (The underlying "declared tile beside an actuals tile with no basis label" is the
+> MON-139 class and is not T2's to fix.)
 
 ---
 
@@ -158,7 +184,8 @@ Pre-declared so this run does not repeat the VR-029 false-fail.
       "pass": false
     }
   },
-  "verdict": "PASS | FAIL",
+  "verdict": "PASS | PARTIAL | FAIL",
+  "sectionsNotRun": [],
   "checks": [
     { "id": "cashflow.monthlyLoanRepayments", "surface": "relay producer tree",
       "expected": 12779.29, "observed": null, "pass": false },

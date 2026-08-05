@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SHA_RE = /^[0-9a-f]{40}$/;
 const KINDS = ['capture', 'ring3'];
-const VERDICTS = ['PASS', 'FAIL', 'CAPTURE_ONLY'];
+const VERDICTS = ['PASS', 'PARTIAL', 'FAIL', 'CAPTURE_ONLY'];
 
 const errs = [];
 const warns = [];
@@ -104,7 +104,36 @@ export function validateMatrixResult(r) {
   if (r.kind === 'capture' && r.verdict !== 'CAPTURE_ONLY')
     err('a capture asks for no verdict — use CAPTURE_ONLY (measurements are the deliverable)');
   if (r.kind === 'ring3' && r.verdict === 'CAPTURE_ONLY')
-    err('a ring3 run must return PASS or FAIL');
+    err('a ring3 run must return PASS, PARTIAL or FAIL');
+  if (r.kind === 'capture' && r.verdict === 'PARTIAL')
+    err('PARTIAL describes an unfinished ring3 run — a capture is complete or it is not a capture');
+
+  // ── PARTIAL: a run that did not execute a required section ────────────────
+  //
+  // VR-047 is why this rule exists. It returned verdict PASS while its own
+  // findings said the DECIDING section had never run: §2 and the build
+  // precondition both need the admin relay, which the account-first law
+  // forbids opening in the same browser profile. Every rule above passed it —
+  // no check had failed, and the finding was `high`, not `critical`. So a
+  // result that explicitly could not complete its handout still read green,
+  // which is the exact shape the PASS-with-a-failed-check rule already exists
+  // to forbid, arriving through a different door.
+  //
+  // The fix is to make "what did not run" a FIELD rather than prose in the
+  // coverage note, so it can be checked instead of read. An honest partial run
+  // is a first-class result; what is banned is a partial run wearing PASS.
+  if (r.kind === 'ring3') {
+    if (!Array.isArray(r.sectionsNotRun))
+      err(
+        'ring3 requires sectionsNotRun[] — list the handout sections this run did NOT execute, or [] if it ran the whole handout. Prose in coverage.notVerified cannot be checked.',
+      );
+    else if (r.sectionsNotRun.length && r.verdict === 'PASS')
+      err(
+        `verdict PASS but ${r.sectionsNotRun.length} handout section(s) were not run (${r.sectionsNotRun.join(', ')}) — use PARTIAL. A PASS that skipped a section reads green to everyone who did not open the coverage note.`,
+      );
+    else if (r.verdict === 'PARTIAL' && !r.sectionsNotRun.length)
+      err('verdict PARTIAL but sectionsNotRun[] is empty — say which section did not run, or use PASS');
+  }
 
   // ── the checks ────────────────────────────────────────────────────────────
   const checks = Array.isArray(r.checks) ? r.checks : [];

@@ -12,7 +12,7 @@
  * in CI).
  */
 import { describe, it, expect, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 vi.mock('@/lib/db', () => ({ default: {} }));
@@ -184,5 +184,119 @@ describe('hashBaseline — THE canonical hash + the partial-capture tripwire', (
     // exactly why a non-empty captureErrors invalidates the baseline.
     expect(Object.keys(h.perTree)).toHaveLength(3);
     expect(h.leafCount).toBe(4);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// MON-157 RATCHET (§23.2.2) — a committed golden-baseline REFERENCE TREE must
+// exist, and it must actually be diffable.
+//
+// WHY THIS EXISTS. G7 asks one question at the end of every tranche: did any
+// number move that we did not declare? Answering it needs the PRE-change tree,
+// because `diffBaselines()` flattens BOTH sides to numeric leaves. For four
+// tranches we persisted only the HASH — the capture route's own comment says
+// why that is not enough ("a matching treeHash proves nothing moved anywhere.
+// Localising a mismatch still needs the full tree") — and `git log --all` over
+// `.audit/golden-baseline*` returned NOTHING. The CLI writes the tree and
+// prints "COMMIT IT"; nobody ever did, because the CLI needs a database the
+// build container cannot reach, and the relay that CAN reach it returns the
+// tree into a browser session that then ends. T2's G7 is unclosable because of
+// it (MON-157). This is the lowest ring that could have caught it: the absence
+// of the artefact is now a red build, not a discovery four tranches later.
+//
+// IT LIVES HERE, not in a file of its own, because §22.2 rule 2 says a new
+// correctness check is a new fixture on the existing engine's suite, never a
+// parallel silo — and this suite already imports the module under test.
+//
+// A NOTE ON A FLAKE THAT IS *NOT* THIS BLOCK'S FAULT, recorded because it cost
+// two wrong diagnoses. The full suite intermittently aborts with a Prisma
+// query-engine panic (`engine.rs:74`, "non-unwinding panic", exit 134). It is
+// tempting to blame whatever you just added. It is PRE-EXISTING: measured at
+// 2 failures in 6 runs with this block absent, versus 3 in 10 with it present —
+// indistinguishable, and the abort lands at a different test file each time.
+// Registered as MON-159. If you are here because CI went red on exit 134, check
+// MON-159 before you rewrite anything.
+//
+// Does NOT prove: that any captured number is CORRECT (Axis C — that stays
+// with the Matrix), that the reference is CURRENT with main (a reference is a
+// point in time by definition), or anything about T2's G7, which stays HALF
+// permanently — this artefact establishes the reference for T3, it does not
+// close T2 (Reza, 2026-08-04).
+describe('MON-157 — the golden-baseline reference is committed, not held in a session', () => {
+  const AUDIT = resolve(ROOT, '.audit');
+  /** The CLI's own convention: `.audit/golden-baseline-<short-sha>.json`. */
+  const referenceFiles = () =>
+    readdirSync(AUDIT).filter((f) => /^golden-baseline-[0-9a-f]{7,40}\.json$/.test(f));
+  // Parse ONCE for the whole block, and lazily — never at collection scope.
+  // The reference is ~455 KB, so re-parsing it per assertion would build and
+  // discard six large object graphs for no benefit. (This is hygiene, not a
+  // flake fix — see the MON-159 note above for what the intermittent abort
+  // actually is.)
+  const cache = new Map<string, ReturnType<typeof JSON.parse>>();
+  const load = (f: string) => {
+    if (!cache.has(f)) cache.set(f, JSON.parse(readFileSync(resolve(AUDIT, f), 'utf8')));
+    return cache.get(f);
+  };
+
+  it('at least one reference tree is committed', () => {
+    expect(
+      referenceFiles().length,
+      'No .audit/golden-baseline-<sha>.json is committed. G7 cannot be run without one — ' +
+        'a hash proves something moved, never WHAT. Capture it with the ' +
+        'MATRIX_G7_REFERENCE_CAPTURE handout and commit the tree.',
+    ).toBeGreaterThan(0);
+  });
+
+  it("every reference carries the CLI's document shape, so `--diff` can read it", () => {
+    for (const f of referenceFiles()) {
+      // golden-baseline.mjs --diff reads `oldDoc.captures`. A reference stored
+      // under any other key is unreadable by the instrument that needs it.
+      const doc = load(f);
+      expect(doc, f).toHaveProperty('captures');
+      expect(doc, f).toHaveProperty('meta');
+      expect(Object.keys(doc.captures).length, f).toBeGreaterThan(0);
+    }
+  });
+
+  it('every reference has a clear captureErrors tripwire (drift-log D8)', () => {
+    // A failed capture serialises as a `__captureError` stub with ZERO numeric
+    // leaves — see the test above. A reference committed with that lit is worse
+    // than no reference: every future diff reads the missing tree's absence as
+    // "nothing moved there".
+    for (const f of referenceFiles()) {
+      const doc = load(f);
+      expect(doc.meta?.hash?.captureErrors ?? [], f).toEqual([]);
+      for (const [key, tree] of Object.entries(doc.captures)) {
+        expect(
+          tree !== null && typeof tree === 'object' && '__captureError' in (tree as object),
+          `${f}: capture "${key}" is an error stub — this reference is not valid`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('every reference still hashes to its own recorded treeHash', () => {
+    // Catches a hand-edited or truncated reference. Same check that verified
+    // VR-048's multi-message reassembly on the way in.
+    for (const f of referenceFiles()) {
+      const doc = load(f);
+      const recomputed = hashBaseline(doc.captures);
+      expect(recomputed.treeHash, f).toBe(doc.meta?.hash?.treeHash);
+      expect(recomputed.leafCount, f).toBe(doc.meta?.hash?.leafCount);
+    }
+  });
+
+  it('every reference diffs CLEAN through the REAL diffBaselines', () => {
+    // Exercises the actual gate path rather than asserting the file parses.
+    for (const f of referenceFiles()) {
+      const { captures } = load(f);
+      const d = diffBaselines(captures, captures, []);
+      expect(d.verdict, f).toBe('CLEAN');
+      expect(d.unexpected, f).toEqual([]);
+      expect(d.added, f).toEqual([]);
+      expect(d.removed, f).toEqual([]);
+      // Non-vacuity: a reference with no numeric leaves would also diff CLEAN.
+      expect(d.unchanged, f).toBeGreaterThan(500);
+    }
   });
 });

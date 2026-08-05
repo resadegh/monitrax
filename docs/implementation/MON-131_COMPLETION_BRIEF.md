@@ -65,7 +65,7 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 | Tranche | Quantity | State | The one thing standing in the way |
 |---|---|---|---|
 | T1 | income | **DONE** | — (VR-045 PASS; four issues VERIFIED) |
-| **T2** | **loan cost** | **MIGRATED (master); awaiting Ring 3** | the **Ring-3 run** — `RING3_T2_LOAN_COST.md`, on Reza's live data |
+| **T2** | **loan cost** | **DONE with a named gap** — G8/G10/G11 ✅ | **G7 permanently HALF** and settled by Reza 2026-08-04 — the pre-T2 tree never existed, so nothing can close it. Not to be re-litigated |
 | T3 | expense run-rate | ready to plan | G1 cleared 08-03; needs its censuses |
 | T4 | tax constants + depreciation | blocked on FACTS | QS depreciation schedules (Reza) |
 | T5 | balance sheet | blocked on FACTS | property rental-vs-residence classification (Reza) |
@@ -73,15 +73,18 @@ Anything short of 5 is progress, not completion. This brief tracks the distance.
 | T7 | budget remainder | blocked on FACTS | total super balance · Div 293 exposure (Reza) |
 | Closing | the sweep | — | everything above |
 
-**T2's gates:** G2 ✅ · **G3 ✅** (`.audit/expected-moves-t2.json`, 13 measured paths, merged in #1565)
-· MON-143 ✅ fixed · G5 ❌ (cross-collateralised / fixed / mixed-purpose loans — facts) · G7–G11 pending
-the migration.
+**T2's gates:** G2 ✅ · G3 ✅ (`.audit/expected-moves-t2.json`, amended to 15 paths as the migration PR's opening commit) · G5 ✅ · G6 ✅ (#1575 merged `1e2317b`, prod READY) · **G8 ✅** (VR-047 rendered half + VR-047B producer half — the four-expression identity holds) · G9 ✅ · G10 ✅ · **G11 ✅** (MON-143 and a narrowed MON-130 both VERIFIED on their own numbers; the residue is MON-156) · **G7 🟡 permanently**.
+
+That last one is not a queued task and never becomes one. **Reza settled it on 2026-08-04:** *"T2's G7 stays HALF so it isn't re-litigated: this capture establishes the reference for T3, not a close for T2."* The whole-tree diff needs the pre-T2 **tree**; only its **hash** was ever kept, and it cannot be re-captured now that the code has changed and the live data has moved on. **MON-157** records it and is **VERIFIED — fixed forward only**: VR-048 captured the tree at `12954fff` and it is committed at `.audit/golden-baseline-12954ff.json`, the first golden-baseline tree ever committed to this repo, with a Ratchet that fails the build if it goes missing again. **T3's G7 runs as designed.**
 
 **The headline number:** `loanCost` sat at **31 producers** and is now at **30** — the programme's first
 real producer deletion (the earlier fall was a measurement correction, and the census history now says
-which is which). T2's contract measures the `masterFinancialService` leaves only, so its migration moves
-that one producer; the other 30 feed surfaces the sweep never covered and need their own declaration
-(**T2-B**). 30 is not 1, and the distance is the point of tracking it.
+which is which). T2's contract measures the `masterFinancialService` leaves only, so its migration moved
+that one producer. The remaining sites — **11 producers across ~30 raw reads** — are now **MON-156**,
+opened 2026-08-04 when D50 narrowed MON-130 rather than letting a verified issue close over them. They
+feed the CFO score, the risk radar, the debt planner, reports, the CFE input and the money-flow chart;
+Lever 2 hides most of those surfaces, which takes them out of v1 scope without making them correct.
+**30 is not 1, and the distance is the point of tracking it.**
 
 ---
 
@@ -170,7 +173,8 @@ So every handout ends with this instruction, and the result is validated before 
       "pass": true
     }
   },
-  "verdict": "PASS | FAIL | CAPTURE_ONLY",
+  "verdict": "PASS | PARTIAL | FAIL | CAPTURE_ONLY",
+  "sectionsNotRun": [],
   "checks": [
     { "id": "home.budget.loans", "surface": "/dashboard (budget tile)",
       "expected": 12779, "observed": 12779, "pass": true }
@@ -198,6 +202,7 @@ something already slipped past its absence:
 | `FAIL` needs a failed check or a finding | A verdict with nothing behind it |
 | `coverage.notVerified` is **required** | §22.2.4 — a run that implies it verified everything. "Everything" is never the answer |
 | `PASS` + a `critical` finding → invalid | A contradiction that must be resolved before anyone acts on it |
+| `sectionsNotRun[]` is **required** on a ring3, and a non-empty one forbids `PASS` — use `PARTIAL` | **VR-047**: verdict PASS while its own findings said the DECIDING section had never run (§2 needs the admin relay, which the account-first law forbids opening in that profile). Every existing rule passed it — no check had failed, and the finding was `high`, not `critical`. A run that could not complete its handout still read green. Making "what did not run" a FIELD rather than prose in the coverage note is what turns it from something read into something checked |
 | `kind: capture` must be `CAPTURE_ONLY` and carry a payload | A capture asks for no verdict; the measurements are the deliverable |
 
 Both authors gain from it: Code ingests without guessing, and Reza gets a note that cannot quietly
@@ -311,6 +316,7 @@ only Reza holds.
 | **MON-141** | Income page $22,579/mo vs Home $25,347 — the gap is entirely rental basis (DECLARED vs ACTUALS), unnamed on both | ✅ **DECIDED 2026-08-03 — label both surfaces.** Queued | No number moves. Each screen names the basis it shows, so the two stop reading as a contradiction |
 | **MON-142** | Stored 6.690% on both Bankwest IO loans; the repayments in the app imply ~6.268% | 🔬 **REFRAMED 2026-08-03 — the Matrix confirms it from the app's own data** (§5.1) | Code had told Reza to check with the bank. **That instruction was wrong**: the app already holds the repayment transactions the divergence is derived from |
 | **T4–T7 facts** | QS depreciation schedules · rented-out vs tenanted-residence + any co-owned rental *business* · per-property availability days · total super balance + Div 293 | ✅ **AUDITED 2026-08-03 — §5.2. Five of six already have a home; one is a real gap** | Reza was right that these come from the app. Nothing here needs typing into chat |
+| **D50** | MON-130's scope after Lever 2 — narrow it to the surface its evidence covers, or leave it open at twelve producers | ✅ **DECIDED 2026-08-04 — option A.** Implemented same day | MON-130 **narrowed + VERIFIED** (title and `rootCause` name the one producer #1575 migrated); the residual **11 producers / ~30 raw-read sites** carried to **MON-156** with the list intact. **T2 reaches G11 ✅.** The reasoning is recorded on both entries: hiding a surface is an exposure control, not a defect control |
 
 ### §5.1 Why "ask Reza for the number" is usually the wrong instruction
 
@@ -378,7 +384,18 @@ this is an index, not a copy** (§0). Never paste a VR run's numbers here; link 
 | 08-02 | Matrix | Found 3 record defects on main (Census column · T3-G1 · MON-134) | all 3 confirmed against main | #1566 |
 | 08-03 | Code | Scoreboard + Census fold + T3-G1 + MON-134 → VERIFIED (#1566) | merged `b733c829` | ledger §6 |
 | 08-03 | Code | **This brief opened** | — | — |
-| 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `PENDING` | ledger §6 · `RING3_T2_LOAN_COST.md` |
+| 08-03 | Reza | **Lever 2 TAKEN** — strip the Money-Flow widget, keep Activity's intake. **T2-B parked**; the scaffold stays inert. **MON-150 RETRACTED** (identical duplexes → identical schedules are correct) | decisions | `docs/strategy/MON-131_SCOPE_FILTER.md` §4 · ledger §6 |
+| 08-03 | Matrix | **VR-047** — T2 Ring-3, account-first half. Home's budget tile reads **$12,779**, matching `/dashboard/expenses`; regression cluster byte-identical incl. `healthScore` 53 | **PASS — SCOPED**; §2/§2b not run (admin relay) | `docs/verification/runs/VR-047.md` |
+| 08-03 | Code | **VR-047 consumed** — 5 findings registered (MON-149…153); the handout's mis-specified §3 saving-rate row withdrawn; `matrix:check` tightened so a PASS cannot have skipped a section; **T2-B scaffold** (the `loanCostBasis` seam + compare relay, moving nothing) | — | `MATRIX_T2_ADMIN_RELAY.md` |
+| 08-03 | Code | **T2 migration — `masterFinancialService` onto the canonical resolver** (#1575). Declaration amended to 15 paths as the opening commit; `loanCost` 31 → 30; Ring-2 ratchet + Neo-sync; `patch-layer0.mjs` committed (D49) and it found MON-148 | merged `1e2317b` | ledger §6 · `RING3_T2_LOAN_COST.md` |
+| 08-03 | Matrix | **VR-047B** — T2 Ring-3, admin-relay half, at `c485b05`. Build precondition `paths: []`; all 15 declared paths landed with both exactness traps; **the four-expression identity HOLDS** (three leaves byte-equal at `12,779.292814353912`, the fourth that value rounded at the producer); `byType` keys unchanged, sum bit-identical. PART B parked by Lever 2 | **PARTIAL** — every executed check passed; `sectionsNotRun: ["PART B"]` | `docs/verification/runs/VR-047B.md` |
+| 08-03 | Code | **VR-047B consumed — G8 CLOSED.** T2's Ring-3 passes on VR-047 + VR-047B together; **MON-143 → VERIFIED**. Relay's rounded-vs-unrounded comparison fixed (verified in source first — the reported mechanism was close but not exact); **MON-154** + **MON-155** raised; all three handouts now state the page-context fetch form after an earlier VR-047B nearly shipped an auth change for a non-defect. **MON-130 stays `FIXING`** — kept half verified, 30 sites remain | — | ledger §3 T2 · `VR-047B.md` |
+| 08-03 | Reza | **PR #1580 merged** (`e3a3715`); prod deploy READY | — | ledger §6 |
+| 08-04 | Reza | **D50 answered — option A.** Narrow MON-130 to the surface its evidence covers; carry the residue as a new issue | decisions | ledger §3 T2 G11 |
+| 08-04 | Code | **D50-A implemented + the G7 handout, which turned out to be a different handout.** MON-130 narrowed → **VERIFIED**, residue → **MON-156** (11 producers / ~30 sites), **G11 ✅**. Writing the G7 call Reza asked for exposed that it cannot be run: `diffBaselines` needs the pre-T2 **tree** and only its **hash** was ever kept — **no golden-baseline tree has ever been committed, on any branch** (**MON-157**). T2's G7 is HALF permanently. Shipped `MATRIX_G7_REFERENCE_CAPTURE.md` instead, which commits the reference forward so **T3's G7 runs as designed** | — | `MATRIX_G7_REFERENCE_CAPTURE.md` |
+| 08-04 | Reza | **PR #1581 merged** (`e5017ba`); prod READY. Ran the G7 reference-capture handout and returned **VR-048** | — | `VR-048.md` |
+| 08-04 | Reza | **T2's G7 is settled as permanently HALF** — *"this capture establishes the reference for T3, not a close for T2"* | decision | ledger §3 T2 G7 |
+| 08-04 | Code | **VR-048 consumed.** First golden-baseline tree ever committed (`12954fff`, 8 trees, `captureErrors: []`, 1,755+1 leaves, `treeHash 0d6753ef…`), integrity re-hashed independently, self-diff CLEAN through the real `diffBaselines`. **MON-157 → VERIFIED** (forward only). Ratchet + negative control shipped. **MON-158** raised (unstable risk identities; non-numeric, no verdict impact) and **MON-159** (the full suite aborts intermittently on a Prisma query-engine panic — blamed on the new ratchet twice, then measured at 2 failures in 6 runs with it ABSENT; pre-existing) | — | `VR-048.md` |
 
 ---
 
