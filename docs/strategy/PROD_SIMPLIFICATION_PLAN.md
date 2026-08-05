@@ -11,9 +11,9 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | P0 — Freeze & preconditions (not started) |
-| **Last session** | 2026-08-04 · Cowork planning (this PR) |
-| **Next action** | Merge this PR → land the tracker rows (P0.1) → P0 checklist |
+| **Current phase** | P0 — Code-side items landed (PR-A); P0.4 answer + P0.5 merge are Reza-side · P1 — built (PR-B) |
+| **Last session** | 2026-08-04 · Code build (PR-A: P0 docs/trackers · PR-B: P1 module gate) |
+| **Next action** | Reza: merge PR-A, answer P0.4, merge #1577 → Matrix: P1.10 golden self-diff verdicts on PR-B → Reza merges PR-B |
 | **Blockers** | none |
 | **Baseline of record** | `.audit/golden-baseline-12954ff.json` (VR-048, 1,756 leaves, treeHash `0d6753ef…`) |
 
@@ -144,13 +144,13 @@ The Edit / Overrides / "Create Override" controls have no `onClick` and no API; 
 
 ## 5. Phases — each with a gate; a phase is DONE when its gate PR merges with the boxes ticked
 
-### P0 — Freeze & preconditions *(docs/ops only; no product code)* — 📋
-- [ ] **P0.1 Land the tracker rows this PR could not carry** (connector size limits; texts in PR body): 01_ACTIVE_WORKSTREAMS.md entry · STATE.md cursor row · hub `Last updated` bump · the still-unwritten Q-SCOPE-1 open-questions row (PR #1577 body, standing gotcha).
-- [ ] **P0.2 Freeze rule into STATE.md** (exact text): *"SCOPE FREEZE (Reza 2026-08-04): modules hidden by PROD_SIMPLIFICATION_PLAN.md §2.2 get no work, no fixes, no new issues; registry entries → HELD. Exception: THE one module in active development (WIP limit = 1). Re-enable = R-stage gate only."*
-- [ ] **P0.3 CLAUDE.md §13.6 amendment for D-7** (§7 below) — the Preview-copy exception + sunset, in writing, same PR as P0.2.
-- [ ] **P0.4 Verify `NEXT_PUBLIC_ADMIN_PORTAL_ENABLED` on Vercel Preview scope** (2-min check: `vercel env ls` or dashboard). If Production-only → add it to Preview (it's baked at build time, so a redeploy is needed). Blocks the D-7 workflow, not the PROD hide.
-- [ ] **P0.5 Merge PR #1577** (Q-SCOPE-1) — its stated merge trigger (keep-list ruled) is now met. Doc flips 🟡 RECOMMENDATION → DECIDED with a pointer to §0 here.
-- [ ] **P0.6 Registry re-count** — refresh issue counts vs the 63/135 quoted at the filter HEAD; record the delta here.
+### P0 — Freeze & preconditions *(docs/ops only; no product code)* — 🟡 Code-side DONE (PR-A); P0.4/P0.5 Reza-side
+- [x] **P0.1 Land the tracker rows this PR could not carry** (connector size limits; texts in PR body): 01_ACTIVE_WORKSTREAMS.md entry · STATE.md cursor row · hub `Last updated` bump · the still-unwritten Q-SCOPE-1 open-questions row (PR #1577 body, standing gotcha). ✅ 2026-08-04, PR-A — all four landed; Q-SCOPE-1 row inserted with status ✅ DECIDED → plan §0.
+- [x] **P0.2 Freeze rule into STATE.md** (exact text): *"SCOPE FREEZE (Reza 2026-08-04): modules hidden by PROD_SIMPLIFICATION_PLAN.md §2.2 get no work, no fixes, no new issues; registry entries → HELD. Exception: THE one module in active development (WIP limit = 1). Re-enable = R-stage gate only."* ✅ 2026-08-04, PR-A — verbatim, in the STATE.md resume-cursor area.
+- [x] **P0.3 CLAUDE.md §13.6 amendment for D-7** (§7 below) — the Preview-copy exception + sunset, in writing, same PR as P0.2. ✅ 2026-08-04, PR-A — verbatim §7.2 text appended directly under the §13.6 table.
+- [ ] **P0.4 Verify `NEXT_PUBLIC_ADMIN_PORTAL_ENABLED` on Vercel Preview scope** (2-min check: `vercel env ls` or dashboard). If Production-only → add it to Preview (it's baked at build time, so a redeploy is needed). Blocks the D-7 workflow, not the PROD hide. ⏳ **REZA-SIDE** — question asked in PR-A's body; record the answer here.
+- [ ] **P0.5 Merge PR #1577** (Q-SCOPE-1) — its stated merge trigger (keep-list ruled) is now met. Doc flips 🟡 RECOMMENDATION → DECIDED with a pointer to §0 here. ⏳ **REZA-SIDE** — #1577 still open (draft) at PR-A time (2026-08-04); not blocking. After the merge, one commit flips the doc's status line.
+- [x] **P0.6 Registry re-count** — refresh issue counts vs the 63/135 quoted at the filter HEAD; record the delta here. ✅ 2026-08-04 at `e588a837` (from `docs/issues/ISSUES.json`): **65 OPEN/FIXING (🔵 38 + 🟠 27), 5 critical, 146 total** — vs 63 OPEN/FIXING, 6 critical, 135 total at `1e2317b6`. Delta: +2 OPEN/FIXING · −1 critical · +11 total (MON-149…153 among those raised since).
 **Gate:** all boxes ticked. **Model: Fable 5** (mechanical, doc-heavy). **Reza:** P0.4 answer + merges.
 
 ### P1 — The module gate build *(product code; flips NOTHING — all keys ship `enabled:false` and PROD behaviour is unchanged until Reza flicks switches)* — 📋
@@ -237,3 +237,4 @@ Ruled by Reza 2026-08-04 with the counter-recommendation surfaced (brief §5.3).
 ## 9. Session log (append one line per session that advances this plan)
 
 - 2026-08-04 · Cowork (Fable 5) · Plan created; §0 rulings taken; HEAD `e90a9195`.
+- 2026-08-04 · Code (Fable 5) · PR-A: P0.1/P0.2/P0.3/P0.6 landed (P0.4/P0.5 flagged Reza-side); #1577 noted still-open. HEAD `e588a837`.
