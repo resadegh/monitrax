@@ -31,8 +31,10 @@ import {
   mobileTabBarItems,
   TRAIL_STAGE_TONES,
   findActiveMobileTab,
+  filterNavByModules,
   type MobileTabBarItem,
 } from '@/lib/navigation/trailNav';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 
 interface MobileTabBarProps {
   /** Optional className override for the fixed wrapper. */
@@ -41,6 +43,9 @@ interface MobileTabBarProps {
 
 export function MobileTabBar({ className }: MobileTabBarProps) {
   const pathname = usePathname();
+  // PROD Simplification P1 (plan §4.2): hidden-module tabs drop out.
+  const enabledModules = useEnabledModules();
+  const visibleTabs = filterNavByModules(mobileTabBarItems, enabledModules);
   const activeTab = findActiveMobileTab(pathname);
 
   return (
@@ -65,7 +70,7 @@ export function MobileTabBar({ className }: MobileTabBarProps) {
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
       />
       <ul className="grid grid-cols-6 px-1 pt-1.5 pb-1.5">
-        {mobileTabBarItems.map((tab) => (
+        {visibleTabs.map((tab) => (
           <MobileTabButton
             key={tab.key}
             tab={tab}

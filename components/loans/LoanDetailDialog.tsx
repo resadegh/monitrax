@@ -83,6 +83,7 @@ import Link from 'next/link';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { LoanRepaymentsTab } from '@/components/loans/LoanRepaymentsTab';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import { HelpTooltip } from '@/components/help/HelpTooltip';
 import { Percent, TrendingDown as TrendingDownIcon, ArrowRight as ArrowRightIcon } from 'lucide-react';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
@@ -267,6 +268,9 @@ export function LoanDetailDialog({
   onLinkedEntityNavigate,
   initialTab,
 }: LoanDetailDialogProps) {
+  // PROD Simplification P1: the per-item Strategy tab is a MODULE_STRATEGY
+  // surface (plan §2.2 "per-item tabs") — hidden until the flag is ON.
+  const strategyModuleEnabled = useModuleEnabled('MODULE_STRATEGY');
   // Phase 51 follow-up — controlled tab so entry points can deep-link to
   // "repayments" (the statement import). Resets to the requested tab each time
   // the dialog opens; `defaultValue` alone wouldn't update on re-open.
@@ -316,10 +320,12 @@ export function LoanDetailDialog({
                 <TabsTrigger value="offset">Offset</TabsTrigger>
                 <TabsTrigger value="repayments">Repayments</TabsTrigger>
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
-                <TabsTrigger value="strategy" className="gap-1">
-                  <Lightbulb className="h-3 w-3" />
-                  Strategy
-                </TabsTrigger>
+                {strategyModuleEnabled && (
+                  <TabsTrigger value="strategy" className="gap-1">
+                    <Lightbulb className="h-3 w-3" />
+                    Strategy
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="linked" className="gap-1">
                   <Link2 className="h-3 w-3" />
                   Linked
@@ -706,13 +712,15 @@ export function LoanDetailDialog({
                 )}
               </TabsContent>
 
-              <TabsContent value="strategy" className="mt-4">
-                <EntityStrategyTab
-                  entityType="loan"
-                  entityId={loan.id}
-                  entityName={loan.name}
-                />
-              </TabsContent>
+              {strategyModuleEnabled && (
+                <TabsContent value="strategy" className="mt-4">
+                  <EntityStrategyTab
+                    entityType="loan"
+                    entityId={loan.id}
+                    entityName={loan.name}
+                  />
+                </TabsContent>
+              )}
 
               <TabsContent value="linked" className="mt-4">
                 <LinkedDataPanel

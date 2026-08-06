@@ -34,42 +34,21 @@
  *   propagation, pass `{ skipCache: true }` to read fresh from DB.
  */
 
-import { prisma } from '@/lib/db';
+import { isFlagEnabled, invalidateFlagCache } from './moduleGate';
 
 export const BASIQ_FLAG_KEY = 'BASIQ_INTEGRATION';
-
-interface CacheEntry {
-  enabled: boolean;
-  capturedAt: number;
-}
-
-const CACHE_TTL_MS = 30_000;
-let cache: CacheEntry | null = null;
 
 /**
  * Server-side check. Cached for 30s within the process. Safe to call
  * many times per request — the cache makes repeat hits free.
+ *
+ * PROD Simplification P1 (2026-08-04): the cached fail-closed read now
+ * lives in `moduleGate.ts` (keyed Map — ONE implementation for Basiq +
+ * all module keys, §12.2.1). This alias is preserved so the 10 existing
+ * call sites don't churn.
  */
 export async function isBasiqEnabled(options: { skipCache?: boolean } = {}): Promise<boolean> {
-  if (!options.skipCache && cache && Date.now() - cache.capturedAt < CACHE_TTL_MS) {
-    return cache.enabled;
-  }
-
-  try {
-    const row = await prisma.globalFeatureFlag.findUnique({
-      where: { key: BASIQ_FLAG_KEY },
-      select: { enabled: true },
-    });
-    const enabled = row?.enabled === true;
-    cache = { enabled, capturedAt: Date.now() };
-    return enabled;
-  } catch (err) {
-    // If DB is unreachable (cold-start, transient), fail closed —
-    // hide the surface rather than expose it. Cache the failure
-    // briefly so we don't hammer Prisma in a loop.
-    cache = { enabled: false, capturedAt: Date.now() };
-    return false;
-  }
+  return isFlagEnabled(BASIQ_FLAG_KEY, options);
 }
 
 /**
@@ -79,5 +58,5 @@ export async function isBasiqEnabled(options: { skipCache?: boolean } = {}): Pro
  * 30s via the TTL.
  */
 export function invalidateBasiqGateCache(): void {
-  cache = null;
+  invalidateFlagCache(BASIQ_FLAG_KEY);
 }

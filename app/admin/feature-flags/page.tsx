@@ -2,20 +2,28 @@
 
 /**
  * Phase 33: Feature Flags Page
+ * PROD Simplification P1.8 (2026-08-04): "Modules" panel added — one row
+ * per `MODULE_REGISTRY` key (label, HIDDEN/LIVE, return stage, last flip
+ * + actor, the working toggle). Unhiding is an R-stage gate decision
+ * (PROD_SIMPLIFICATION_PLAN.md §5), not a casual toggle — the panel says
+ * so. Per plan §4.5 the dead override surfaces (Edit / Overrides buttons,
+ * "Create Override" card, Rollout / Tiers / Overrides columns) were
+ * REMOVED: `FeatureFlagOverride` / `enabledForPercent` / `enabledForTiers`
+ * have zero evaluation readers — UI only, schema untouched. Override
+ * WIRING is deliberately deferred to R0 (enable-for-Reza-only in PROD).
  *
- * Manage global feature flags and overrides.
- * Uses real data from /api/admin/feature-flags endpoint.
+ * Uses real data from /api/admin/feature-flags.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AdminHeader, SectionHeader } from '@/components/admin/layout/AdminHeader';
+import { AdminHeader } from '@/components/admin/layout/AdminHeader';
 import { AdminCard, AdminCardHeader } from '@/components/admin/ui/AdminCard';
 import { AdminTable } from '@/components/admin/ui/AdminTable';
-import { AdminButton, IconButton } from '@/components/admin/ui/AdminButton';
+import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
-import { Input, Select } from '@/components/admin/ui/AdminForm';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
 import { CreateFlagModal } from '@/components/admin/feature-flags/CreateFlagModal';
+import { MODULE_REGISTRY, isModuleKey } from '@/lib/featureFlags/moduleRegistry';
 
 interface FeatureFlag {
   id: string;
@@ -23,12 +31,17 @@ interface FeatureFlag {
   name: string;
   description: string | null;
   enabled: boolean;
-  enabledForPercent: number;
-  enabledForTiers: string[];
-  enabledForPlans: string[];
-  overridesCount: number;
   createdAt: string;
   updatedAt: string;
+  updatedBy: string | null;
+}
+
+/** Registry row joined with its (optional) DB flag row. */
+interface ModuleRow {
+  key: string;
+  label: string;
+  returnStage: number;
+  flag: FeatureFlag | undefined;
 }
 
 export default function FeatureFlagsPage() {
@@ -44,9 +57,7 @@ export default function FeatureFlagsPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/admin/feature-flags', {
-        
-      });
+      const response = await fetch('/api/admin/feature-flags', {});
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -67,9 +78,20 @@ export default function FeatureFlagsPage() {
     fetchFlags();
   }, [fetchFlags]);
 
-  const filteredFlags = flags.filter((flag) =>
-    flag.name.toLowerCase().includes(search.toLowerCase()) ||
-    flag.key.toLowerCase().includes(search.toLowerCase())
+  const moduleRows: ModuleRow[] = MODULE_REGISTRY.map((m) => ({
+    key: m.key,
+    label: m.label,
+    returnStage: m.returnStage,
+    flag: flags.find((f) => f.key === m.key),
+  }));
+
+  // The generic table below shows only NON-module flags (e.g. Basiq) —
+  // module keys live in the Modules panel above, never in both.
+  const otherFlags = flags.filter(
+    (flag) =>
+      !isModuleKey(flag.key) &&
+      (flag.name.toLowerCase().includes(search.toLowerCase()) ||
+        flag.key.toLowerCase().includes(search.toLowerCase())),
   );
 
   const handleToggle = async (flagKey: string, currentEnabled: boolean) => {
@@ -78,7 +100,7 @@ export default function FeatureFlagsPage() {
       const response = await fetch(`/api/admin/feature-flags/${flagKey}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        
+
         body: JSON.stringify({ enabled: !currentEnabled }),
       });
 
@@ -95,11 +117,43 @@ export default function FeatureFlagsPage() {
     }
   };
 
+  const renderToggle = (key: string, enabled: boolean) => (
+    <button
+      onClick={() => handleToggle(key, enabled)}
+      disabled={toggling === key}
+      aria-label={`Toggle ${key}`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+        toggling === key ? 'opacity-50' : ''
+      } ${enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          enabled ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  );
+
+  const formatFlip = (flag: FeatureFlag | undefined) => {
+    if (!flag) return <span className="text-gray-400">not seeded</span>;
+    const when = new Date(flag.updatedAt).toLocaleString();
+    return (
+      <div>
+        <p className="text-sm text-gray-900 dark:text-white">{when}</p>
+        {flag.updatedBy && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[160px]">
+            by {flag.updatedBy}
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Feature Flags"
-        description="Control feature rollout and A/B testing"
+        description="Module visibility and platform switches"
         searchPlaceholder="Search flags..."
         searchValue={search}
         onSearch={setSearch}
@@ -132,7 +186,70 @@ export default function FeatureFlagsPage() {
         </AdminCard>
       )}
 
-      {/* Flags Table */}
+      {/* Modules panel — PROD Simplification (plan §4.4) */}
+      <AdminCard padding="none" className="mb-6">
+        <div className="px-6 pt-5 pb-1">
+          <AdminCardHeader
+            title="Modules"
+            description="What is hidden and what is live. Hidden modules keep their code and data — flipping a switch brings the module back within ~30 seconds. Unhiding is an R-stage gate decision (see PROD_SIMPLIFICATION_PLAN.md §5 R-stages), not a casual toggle: producers converged, Ring-3 PASS on live data, then the switch. The scope freeze applies while hidden — no work, no fixes, issues HELD."
+          />
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <span className="text-gray-500">Loading modules…</span>
+          </div>
+        ) : (
+          <AdminTable
+            columns={[
+              {
+                key: 'label',
+                header: 'Module',
+                render: (row) => (
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{row.label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{row.key}</p>
+                  </div>
+                ),
+              },
+              {
+                key: 'state',
+                header: 'State',
+                render: (row) =>
+                  row.flag?.enabled ? (
+                    <AdminBadge variant="success" size="sm">LIVE</AdminBadge>
+                  ) : (
+                    <AdminBadge variant="default" size="sm">HIDDEN</AdminBadge>
+                  ),
+              },
+              {
+                key: 'returnStage',
+                header: 'Returns at',
+                render: (row) => <span className="text-sm">R{row.returnStage}</span>,
+              },
+              {
+                key: 'lastFlipped',
+                header: 'Last flipped',
+                render: (row) => formatFlip(row.flag),
+              },
+              {
+                key: 'toggle',
+                header: '',
+                render: (row) =>
+                  row.flag ? (
+                    renderToggle(row.key, row.flag.enabled)
+                  ) : (
+                    <span className="text-xs text-gray-400">seed pending</span>
+                  ),
+              },
+            ]}
+            data={moduleRows}
+            keyExtractor={(row) => row.key}
+            emptyMessage="No modules registered"
+          />
+        )}
+      </AdminCard>
+
+      {/* Platform flags (non-module) */}
       <AdminCard padding="none">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -160,124 +277,19 @@ export default function FeatureFlagsPage() {
               {
                 key: 'enabled',
                 header: 'Status',
-                render: (flag) => (
-                  <button
-                    onClick={() => handleToggle(flag.key, flag.enabled)}
-                    disabled={toggling === flag.key}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      toggling === flag.key ? 'opacity-50' : ''
-                    } ${flag.enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        flag.enabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                ),
+                render: (flag) => renderToggle(flag.key, flag.enabled),
               },
               {
-                key: 'enabledForPercent',
-                header: 'Rollout',
-                render: (flag) => (
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-600 rounded-full"
-                        style={{ width: `${flag.enabledForPercent}%` }}
-                      />
-                    </div>
-                    <span className="text-sm">{flag.enabledForPercent}%</span>
-                  </div>
-                ),
-              },
-              {
-                key: 'enabledForTiers',
-                header: 'Tiers',
-                render: (flag) =>
-                  flag.enabledForTiers.length > 0 ? (
-                    <div className="flex gap-1 flex-wrap">
-                      {flag.enabledForTiers.map((tier) => (
-                        <AdminBadge key={tier} variant="info" size="sm">
-                          {tier}
-                        </AdminBadge>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">All tiers</span>
-                  ),
-              },
-              {
-                key: 'overridesCount',
-                header: 'Overrides',
-                render: (flag) =>
-                  flag.overridesCount > 0 ? (
-                    <AdminBadge variant="warning" size="sm">
-                      {flag.overridesCount}
-                    </AdminBadge>
-                  ) : (
-                    <span className="text-gray-400">None</span>
-                  ),
-              },
-              {
-                key: 'actions',
-                header: '',
-                render: (flag) => (
-                  <div className="flex gap-1">
-                    <IconButton
-                      icon={
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      }
-                      label="Edit"
-                      size="sm"
-                    />
-                    <IconButton
-                      icon={
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                        </svg>
-                      }
-                      label="Overrides"
-                      size="sm"
-                    />
-                  </div>
-                ),
+                key: 'lastFlipped',
+                header: 'Last flipped',
+                render: (flag) => formatFlip(flag),
               },
             ]}
-            data={filteredFlags}
+            data={otherFlags}
             keyExtractor={(flag) => flag.key}
             emptyMessage="No feature flags found"
           />
         )}
-      </AdminCard>
-
-      {/* Quick Override Section */}
-      <AdminCard className="mt-6">
-        <AdminCardHeader
-          title="Quick Override"
-          description="Apply a flag override for a specific user or organization"
-        />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Select
-            label="Flag"
-            options={flags.map((f) => ({ value: f.key, label: f.name }))}
-            placeholder="Select flag"
-          />
-          <Select
-            label="Target Type"
-            options={[
-              { value: 'USER', label: 'User' },
-              { value: 'ORGANIZATION', label: 'Organization' },
-            ]}
-            placeholder="Select type"
-          />
-          <Input label="Target ID" placeholder="Enter user or org ID" />
-          <div className="flex items-end">
-            <AdminButton className="w-full">Create Override</AdminButton>
-          </div>
-        </div>
       </AdminCard>
 
       {/*

@@ -32,7 +32,9 @@ import {
   trailNavItems,
   settingsNavItem,
   findActiveNavItem,
+  filterNavByModules,
 } from '@/lib/navigation/trailNav';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 import { EditorialNavRow } from './EditorialNavRow';
 import { TrailStagePill } from '@/components/shell/TrailStagePill';
 
@@ -52,7 +54,12 @@ export interface EditorialSidebarProps {
 
 export function EditorialSidebar({ user, onSignOut, className }: EditorialSidebarProps) {
   const pathname = usePathname() ?? '/dashboard';
-  const active = findActiveNavItem(pathname, trailNavItems);
+  // PROD Simplification P1 (plan §4.2): drop nav items/children whose
+  // module flag is not confirmed ON. Kept surfaces carry no key and
+  // always render.
+  const enabledModules = useEnabledModules();
+  const visibleNavItems = filterNavByModules(trailNavItems, enabledModules);
+  const active = findActiveNavItem(pathname, visibleNavItems);
 
   return (
     <aside
@@ -79,7 +86,7 @@ export function EditorialSidebar({ user, onSignOut, className }: EditorialSideba
 
       {/* Nav list */}
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4">
-        {trailNavItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = active?.name === item.name;
           const children = item.children ?? [];
           return (

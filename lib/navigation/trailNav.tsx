@@ -26,10 +26,13 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
+import type { ModuleKey } from '@/lib/featureFlags/moduleRegistry';
 
 export interface NavChild {
   name: string;
   href: string;
+  /** PROD Simplification (plan §4.2): child hidden unless this module flag is ON. */
+  moduleKey?: ModuleKey;
 }
 
 export interface NavItem {
@@ -41,6 +44,36 @@ export interface NavItem {
   matchRoutes?: string[];
   /** Sub-items shown when this section is active (sidebar accordion + mobile sub-tab pills). */
   children?: NavChild[];
+  /**
+   * PROD Simplification (plan §4.2): item hidden unless this module
+   * flag is ON. Kept surfaces carry NO key — they are unconditional
+   * (a DB outage can never hide the kept app). Filter at render via
+   * `filterNavByModules` + `useEnabledModules()`.
+   */
+  moduleKey?: ModuleKey;
+}
+
+/**
+ * Drop every keyed item/child whose module is not confirmed enabled.
+ * Un-keyed entries always pass. Shared by the desktop sidebar, the
+ * mobile bottom bar and the More sheet so the filter rule exists once.
+ */
+export function filterNavByModules<T extends { moduleKey?: ModuleKey; children?: NavChild[] }>(
+  items: T[],
+  enabled: Partial<Record<ModuleKey, boolean>>,
+): T[] {
+  return items
+    .filter((item) => !item.moduleKey || enabled[item.moduleKey] === true)
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter(
+              (child) => !child.moduleKey || enabled[child.moduleKey] === true,
+            ),
+          }
+        : item,
+    );
 }
 
 /**
@@ -56,12 +89,14 @@ export const trailNavItems: NavItem[] = [
     href: '/dashboard',
     icon: LayoutDashboard,
     tourId: 'nav-dashboard',
+    moduleKey: 'MODULE_HOME',
   },
   {
     name: 'My Household',
     href: '/dashboard/household-profile',
     icon: Users,
     tourId: 'nav-household',
+    moduleKey: 'MODULE_HOUSEHOLD',
   },
   {
     name: 'My Accounts',
@@ -81,7 +116,7 @@ export const trailNavItems: NavItem[] = [
     children: [
       { name: 'Balances', href: '/dashboard/balances' },
       { name: 'Activity', href: '/dashboard/activity' },
-      { name: 'My Structure', href: '/dashboard/entities' },
+      { name: 'My Structure', href: '/dashboard/entities', moduleKey: 'MODULE_ENTITIES' },
     ],
   },
   {
@@ -90,6 +125,9 @@ export const trailNavItems: NavItem[] = [
     icon: Target,
     tourId: 'nav-budget',
     trailStage: 'R',
+    // MODULE_HOUSEHOLD owns the section (Cashflow / My Plan); the Debt
+    // Freedom child carries its own key. Both return at Stage 3 (R3).
+    moduleKey: 'MODULE_HOUSEHOLD',
     matchRoutes: [
       '/cashflow',
       '/dashboard/plan',
@@ -101,7 +139,7 @@ export const trailNavItems: NavItem[] = [
     children: [
       { name: 'Cashflow', href: '/cashflow' },
       { name: 'My Plan', href: '/dashboard/plan' },
-      { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
+      { name: 'Debt Freedom', href: '/dashboard/debt-planner', moduleKey: 'MODULE_DEBT_PLANNER' },
     ],
   },
   {
@@ -111,6 +149,7 @@ export const trailNavItems: NavItem[] = [
     tourId: 'nav-safety-net',
     trailStage: 'A',
     matchRoutes: ['/dashboard/safety-net'],
+    moduleKey: 'MODULE_SAFETY_NET',
   },
   {
     name: 'My Wealth',
@@ -125,8 +164,8 @@ export const trailNavItems: NavItem[] = [
     ],
     children: [
       { name: 'Properties', href: '/dashboard/properties' },
-      { name: 'Investments', href: '/dashboard/investments/accounts' },
-      { name: 'Superannuation', href: '/dashboard/investments/super' },
+      { name: 'Investments', href: '/dashboard/investments/accounts', moduleKey: 'MODULE_INVESTMENTS' },
+      { name: 'Superannuation', href: '/dashboard/investments/super', moduleKey: 'MODULE_INVESTMENTS' },
       { name: 'Assets', href: '/dashboard/assets' },
     ],
   },
@@ -155,9 +194,10 @@ export const trailNavItems: NavItem[] = [
       '/dashboard/cfo/what-if',
       '/dashboard/tax',
     ],
+    moduleKey: 'MODULE_CFO',
     children: [
       { name: 'Actions', href: '/dashboard/cfo' },
-      { name: 'Tax', href: '/dashboard/tax' },
+      { name: 'Tax', href: '/dashboard/tax', moduleKey: 'MODULE_TAX' },
       { name: 'What If?', href: '/dashboard/cfo/what-if' },
     ],
   },
@@ -186,6 +226,7 @@ export const trailNavItems: NavItem[] = [
     icon: Sparkles,
     tourId: 'nav-housekeeping',
     matchRoutes: ['/dashboard/housekeeping'],
+    moduleKey: 'MODULE_HOUSEKEEPING',
     children: [
       { name: 'Tax classification', href: '/dashboard/housekeeping/tax' },
       { name: 'Duplicate records', href: '/dashboard/housekeeping/duplicates' },
@@ -252,6 +293,8 @@ export interface MobileTabBarItem {
    *  matchRoutes plus any pages that conceptually belong to the same TRAIL
    *  stage (e.g. Tax routes highlight the Guide tab, not their own). */
   matchRoutes: string[];
+  /** PROD Simplification (plan §4.2): tab hidden unless this module flag is ON. */
+  moduleKey?: ModuleKey;
 }
 
 export const mobileTabBarItems: MobileTabBarItem[] = [
@@ -261,6 +304,7 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
     href: '/dashboard',
     icon: LayoutDashboard,
     matchRoutes: ['/dashboard', '/dashboard/setup', '/dashboard/household-profile'],
+    moduleKey: 'MODULE_HOME',
   },
   {
     key: 'track',
@@ -284,6 +328,7 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
     href: '/cashflow',
     icon: Target,
     trailStage: 'R',
+    moduleKey: 'MODULE_HOUSEHOLD',
     matchRoutes: [
       '/cashflow',
       '/dashboard/plan',
@@ -304,6 +349,7 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
     icon: Shield,
     trailStage: 'A',
     matchRoutes: ['/dashboard/safety-net'],
+    moduleKey: 'MODULE_SAFETY_NET',
   },
   {
     key: 'invest',
@@ -329,6 +375,7 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
       '/dashboard/cfo/ask',
       '/dashboard/tax',
     ],
+    moduleKey: 'MODULE_CFO',
   },
 ];
 
@@ -378,13 +425,17 @@ export function findActiveMobileTab(
  *
  * Keep order stable: most-used → least-used.
  */
-export const mobileMoreItems: NavItem[] = [
-  trailNavItems.find((i) => i.name === 'My Household')!,
-  trailNavItems.find((i) => i.name === 'My Vault')!,
-  trailNavItems.find((i) => i.name === 'Reports')!,
-  trailNavItems.find((i) => i.name === 'Housekeeping')!,
-  settingsNavItem,
-];
+// PROD Simplification P1 (2026-08-04): built via name-lookup + Boolean
+// filter instead of non-null-asserted `.find()`s — the assertions threw
+// the moment an item disappeared from `trailNavItems`. Module filtering
+// itself happens at render (`filterNavByModules`), so entries here keep
+// their `moduleKey` and the More sheet drops hidden ones per-user.
+export const mobileMoreItems: NavItem[] = (
+  ['My Household', 'My Vault', 'Reports', 'Housekeeping'] as const
+)
+  .map((name) => trailNavItems.find((i) => i.name === name))
+  .filter((i): i is NavItem => Boolean(i))
+  .concat(settingsNavItem);
 
 /**
  * TRAIL stage tone tokens — colour psychology applied to navigation.

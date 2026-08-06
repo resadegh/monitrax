@@ -20,6 +20,7 @@ import {
   buildHealthInput,
 } from '@/lib/health';
 import { recordHealthScoreSnapshot } from '@/lib/services/healthScoreSnapshotRecorder';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 /**
  * GET /api/financial-health
@@ -31,6 +32,8 @@ import { recordHealthScoreSnapshot } from '@/lib/services/healthScoreSnapshotRec
  * - Full FinancialHealthReport or quick score summary
  */
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
       const { searchParams } = new URL(request.url);

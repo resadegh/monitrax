@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { BasiqGateProvider } from '@/lib/featureFlags/BasiqGateContext';
+import { ModuleGateProvider } from '@/lib/featureFlags/ModuleGateContext';
 import AiChatButton from '@/components/AiChatButton';
 import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
 import { FeedbackButton } from '@/components/help/FeedbackButton';
@@ -317,6 +318,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <ModuleGateProvider>
     <BasiqGateProvider>
       {/* Phase 47 PR 2 — Existing-user consent migration modal.
           Fires for any authenticated user lacking current-version Terms /
@@ -481,5 +483,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onAutoSave={handleWizardAutoSave}
       />
     </BasiqGateProvider>
+    </ModuleGateProvider>
   );
 }

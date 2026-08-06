@@ -9,10 +9,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicListing } from '@/lib/services/marketplaceService';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { slug } = await context.params;
   const listing = await getPublicListing(slug);
   if (!listing) {

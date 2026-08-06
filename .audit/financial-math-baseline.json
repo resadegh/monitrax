@@ -78,7 +78,7 @@
     },
     {
       "file": "app/api/cashflow/intelligence/route.ts",
-      "line": 452,
+      "line": 453,
       "pattern": "HARDCODED_FINANCIAL_CONSTANT",
       "match": "27500"
     },
@@ -96,13 +96,13 @@
     },
     {
       "file": "app/api/safety-net/route.ts",
-      "line": 75,
+      "line": 78,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 4"
     },
     {
       "file": "app/api/safety-net/route.ts",
-      "line": 79,
+      "line": 82,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount / 12"
     },

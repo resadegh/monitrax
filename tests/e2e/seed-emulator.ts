@@ -17,6 +17,7 @@
 import { PrismaClient } from '@prisma/client';
 import { E2E_USERS } from './users';
 import { getCurrentDocumentVersion } from '../../lib/legal/content';
+import { MODULE_REGISTRY } from '../../lib/featureFlags/moduleRegistry';
 
 const prisma = new PrismaClient();
 
@@ -64,6 +65,23 @@ async function main() {
   if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
     throw new Error('FIREBASE_AUTH_EMULATOR_HOST not set — refusing to run (emulator-only seed).');
   }
+
+  // PROD Simplification P1 (2026-08-04): every module flag ships
+  // enabled:false in PROD (hidden is the v1 state), but the UAT flows
+  // deliberately exercise hidden-but-alive modules (Home net worth, the
+  // CFO What-If, the entity widget) — that coverage is what guards each
+  // module's R-stage return. The e2e DB is emulator-only + synthetic
+  // (never dev/prod), so all module keys are enabled HERE, and only here.
+  // Gating itself is covered by tests/featureFlags/*.
+  for (const m of MODULE_REGISTRY) {
+    await prisma.globalFeatureFlag.upsert({
+      where: { key: m.key },
+      update: { enabled: true },
+      create: { key: m.key, name: m.label, description: 'UAT (e2e) — enabled for full-surface coverage', enabled: true },
+    });
+  }
+  console.log(`  ✓ ${MODULE_REGISTRY.length} module flags enabled for UAT (e2e DB only)`);
+
   for (const u of Object.values(E2E_USERS)) {
     const uid = await ensureEmulatorUser(u.email, u.password);
 

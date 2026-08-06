@@ -13,10 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import {
-  BASIQ_FLAG_KEY,
-  invalidateBasiqGateCache,
-} from '@/lib/featureFlags/basiqGate';
+import { invalidateFlagCache } from '@/lib/featureFlags/moduleGate';
 import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
@@ -160,13 +157,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Production Readiness — flush the in-process cache for any flag
-    // with a side-channel reader. Each cached-reader flag needs its
-    // own invalidation hook here so admin flips propagate immediately
-    // on THIS instance + ≤30s on warm peers via the TTL.
-    if (updatedFlag.key === BASIQ_FLAG_KEY) {
-      invalidateBasiqGateCache();
-    }
+    // PROD Simplification P1.6 — flush the in-process cache for EVERY
+    // flag, unconditionally. The keyed gate cache (moduleGate.ts) now
+    // serves Basiq + all module keys, so the previous Basiq-only hook
+    // would have left module flips stale on this instance. Admin flips
+    // propagate immediately here + ≤30s on warm peers via the TTL.
+    invalidateFlagCache(updatedFlag.key);
 
     return NextResponse.json(updatedFlag);
   } catch (error) {

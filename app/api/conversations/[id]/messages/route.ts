@@ -19,10 +19,13 @@ import {
   postMessage,
 } from '@/lib/services/conversationService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export const GET = withPermission<RouteContext>('report.read', async (request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   const { searchParams } = new URL(request.url);
   const sinceParam = searchParams.get('since');
@@ -60,6 +63,8 @@ interface PostBody {
 }
 
 export const POST = withPermission<RouteContext>('report.read', async (request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   let body: PostBody;
   try {

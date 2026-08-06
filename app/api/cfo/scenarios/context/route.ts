@@ -36,6 +36,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import type { LoanView, SuperAccountView } from '@/lib/cfo';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 async function fetchSuperAccounts(userId: string): Promise<SuperAccountView[]> {
   const accounts = await prisma.superannuationAccount.findMany({
@@ -103,6 +104,8 @@ async function fetchLoanViews(userId: string): Promise<LoanView[]> {
 }
 
 export const GET = withPermission('report.read', async (_request: NextRequest, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
   try {
     const [snapshot, superAccounts, loans] = await Promise.all([
       getMasterFinancialSnapshot(auth.userId),

@@ -46,7 +46,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { findActiveNavItem, TRAIL_STAGE_TONES } from '@/lib/navigation/trailNav';
+import {
+  findActiveNavItem,
+  trailNavItems,
+  filterNavByModules,
+  TRAIL_STAGE_TONES,
+} from '@/lib/navigation/trailNav';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 
 interface SectionTabsRowProps {
   className?: string;
@@ -54,7 +60,12 @@ interface SectionTabsRowProps {
 
 export function SectionTabsRow({ className }: SectionTabsRowProps) {
   const pathname = usePathname();
-  const activeSection = findActiveNavItem(pathname);
+  // PROD Simplification P1 (plan §4.2): resolve the active section from
+  // the module-filtered nav so hidden sections/children never surface
+  // sub-tab pills.
+  const enabledModules = useEnabledModules();
+  const visibleNavItems = filterNavByModules(trailNavItems, enabledModules);
+  const activeSection = findActiveNavItem(pathname, visibleNavItems);
 
   // Hide if no active section, or section has no sub-tabs.
   if (!activeSection?.children || activeSection.children.length === 0) {

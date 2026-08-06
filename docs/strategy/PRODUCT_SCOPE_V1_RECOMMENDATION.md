@@ -1,6 +1,6 @@
 # Product Scope v1 — RECOMMENDATION (decision pending Reza)
 
-**Status:** 🟡 RECOMMENDATION — not a decision. Nothing in this document is in force until Reza rules.
+**Status:** ✅ DECIDED (2026-08-04) — Reza ruled all eight decisions + three standing directives; the decision record and keep/hide tables of force are `docs/strategy/PROD_SIMPLIFICATION_PLAN.md` §0/§2 (that plan supersedes this document's recommendation where they differ). This document remains as the analysis of record behind the ruling.
 **Raised:** 2026-08-03 · **By:** Cowork (Matrix HQ) session · **Pinned HEAD:** `1e2317b68ba461edb55f47b3d83f4e0df9d23d66` (merge of #1575, 2026-08-03)
 **Trigger:** external review by a practising accountant (7 points, relayed by Reza 2026-08-03).
 **Gate (§20.7):** 3× self-review against the four lenses (§0.1) + §19.2 source-tracing. Every load-bearing claim below carries a this-session source (`file:line`, registry count, or ledger row). Where a claim could not be sourced it is marked UNVERIFIED and excluded from the recommendation.

@@ -7,10 +7,13 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { generateAlternatives } from '@/lib/strategy';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export const GET = withPermission<RouteContext>('report.read', async (_request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const { id } = await context!.params;
     const userId = auth.userId;

@@ -80,7 +80,9 @@ describe('MON-015: the widget renders all six components + correct count/label (
 
 describe('MON-015: the dashboard feeds the canonical entity count', () => {
   it('passes charts.entityComparison.length (the same source the sibling label uses)', () => {
-    const src = read('app/dashboard/page.tsx');
+    // PROD Simplification P1 (2026-08-04): the Home page content moved
+    // verbatim to HomeClient.tsx (page.tsx is now the MODULE_HOME wrapper).
+    const src = read('app/dashboard/HomeClient.tsx');
     expect(src).toContain('entityCount={charts?.entityComparison.length}');
   });
 });

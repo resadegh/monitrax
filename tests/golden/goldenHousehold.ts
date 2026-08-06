@@ -61,6 +61,17 @@ const NOW = new Date('2026-07-01T00:00:00Z');
 
 /** Rows shaped EXACTLY like fetchAllUserData's selects (one array per model). */
 export const GOLDEN_DB = {
+  // PROD Simplification P1 (2026-08-04): the module gate (moduleGate.ts)
+  // reads GlobalFeatureFlag at the top of gated route handlers. Ring-2
+  // route tests exercise the handler AS WHEN THE MODULE IS LIVE — gating
+  // itself is covered by tests/featureFlags/*. Keys served enabled:true;
+  // `findUnique` below honours `where.key` for this model.
+  globalFeatureFlag: [
+    'MODULE_HOME', 'MODULE_HOUSEHOLD', 'MODULE_DEBT_PLANNER', 'MODULE_SAFETY_NET',
+    'MODULE_ENTITIES', 'MODULE_INVESTMENTS', 'MODULE_TAX', 'MODULE_CFO',
+    'MODULE_STRATEGY', 'MODULE_HOUSEKEEPING', 'MODULE_SOCIAL', 'MODULE_LABS',
+    'MODULE_ORG_PORTAL',
+  ].map((key) => ({ id: `flag-${key}`, key, enabled: true })),
   legalEntity: [] as { id: string; name: string; type: string }[],
   expense: [
     { id: 'e-groceries', ownerEntityId: null, name: 'Groceries', amount: 1200, frequency: 'MONTHLY', category: 'GROCERIES', isEssential: true, isRecurring: true, isTaxDeductible: false, propertyId: null, loanId: null, assetId: null, budgetedAmount: null, lastReconciled: null },
@@ -206,8 +217,17 @@ export function createGoldenDbFrom(rowsByModel: Record<string, { id?: string }[]
         return {
           findMany: async (args?: { include?: Record<string, unknown> }) =>
             structuredClone(rows).map((r) => withInc(r as Record<string, unknown>, args?.include)),
-          findUnique: async ({ where, include }: { where: { id?: string }; include?: Record<string, unknown> }) =>
-            withInc(structuredClone(rows.find((r) => r.id === where?.id) ?? null) as Record<string, unknown> | null, include),
+          findUnique: async ({ where, include }: { where: { id?: string; key?: string }; include?: Record<string, unknown> }) =>
+            withInc(
+              structuredClone(
+                rows.find((r) =>
+                  where?.key !== undefined
+                    ? (r as { key?: string }).key === where.key
+                    : r.id === where?.id,
+                ) ?? null,
+              ) as Record<string, unknown> | null,
+              include,
+            ),
           findFirst: async ({ include }: { include?: Record<string, unknown> } = {}) =>
             withInc(structuredClone(rows[0] ?? null) as Record<string, unknown> | null, include),
           // The golden book is single-user, so every `where: { userId }` (or a

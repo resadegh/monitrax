@@ -8,8 +8,11 @@
 import { NextResponse } from 'next/server';
 import { generateStrategies } from '@/lib/strategy';
 import { withPermission } from '@/lib/auth/guards';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const POST = withPermission('settings.write', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
 

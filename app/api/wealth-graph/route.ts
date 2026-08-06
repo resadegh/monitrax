@@ -15,8 +15,11 @@
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { getWealthGraphSnapshot } from '@/lib/services/wealthGraphService';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('entity.read', async (_request, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_ENTITIES');
+    if (gateBlocked) return gateBlocked;
   const startedAt = Date.now();
   try {
     const snapshot = await getWealthGraphSnapshot(context.userId);

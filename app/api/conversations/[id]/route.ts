@@ -16,6 +16,7 @@ import {
   softDeleteFromUserView,
 } from '@/lib/services/conversationService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -24,6 +25,8 @@ interface ActionBody {
 }
 
 export const GET = withPermission<RouteContext>('report.read', async (_request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   try {
     const conversation = await getConversationDetails(id, auth.userId);
@@ -50,6 +53,8 @@ export const GET = withPermission<RouteContext>('report.read', async (_request, 
 });
 
 export const POST = withPermission<RouteContext>('report.read', async (request, auth, context) => {
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   let body: ActionBody;
   try {

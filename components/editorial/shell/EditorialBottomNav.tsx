@@ -38,7 +38,9 @@ import {
   mobileTabBarItems,
   findActiveMobileTab,
   TRAIL_STAGE_TONES,
+  filterNavByModules,
 } from '@/lib/navigation/trailNav';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 
 export interface EditorialBottomNavProps {
   /**
@@ -52,6 +54,10 @@ export interface EditorialBottomNavProps {
 
 export function EditorialBottomNav({ onMoreClick, className }: EditorialBottomNavProps) {
   const pathname = usePathname() ?? '/dashboard';
+  // PROD Simplification P1 (plan §4.2): tabs for hidden modules drop out;
+  // un-keyed tabs (Track / Invest) always render.
+  const enabledModules = useEnabledModules();
+  const visibleTabs = filterNavByModules(mobileTabBarItems, enabledModules);
   const activeTab = findActiveMobileTab(pathname);
 
   return (
@@ -65,7 +71,7 @@ export function EditorialBottomNav({ onMoreClick, className }: EditorialBottomNa
       )}
       style={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
     >
-      {mobileTabBarItems.map((cell) => {
+      {visibleTabs.map((cell) => {
         const Icon = cell.icon;
         const active = activeTab?.key === cell.key;
         const tone = cell.trailStage ? TRAIL_STAGE_TONES[cell.trailStage] : null;

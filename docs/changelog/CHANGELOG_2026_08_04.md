@@ -268,3 +268,68 @@ Registry at `e588a837`: **65 OPEN/FIXING (🔵 38 + 🟠 27), 5 critical, 146 to
 
 ### Build Status — PR-A
 - Docs-only; no product code, no schema, no number moves (`changesNumbers: NO`).
+
+### Changes Made — PR-B (P1: the module gate; flips NOTHING)
+- **Type**: Feature (exposure control — no number, engine, or schema change; `changesNumbers: NO` by contract)
+- **Scope**: PROD Simplification P1 (`docs/strategy/PROD_SIMPLIFICATION_PLAN.md` §§2-4)
+- **Description**: The full module gate. 13 flag keys (registry = the single source of the hide
+  decision), keyed fail-closed cached reader (Basiq gate now delegates to it — one implementation),
+  nav filtering across all five trailNav consumers, 20 layout guards + 38 API route files guarded
+  (503 `MODULE_DISABLED`), MODULE_HOME server-wrapper redirect (root never 404s), public
+  `/api/feature-flags/modules` + client context, unconditional PATCH cache invalidation, seed of all
+  keys `enabled:false`, admin Modules panel + §4.5 dead-control removal, per-item Strategy tabs
+  client-gated behind MODULE_STRATEGY. Every key ships OFF — deploying this PR is what hides the
+  modules in PROD (the intended v1 state, plan P2.1: "keys default hidden — nothing to flip").
+
+### Files Modified — PR-B (highlights)
+- `lib/featureFlags/moduleRegistry.ts` — NEW: 13 ModuleDefs (navHrefs · routePrefixes · audited apiPrefixes · returnStage)
+- `lib/featureFlags/moduleGate.ts` — NEW: `isFlagEnabled`/`isModuleEnabled` keyed 30s fail-closed cache + `invalidateFlagCache`
+- `lib/featureFlags/basiqGate.ts` — now a thin delegation (exports unchanged; 10 call sites untouched)
+- `lib/featureFlags/moduleRouteGuard.ts` — NEW: `moduleRouteGuard` (layout notFound) + `moduleApiGuard` (503)
+- `lib/featureFlags/ModuleGateContext.tsx` — NEW: client provider + `useModuleEnabled`/`useEnabledModules`
+- `app/api/feature-flags/modules/route.ts` — NEW: public one-call module flag map
+- `lib/navigation/trailNav.tsx` — `moduleKey` fields + `filterNavByModules` + safe `mobileMoreItems`
+- `components/editorial/shell/EditorialSidebar.tsx`, `EditorialBottomNav.tsx`, `components/shell/MoreSheet.tsx`, `MobileTabBar.tsx`, `SectionTabsRow.tsx` — render from the filtered nav
+- `components/DashboardLayout.tsx` — mounts `ModuleGateProvider`
+- `app/dashboard/page.tsx` → server MODULE_HOME wrapper; content moved verbatim to `app/dashboard/HomeClient.tsx`
+- 20 × `layout.tsx` module guards (household-profile, cashflow, plan, budget-analysis, income, expenses, debt-planner, safety-net, entities, investments, tax, cfo, strategy ×3, housekeeping, conversations, requests, labs, marketplace) + `app/portal/layout.tsx`
+- 38 × `app/api/**/route.ts` — `moduleApiGuard` at handler top (audited GATE prefixes only)
+- `app/api/admin/feature-flags/[key]/route.ts` — unconditional cache invalidation
+- `prisma/seed-feature-flags.ts` — module keys seeded `enabled:false` (update path preserved)
+- `app/admin/feature-flags/page.tsx` — Modules panel; dead override controls/columns removed
+- `app/dashboard/properties/page.tsx`, `components/loans/LoanDetailDialog.tsx` — Strategy tab behind `useModuleEnabled('MODULE_STRATEGY')`
+- `tests/featureFlags/{moduleGate,navFilter,moduleGuards}.test.ts` — NEW: 38 tests
+- `tests/golden/goldenHousehold.ts` — serves `globalFeatureFlag` enabled:true (+`where.key`) so Ring-2 route tests exercise handlers as-live
+- `tests/budget/mon125BudgetGeneratorSsot.test.ts`, `tests/dashboard/entityCashflowWidget.test.ts` — fixture/path updates for the gate + Home move
+- Neomatrix: `financial-graph.json` (1 anchor re-pinned `budgetAnalysisGenerate.POST` 68→69; `estimatedTax` 421→420; `listTileCashflow` 722→475 `cashflowOf`; 4 Home KPI-tile nodes re-pinned to `HomeClient.tsx`) + `GENERATED_CORE.md` regenerated + Layer-0 `coverage-allowlist.json` (28 new files, local-CLI precedent) + `content-manifest.json` rehash (4 anchored files, nodes re-verified)
+- `docs/strategy/PROD_SIMPLIFICATION_PLAN.md` — §2.3 FINAL audit table; P1.1–P1.9 ticked with evidence; cursor + §9 session log
+
+### Build Status — PR-B
+- [x] TypeScript compiles (`npx tsc --noEmit` clean)
+- [x] `npm run build` passes (compiled + types valid, EXIT=0)
+- [x] Full vitest suite: 313 files · **4,503 passed · 0 failed** (69 skipped)
+- [x] Changed-files lint: 0 errors (2 pre-existing warnings carried in moved/edited files). Repo-wide `npm run lint` has ~100 pre-existing errors in untouched files — documented, not introduced.
+- [x] `neomatrix:check` · `lint:financial-surfaces` · `lint:source-lock` · `census:producers:check` · `lint:ai-grounding` · `issues:check` (146 valid) · `mon131:check` (no MON-131 surface) — all green
+
+### Coverage boundary (stated precisely)
+The new tests verify the gate reader (fail-closed, keyed cache, invalidation), the nav-key inventory +
+filter, the guard helpers' 503/404/redirect contracts, and the registry invariants. They do NOT verify:
+every one of the 60+ guarded handlers end-to-end (they share the two guard helpers verbatim), the
+rendered 404 page, the admin panel UI interactions, or the P1.10 golden self-diff — that acceptance is
+the Matrix's run, recorded before merge.
+
+### Fix-up (PR-B, same day): preview build failure — 3 stale financial-math baseline anchors
+The Vercel preview build failed in `lint:financial-surfaces`: the guard-insertion line shifts moved
+3 grandfathered `.audit/financial-math-baseline.json` entries (intelligence:452→453, safety-net:75→78,
+79→82). Re-anchored the 3 entries — same debt, same count (32 grandfathered), zero new violations.
+Process note: the earlier local gate run chained commands with `;` and read tails, which masked this
+lint's non-zero exit — re-ran the whole chain with `&&` semantics before pushing (all green).
+
+### Fix-up 2 (PR-B, same day): playwright (UAT) — 3 failures were the hide working as designed
+`uat.spec.ts` exercises Home net worth, the CFO sell-property What-If, and the Home entity-value
+widget — all hidden modules in the v1 ship state, so the flows 404/redirect and the assertions
+failed. Hidden ≠ deleted: that UAT coverage is what guards each module's R-stage return, so the fix
+enables all 13 module flags in the EMULATOR-ONLY e2e DB seed (`tests/e2e/seed-emulator.ts` — refuses
+to run without `FIREBASE_AUTH_EMULATOR_HOST`; never dev/prod). Gating itself stays covered by
+`tests/featureFlags/*`. §12.11 note: the upsert's update path sets `enabled:true` on flag rows in the
+synthetic per-job e2e database only — no user data, no dev/prod reachability.

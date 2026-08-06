@@ -16,7 +16,8 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { X, LogOut, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { mobileMoreItems } from '@/lib/navigation/trailNav';
+import { mobileMoreItems, filterNavByModules } from '@/lib/navigation/trailNav';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 
 interface MoreSheetProps {
   open: boolean;
@@ -26,6 +27,10 @@ interface MoreSheetProps {
 }
 
 export function MoreSheet({ open, onClose, user, onSignOut }: MoreSheetProps) {
+  // PROD Simplification P1 (plan §4.2): drop entries for hidden modules.
+  const enabledModules = useEnabledModules();
+  const visibleMoreItems = filterNavByModules(mobileMoreItems, enabledModules);
+
   // Esc to close + body-scroll lock while open (iOS Safari).
   useEffect(() => {
     if (!open) return;
@@ -93,7 +98,7 @@ export function MoreSheet({ open, onClose, user, onSignOut }: MoreSheetProps) {
         </div>
         {/* Nav list */}
         <ul className="px-3 pb-3 space-y-0.5 max-h-[60vh] overflow-y-auto">
-          {mobileMoreItems.map((item) => {
+          {visibleMoreItems.map((item) => {
             const Icon = item.icon;
             return (
               <li key={item.href}>

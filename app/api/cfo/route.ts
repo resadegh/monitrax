@@ -8,8 +8,11 @@
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { getCFODashboardData, getCFOScore, getRisks, getActions } from '@/lib/cfo';
+import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (request, auth) => {
+    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
     const { searchParams } = new URL(request.url);
