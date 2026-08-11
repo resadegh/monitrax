@@ -50,12 +50,22 @@
 | `must be owner of database monitrax` / console "not owned by cloudsqlsuperuser" | DB created under a different identity | precondition 3 (owner `monitrax_user`, postgres a member) |
 | Preview sign-in `auth/requests-from-referer-...-are-blocked` | API key referrer allowlist lacks vercel.app | precondition 4 |
 | Flags ON but some routes still 404 | build-time-baked static prerender of gated routes | step 6 (+ the registered force-dynamic fix) |
+| Sign-in succeeds then INSTANTLY logs out; `/api/health` → `database: "disconnected"` | dev connection ceiling hit — see section below | restart `monitrax-db-dev` (immediate); connection limit / pooler (durable) |
+
+## Dev connection ceiling (seen 2026-08-11, post-refresh)
+
+`monitrax-db-dev` is a small (628MB) instance with **`max_connections = 25`**. Every Preview deployment spins its own serverless lambdas, each holding a Prisma connection pool — a few active preview deployments quietly consume the ceiling. Symptom is misleading: the app deploys READY and serves pages, but every DB-backed call fails, so auth checks fail and the user is "logged out as soon as I sign in", while an OLDER deployment (whose lambdas already hold connections) still works fine.
+
+- **Diagnose:** `SELECT count(*) AS active, (SELECT setting FROM pg_settings WHERE name='max_connections') AS max FROM pg_stat_activity;` — on 2026-08-11 this read **active=22 / max=25** at failure.
+- **Immediate remedy:** restart `monitrax-db-dev` (console → instance → Restart). Clears all pools; the newest deployment connects on next request. ~1–2 min outage for all previews.
+- **Durable fix (recommended, not yet applied):** append `?connection_limit=1&pool_timeout=30` to the Preview-scope `DATABASE_URL` in Vercel (Prisma honours these params), or front dev with a pooler (PgBouncer / Cloud SQL managed connection pooling). Alternatively raise `max_connections` via instance flags — costs memory on this tier.
+- **Rule of thumb:** if previews misbehave in ways that smell like auth, check `/api/health` FIRST — `database: "disconnected"` on a READY deployment is this failure, not an auth or env-var problem.
 
 ## Refresh log
 
 | Date | Dump | Result |
 |---|---|---|
-| 2026-08-11 | `prod-monitrax-2026-08-11.sql` | ✅ 140 tables / 36 users / 58 properties / 13 flags ON · first end-to-end run |
+| 2026-08-11 | `prod-monitrax-2026-08-11.sql` | ✅ 140 tables / 36 users / 58 properties / 13 flags ON · first end-to-end run · post-refresh: hit the connection ceiling (active=22/25) → instance restart → healthy |
 
 ## Security follow-ups (non-blocking, tracked)
 
