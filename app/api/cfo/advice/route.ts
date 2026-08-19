@@ -25,7 +25,7 @@ import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 async function handle(request: NextRequest, auth: { userId: string }) {
   // Covers the direct POST export below; GET carries its own guard.
-  const gateBlocked = await moduleApiGuard('MODULE_CFO');
+  const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
   if (gateBlocked) return gateBlocked;
   let forceRegenerate = false;
   try {
@@ -78,7 +78,7 @@ async function handle(request: NextRequest, auth: { userId: string }) {
 export const POST = withPermission('report.read', handle);
 // GET form is convenient — same semantics, no body, never force-regenerate.
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
   // Re-use the same handler; the body parser will gracefully fall back to
   // forceRegenerate=false on an empty body.

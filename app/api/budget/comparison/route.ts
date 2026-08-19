@@ -11,7 +11,7 @@ import type { CategorisedTransaction, BudgetTarget } from '@/lib/bank/types';
 import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('expense.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
@@ -108,7 +108,7 @@ export const GET = withPermission('expense.read', async (request, auth) => {
 
 // POST - Create or update budget targets
 export const POST = withPermission('expense.write', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;

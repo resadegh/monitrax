@@ -214,7 +214,7 @@ async function fetchPropertyTaxContexts(
 }
 
 export const POST = withPermission('report.read', async (request: NextRequest, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
   let body: { type?: string; params?: Record<string, unknown> };
   try {

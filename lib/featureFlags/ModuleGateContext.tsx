@@ -17,6 +17,7 @@
  */
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 import type { ModuleKey } from './moduleRegistry';
 
 interface ModuleGateValue {
@@ -28,13 +29,22 @@ interface ModuleGateValue {
 const ModuleGateContext = createContext<ModuleGateValue>({ modules: {}, loading: true });
 
 export function ModuleGateProvider({ children }: { children: ReactNode }) {
+  // R0: send the Firebase token when present so the map is the session
+  // user's EFFECTIVE map (global ∥ active override) — this is what makes
+  // an override holder's nav show the hidden module. Refetches when the
+  // token resolves/changes; unauthenticated fetches get the global map.
+  const { token, isLoading: authLoading } = useAuth();
   const [value, setValue] = useState<ModuleGateValue>({ modules: {}, loading: true });
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/feature-flags/modules', { cache: 'no-store' });
+        const res = await fetch('/api/feature-flags/modules', {
+          cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) {
           if (!cancelled) setValue({ modules: {}, loading: false });
           return;
@@ -50,7 +60,7 @@ export function ModuleGateProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token, authLoading]);
 
   return <ModuleGateContext.Provider value={value}>{children}</ModuleGateContext.Provider>;
 }

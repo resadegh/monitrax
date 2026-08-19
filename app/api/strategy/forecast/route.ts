@@ -20,7 +20,7 @@ import {
 // =============================================================================
 
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
@@ -92,7 +92,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
 // =============================================================================
 
 export const POST = withPermission('settings.write', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;

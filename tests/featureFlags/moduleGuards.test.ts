@@ -1,21 +1,25 @@
 /**
- * PROD Simplification P1.9 — server-enforcement guard tests
- * (plan §4.4, P1.4/P1.9).
+ * PROD Simplification P1.9 + R0 — server-enforcement guard tests
+ * (plan §4.4, §5 R0).
  *
- * Verifies: `moduleApiGuard` 503s with a stable code when a module is
- * off and passes through when on; `moduleRouteGuard` renders notFound
- * when off; the MODULE_HOME root redirect contract; and the registry
- * invariants the P1.2 audit locked in (no kept-caller API prefix is
- * ever gated; keys unique; MODULE_HOME is the only redirect).
+ * Verifies: `resolveModuleRouting`'s three modes (enabled /
+ * override-window / hidden) with the MON-160 dynamic-rendering
+ * opt-out ordered BEFORE any flag read; `moduleApiGuard`'s 503
+ * contract in both global-only and user-aware forms (R0 override
+ * precedence); the MODULE_HOME root redirect contract; and the
+ * registry invariants the P1.2 audit locked in.
  *
- * Coverage boundary: exercises the guard helpers + registry data, NOT
- * every gated route handler (those share the two helpers verbatim) and
- * NOT the rendered 404 page. No financial number is touched.
+ * Coverage boundary: exercises the guard/resolver helpers + registry
+ * data, NOT every gated route handler (they share the helpers
+ * verbatim), NOT the rendered 404 page, and NOT the client half of an
+ * override window (ModuleOverrideGate — locked by source-scan in
+ * r0Overrides.test.ts). No financial number is touched.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { findUnique, notFoundMock, redirectMock, connectionMock } = vi.hoisted(() => ({
+const { findUnique, overrideFindFirst, notFoundMock, redirectMock, connectionMock } = vi.hoisted(() => ({
   findUnique: vi.fn(),
+  overrideFindFirst: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -26,8 +30,14 @@ const { findUnique, notFoundMock, redirectMock, connectionMock } = vi.hoisted(()
 }));
 
 vi.mock('@/lib/db', () => ({
-  prisma: { globalFeatureFlag: { findUnique } },
-  default: { globalFeatureFlag: { findUnique } },
+  prisma: {
+    globalFeatureFlag: { findUnique },
+    featureFlagOverride: { findFirst: overrideFindFirst },
+  },
+  default: {
+    globalFeatureFlag: { findUnique },
+    featureFlagOverride: { findFirst: overrideFindFirst },
+  },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -42,7 +52,7 @@ vi.mock('next/server', async (importOriginal) => {
   return { ...actual, connection: connectionMock };
 });
 
-import { moduleApiGuard, moduleRouteGuard } from '@/lib/featureFlags/moduleRouteGuard';
+import { moduleApiGuard, resolveModuleRouting } from '@/lib/featureFlags/moduleRouteGuard';
 import { invalidateFlagCache } from '@/lib/featureFlags/moduleGate';
 import {
   MODULE_REGISTRY,
@@ -52,14 +62,52 @@ import {
 
 beforeEach(() => {
   findUnique.mockReset();
+  overrideFindFirst.mockReset();
+  overrideFindFirst.mockResolvedValue(null); // default: no overrides anywhere
   notFoundMock.mockClear();
   redirectMock.mockClear();
   connectionMock.mockClear();
   invalidateFlagCache();
 });
 
+describe('resolveModuleRouting (layout routing)', () => {
+  it("returns 'enabled' when the global flag is on (no override lookup needed)", async () => {
+    findUnique.mockResolvedValueOnce({ enabled: true });
+    await expect(resolveModuleRouting('MODULE_TAX')).resolves.toBe('enabled');
+    expect(overrideFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("returns 'hidden' when the flag is off and no active override exists (the v1 default)", async () => {
+    findUnique.mockResolvedValueOnce(null);
+    await expect(resolveModuleRouting('MODULE_TAX')).resolves.toBe('hidden');
+  });
+
+  it("returns 'override-window' when the flag is off but an active override exists (R0)", async () => {
+    findUnique.mockResolvedValueOnce({ enabled: false });
+    overrideFindFirst.mockResolvedValueOnce({ id: 'ov-1' });
+    await expect(resolveModuleRouting('MODULE_TAX')).resolves.toBe('override-window');
+  });
+
+  it("fails closed to 'hidden' when the DB is unreachable", async () => {
+    findUnique.mockRejectedValueOnce(new Error('down'));
+    overrideFindFirst.mockRejectedValueOnce(new Error('down'));
+    await expect(resolveModuleRouting('MODULE_STRATEGY')).resolves.toBe('hidden');
+  });
+
+  it('MON-160: forces dynamic rendering (connection()) BEFORE reading the flag — build-time flag state must never bake the verdict', async () => {
+    findUnique.mockResolvedValueOnce({ enabled: true });
+    await resolveModuleRouting('MODULE_TAX');
+    expect(connectionMock).toHaveBeenCalledTimes(1);
+    // Order matters: the dynamic opt-out must precede the flag read, so a
+    // statically-attempted render bails out before any verdict is computed.
+    expect(connectionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      findUnique.mock.invocationCallOrder[0],
+    );
+  });
+});
+
 describe('moduleApiGuard', () => {
-  it('returns a 503 MODULE_DISABLED response when the module is off', async () => {
+  it('returns a 503 MODULE_DISABLED response when the module is off (global-only form)', async () => {
     findUnique.mockResolvedValueOnce({ enabled: false });
     const blocked = await moduleApiGuard('MODULE_CFO');
     expect(blocked).not.toBeNull();
@@ -75,35 +123,21 @@ describe('moduleApiGuard', () => {
     await expect(moduleApiGuard('MODULE_CFO')).resolves.toBeNull();
   });
 
-  it('fails closed to 503 when the DB is unreachable', async () => {
-    findUnique.mockRejectedValueOnce(new Error('down'));
-    const blocked = await moduleApiGuard('MODULE_STRATEGY');
+  it('R0 precedence: global OFF + active override for THIS user ⇒ proceeds; another user ⇒ 503', async () => {
+    findUnique.mockResolvedValue({ enabled: false });
+    overrideFindFirst.mockImplementation(async ({ where }: { where: { targetId?: string } }) =>
+      where.targetId === 'user-reza' ? { id: 'ov-1' } : null,
+    );
+    await expect(moduleApiGuard('MODULE_TAX', 'user-reza')).resolves.toBeNull();
+    const blocked = await moduleApiGuard('MODULE_TAX', 'user-other');
     expect(blocked!.status).toBe(503);
   });
-});
 
-describe('moduleRouteGuard', () => {
-  it('renders notFound when the module is off (the v1 default)', async () => {
-    findUnique.mockResolvedValueOnce(null); // row missing = off
-    await expect(moduleRouteGuard('MODULE_TAX')).rejects.toThrow('NEXT_NOT_FOUND');
-    expect(notFoundMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('passes through silently when the module is on', async () => {
-    findUnique.mockResolvedValueOnce({ enabled: true });
-    await expect(moduleRouteGuard('MODULE_TAX')).resolves.toBeUndefined();
-    expect(notFoundMock).not.toHaveBeenCalled();
-  });
-
-  it('MON-160: forces dynamic rendering (connection()) BEFORE reading the flag — build-time flag state must never bake the verdict', async () => {
-    findUnique.mockResolvedValueOnce({ enabled: true });
-    await moduleRouteGuard('MODULE_TAX');
-    expect(connectionMock).toHaveBeenCalledTimes(1);
-    // Order matters: the dynamic opt-out must precede the flag read, so a
-    // statically-attempted render bails out before any verdict is computed.
-    expect(connectionMock.mock.invocationCallOrder[0]).toBeLessThan(
-      findUnique.mock.invocationCallOrder[0],
-    );
+  it('fails closed to 503 when the DB is unreachable', async () => {
+    findUnique.mockRejectedValueOnce(new Error('down'));
+    overrideFindFirst.mockRejectedValueOnce(new Error('down'));
+    const blocked = await moduleApiGuard('MODULE_STRATEGY', 'user-reza');
+    expect(blocked!.status).toBe(503);
   });
 });
 
@@ -119,12 +153,6 @@ describe('registry invariants (the P1.2 audit, locked)', () => {
   });
 
   it('never gates an API prefix with kept-surface callers (P1.2 verdicts)', () => {
-    // KEEP-OPEN verdicts from the audit — gating any of these breaks a
-    // kept surface: tax (wizard superSync), investments (kept dialogs'
-    // account pickers), portal (FeedbackChatDrawer in the shell),
-    // household-* (wizard + OwnershipPicker), dashboard (balances
-    // Hidden-Wealth), master-snapshot (sidebar TrailStagePill +
-    // activity page), plus everything the kept table reaches.
     const keepOpen = [
       'tax',
       'investments',
@@ -166,9 +194,10 @@ describe('registry invariants (the P1.2 audit, locked)', () => {
 });
 
 describe('MODULE_HOME root redirect (app/dashboard/page.tsx contract)', () => {
-  it('redirects to /dashboard/properties when MODULE_HOME is off', async () => {
+  it('redirects to /dashboard/properties when MODULE_HOME is fully hidden', async () => {
     vi.doMock('@/app/dashboard/HomeClient', () => ({ default: () => null }));
     findUnique.mockResolvedValue({ enabled: false });
+    overrideFindFirst.mockResolvedValue(null);
     const { default: DashboardRootPage } = await import('@/app/dashboard/page');
     await expect(DashboardRootPage()).rejects.toThrow(
       'NEXT_REDIRECT:/dashboard/properties',
