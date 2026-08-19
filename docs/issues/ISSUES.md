@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**150 total** · 89 open · 🔵 39 · 🟡 9 · 🟠 29 · 🟢 12 · ✅ 59
+**154 total** · 93 open · 🔵 38 · 🟡 10 · 🟠 33 · 🟢 12 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -138,7 +138,7 @@
 | MON-142 | 🟡 DIAGNOSED | 🟠 | yes | MON-142 (RE-DIAGNOSED VR-046): the stored 6.690% is CURRENT and correct — the repayments are historical, from a lower-rate epoch. The defect is that Loan.interestRateAnnual is UNDATED, so the app renders a contradiction instead of a rate history | — | — |
 | MON-143 | 🟢 VERIFIED | 🟠 | yes | resolveLoanMonthlyCost's interest floor does NOT net the offset (D21) — the canonical producer is the only one of four that doesn't; Guildford floors at $1,964.67 instead of $384.45, a 5.1x overstatement | ##1562 | ✅ |
 | MON-144 | 🔵 OPEN | 🟡 | no | No home for the rental-BUSINESS characterisation — OwnershipGroup/OwnershipStake record co-ownership SHARES only, so D42 C1's business-vs-passive tax treatment cannot be determined from data for any property | — | n/a |
-| MON-145 | 🔵 OPEN | 🟠 | yes | Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change | — | — |
+| MON-145 | 🟡 DIAGNOSED | 🟠 | yes | Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change | — | — |
 | MON-146 | 🔵 OPEN | 🟡 | yes | /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%) | — | — |
 | MON-147 | 🔵 OPEN | 🟢 | no | Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error | — | n/a |
 | MON-148 | ✅ CLOSED | 🟡 | no | Layer 0 carried a node for a function deleted in T1-B — the coverage gate reconciles files and hashes, never symbols, so a ghost node went unnoticed for days | ##1575 | n/a |
@@ -157,6 +157,10 @@
 | MON-161 | 🟠 FIXING | 🟡 | no | Gated-route 404 responses are cacheable — a module flip is invisible on the bare URL until the cached 404 expires | ##1594 | ✅ |
 | MON-162 | 🔵 OPEN | 🟢 | no | Admin portal and the app cannot hold independent sessions in one browser — signing into either signs the other out | — | n/a |
 | MON-163 | 🟠 FIXING | 🟠 | no | Kept property-detail page links into hidden modules (tax, income, CFO what-if) — v1 users hit 404s from the core surface | ##1594 | ✅ |
+| MON-164 | 🟠 FIXING | 🔴 | yes | The accountant pack re-derives income and expenses from raw declared rows — no actuals, no one-off gate (contextBuilder fetchIncomeData/fetchExpenseData) | ##1595 | ✅ |
+| MON-165 | 🟠 FIXING | 🔴 | yes | Depreciation has FOUR divergent producers on kept surfaces — the pack and the depreciation page use a first-year-only formula (1.95x off the canonical engine on a 3-year-old DV schedule) | ##1595 | ✅ |
+| MON-166 | 🟠 FIXING | 🟡 | no | Depreciation rate rendered 100x too large on the properties dialog — 2.5% schedule shows as 250.00% p.a. | ##1595 | ✅ |
+| MON-167 | 🟠 FIXING | 🟢 | no | Dead-link guard misses object-literal 'to:' link fields — EditorialMoneyStoryHero carries three hidden-module links the guard cannot see | ##1595 | ✅ |
 
 ---
 
@@ -179,7 +183,7 @@
 
 Reconcile write paths never persist the detected cadence; property page annualises the stored MONTHLY frequency. Subsumed by MON-002 (actuals-first). Full downstream sweep (§19.4) to be completed at fix time. Folded into MON-002: the shared engine uses monthlyAverageActual (a true monthly average from the reconciled fortnightly cadence) so fortnightly rent annualises at ×26 not ×12. Advances to VERIFIED with MON-002 once Reza confirms on his data.
 
-[C1 + D2 SHIPPED — wall Part 2, 2026-07-16] classifyIntake gains transactionDates evidence: ≥2 valid dates → the ONE canonical detectFrequency (declared/explicit user choice still WINS — suggest-and-confirm preserved). Link route threads primary+batch txn dates into all 3 classifier calls. GET-matches inline cadence block deleted → canonical (thresholds identical). D2: lib/intake/detectors.ts detectCadenceMismatch (pure; ≥3 txns, confidence ≥0.7, never one-offs) → income GET cadenceMismatch flag → income-page amber nudge chip (review-only; no auto-change — the abandoned-backfill precedent). Ring-0: classifyIntake evidence tests (weekly census fixture: 7-day deltas → WEEKLY) + detectors.test.ts (7). EXISTING rows remediation = Reza edits the flagged rows (Ring-3: flip Broadbeach + Thornland Lot 2 to WEEKLY; rental income/tax rise to the ×52 basis; regression guard: monthly-cadence rows unflagged, MON-053 one-offs unflagged). | semanticKey repointed 2026-07-31: engine.incomeAggregator.aggregateIncome was DELETED at the MON-131 T1-B flip (PR #1545) — its lineage collapsed onto the ONE banked producer engine.bankedIncome.buildBankedIncome (§21.2.1: the graph moves with the code, and registry keys move with the graph).
+[C1 + D2 SHIPPED — wall Part 2, 2026-07-16] classifyIntake gains transactionDates evidence: ≥2 valid dates → the ONE canonical detectFrequency (declared/explicit user choice still WINS — suggest-and-confirm preserved). Link route threads primary+batch txn dates into all 3 classifier calls. GET-matches inline cadence block deleted → canonical (thresholds identical). D2: lib/intake/detectors.ts detectCadenceMismatch (pure; ≥3 txns, confidence ≥0.7, never one-offs) → income GET cadenceMismatch flag → income-page amber nudge chip (review-only; no auto-change — the abandoned-backfill precedent). Ring-0: classifyIntake evidence tests (weekly census fixture: 7-day deltas → WEEKLY) + detectors.test.ts (7). EXISTING rows remediation = Reza edits the flagged rows (Ring-3: flip Broadbeach + Thornland Lot 2 to WEEKLY; rental income/tax rise to the ×52 basis; regression guard: monthly-cadence rows unflagged, MON-053 one-offs unflagged). | semanticKey repointed 2026-07-31: engine.incomeAggregator.aggregateIncome was DELETED at the MON-131 T1-B flip (PR #1545) — its lineage collapsed onto the ONE banked producer engine.bankedIncome.buildBankedIncome (§21.2.1: the graph moves with the code, and registry keys move with the graph). M2 RE-CUT (2026-08-19, B-1 diagnosis): the stated plain.check runs through /dashboard/income, which is HIDDEN in v1 (MODULE_HOUSEHOLD) - unexecutable until R3. The kept-surface residual R1 (the pack read declared-only regardless of reconciliation) is registered and fixed as MON-164 (#1595); the kept property pages were already actuals-first with the MON-093/096 cadence guard. Kept-surface verification path for THIS issue: the pack's Rental Income now matches the property page (MON-164's check); the income-page chip remains the R3 check.
 
 ### MON-002 — Per-property cashflow computed inline (declared, not canonical/actuals) -> loan cost silently $0 + SSOT drift
 
@@ -2182,7 +2186,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/calculat
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-041`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/utils/frequencies.ts:45. Expected: every Income/Expense run-rate uses monthlyRunRate()/annualRunRate() (frequencies.ts:45, which returns 0 when isRecurring === false); the source-lock lint scans lib/ producers as well as app/ surfaces. Actual: 79 raw toMonthly/toAnnual call sites in lib/, 66 ungated, of which 23 are confirmed-exposed Income/Expense reducers across 12 files. scripts/lint-source-lock.ts:53 sets SCAN_ROOT='app' with the comment 'Engines under lib/ are the producers — out of scope', so CI has never checked any of them.. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyOutflow, monthlyInflow.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/utils/frequencies.ts:45. Expected: every Income/Expense run-rate uses monthlyRunRate()/annualRunRate() (frequencies.ts:45, which returns 0 when isRecurring === false); the source-lock lint scans lib/ producers as well as app/ surfaces. Actual: 79 raw toMonthly/toAnnual call sites in lib/, 66 ungated, of which 23 are confirmed-exposed Income/Expense reducers across 12 files. scripts/lint-source-lock.ts:53 sets SCAN_ROOT='app' with the comment 'Engines under lib/ are the producers — out of scope', so CI has never checked any of them.. Evidence/run: VR-041. Unmodelled semanticKey(s) — MODEL then attach (§21.5): monthlyOutflow, monthlyInflow. M2 SCOPE CUT (2026-08-19, D-20/M2.0): full fresh enumeration found 94 raw toMonthly/toAnnual sites in 24 lib/ files. KEPT slice fixed in #1595: contextBuilder fetchers (via MON-164), entityBreakdown.ts monthlyExpenses (monthlyRunRate), propertyCashflow.ts declared-rent fallback (monthlyRunRate + isRecurring on CashflowIncome). Explicitly out (named, not fixed): cashflowOrchestrator.ts:207/227 + masterFinancialService budget-variance legs (caller-gated, no rendered kept number), portfolioEngine's local frequencies duplicates (AI grounding - flagged), all hidden/dead sites. Remaining work re-scopes at the R-stage returns.
 
 ### MON-130 — masterFinancialService derived a loan cost from raw loan.minRepayment — interest-only loans silently cost $0, so Home's budget read $8,817 against the Spending page's $12,779 for the same five loans (NARROWED 2026-08-04, D50-A: the other 11 producers are MON-156)
 
@@ -2433,19 +2437,19 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schem
 
 ### MON-145 — Loan.interestRateAnnual is an UNDATED scalar while every repayment is dated — a time-varying FACT stored as one value, so the app cannot reconcile a rate change
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-08-03
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: loans · opened 2026-08-03
 
 > **What was wrong:** Your loan interest rate is stored as a single number with no date attached, but every repayment has a date. When your bank changes the rate, the old rate is overwritten and the app can no longer explain why older repayments imply a different rate — it shows a contradiction instead of a history.
 >
 > **What changed:** Give the interest rate a date, so the app can hold a history instead of one number. Then each repayment is read against the rate that applied when it was made, and anything looking forward uses your current rate — because there are no transactions for the future yet.
 >
-- **Root cause:** `prisma/schema.prisma:1671`, `lib/tax-engine/deductions/propertyLoanInterest.ts:87`
+- **Root cause:** `prisma/schema.prisma:1671`
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-046`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: prisma/schema.prisma. Evidence/run: VR-046.REZA RULE (2026-08-03), binding on rate resolution: 'the actuals (transactions) will be the source of truth; in the absence of actuals the declared rate should be used. Note that the rates from the bank change and the applied rate to the past transactions might be different to the current existing rate in the app.' PERIOD-SCOPED, not a flat precedence: actuals are authoritative FOR THE PERIOD THEY COVER (they evidence the rate in force then); the declared rate is authoritative where no actuals exist — which ALWAYS includes the future. A forward projection therefore uses the DECLARED rate, because there are no actuals for a period that has not happened. Applying 'actuals win' to a forward projection would project FY26-27 at the superseded 6.2697% and resurrect the withdrawn VR-046 F1 claim. This rule is unimplementable while the rate is an undated scalar — 'the rate in force when this transaction occurred' has no representation until MON-145 lands.
 
-Consumer confirmed at source: propertyLoanInterest.ts:87 (theoretical branch) applies the current stored rate across an entire FY. Feed chain: userTaxPosition.ts:173/187 -> taxPositionCalculator.ts:274/831 -> propertyLoanInterest.ts:70.
+Consumer confirmed at source: propertyLoanInterest.ts:87 (theoretical branch) applies the current stored rate across an entire FY. Feed chain: userTaxPosition.ts:173/187 -> taxPositionCalculator.ts:274/831 -> propertyLoanInterest.ts:70. M2 DIAGNOSIS (2026-08-19): the defect IS the missing date dimension - no honest no-schema fix exists (rate-from-repayments inference points the wrong way per MON-142/VR-046; silent apportionment invents numbers). The historical half is already actuals-first where evidence exists (propertyLoanInterest basis 'actual'). M2 slice shipped in #1595: the property detail tax card now states 'Interest is a contractual estimate (balance x today's rate)' - matching LoanDetailDialog's honest label; changesNumbers NO. REAL fix is schema-bound (rateEffectiveFrom or LoanRateHistory) - a Reza decision queued for M3/R2. NOTE the plan/brief claim 'feeds the pack's per-loan interest' is FALSE at HEAD - the kept pack loads no loan data; per-loan interest in the pack is the M3.1 build.
 
 ### MON-146 — /dashboard/expenses renders every loan rate 100x too small — the raw decimal with a % suffix (6.69% shown as 0.0669%)
 
@@ -2456,7 +2460,7 @@ Consumer confirmed at source: propertyLoanInterest.ts:87 (theoretical branch) ap
 - **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
 - **Detail:** `neoaudit-run:VR-046`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/expenses/page.tsx. Evidence/run: VR-046.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/expenses/page.tsx. Evidence/run: VR-046. M2 SCOPING (2026-08-19, M2.0): HELD - the cited render is a bare inline interpolation on /dashboard/expenses (MODULE_HOUSEHOLD, hidden); no shared component; every kept interestRateAnnual render verified correct. The same CLASS on a kept surface (depreciation rate x100) is MON-166, fixed in #1595. Re-scope this issue at the R3 return.
 
 ### MON-147 — Production runtime logs a Node DEP0169 url.parse() DeprecationWarning at ERROR level on every function cold start — inflates the error rate with a non-error
 
@@ -2709,4 +2713,76 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/admin/lo
 - **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · found by Matrix static scan 2026-08-19, confirmed live in PROD`
 
 The Matrix's static scan found 2 files; the repo-wide guard found 8 kept-reachable files (14 link sites) - all gated in the fix PR. Hidden-only files (pages/components inside gated route trees, unreachable in v1) are exempt by the guard's registry-derived reachability walk and join it automatically when their module's registry entry is dropped at its R-stage return.
+
+### MON-164 — The accountant pack re-derives income and expenses from raw declared rows — no actuals, no one-off gate (contextBuilder fetchIncomeData/fetchExpenseData)
+
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: reports · opened 2026-08-19
+
+> **What was wrong:** The tax-time report added up your income and spending from the amounts you originally typed in, ignoring both the real bank transactions linked to them and whether an amount was a one-off. A rent row with the wrong payment frequency fed the report a figure wrong by the full ratio (54% low in the worked example), and a single one-off purchase could inflate 'Total Deductions' by twelve times its value.
+>
+> **What changed:** The report now builds each income and spending line the same way the property pages do: real linked bank transactions first, the typed amount only as the fallback, and one-off amounts counted once instead of being multiplied out for a year.
+>
+> **What you should see:** Open Reports > Tax Time. Rental income should now match what the property page shows (it was up to half too low when a rent row's payment frequency was stored wrong). 'Total Deductions' should DROP if you have any one-off purchases stored with a frequency - they now count once, not twelve times.
+
+- **Root cause:** `lib/reports/contextBuilder.ts:469`
+- **Downstream consumers (§19.4):** `lib/reports/generators/taxTime.ts - Total Taxable Income / Total Deductions / Net Taxable Income / Rental Income / Property Expenses (all reduce the per-row annualAmount)`, `lib/reports/generators/incomeExpense.ts (shares the same fetchers; report itself hidden in v1)`, `lib/reports/generators/propertyPortfolio.ts + taxTime property table - equity/LVR/depreciation columns now canonical`, `pack per-entity Cashflow /mo (entityBreakdownSection) via the entityBreakdown one-off gate`
+- **Fix PR(s):** ##1595
+- **Holistic test (§19.4):** `tests/reports/mon164PackCanonicalRows.test.ts`
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · M2 B-1 diagnosis 2026-08-19 · MON-001 residual R1 + MON-129 kept producers #1/#2 land on the SAME lines`
+
+Root cause (verified §19.2): fetchIncomeData/fetchExpenseData were plain findMany + toAnnual(amount, frequency) - no transaction join, no isRecurring gate. Worked example: rent $2,947 mis-stored MONTHLY with 26 fortnightly reconciled txs -> pack read $35,364/yr while the property page read $76,881/yr (-54%). One-off $11,385 stored MONTHLY -> pack deductions +$136,620/yr. Fix: annualContribution (exported rule carrier) - one-off rows count ONCE (mirrors salaryBanked oneOffAmount + MON-094); recurring rows read calculateMonthlyAverage over the same unifiedTransaction join the income/expenses routes use, x12; declared toAnnual only as the no-evidence fallback. Also MON-001's R1 residual and MON-129's #1/#2 kept producers - same lines. Ring-3 = the Matrix pack re-run on live data (expected movements in #1595).
+
+### MON-165 — Depreciation has FOUR divergent producers on kept surfaces — the pack and the depreciation page use a first-year-only formula (1.95x off the canonical engine on a 3-year-old DV schedule)
+
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: calculations · opened 2026-08-19
+
+> **What was wrong:** The same asset's yearly depreciation showed different numbers in different places: the property page used the correct method (which shrinks each year for diminishing-value assets), while the depreciation page and the accountant report used a first-year shortcut that never shrinks — nearly double the right amount after a few years. One variant also doubled certain building schedules the others didn't.
+>
+> **What changed:** Every place that shows yearly depreciation now uses the one correct calculator (the same one the property page always used), which properly shrinks diminishing-value claims each year.
+>
+> **What you should see:** For a diminishing-value asset older than a year: the depreciation page, the property page and the tax report now all show the SAME yearly figure (previously the report and depreciation page showed a first-year figure that could be nearly double).
+
+- **Root cause:** `lib/reports/contextBuilder.ts:519`, `app/dashboard/properties/[id]/depreciation/page.tsx:194`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/depreciation/page.tsx - per-row claim, total, remaining years/value`, `lib/reports/generators/taxTime.ts - Depreciation Claims + per-schedule table + property summary depreciation column`, `lib/reports/generators/propertyPortfolio.ts - property depreciation column`, `app/dashboard/properties/[id]/page.tsx - already canonical (P1 producer), unchanged`
+- **Fix PR(s):** ##1595
+- **Holistic test (§19.4):** `tests/reports/mon164PackCanonicalRows.test.ts`
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · M2 B-1 diagnosis 2026-08-19 · producers P2-P4 unmodelled in the Neomatrix (why A3 never fired)`
+
+Root cause (verified §19.2): four producers - canonical lib/depreciation calculateDepreciationAnnual (WDV-aware) vs first-year-only cost*rate*2 in the depreciation page and contextBuilder fetchDepreciationData, plus fetchPropertyData's variant that dropped the DIV43 guard (doubling DIV43 DV schedules). Worked example: $10k DIV40 @10% DV, 3 years in - canonical $1,024/yr vs inline $2,000/yr (1.95x). P2-P4 were unmodelled Neomatrix blind spots (why A3 never fired); the pack lineage edges are modelled in this PR. remainingYears/remainingValue also now read the engine's yearsRemaining/currentWrittenDownValue.
+
+### MON-166 — Depreciation rate rendered 100x too large on the properties dialog — 2.5% schedule shows as 250.00% p.a.
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: display · opened 2026-08-19
+
+> **What was wrong:** On the property list's detail pop-up, the Depreciation tab multiplied an already-percentage rate by 100 — a 2.5% building schedule displayed as '250.00% p.a.'. Display only; no calculation used the wrong figure.
+>
+> **What changed:** The pop-up now prints the rate as stored - a 2.5% schedule reads 2.50% p.a.
+>
+> **What you should see:** Property list > open a property with a depreciation schedule > Depreciation tab: the rate reads like 2.50% p.a., not 250.00% p.a.
+
+- **Root cause:** `app/dashboard/properties/page.tsx:1662`
+- **Downstream consumers (§19.4):** `display-only: the properties-list dialog Depreciation tab; no calculation reads the rendered string. MON-146 (the same class on the hidden /dashboard/expenses page) stays HELD under D-20.`
+- **Fix PR(s):** ##1595
+- **Holistic test (§19.4):** `tests/reports/mon164PackCanonicalRows.test.ts`
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · M2 B-1 diagnosis 2026-08-19 · MON-146's kept twin (MON-146 itself stays HELD — hidden surface)`
+
+DepreciationSchedule.rate is stored AS a percentage (schema comment + engine divides by 100); the dialog multiplied by 100 again. MON-146's kept twin - found by the M2 B-1 diagnosis scoping question.
+
+### MON-167 — Dead-link guard misses object-literal 'to:' link fields — EditorialMoneyStoryHero carries three hidden-module links the guard cannot see
+
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: gating · opened 2026-08-19
+
+> **What was wrong:** The automated check that stops pages linking into switched-off sections only recognised some ways of writing a link. A dashboard component writes its links a third way ('to:'), so its three links into hidden sections were invisible to the check. No user sees them today (the component only renders inside the hidden Home), but the check must not have blind spots.
+>
+> **What changed:** The automated link check now also recognises the third way links are written ('to:'), and the dashboard story card only links into a section when that section is switched on.
+>
+> **What you should see:** Nothing visible changes today (the card lives in the hidden Home). When the dashboard returns at M3, its story card will link only to sections that are on.
+
+- **Root cause:** `tests/featureFlags/deadLinkGuard.test.ts:158`
+- **Downstream consumers (§19.4):** `tests/featureFlags/deadLinkGuard.test.ts - LINK_PATTERNS now cover to: object-literal fields`, `components/editorial/EditorialMoneyStoryHero.tsx - STAGE_DRILL carries each target's gating moduleKey; the card renders unlinked when the target module is off (matters for the M3.4 editorial return)`
+- **Fix PR(s):** ##1595
+- **Holistic test (§19.4):** `tests/featureFlags/deadLinkGuard.test.ts`
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · M2 B-1 diagnosis 2026-08-19 (surfaced in the coverage-boundary sweep)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: tests/featureFlags/deadLinkGuard.test.ts.
 

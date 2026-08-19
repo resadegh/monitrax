@@ -19,6 +19,9 @@ import type {
 } from './types';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { toAnnual } from '@/lib/utils/frequencies';
+import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
+import { calculateEquity, calculateLVR } from '@/lib/utils/calculations';
+import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import type { Frequency } from '@/lib/types/prisma-enums';
 import { UNATTRIBUTED_ENTITY_ID } from '@/lib/calculations/entityBreakdown';
 import { ENTITY_TYPE_LABELS } from '@/lib/entities/entityTypeCatalog';
@@ -322,7 +325,9 @@ async function fetchPropertyData(userId: string): Promise<PropertyReportData[]> 
       loans: { select: { principal: true } },
       income: { select: { id: true } },
       expenses: { select: { id: true } },
-      depreciationSchedules: { select: { rate: true, cost: true, method: true, category: true } },
+      depreciationSchedules: {
+        select: { id: true, assetName: true, rate: true, cost: true, method: true, category: true, startDate: true },
+      },
     },
   });
 
@@ -334,19 +339,17 @@ async function fetchPropertyData(userId: string): Promise<PropertyReportData[]> 
       totalLoanBalance += l.principal || 0;
     }
 
-    const equity = (p.currentValue || 0) - totalLoanBalance;
-    const lvr = p.currentValue && p.currentValue > 0
-      ? (totalLoanBalance / p.currentValue) * 100
-      : 0;
+    // MON-164/MON-165: equity, LVR and depreciation come from the ONE
+    // canonical producer each (§12.2.1) — the pack must never re-derive.
+    // The old inline depreciation loop was first-year-only AND dropped the
+    // DIV43 guard (a DIV43 diminishing-value schedule was doubled here and
+    // nowhere else).
+    const equity = calculateEquity(p.currentValue || 0, totalLoanBalance);
+    const lvr = calculateLVR(totalLoanBalance, p.currentValue || 0);
 
     let annualDepreciation = 0;
     for (const d of p.depreciationSchedules) {
-      const rate = d.rate / 100;
-      if (d.method === 'DIMINISHING_VALUE') {
-        annualDepreciation += d.cost * rate * 2;
-      } else {
-        annualDepreciation += d.cost * rate;
-      }
+      annualDepreciation += calculateDepreciationAnnual(d).annualDepreciation;
     }
 
     results.push({
@@ -450,23 +453,77 @@ async function fetchInvestmentData(userId: string): Promise<InvestmentReportData
   return investments;
 }
 
+/**
+ * MON-164 — per-row ANNUAL contribution, canonical (§19.1 actuals-first):
+ *   - one-off rows (isRecurring === false) count ONCE at their amount —
+ *     mirrors the salaryBanked oneOffAmount convention and MON-094's
+ *     "genuine one-offs count once"; never annualised.
+ *   - recurring rows with ≥1 reconciled transaction: the ONE modelled
+ *     day-span producer `calculateMonthlyAverage` × 12 (the same figure
+ *     the income/expenses routes attach as monthlyAverageActual).
+ *   - recurring rows with no transactions: declared toAnnual fallback,
+ *     labelled by callers as the plan.
+ * The old code annualised every row's DECLARED amount unconditionally —
+ * no actuals, no one-off gate — feeding the pack figures wrong by the
+ * full frequency ratio (worked example −54%) and inflating deductions
+ * ×12 on one-off rows (the MON-037 battery class).
+ */
+export function annualContribution(
+  row: { amount: number; frequency: string; isRecurring: boolean | null },
+  transactions: Array<{ date: Date; amount: number }> | undefined,
+  isAdvance: boolean,
+): number {
+  if (row.isRecurring === false) return row.amount; // once, never × frequency
+  if (transactions && transactions.length > 0) {
+    const monthly = calculateMonthlyAverage(transactions, isAdvance);
+    if (monthly !== null) return monthly * 12;
+  }
+  return toAnnual(row.amount, row.frequency as Frequency);
+}
+
+function groupTxByKey(
+  rows: Array<{ date: Date; amount: number; key: string | null }>,
+): Map<string, Array<{ date: Date; amount: number }>> {
+  const map = new Map<string, Array<{ date: Date; amount: number }>>();
+  for (const r of rows) {
+    if (!r.key) continue;
+    const list = map.get(r.key) ?? [];
+    list.push({ date: r.date, amount: r.amount });
+    map.set(r.key, list);
+  }
+  return map;
+}
+
 async function fetchIncomeData(userId: string): Promise<IncomeReportData[]> {
-  const incomes = await prisma.income.findMany({
-    where: { userId },
-    include: {
-      property: { select: { name: true } },
-    },
-  });
+  const [incomes, linkedTx] = await Promise.all([
+    prisma.income.findMany({
+      where: { userId },
+      include: {
+        property: { select: { name: true } },
+      },
+    }),
+    // Same join the income route uses (Phase 30) — ALL reconciled
+    // transactions per stream, the evidence the report must not ignore.
+    prisma.unifiedTransaction.findMany({
+      where: { userId, incomeId: { not: null } },
+      select: { date: true, amount: true, incomeId: true },
+    }),
+  ]);
+  const txByIncome = groupTxByKey(
+    linkedTx.map((t) => ({ date: t.date, amount: t.amount, key: t.incomeId })),
+  );
 
   const results: IncomeReportData[] = [];
   for (const i of incomes) {
+    // Rent is paid in ADVANCE (same rule as the income route / MON-089).
+    const isAdvance = i.type === 'RENTAL' || i.type === 'RENT' || Boolean(i.propertyId);
     results.push({
       id: i.id,
       source: i.name,
       category: i.type,
       amount: i.amount,
       frequency: i.frequency,
-      annualAmount: toAnnual(i.amount, i.frequency as Frequency),
+      annualAmount: annualContribution(i, txByIncome.get(i.id), isAdvance),
       linkedPropertyName: i.property?.name || null,
       isTaxable: i.isTaxable,
     });
@@ -475,12 +532,21 @@ async function fetchIncomeData(userId: string): Promise<IncomeReportData[]> {
 }
 
 async function fetchExpenseData(userId: string): Promise<ExpenseReportData[]> {
-  const expenses = await prisma.expense.findMany({
-    where: { userId },
-    include: {
-      property: { select: { name: true } },
-    },
-  });
+  const [expenses, linkedTx] = await Promise.all([
+    prisma.expense.findMany({
+      where: { userId },
+      include: {
+        property: { select: { name: true } },
+      },
+    }),
+    prisma.unifiedTransaction.findMany({
+      where: { userId, expenseId: { not: null } },
+      select: { date: true, amount: true, expenseId: true },
+    }),
+  ]);
+  const txByExpense = groupTxByKey(
+    linkedTx.map((t) => ({ date: t.date, amount: t.amount, key: t.expenseId })),
+  );
 
   const results: ExpenseReportData[] = [];
   for (const e of expenses) {
@@ -490,7 +556,7 @@ async function fetchExpenseData(userId: string): Promise<ExpenseReportData[]> {
       category: e.category,
       amount: e.amount,
       frequency: e.frequency,
-      annualAmount: toAnnual(e.amount, e.frequency as Frequency),
+      annualAmount: annualContribution(e, txByExpense.get(e.id), false),
       linkedPropertyName: e.property?.name || null,
       isDeductible: e.isTaxDeductible,
     });
@@ -506,31 +572,14 @@ async function fetchDepreciationData(userId: string): Promise<DepreciationReport
     },
   });
 
-  const now = new Date();
   const results: DepreciationReportData[] = [];
 
   for (const d of schedules) {
-    const rate = d.rate / 100;
-    const totalYears = 100 / d.rate;
-    const yearsElapsed = (now.getTime() - new Date(d.startDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-    const remainingYears = Math.max(0, totalYears - yearsElapsed);
-
-    // Calculate annual deduction
-    let annualDeduction: number;
-    if (d.method === 'DIMINISHING_VALUE' && d.category === 'DIV40') {
-      annualDeduction = d.cost * rate * 2;
-    } else {
-      annualDeduction = d.cost * rate;
-    }
-
-    // Calculate remaining value
-    let remainingValue: number;
-    if (d.method === 'PRIME_COST') {
-      remainingValue = d.cost * (remainingYears / totalYears);
-    } else {
-      const effectiveRate = rate * (d.category === 'DIV40' ? 2 : 1);
-      remainingValue = d.cost * Math.pow(1 - effectiveRate, yearsElapsed);
-    }
+    // MON-165: the ONE canonical engine (§12.2.1). The old inline math was
+    // first-year-only for diminishing-value schedules (cost × rate × 2,
+    // yearsElapsed ignored) — 1.95× over-claim on a 3-year-old DV DIV40
+    // asset vs the written-down-value method the property page shows.
+    const dep = calculateDepreciationAnnual(d);
 
     results.push({
       id: d.id,
@@ -541,9 +590,9 @@ async function fetchDepreciationData(userId: string): Promise<DepreciationReport
       cost: d.cost,
       rate: d.rate,
       startDate: d.startDate,
-      annualDeduction: Math.round(annualDeduction),
-      remainingYears: Math.round(remainingYears * 10) / 10,
-      remainingValue: Math.round(remainingValue),
+      annualDeduction: Math.round(dep.annualDepreciation),
+      remainingYears: Math.round(dep.yearsRemaining * 10) / 10,
+      remainingValue: Math.round(dep.currentWrittenDownValue),
     });
   }
 

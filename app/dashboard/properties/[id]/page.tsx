@@ -567,7 +567,7 @@ export default function PropertyDetailPage() {
             <InsightCard
               icon={FileText}
               title="Tax position"
-              body={`For tax, this property's result is ${formatCurrency(cf.annualTaxCashflow)}/yr (rent − expenses − loan interest; principal isn't deductible). Cash cashflow is ${formatCurrency(cf.annualCashflow)}/yr.${taxModuleEnabled ? ' See its impact in your FY26 tax position.' : ''}`}
+              body={`For tax, this property's result is ${formatCurrency(cf.annualTaxCashflow)}/yr (rent − expenses − loan interest; principal isn't deductible). Interest is a contractual estimate (balance × today's rate). Cash cashflow is ${formatCurrency(cf.annualCashflow)}/yr.${taxModuleEnabled ? ' See its impact in your FY26 tax position.' : ''}`}
               cta={taxModuleEnabled ? 'View tax position' : undefined}
               href={taxModuleEnabled ? '/dashboard/tax' : undefined}
               tint="emerald"
