@@ -22,7 +22,7 @@ interface ActionBody {
 }
 
 export const POST = withPermission<RouteContext>('report.read', async (request, auth, context) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   let body: ActionBody;

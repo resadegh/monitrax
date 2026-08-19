@@ -33,6 +33,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
@@ -59,6 +60,12 @@ export default function CorrectOwnershipDialog({
   objectName,
   onCorrected,
 }: CorrectOwnershipDialogProps) {
+  // PROD Simplification P2.4 (D-6): with MODULE_ENTITIES off the picker
+  // renders nothing, so this dialog could only ever submit `sole` — which
+  // would OVERWRITE existing joint/shared/entity attribution. That write
+  // path is blocked entirely: the form is replaced by a notice and the
+  // submit button is not rendered. Existing attribution stays untouched.
+  const entitiesModuleEnabled = useModuleEnabled('MODULE_ENTITIES');
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +117,12 @@ export default function CorrectOwnershipDialog({
           <DialogDescription>{objectName} — who should this be recorded under?</DialogDescription>
         </DialogHeader>
 
+        {!entitiesModuleEnabled ? (
+          <div className="rounded-[14px] border border-foreground/10 bg-background/50 p-4 text-sm text-muted-foreground">
+            Ownership editing isn&apos;t available right now. This record is unchanged —
+            everything stays exactly as it was captured.
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
 
@@ -149,6 +162,7 @@ export default function CorrectOwnershipDialog({
             </Button>
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

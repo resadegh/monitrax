@@ -182,7 +182,7 @@ async function buildSummaryInput(userId: string) {
 // =============================================================================
 
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
@@ -265,7 +265,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
 // =============================================================================
 
 export const POST = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;

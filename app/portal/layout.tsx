@@ -10,7 +10,7 @@
 
 import { Metadata } from 'next';
 import { PortalLayoutClient } from './PortalLayoutClient';
-import { moduleRouteGuard } from '@/lib/featureFlags/moduleRouteGuard';
+import ModuleGateBoundary from '@/components/featureFlags/ModuleGateBoundary';
 
 export const metadata: Metadata = {
   title: 'Monitrax Portal',
@@ -22,10 +22,13 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // PROD Simplification P1 (plan §4.4): the Org Portal is a hidden
+  // PROD Simplification (plan §4.4 + R0): the Org Portal is a hidden
   // module in v1 (MODULE_ORG_PORTAL, returns at R5 as its own product
   // decision). /api/portal/* stays open — the in-app FeedbackChatDrawer
   // depends on /api/portal/feedback (P1.2 audit).
-  await moduleRouteGuard('MODULE_ORG_PORTAL');
-  return <PortalLayoutClient>{children}</PortalLayoutClient>;
+  return (
+    <ModuleGateBoundary moduleKey="MODULE_ORG_PORTAL">
+      <PortalLayoutClient>{children}</PortalLayoutClient>
+    </ModuleGateBoundary>
+  );
 }

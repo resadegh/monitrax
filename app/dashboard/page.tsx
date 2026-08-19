@@ -9,15 +9,25 @@
  * returns rebuilt at R4, when its feeder modules do.
  */
 import { redirect } from 'next/navigation';
-import { isModuleEnabled } from '@/lib/featureFlags/moduleGate';
+import { resolveModuleRouting } from '@/lib/featureFlags/moduleRouteGuard';
+import { ModuleOverrideGate } from '@/components/featureFlags/ModuleOverrideGate';
 import HomeClient from './HomeClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardRootPage() {
-  const homeEnabled = await isModuleEnabled('MODULE_HOME');
-  if (!homeEnabled) {
+  const mode = await resolveModuleRouting('MODULE_HOME');
+  if (mode === 'hidden') {
     redirect('/dashboard/properties');
   }
-  return <HomeClient />;
+  if (mode === 'enabled') {
+    return <HomeClient />;
+  }
+  // R0 override window: the override holder sees Home; everyone else is
+  // client-redirected to /dashboard/properties (the root never 404s, D-4).
+  return (
+    <ModuleOverrideGate moduleKey="MODULE_HOME" fallbackHref="/dashboard/properties">
+      <HomeClient />
+    </ModuleOverrideGate>
+  );
 }

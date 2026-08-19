@@ -32,7 +32,7 @@ import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
  * - Full FinancialHealthReport or quick score summary
  */
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;

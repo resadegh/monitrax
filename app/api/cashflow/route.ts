@@ -150,7 +150,7 @@ async function buildCOEInput(
  * Note: 'lite' mode returns minimal data for faster loading on cold starts
  */
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;

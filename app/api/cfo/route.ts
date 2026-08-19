@@ -11,7 +11,7 @@ import { getCFODashboardData, getCFOScore, getRisks, getActions } from '@/lib/cf
 import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;

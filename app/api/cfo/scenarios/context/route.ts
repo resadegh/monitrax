@@ -104,7 +104,7 @@ async function fetchLoanViews(userId: string): Promise<LoanView[]> {
 }
 
 export const GET = withPermission('report.read', async (_request: NextRequest, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const [snapshot, superAccounts, loans] = await Promise.all([

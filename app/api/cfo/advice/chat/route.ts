@@ -59,7 +59,7 @@ interface ChatBody {
 }
 
 export const POST = withPermission('report.read', async (request: NextRequest, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
   let body: ChatBody;
   try {
@@ -238,7 +238,7 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
 // GET — return chat history for the user's active advice doc (for
 // page-load hydration).
 export const GET = withPermission('report.read', async (_request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_CFO');
+    const gateBlocked = await moduleApiGuard('MODULE_CFO', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const advice = await prisma.aIAdviceDocument.findFirst({

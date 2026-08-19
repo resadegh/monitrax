@@ -1,6 +1,6 @@
 {
   "_comment": "MON-131 producer-census ratchet seed — RATCHET-DOWN-ONLY. A rising count fails CI; a falling count requires re-seeding in the same PR (the drop is the deliverable — record it in history). Method: scripts/census/producers-census.mjs header.",
-  "seededAt": "2026-08-03",
+  "seededAt": "2026-08-19",
   "counts": {
     "expenseRunRate": 79,
     "incomeRunRate": 126,
@@ -22,7 +22,7 @@
     "forecastFlows": 69,
     "propertyCashflowYield": 6,
     "liquidCash": 58,
-    "deductions": 105,
+    "deductions": 104,
     "healthScore": 19,
     "landTax": 8,
     "negativeGearing": 7,
@@ -288,6 +288,52 @@
         "moneyStoryMargin": 6
       },
       "note": "MON-131 T2 MIGRATION — the first REAL producer deletion of the programme. loanCost 31 -> 30: lib/services/masterFinancialService.ts:computeMasterFinancialSnapshot no longer derives a loan cost from raw minRepayment. It reads lib/services/loanCosts.ts:resolveLoanCostsForUser, and the `.filter(l => l.minRepayment && l.repaymentFrequency)` that made both interest-only loans and HECS invisible is DELETED, not widened. Unlike the 2026-07-31 entry above, this fall is a deleted producer, not a measurement correction. READ THE COUNT HONESTLY: 30 is not 1. T2's declared contract (.audit/expected-moves-t2.json) measures the masterFinancialService leaves ONLY, so this PR migrates that one producer. The remaining 30 sites move surfaces the T2 derivation sweep does not cover (moneyFlow's entity flow, the CFO scores, risks, reports, the health tree) and each needs its own declaration before it can be collapsed — see expected-moves-t2.json _meta.acceptance.scopeOfThisTranchesMigration. Migrating them inside this PR would have produced MOVED-UNDECLARED at G7 by construction. Two phantom rises were caught and removed rather than seeded: a named arrow helper split the function unit (+1 on four quantities) and comment prose matched the text-based patterns (+1 on three more). Both are recorded in the code at the migration site so they are not re-introduced."
+    },
+    {
+      "date": "2026-08-19",
+      "counts": {
+        "expenseRunRate": 79,
+        "incomeRunRate": 126,
+        "loanCost": 30,
+        "netWorth": 7,
+        "savingsRate": 30,
+        "emergencyMonths": 14,
+        "medicareLevy": 20,
+        "superCap": 10,
+        "depreciation": 15,
+        "payg": 54,
+        "incomeTax": 76,
+        "propertyEquity": 11,
+        "cashflow": 57,
+        "taxableIncome": 38,
+        "netIncome": 33,
+        "grossIncome": 36,
+        "assetsLiabilitiesBreakdown": 24,
+        "forecastFlows": 69,
+        "propertyCashflowYield": 6,
+        "liquidCash": 58,
+        "deductions": 104,
+        "healthScore": 19,
+        "landTax": 8,
+        "negativeGearing": 7,
+        "stampDuty": 4,
+        "gst": 15,
+        "cgt": 98,
+        "psiAttribution": 11,
+        "div293": 4,
+        "taxOffsetsFranking": 48,
+        "fteIeeElections": 13,
+        "loanAmortisation": 8,
+        "investmentReturns": 22,
+        "superProjection": 3,
+        "propertyValuationGrowth": 6,
+        "insuranceAdequacy": 15,
+        "budgetVariance": 20,
+        "lvrGearing": 39,
+        "freedomHorizon": 6,
+        "moneyStoryMargin": 6
+      },
+      "note": "P2.3 reports narrowing (PROD Simplification, P2-gate PR): deductions 105 -> 104. NOT a producer deletion - a phantom text-match removal, the same class the 2026-08-03 entry records: app/dashboard/reports/page.tsx's help section duplicated the tile descriptions as hardcoded prose, and one prose line matched the text-based deductions pattern. P2.3 deleted the duplicated list (help now renders from the same reportTypes array as the tiles, §12.2.1), taking the phantom match with it. No code that computes a deduction changed."
     }
   ]
 }
