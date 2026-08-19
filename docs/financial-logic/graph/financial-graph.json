@@ -5559,12 +5559,12 @@
       "semanticKey": "propertyCashflow",
       "produces": "Renders the per-property annual cashflow on each PropertyTile from the SAME canonical engine as the detail page.",
       "formula": null,
-      "authority": "app/dashboard/properties/page.tsx:476 calculateCashflow \u2192 cashflowOf \u2192 computePropertyCashflow",
+      "authority": "app/dashboard/properties/page.tsx:488 calculateCashflow \u2192 cashflowOf \u2192 computePropertyCashflow",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "app/dashboard/properties/page.tsx:475 cashflowOf -> computePropertyCashflow (canonical engine) (re-pinned 2026-08-04, PROD-Simplification P1 \u2014 line shift only, no logic change)",
       "workedExample": null,
-      "verifiedDate": "2026-07-03",
+      "verifiedDate": "2026-08-19",
       "status": "documented"
     },
     {

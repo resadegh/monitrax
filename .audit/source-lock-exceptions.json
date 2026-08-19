@@ -1,5 +1,5 @@
 {
-  "comment": "Calc-SSOT Wall A1 — tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
+  "comment": "Calc-SSOT Wall A1 \u2014 tracked source-lock debt (raw-row reads that bypass canonical producers). RATCHET-DOWN-ONLY: counts may only decrease. Fixing a bypass REQUIRES decrementing/deleting its entry in the same PR (the lint fails on a stale count). Adding debt requires SOURCE_LOCK_SEED=1 regeneration + explicit reviewer sign-off (MATRIX_FIX_DISCIPLINE.md gate 2).",
   "generatedAt": "2026-07-29T04:55:08.403Z",
   "count": 205,
   "entries": [
@@ -161,7 +161,7 @@
     {
       "file": "app/dashboard/properties/page.tsx",
       "pattern": "RAW_MIN_REPAYMENT_COST",
-      "count": 4
+      "count": 3
     },
     {
       "file": "lib/calculations/assetValuation.ts",
