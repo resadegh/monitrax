@@ -21,8 +21,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthenticatedRequest } from '@/lib/middleware';
-import { isModuleEnabled, isModuleEnabledForUser } from '@/lib/featureFlags/moduleGate';
+import { isFlagEnabled, isModuleEnabled, isModuleEnabledForUser } from '@/lib/featureFlags/moduleGate';
 import { MODULE_KEYS, type ModuleKey } from '@/lib/featureFlags/moduleRegistry';
+import { TILE_REGISTRY, tileSuppressFlagKey, type TileId } from '@/lib/dashboard/tileRegistry';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +37,28 @@ async function buildMap(userId?: string): Promise<Record<ModuleKey, boolean>> {
   return Object.fromEntries(entries) as Record<ModuleKey, boolean>;
 }
 
+/**
+ * D-19: the suppressed-tile set (as public as the tiles it hides). A
+ * suppression flag can only HIDE a tile — the visibility law in
+ * lib/dashboard/tileRegistry.ts makes force-show structurally impossible —
+ * so an unreadable flag reading `false` (not suppressed) is safe: the
+ * module gate above it still fails closed.
+ */
+async function buildSuppressed(): Promise<TileId[]> {
+  const entries = await Promise.all(
+    TILE_REGISTRY.map(async (t) => [t.id, await isFlagEnabled(tileSuppressFlagKey(t.id))] as const),
+  );
+  return entries.filter(([, on]) => on).map(([id]) => id);
+}
+
 export async function GET(request: NextRequest) {
   if (!request.headers.get('authorization')) {
-    return NextResponse.json({ modules: await buildMap() });
+    return NextResponse.json({ modules: await buildMap(), suppressedTiles: await buildSuppressed() });
   }
   return withAuth(request, async (authReq: AuthenticatedRequest) => {
-    return NextResponse.json({ modules: await buildMap(authReq.user!.userId) });
+    return NextResponse.json({
+      modules: await buildMap(authReq.user!.userId),
+      suppressedTiles: await buildSuppressed(),
+    });
   });
 }

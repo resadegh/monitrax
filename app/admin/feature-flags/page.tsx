@@ -24,6 +24,11 @@ import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
 import { CreateFlagModal } from '@/components/admin/feature-flags/CreateFlagModal';
 import { MODULE_REGISTRY, isModuleKey } from '@/lib/featureFlags/moduleRegistry';
+import {
+  TILE_REGISTRY,
+  tileSuppressFlagKey,
+  type TileDef,
+} from '@/lib/dashboard/tileRegistry';
 
 interface FeatureFlag {
   id: string;
@@ -171,6 +176,56 @@ export default function FeatureFlagsPage() {
     returnStage: m.returnStage,
     flag: flags.find((f) => f.key === m.key),
   }));
+
+  // D-19 — Dashboard tiles rows. Computed state derives from the GLOBAL
+  // module flags (this is the admin view; per-user overrides don't apply
+  // here) + the tile's suppress flag. A toggle can only SUPPRESS — the
+  // visibility law in lib/dashboard/tileRegistry.ts makes force-show
+  // structurally impossible.
+  type TileRow = TileDef & {
+    suppressKey: string;
+    suppressFlag: FeatureFlag | undefined;
+    state: 'LIVE' | 'HIDDEN — module off' | 'SUPPRESSED';
+  };
+  const tileRows: TileRow[] = TILE_REGISTRY.map((t) => {
+    const suppressKey = tileSuppressFlagKey(t.id);
+    const suppressFlag = flags.find((f) => f.key === suppressKey);
+    const moduleOn = t.requires === null || flags.find((f) => f.key === t.requires)?.enabled === true;
+    const state: TileRow['state'] = !moduleOn
+      ? 'HIDDEN — module off'
+      : suppressFlag?.enabled === true
+        ? 'SUPPRESSED'
+        : 'LIVE';
+    return { ...t, suppressKey, suppressFlag, state };
+  });
+
+  // Suppress flags are created lazily on first toggle (the flag store's
+  // existing POST), then toggled via the same PATCH every flag uses.
+  const handleTileSuppress = async (row: TileRow) => {
+    if (row.suppressFlag) {
+      await handleToggle(row.suppressKey, row.suppressFlag.enabled);
+      return;
+    }
+    setToggling(row.suppressKey);
+    try {
+      const response = await fetch('/api/admin/feature-flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: row.suppressKey,
+          name: `Tile suppressed — ${row.label}`,
+          description: `D-19 dashboard tile suppression for '${row.id}'. Enabled = the tile is hidden from the scoreboard. Can only hide; never force-shows a tile whose module is off.`,
+          enabled: true,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create suppression flag');
+      await fetchFlags();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to suppress tile');
+    } finally {
+      setToggling(null);
+    }
+  };
 
   // The generic table below shows only NON-module flags (e.g. Basiq) —
   // module keys live in the Modules panel above, never in both.
@@ -412,6 +467,87 @@ export default function FeatureFlagsPage() {
               </AdminButton>
             </div>
           </div>
+        )}
+      </AdminCard>
+
+      {/* D-19 — Dashboard tiles (plan M3.4). One row per registry tile:
+          label · stage · owning module · computed state · suppress toggle. */}
+      <AdminCard padding="none" className="mb-6">
+        <div className="px-6 pt-5 pb-1">
+          <AdminCardHeader
+            title="Dashboard tiles"
+            description="The v1 scoreboard's tiles (D-19). Visibility derives from the owning module — a stage tile lights itself the moment its module flips, with no deploy. The toggle can only SUPPRESS a tile; it can never show a tile whose module is off."
+          />
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <span className="text-gray-500">Loading tiles…</span>
+          </div>
+        ) : (
+          <AdminTable
+            columns={[
+              {
+                key: 'label',
+                header: 'Tile',
+                render: (row) => (
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{row.label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{row.id}</p>
+                  </div>
+                ),
+              },
+              {
+                key: 'stage',
+                header: 'Stage',
+                render: (row) => <span className="text-sm">{row.stage}</span>,
+              },
+              {
+                key: 'module',
+                header: 'Module',
+                render: (row) =>
+                  row.requires ? (
+                    <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{row.requires}</span>
+                  ) : (
+                    <span className="text-xs text-gray-400">v1 core</span>
+                  ),
+              },
+              {
+                key: 'state',
+                header: 'State',
+                render: (row) =>
+                  row.state === 'LIVE' ? (
+                    <AdminBadge variant="success" size="sm">LIVE</AdminBadge>
+                  ) : row.state === 'SUPPRESSED' ? (
+                    <AdminBadge variant="warning" size="sm">SUPPRESSED</AdminBadge>
+                  ) : (
+                    <AdminBadge variant="default" size="sm">HIDDEN — module off</AdminBadge>
+                  ),
+              },
+              {
+                key: 'suppress',
+                header: 'Suppress',
+                render: (row) => (
+                  <button
+                    onClick={() => handleTileSuppress(row)}
+                    disabled={toggling === row.suppressKey}
+                    aria-label={`Suppress ${row.label}`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      toggling === row.suppressKey ? 'opacity-50' : ''
+                    } ${row.suppressFlag?.enabled ? 'bg-amber-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        row.suppressFlag?.enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                ),
+              },
+            ]}
+            data={tileRows}
+            keyExtractor={(row) => row.id}
+            emptyMessage="No tiles registered"
+          />
         )}
       </AdminCard>
 
