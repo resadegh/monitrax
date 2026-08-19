@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calculator, Plus, Edit2, Trash2, ArrowLeft, Home, TrendingDown, Clock, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import { StatCard } from '@/components/StatCard';
 
 interface Property {
@@ -190,42 +191,24 @@ export default function DepreciationPage() {
     }
   };
 
-  // Calculate annual depreciation for display
-  const calculateAnnualDepr = (schedule: DepreciationSchedule) => {
-    const rate = schedule.rate / 100;
-    if (schedule.method === 'DIMINISHING_VALUE' && schedule.category === 'DIV40') {
-      // Simplified - assumes first year
-      return schedule.cost * rate * 2;
-    }
-    return schedule.cost * rate;
-  };
+  // MON-165: every figure on this page comes from the ONE canonical engine
+  // (lib/depreciation — the same producer the property detail page and the
+  // reports pack read). The old inline math was first-year-only for
+  // diminishing-value schedules (a first-year-only shortcut), so this
+  // page could disagree with the property page by ~2x on an aged DV asset.
+  const canonicalDep = (schedule: DepreciationSchedule) =>
+    calculateDepreciationAnnual(schedule as never);
+
+  const calculateAnnualDepr = (schedule: DepreciationSchedule) =>
+    canonicalDep(schedule).annualDepreciation;
 
   const totalAnnualDepreciation = schedules.reduce((sum, s) => sum + calculateAnnualDepr(s), 0);
 
-  // Calculate remaining years for a schedule
-  const calculateRemainingYears = (schedule: DepreciationSchedule) => {
-    const startDate = new Date(schedule.startDate);
-    const now = new Date();
-    const yearsElapsed = (now.getTime() - startDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-    const totalYears = 100 / schedule.rate; // e.g., 10% rate = 10 years
-    const remaining = Math.max(0, totalYears - yearsElapsed);
-    return Math.round(remaining * 10) / 10; // Round to 1 decimal
-  };
+  const calculateRemainingYears = (schedule: DepreciationSchedule) =>
+    Math.round(canonicalDep(schedule).yearsRemaining * 10) / 10;
 
-  // Calculate remaining value for a schedule
-  const calculateRemainingValue = (schedule: DepreciationSchedule) => {
-    const remainingYears = calculateRemainingYears(schedule);
-    const totalYears = 100 / schedule.rate;
-    if (schedule.method === 'PRIME_COST') {
-      // Straight line: remaining value = cost * (remaining years / total years)
-      return schedule.cost * (remainingYears / totalYears);
-    } else {
-      // Diminishing value: approximate remaining value
-      const yearsElapsed = totalYears - remainingYears;
-      const effectiveRate = (schedule.rate / 100) * (schedule.category === 'DIV40' ? 2 : 1);
-      return schedule.cost * Math.pow(1 - effectiveRate, yearsElapsed);
-    }
-  };
+  const calculateRemainingValue = (schedule: DepreciationSchedule) =>
+    canonicalDep(schedule).currentWrittenDownValue;
 
   // Summary calculations
   const totalCost = schedules.reduce((sum, s) => sum + s.cost, 0);

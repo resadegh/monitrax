@@ -490,7 +490,6 @@ function PropertiesPageContent() {
   const calculateAnnualLoanRepayments = (property: Property) =>
     cashflowOf(property).annualLoanRepayment;
 
-  const calculateAnnualInterest = (property: Property) => cashflowOf(property).annualLoanInterest;
 
   // Exclude RENTAL properties from value/equity calculations (they're not owned)
   const ownedProperties = properties.filter(p => p.type !== 'RENTAL');
@@ -1198,28 +1197,21 @@ function PropertiesPageContent() {
                   </div>
 
                   {selectedProperty.type === 'INVESTMENT' && (() => {
-                    // Calculate actual cashflow for Details tab
-                    const annualIncomeBudget = selectedProperty.income?.reduce((sum, inc) =>
-                      sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0;
-                    const annualIncomeActual = selectedProperty.income?.reduce((sum, inc) =>
-                      sum + ((inc.monthlyAverageActual || 0) * 12), 0) || 0;
-                    const hasIncomeActuals = selectedProperty.income?.some(inc => inc.hasTransactions);
-
-                    const annualExpenseBudget = selectedProperty.expenses?.reduce((sum, exp) =>
-                      sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0;
-                    const annualExpenseActual = selectedProperty.expenses?.reduce((sum, exp) =>
-                      sum + ((exp.monthlyAverageActual || 0) * 12), 0) || 0;
-                    const hasExpenseActuals = selectedProperty.expenses?.some(exp => exp.hasTransactions);
-
-                    const annualLoanBudget = calculateAnnualLoanRepayments(selectedProperty);
-                    const annualLoanActual = selectedProperty.loans?.reduce((sum, loan) =>
-                      sum + ((loan.monthlyAverageActual || 0) * 12), 0) || 0;
-                    const hasLoanActuals = selectedProperty.loans?.some(loan => loan.hasTransactions);
-
-                    const cashflowBudget = annualIncomeBudget - annualExpenseBudget - annualLoanBudget;
-                    const cashflowActual = hasIncomeActuals || hasExpenseActuals || hasLoanActuals
-                      ? annualIncomeActual - annualExpenseActual - annualLoanActual
-                      : null;
+                    // M2.4 (B-3): the dialog reads the SAME canonical engine as
+                    // the tile and the detail page — never a re-derivation. The
+                    // old inline Budget/Actual pair summed raw rows (declared ×
+                    // frequency vs monthlyAverageActual × 12), bypassing the
+                    // engine's one-off gate, managed-fee add-back and loan
+                    // floor — so the dialog could disagree with the tile ON THE
+                    // SAME SCREEN. One number, one producer (§12.2.1); the
+                    // basis chip says which inputs it stands on.
+                    const cf = cashflowOf(selectedProperty);
+                    const basisLabel =
+                      cf.basis === 'actual'
+                        ? 'from reconciled transactions'
+                        : cf.basis === 'mixed'
+                          ? 'reconciled + declared inputs'
+                          : 'from declared amounts';
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1231,20 +1223,10 @@ function PropertiesPageContent() {
                         </div>
                         <div className="p-4 bg-muted/50 rounded-lg">
                           <p className="text-sm text-muted-foreground">Annual Cashflow</p>
-                          <div className="flex justify-between items-baseline">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Budget</p>
-                              <p className={`text-xl font-bold ${cashflowBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {formatCurrency(cashflowBudget)}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-muted-foreground">Actual</p>
-                              <p className={`text-xl font-bold ${cashflowActual !== null ? (cashflowActual >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
-                                {cashflowActual !== null ? formatCurrency(cashflowActual) : '—'}
-                              </p>
-                            </div>
-                          </div>
+                          <p className={`text-xl font-bold ${cf.annualCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(cf.annualCashflow)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{basisLabel}</p>
                         </div>
                       </div>
                     );
@@ -1410,124 +1392,55 @@ function PropertiesPageContent() {
 
                     {/* Summary Cards with Budget vs Actual */}
                     {(() => {
-                      // Calculate totals for Budget (from entries) and Actual (from transactions)
-                      const incomeBudget = selectedProperty.income?.reduce((sum, inc) =>
-                        sum + normalizeAmount(inc.amount, inc.frequency), 0) || 0;
-                      const incomeActual = selectedProperty.income?.reduce((sum, inc) =>
-                        sum + (normalizeActual(inc.monthlyAverageActual) || 0), 0) || 0;
-                      const hasIncomeActuals = selectedProperty.income?.some(inc => inc.hasTransactions);
-
-                      const expenseBudget = selectedProperty.expenses?.reduce((sum, exp) =>
-                        sum + normalizeAmount(exp.amount, exp.frequency), 0) || 0;
-                      const expenseActual = selectedProperty.expenses?.reduce((sum, exp) =>
-                        sum + (normalizeActual(exp.monthlyAverageActual) || 0), 0) || 0;
-                      const hasExpenseActuals = selectedProperty.expenses?.some(exp => exp.hasTransactions);
-
-                      const loanBudget = selectedProperty.loans?.reduce((sum, loan) =>
-                        sum + normalizeAmount(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'), 0) || 0;
-                      const loanActual = selectedProperty.loans?.reduce((sum, loan) =>
-                        sum + (normalizeActual(loan.monthlyAverageActual) || 0), 0) || 0;
-                      const hasLoanActuals = selectedProperty.loans?.some(loan => loan.hasTransactions);
-
-                      const cashflowBudget = incomeBudget - expenseBudget - loanBudget;
-                      const cashflowActual = hasIncomeActuals || hasExpenseActuals || hasLoanActuals
-                        ? incomeActual - expenseActual - loanActual
-                        : null;
-
+                      // M2.4 (B-3): the Cashflow tab reads the ONE canonical
+                      // engine — the same numbers as the tile, the hero strip
+                      // and the detail page. The old inline Budget/Actual
+                      // tiles re-summed raw rows (declared × frequency vs
+                      // monthlyAverageActual), so an interest-only loan's
+                      // "Budget" read $0 (raw minRepayment — the MON-032
+                      // class) and the tab could contradict the tile on the
+                      // same screen. Per-record Budget columns below still
+                      // show each row's declared amount — labelled as the
+                      // plan, never re-aggregated (§19.1).
+                      // (No helper arrow here on purpose: the producer-census
+                      // splits units on `const X = () =>`, and a helper would
+                      // swallow the loans tab below into a phantom new unit.)
+                      const cf = cashflowOf(selectedProperty);
                       return (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Income */}
                           <div className="p-3 bg-green-50 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Income</p>
-                            <div className="flex justify-between items-baseline">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Budget</p>
-                                <p className={`text-lg font-bold ${incomeBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(incomeBudget)}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">Actual</p>
-                                <p className={`text-lg font-bold ${hasIncomeActuals ? (incomeActual >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
-                                  {hasIncomeActuals ? formatCurrency(incomeActual) : '—'}
-                                </p>
-                              </div>
-                            </div>
-                            {hasIncomeActuals && (
-                              <div className={`text-xs mt-1 flex items-center gap-1 ${incomeActual >= incomeBudget ? 'text-green-600' : 'text-red-600'}`}>
-                                {incomeActual >= incomeBudget ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                                {formatCurrency(incomeActual - incomeBudget)} ({((incomeActual - incomeBudget) / incomeBudget * 100).toFixed(0)}%)
-                              </div>
-                            )}
+                            <p className="text-xs text-muted-foreground">Income /mo</p>
+                            <p className="text-lg font-bold text-green-600">{formatCurrency(cf.monthlyRent)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {cf.usedActuals.income ? 'from reconciled transactions' : 'from declared amounts'}
+                            </p>
                           </div>
-
-                          {/* Expenses */}
                           <div className="p-3 bg-red-50 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Expenses</p>
-                            <div className="flex justify-between items-baseline">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Budget</p>
-                                <p className="text-lg font-bold text-red-600">{formatCurrency(expenseBudget)}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">Actual</p>
-                                <p className={`text-lg font-bold ${hasExpenseActuals ? 'text-red-600' : 'text-muted-foreground'}`}>
-                                  {hasExpenseActuals ? formatCurrency(expenseActual) : '—'}
-                                </p>
-                              </div>
-                            </div>
-                            {hasExpenseActuals && (
-                              <div className={`text-xs mt-1 flex items-center gap-1 ${expenseActual <= expenseBudget ? 'text-green-600' : 'text-red-600'}`}>
-                                {expenseActual <= expenseBudget ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
-                                {formatCurrency(expenseActual - expenseBudget)} ({((expenseActual - expenseBudget) / expenseBudget * 100).toFixed(0)}%)
-                              </div>
-                            )}
+                            <p className="text-xs text-muted-foreground">Expenses /mo</p>
+                            <p className="text-lg font-bold text-red-600">{formatCurrency(cf.monthlyExpenses)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {cf.usedActuals.expenses ? 'from reconciled transactions' : 'from declared amounts'}
+                            </p>
                           </div>
-
-                          {/* Loan Repayments */}
                           <div className="p-3 bg-orange-50 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Loan Repayments</p>
-                            <div className="flex justify-between items-baseline">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Budget</p>
-                                <p className="text-lg font-bold text-red-600">{formatCurrency(loanBudget)}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">Actual</p>
-                                <p className={`text-lg font-bold ${hasLoanActuals ? 'text-red-600' : 'text-muted-foreground'}`}>
-                                  {hasLoanActuals ? formatCurrency(loanActual) : '—'}
-                                </p>
-                              </div>
-                            </div>
-                            {hasLoanActuals && (
-                              <div className={`text-xs mt-1 flex items-center gap-1 ${loanActual <= loanBudget ? 'text-green-600' : 'text-red-600'}`}>
-                                {loanActual <= loanBudget ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
-                                {formatCurrency(loanActual - loanBudget)} ({loanBudget > 0 ? ((loanActual - loanBudget) / loanBudget * 100).toFixed(0) : 0}%)
-                              </div>
-                            )}
+                            <p className="text-xs text-muted-foreground">Loan Repayments /mo</p>
+                            <p className="text-lg font-bold text-red-600">{formatCurrency(cf.monthlyLoanRepayment)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {cf.usedActuals.loans ? 'from reconciled transactions' : 'from declared amounts'}
+                            </p>
                           </div>
-
-                          {/* Net Cashflow */}
-                          <div className={`p-3 rounded-lg ${cashflowBudget >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                            <p className="text-xs text-muted-foreground">Net Cashflow</p>
-                            <div className="flex justify-between items-baseline">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Budget</p>
-                                <p className={`text-lg font-bold ${cashflowBudget >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                  {formatCurrency(cashflowBudget)}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">Actual</p>
-                                <p className={`text-lg font-bold ${cashflowActual !== null ? (cashflowActual >= 0 ? 'text-green-700' : 'text-red-700') : 'text-muted-foreground'}`}>
-                                  {cashflowActual !== null ? formatCurrency(cashflowActual) : '—'}
-                                </p>
-                              </div>
-                            </div>
-                            {cashflowActual !== null && (
-                              <div className={`text-xs mt-1 flex items-center gap-1 ${cashflowActual >= cashflowBudget ? 'text-green-600' : 'text-red-600'}`}>
-                                {cashflowActual >= cashflowBudget ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                                {formatCurrency(cashflowActual - cashflowBudget)}
-                              </div>
-                            )}
+                          <div className={`p-3 rounded-lg ${cf.monthlyCashflow >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                            <p className="text-xs text-muted-foreground">Net Cashflow /mo</p>
+                            <p className={`text-lg font-bold ${cf.monthlyCashflow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                              {formatCurrency(cf.monthlyCashflow)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {cf.basis === 'actual'
+                                ? 'from reconciled transactions'
+                                : cf.basis === 'mixed'
+                                  ? 'reconciled + declared inputs'
+                                  : 'from declared amounts'}
+                            </p>
                           </div>
                         </div>
                       );
@@ -1745,7 +1658,9 @@ function PropertiesPageContent() {
                             <div className="text-right">
                               <p className="font-bold">{formatCurrency(dep.cost)}</p>
                               <p className="text-sm text-muted-foreground">
-                                {(dep.rate * 100).toFixed(2)}% p.a.
+                                {/* MON-166: rate is stored AS a percentage (2.5 = 2.5%) —
+                                    the old ×100 rendered a 2.5% schedule as 250.00%. */}
+                                {dep.rate.toFixed(2)}% p.a.
                               </p>
                             </div>
                           </div>

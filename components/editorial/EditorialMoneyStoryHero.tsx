@@ -40,6 +40,8 @@ import type { TrailStage } from '@/lib/cfo/trailStage';
 import { EditorialCard } from './EditorialCard';
 import { Eyebrow } from './Eyebrow';
 import { DataValue } from './DataValue';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
+import type { ModuleKey } from '@/lib/featureFlags/moduleRegistry';
 
 export interface EditorialMoneyStoryHeroProps {
   earned: number;
@@ -67,12 +69,16 @@ const STAGE_HEADLINE_LINE: Record<TrailStage, LineKey> = {
   L: 'free',
 };
 
-const STAGE_DRILL: Record<TrailStage, { to: string; label: string }> = {
-  T: { to: '/dashboard/balances', label: 'See your full picture' },
-  R: { to: '/dashboard/budget-analysis', label: 'See where it goes' },
-  A: { to: '/dashboard/safety-net', label: 'See your runway' },
-  I: { to: '/dashboard/cfo', label: 'See your next move' },
-  L: { to: '/dashboard/cfo', label: 'See your story' },
+// MON-167: three drill targets are hidden-module surfaces in v1
+// (MODULE_HOUSEHOLD / MODULE_SAFETY_NET / MODULE_CFO) — each carries its
+// gating key and the drill link renders only when that module is ON
+// (null = kept, always allowed). Matters for the M3.4 editorial return.
+const STAGE_DRILL: Record<TrailStage, { to: string; label: string; moduleKey: ModuleKey | null }> = {
+  T: { to: '/dashboard/balances', label: 'See your full picture', moduleKey: null },
+  R: { to: '/dashboard/budget-analysis', label: 'See where it goes', moduleKey: 'MODULE_HOUSEHOLD' },
+  A: { to: '/dashboard/safety-net', label: 'See your runway', moduleKey: 'MODULE_SAFETY_NET' },
+  I: { to: '/dashboard/cfo', label: 'See your next move', moduleKey: 'MODULE_CFO' },
+  L: { to: '/dashboard/cfo', label: 'See your story', moduleKey: 'MODULE_CFO' },
 };
 
 function Row({
@@ -118,6 +124,9 @@ export function EditorialMoneyStoryHero({
 }: EditorialMoneyStoryHeroProps) {
   const headlineLine = STAGE_HEADLINE_LINE[trailStage];
   const drill = STAGE_DRILL[trailStage];
+  // MON-167: drill only into a module that is ON (null key = kept target).
+  const modules = useEnabledModules();
+  const drillEnabled = drill.moduleKey === null || modules[drill.moduleKey] === true;
 
   const earnedFmt = formatCurrency(earned, { showCents: false });
   const keptFmt = formatCurrency(kept, { showCents: false });
@@ -132,12 +141,7 @@ export function EditorialMoneyStoryHero({
     ? `${Math.round(freeDays)} days of life at current burn`
     : 'Truly liquid cash today';
 
-  return (
-    <Link
-      href={drill.to}
-      aria-label={`Your money story — ${drill.label}`}
-      className="group block outline-none focus-visible:ring-2 focus-visible:ring-editorial-emerald/40 focus-visible:ring-offset-2"
-    >
+  const card = (
       <EditorialCard
         hover
         className="!p-8 md:!p-10"
@@ -151,10 +155,12 @@ export function EditorialMoneyStoryHero({
               Earned · Kept · Free today
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-editorial-slate transition-colors group-hover:text-editorial-ink">
-            <span className="hidden sm:inline">{drill.label}</span>
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          </span>
+          {drillEnabled && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-editorial-slate transition-colors group-hover:text-editorial-ink">
+              <span className="hidden sm:inline">{drill.label}</span>
+              <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            </span>
+          )}
         </div>
 
         {/* The three lines */}
@@ -185,6 +191,21 @@ export function EditorialMoneyStoryHero({
           </div>
         )}
       </EditorialCard>
+  );
+
+  if (!drillEnabled) {
+    // Target module hidden in v1 — the story card stands on its own,
+    // with no dead link behind it.
+    return <div aria-label="Your money story for the last 30 days">{card}</div>;
+  }
+
+  return (
+    <Link
+      href={drill.to}
+      aria-label={`Your money story — ${drill.label}`}
+      className="group block outline-none focus-visible:ring-2 focus-visible:ring-editorial-emerald/40 focus-visible:ring-offset-2"
+    >
+      {card}
     </Link>
   );
 }

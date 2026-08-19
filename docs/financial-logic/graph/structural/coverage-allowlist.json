@@ -48,6 +48,8 @@
     "app/api/admin/feature-flags/[key]/overrides/[overrideId]/route.ts": "PROD Simplification R0 (2026-08-19) \u2014 per-user override wiring (no financial calculation: gate boundary / client gate / admin override CRUD). graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
     "tests/featureFlags/r0Overrides.test.ts": "PROD Simplification R0 (2026-08-19) \u2014 per-user override wiring (no financial calculation: gate boundary / client gate / admin override CRUD). graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
     "tests/featureFlags/deadLinkGuard.test.ts": "M2 PR-1 MON-163/161 (2026-08-19) \u2014 module-gating guard test (no financial calculation). graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
-    "tests/featureFlags/mon161NoStoreCache.test.ts": "M2 PR-1 MON-163/161 (2026-08-19) \u2014 module-gating guard test (no financial calculation). graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration."
+    "tests/featureFlags/mon161NoStoreCache.test.ts": "M2 PR-1 MON-163/161 (2026-08-19) \u2014 module-gating guard test (no financial calculation). graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
+    "tests/properties/mon131PropertiesDialogSsot.test.ts": "M2 PR-2 B-3 (2026-08-19) \u2014 source-scan + engine-identity lock for the dialog SSOT fix; tests are not semantic nodes. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
+    "tests/reports/mon164PackCanonicalRows.test.ts": "M2 PR-2 \u00a7B (2026-08-19) \u2014 Ring-0/Ring-1 ratchet for MON-164/165/129-kept; tests are not semantic nodes. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration."
   }
 }

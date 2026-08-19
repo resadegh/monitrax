@@ -160,3 +160,48 @@ full trios/root causes; flipped to FIXING with the PR number immediately after t
 The guard verifies STATIC link topology (string-literal hrefs + template prefixes on the kept-reachable
 graph); it does NOT verify runtime-assembled hrefs, nor that the CDN honours no-store on a deployment —
 the latter is the MON-161 bare-URL flip re-check on PROD. The plan/§5/§9/cursor updated in this PR.
+
+---
+
+## Session: M2 PR-2 (#1595) — §B correctness slice (`changesNumbers: YES`)
+
+**Diagnosis first (Opus subagent, B-1):** census re-run + 12-row kept-surface scope table (now in the
+plan under M2.1) with two corrections — `moneyFlowService` is NOT a kept consumer (type-only imports;
+the Activity Sankey fetches `/api/master-snapshot`), and `contextBuilder`'s fetchers ARE the kept
+pack's producer and its biggest defect. Four findings REGISTERED before any fix code (§24.2 rule 2).
+
+### Fixes (each with its worked example in the registry + PR)
+- **MON-164** — the pack's income/expense rows are canonical: `annualContribution` (exported rule
+  carrier) = one-off ONCE (salaryBanked/MON-094 convention) · recurring actuals-first
+  (`calculateMonthlyAverage` over the same `unifiedTransaction` join the routes use, ×12) · declared
+  `toAnnual` fallback. Kills MON-001-R1 (rent −54% in the pack) and MON-129's #1/#2 kept producers
+  (+$136,620 deductions from one $11,385 one-off).
+- **MON-165** — depreciation converged on `calculateDepreciationAnnual`: first-year-only formula
+  deleted from the depreciation page and BOTH pack fetchers (one variant also dropped the DIV43
+  guard); remaining years/value now read the engine. $10k DV DIV40 @10%, 3 yrs: $1,024/yr not $2,000.
+- **MON-129 kept slice** — one-off gates: `entityBreakdown` expenses via `monthlyRunRate`;
+  `propertyCashflow` declared-rent fallback via `monthlyRunRate` (+ `isRecurring` on `CashflowIncome`).
+  Out (named, not fixed — D-20): orchestrator/master budget-variance legs (caller-gated), portfolio
+  engine's local frequency duplicates, all hidden/dead sites.
+- **MON-166** — dep rate ×100 render fixed on the properties dialog (2.5% no longer "250.00%").
+- **MON-145** — diagnosed SCHEMA-BOUND (no honest no-schema fix; rate-from-repayments points the
+  wrong way per VR-046). M2 slice: the detail tax card states "Interest is a contractual estimate
+  (balance × today's rate)". Dated-rate model = Reza decision (M3/R2). The "feeds the pack's per-loan
+  interest" claim in the plan/brief was FALSE at HEAD — the kept pack loads no loan data (M3.1 build).
+- **MON-167** — dead-link guard now sees `to:` link fields; the editorial hero's drill links carry
+  their gating moduleKey and render unlinked when the target module is off.
+- **MON-146** — HELD (hidden-only surface; every kept `interestRateAnnual` render verified correct).
+- M2.4 (earlier commit) — both dialog re-derivation blocks dead; dialog ≡ tile ≡ detail page.
+- §12.1: dead `calculateAnnualInterest` helper deleted from the list page.
+
+### Instruments
+Census reseed #2 (5 quantities fell; zero rose) + ledger §6 row · source-lock exceptions −4
+(ratchet-down) · scoreboard regenerated · Neo-sync: 3 anchors re-pinned, 7 manifests rehashed,
+5 pack lineage edges modelled (P2–P4 blind spots closed), GENERATED_CORE regenerated · ratchet suite
+`tests/reports/mon164PackCanonicalRows.test.ts` (7 tests).
+
+### Verification
+Full suite **4,539 passed / 0 failed** · tsc clean · all gates green. Coverage boundary: CI locks the
+row rule + canonical values + source topology; the RENDERED pack on live data is the Matrix's Ring-3
+(M2.2) per `docs/verification/briefs/RING3_M2_PACK_CANONICAL.md` — that verdict, not CI, closes the
+correctness half of the launch gate.
