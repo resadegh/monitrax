@@ -125,13 +125,29 @@ jobs:
             for i in 1 2 3; do
               if timeout 240 "$@"; then return 0; fi
               echo "::warning::attempt $i failed/hung: $*" >&2
+              # A killed apt leaves dpkg locked — recover so the retry can run.
+              sudo dpkg --configure -a 2>/dev/null || true
+              sudo rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock 2>/dev/null || true
               sleep 10
             done
             return 1
           }
+          # The hang lives in the APT half of `--with-deps` (proven by the
+          # first hardened run: npm installs took 17s, the playwright
+          # install hung to its 240s kill, then retries failed FAST — a
+          # killed apt leaves dpkg locked). So: apt gets transfer timeouts
+          # (a stalled mirror fails in seconds), the browser download
+          # (Playwright CDN) is split from the OS deps (apt), and dpkg
+          # state is recovered between attempts inside retry().
+          sudo tee /etc/apt/apt.conf.d/99monitrax-timeouts >/dev/null <<'APT'
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          Acquire::Retries "3";
+          APT
           retry npm i -D @playwright/test@^1.49.0 --no-save
           retry npm i -g firebase-tools@^13
-          retry npx playwright install --with-deps chromium
+          retry npx playwright install chromium
+          retry sudo -E npx playwright install-deps chromium
       - name: Build (NEXT_PUBLIC_* emulator flags are inlined here)
         run: npm run build
       - name: Run UAT under the Firebase Auth emulator
