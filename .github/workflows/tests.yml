@@ -144,6 +144,14 @@ jobs:
           Acquire::https::Timeout "30";
           Acquire::Retries "3";
           APT
+          # 2026-08-19 run 2 evidence: the runner's mirrorlist LEADS with
+          # azure.archive.ubuntu.com, which was dead — apt cycled Ign:
+          # retries against it and blew every 240s attempt window before
+          # its archive.ubuntu.com fallback could finish. Excise the azure
+          # mirror up front so apt goes straight to the canonical archive.
+          for f in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] && sudo sed -i 's|https\?://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' "$f" || true
+          done
           retry npm i -D @playwright/test@^1.49.0 --no-save
           retry npm i -g firebase-tools@^13
           retry npx playwright install chromium
