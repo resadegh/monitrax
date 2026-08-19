@@ -18,6 +18,7 @@
 **Standing rules for all four actors:**
 - **Read live, never recall.** No claim about Monitrax state from memory or summaries — read it from HEAD or flag it unverified (cite-or-flag).
 - **Do only what the current milestone briefs.** Found work → registry issue or a proposal in this doc, never a side quest.
+- **D-18 build law: NO new capability without Reza's explicit GO.** Perfect and enhance what is already built first; a session that thinks something new is needed writes a proposal in the gate review and STOPS — it never builds on its own initiative.
 - **Before ending a session:** tick your boxes HERE, update the cursor, append one §9 session-log line — in the SAME PR for Code builds; Matrix lands doc updates as their own PR; Reza's actions (merges, switches, rulings) are recorded by the next session that boots.
 - **Every milestone gate closes with a GATE REVIEW** (§4 ritual): progress vs plan, fresh market/regulatory check, and upgrade proposals — the plan is a living document that improves as Monitrax does.
 - **If this doc and any other doc disagree:** for programme state, THIS doc wins; for laws, CLAUDE.md wins; for issue detail, the registry wins; for tranche mechanics, the ledger wins. Fix the disagreement in the same session, don't work around it.
@@ -36,7 +37,7 @@
 | Field | Value |
 |---|---|
 | **Current milestone** | M1 — mechanics close-out (Code session NOT yet started; brief merged #1588 + addenda below) |
-| **Last session** | 2026-08-19 · Matrix HQ · market/user research run; v1 focus ruled (D-10…D-16); this plan created |
+| **Last session** | 2026-08-19 · Matrix HQ · market/user research run; v1 focus ruled (D-10…D-18); this plan created |
 | **Next action** | Reza kicks off the M1 Code session (§4 M1 kickoff block) |
 | **Blockers** | none |
 | **Baseline of record** | `.audit/golden-baseline-12954ff.json` (VR-048, 1,756 leaves, treeHash `0d6753ef…`) |
@@ -52,6 +53,8 @@
 Tracking is the mechanism. **The accountant pack is the product.** AI intake is the ease. The document vault is the defensibility. This replaces both the old "wealth OS" story and the generic "tracking tool" framing — the market clears at A$10–20/mo ONLY for tax-outcome products; generic tracking fights free apps (research 2026-08-19, §7).
 
 **The automation design law (Reza, 2026-08-19):** users hate manual work and expect AI to do most of it. Every v1 flow is designed and measured as **"you confirm, Monitrax does"** — the user's job is confirming, never keying, matching, filing or classifying. Taps-to-done is a tracked metric (M4.7); any remaining manual step is a named automation-backlog candidate, not an accepted cost. The one thing never automated away is the CONFIRM itself (D-11 — the confirm event is the ATO defensibility).
+
+**The build law (D-18, Reza 2026-08-19):** perfect what exists before building anything new. The kept surface must work flawlessly — every existing function enhanced to its outcome — before any net-new capability starts, and nothing net-new starts without Reza's explicit GO.
 
 **Why now (all verified Aug 2026, sources §7):** ATO's operative stat remains 9-in-10 rental returns wrong, with data-matching now covering PM software, investment-loan (RIPL) and landlord-insurance data · loan interest alone = 42% of the $1.2B rental tax gap · a clean per-property summary demonstrably cuts an accountant bill from ~$900 to ~$275 · the NG/CGT reform is LAW (Royal Assent 26 Jun 2026, effective 1 Jul 2027: deemed disposal, quarantined residential losses, cost-base indexation) and no incumbent has shipped for it · the invariant core of every successful analogue globally (Stessa, Landlord Studio, Hammock) is exactly Monitrax's kept surface.
 
@@ -75,6 +78,7 @@ D-1 HIDE household cashflow · D-2 HIDE tax module (pack ships) · D-3 HIDE CFO 
 | D-15 | One tracking doc | **This file.** Registries stay SSOT for their detail (§8); every other strategy doc is archive or pointer. Boot protocol §0 binds all four actors. |
 | D-16 | Dashboard in v1 | **The dashboard RETURNS, rebuilt as the v1 scoreboard — it does not return as the old wealth-OS Home.** The old Home reads gated feeds (`wealth-graph` → MODULE_ENTITIES, `money-flow` → MODULE_HOME) and tells the pre-simplification story; flicking MODULE_HOME on as-is would render broken/off-story widgets (P1.2 audit). Sequence: M1 inventories exactly what breaks with MODULE_HOME on; M3 lands the scoreboard version (per-property portfolio summary + EOFY-readiness from kept engines only) and THEN the flag flips ON. Amends D-4's "Home returns R4": the v1 scoreboard comes forward to M3; the full wealth-OS Home stays R4. |
 | D-17 | Living plan | **Every milestone gate closes with a Matrix GATE REVIEW** (§4 ritual): progress vs plan · fresh market/competitor/regulatory re-check · upgrade/enhancement proposals for Reza's ruling. The plan is upgraded as Monitrax moves — no stage completes silently. |
+| D-18 | Build law — perfect what exists FIRST | **No new capability is built without Reza's explicit confirmation** until the existing functions work perfectly. M1–M3 are enhance-only by construction (they perfect what is built: the gate, the pack, the exports, the dashboard from kept engines). **Every M4 task is a separate GO decision Reza takes at the M3 gate review** — M4 is planned here so it is briefed and sequenced, not pre-authorised. A session that believes something new is required writes the proposal into the gate review and stops (see §0 standing rule). Default answer to "build X new?" is NO. |
 
 **Scope traps (research-confirmed; do NOT add):** tenant ops (rent collection/leases/maintenance) · multi-currency · lifestyle budgeting breadth · forecasting before records are right · anything that locks data in (full CSV export is a TRUST requirement — M3 verifies it exists).
 
@@ -111,19 +115,19 @@ Full route/API/key inventory: `PROD_SIMPLIFICATION_PLAN.md` §2 (binding).
 ## 4. ROADMAP — milestones, owners, gates
 
 **Owners legend:** 🧑 Reza (rulings, merges, switches, credentials, pilot) · 🟩 Matrix = Cowork HQ (briefs, research, Ring-3 verdicts, doc-keeping) · 🟦 Code (build PRs) · 🌐 Chrome = browser relay driven by Matrix (console ops, golden-baseline runs, PROD checks; Reza types all credentials).
-**Rituals:** boot per §0. Every build PR ticks its boxes HERE in the same PR. Matrix cuts one consolidated brief per Code session. Golden self-diff CLEAN required on every phase-gate. Never fix a number in passing — registry issue instead. PRs only, Reza merges.
+**Rituals:** boot per §0. Every build PR ticks its boxes HERE in the same PR. Matrix cuts one consolidated brief per Code session. Golden self-diff CLEAN required on every phase-gate. Never fix a number in passing — registry issue instead. PRs only, Reza merges. **D-18: M1–M3 enhance existing functions only; anything net-new needs Reza's recorded GO.**
 
 **GATE REVIEW — standing ritual at EVERY milestone gate (D-17, Reza 2026-08-19).** Before a milestone is declared done, Matrix runs and records (as a `§4.x gate review` entry under the milestone + a session-log line):
 1. **Progress vs plan** — every box audited against evidence (PRs, verdicts, transcripts), not memory; slipped/de-scoped items named, never silently dropped.
 2. **Fresh market + regulatory re-check** — competitors moved? (TaxTank/TPA/Propva watchlist) · pricing shifted? · ATO/reform guidance published? (esp. the open per-property-vs-pooled quarantine question and the "9-in-10" stat) · new entrants?
-3. **Upgrade proposals** — what the last milestone taught us; concrete enhancement/re-ordering suggestions for the plan and the product, each needing Reza's ruling before it changes scope (D-8 WIP discipline still applies).
+3. **Upgrade proposals** — what the last milestone taught us; concrete enhancement/re-ordering suggestions for the plan and the product, each needing Reza's ruling before it changes scope (D-8 WIP + D-18 build law apply).
 4. **Cursor + §9 updated**; any ruling Reza makes lands in §2 as the next D-number.
 No stage completes without its gate review. The plan is a living document — improved at every gate, never re-litigated between gates.
 
 ### M0 — Simplification executed ✅ DONE (2026-08-04 → 08-11)
 Plan+rulings (#1584) · P0 freeze (#1586) · P1 module gate (#1587) · flag-phase acceptance CLOSED (P1.10 static-equivalent, P2.2 CLEAN, P2.2b CLEAN 0/0/0, P2.1 pass — #1587 comments) · PROD live in v1 shape · P2.5 full data copy + tested runbook + standing preview branch (#1589) · preview verified with full data · `connection_limit=1` durable fix. *(Gate review for M0 = the 2026-08-19 research + refocus session that produced this plan.)*
 
-### M1 — Mechanics close-out 🟡 NEXT (one Code session; brief = `BRIEF_SIMP_P2R_R0.md` #1588 + the addenda below)
+### M1 — Mechanics close-out 🟡 NEXT (one Code session; brief = `BRIEF_SIMP_P2R_R0.md` #1588 + the addenda below) — enhance-only (D-18 ✓)
 - [ ] M1.1 🟦 Execute the #1588 brief in full: P2.3 Reports→pack only · P2.4 D-6 safe entity default · P2.6 positioning row refresh · P2-gate close-out (tick P2.1/2.2/2.2b/2.5 in the old plan citing #1587 comments + runbook log) · §13.6/§7 full-copy amendment · `scripts/dev/set-module-flags.mjs` · **R0 FeatureFlagOverride wiring** (user-scoped reader, admin CRUD, Modules-panel affordance, tests).
 - [ ] M1.2 🟦 **ADDENDUM — static-prerender defect fix** (predates the brief; registered #1587 comment 2026-08-11): gated routes bake the guard verdict at BUILD time — force-dynamic on the ~20 gated layouts or `noStore()` inside `moduleRouteGuard` (SSOT preferred). Register in `docs/issues/` first, fix in the same PR set.
 - [ ] M1.3 🟦 **ADDENDUM — tracker pointers** (carry texts in the PR body, P0.1 precedent): STATE.md cursor line + 01_ACTIVE_WORKSTREAMS row pointing at THIS plan; banner on `PROD_SIMPLIFICATION_PLAN.md` ("live tracking moved to MONITRAX_V1_MASTER_PLAN.md; this doc = decision record + gate design archive"); its cursor block frozen with a pointer; hub `Last updated` bump. Update the old plan's §1 story line to §1 here (D-10). **Also: add a one-line pointer to this master plan + its §0 boot protocol into CLAUDE.md's session-boot section (so every future session lands here by law).**
@@ -133,7 +137,7 @@ Plan+rulings (#1584) · P0 freeze (#1586) · P1 module gate (#1587) · flag-phas
 - [ ] M1.7 🟩 **GATE REVIEW** (D-17 ritual) recorded here.
 **Gate:** all boxes; golden self-diff CLEAN (`changesNumbers: NO`). **Model: Fable 5.**
 
-### M2 — Correct numbers on the kept surface (P3) — 🔒 THE LAUNCH GATE
+### M2 — Correct numbers on the kept surface (P3) — 🔒 THE LAUNCH GATE — enhance-only (D-18 ✓: fixing what exists)
 The validation/issue-tracker programme, resumed and filtered to the kept surface (by producer, never by tranche — held doctrine).
 - [ ] M2.1 🟦 Producer census re-run filtered to kept surface at current HEAD (expect ≈8–10 quantities; MON-131_SCOPE_FILTER §1.1)
 - [ ] M2.2 🟩🌐 T2 (loan cost) Ring-3 on live data — first Ring-3 through R0's override
@@ -143,17 +147,18 @@ The validation/issue-tracker programme, resumed and filtered to the kept surface
 - [ ] M2.6 🟩 **GATE REVIEW** (D-17 ritual) recorded here.
 **Gate:** Ring-3 PASS on live data across kept quantities. Nothing publishes before this — automation on wrong numbers is wrong numbers, faster.
 
-### M3 — The accountant pack becomes the product (D-12/D-13/D-16; the pack EXISTS — this perfects it)
+### M3 — The accountant pack becomes the product (D-12/D-13/D-16) — enhance-only (D-18 ✓: the pack, exports, vault and engines all EXIST; this perfects them)
 - [ ] M3.1 🟦 Pack restructured to ATO rental-schedule line headings, per property per FY: income · interest (per loan) · repairs vs capital vs Div 40/43 (from the depreciation schedules) · other deductions by schedule line · linked evidence (vault docs) per row · PDF + CSV
 - [ ] M3.2 🟦 EOFY completeness nudges (D-13): missing-receipt / missing-category / no-rates-this-FY style checks surfaced before pack export
 - [ ] M3.3 🟦 Full-data CSV export verified/added (anti-lock-in trust requirement — PropertyChat's #1 stated reason for staying on Excel)
 - [ ] M3.4 🟦 **D-16 scoreboard dashboard:** `/dashboard` rebuilt from the M1.4 inventory using KEPT engines only — per-property portfolio summary (cashflow, yield, equity from existing engines), EOFY-readiness panel (M3.2 nudges), roadmap-aligned (no wealth-OS widgets). MODULE_HOME flips ON at this gate; redirect retired.
 - [ ] M3.5 🧑🟩 **The pilot = the user research:** Reza's accountant + 2–3 friendlies run the pack on real FY2025-26 data. Acceptance: the accountant needs NOTHING else to complete the rental schedule. Findings → registry issues, fixed, re-run.
-- [ ] M3.6 🟩 **GATE REVIEW** (D-17 ritual) recorded here.
+- [ ] M3.6 🟩 **GATE REVIEW** (D-17 ritual) recorded here — **includes the D-18 GO decision: Reza rules which M4 tasks (if any) are authorised to build, one by one.**
 **Gate:** accountant sign-off captured in this doc; dashboard live as the scoreboard. **This gate closes the flagged user-voice research gap.**
 
-### M4 — AI intake (P4 rescoped by D-11 — the differentiator; pain rows 1, 9, 10, 11)
-The automation design law made real: AI does the keying, matching, classifying and filing; the user confirms.
+### M4 — AI intake (P4 rescoped by D-11; pain rows 1, 9, 10, 11) — ⛔ D-18 HOLD: planned + sequenced here, NOT pre-authorised. Each task below starts only on Reza's explicit GO (taken at the M3 gate review or later). Until then, all four actors treat M4 as read-only roadmap.
+The automation design law made real: AI does the keying, matching, classifying and filing; the user confirms. (Builds ON the existing Vision OCR + analyze pipeline + LinkingRules cascade — extensions of what exists, but they are new capability surfaces, hence the GO gate.)
+- [ ] M4.0 🧑 **D-18 GO recorded per task** (which of M4.1–M4.6, in what order) — becomes the next D-number.
 - [ ] M4.1 🟦 Statement agent v1: upload PM statement / bank statement (PDF/CSV) → existing Vision OCR + analyze pipeline → classify + property-link via LinkingRules cascade → **propose→confirm queue** (one review moment per statement; accept-all-correct in one tap); every confirmed row carries its source-document link
 - [ ] M4.2 🟦 **AI reconciliation (pain 9):** every imported/uploaded row auto-matched — property link, loan match, recurring-item match, duplicate detection — proposed for confirm; unmatched rows queue with best-guess, never silently dropped
 - [ ] M4.3 🟦 **AI categorisation (pain 10):** ATO category + deductibility proposed per row with confidence; learns from corrections; low-confidence rows surfaced first; bulk accept
@@ -230,4 +235,4 @@ Golden baseline self-diff CLEAN on every phase-gate (`.audit/golden-baseline-129
 
 ## 9. Session log
 
-- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-17 (identity · AI propose→confirm · pack-not-portal · nudges · no-planning-side-door · one doc · dashboard-as-scoreboard · living-plan gate reviews); §3.5 pain map rows 1-8 research-ranked + rows 9-12 Reza-added (manual recon, categorisation, doc filing, AI-does-the-work) + §1 automation design law; §0 boot protocol (one doc, four actors, CLAUDE.md-first); M4 expanded to the automation pains; GATE REVIEW ritual added to every milestone; plan created at `380a526a`; M1 = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
+- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-18 (identity · AI propose→confirm · pack-not-portal · nudges · no-planning-side-door · one doc · dashboard-as-scoreboard · living-plan gate reviews · perfect-what-exists build law); §3.5 pain map rows 1-8 research-ranked + rows 9-12 Reza-added (manual recon, categorisation, doc filing, AI-does-the-work) + §1 automation + build laws; §0 boot protocol (one doc, four actors, CLAUDE.md-first); M4 put under D-18 HOLD (per-task GO at M3 gate review); GATE REVIEW ritual on every milestone; plan created at `380a526a`; M1 = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
