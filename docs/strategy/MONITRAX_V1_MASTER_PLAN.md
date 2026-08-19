@@ -50,6 +50,8 @@
 
 Tracking is the mechanism. **The accountant pack is the product.** AI intake is the ease. The document vault is the defensibility. This replaces both the old "wealth OS" story and the generic "tracking tool" framing — the market clears at A$10–20/mo ONLY for tax-outcome products; generic tracking fights free apps (research 2026-08-19, §7).
 
+**The automation design law (Reza, 2026-08-19):** users hate manual work and expect AI to do most of it. Every v1 flow is designed and measured as **"you confirm, Monitrax does"** — the user's job is confirming, never keying, matching, filing or classifying. Taps-to-done is a tracked metric (M4.4); any remaining manual step is a named automation-backlog candidate, not an accepted cost. The one thing never automated away is the CONFIRM itself (D-11 — the confirm event is the ATO defensibility).
+
 **Why now (all verified Aug 2026, sources §7):** ATO's operative stat remains 9-in-10 rental returns wrong, with data-matching now covering PM software, investment-loan (RIPL) and landlord-insurance data · loan interest alone = 42% of the $1.2B rental tax gap · a clean per-property summary demonstrably cuts an accountant bill from ~$900 to ~$275 · the NG/CGT reform is LAW (Royal Assent 26 Jun 2026, effective 1 Jul 2027: deemed disposal, quarantined residential losses, cost-base indexation) and no incumbent has shipped for it · the invariant core of every successful analogue globally (Stessa, Landlord Studio, Hammock) is exactly Monitrax's kept surface.
 
 **The two whitespace claims nobody owns (post-launch differentiators, not v1):** the variance loop (purchase assumptions vs actuals) and clean multi-entity ownership.
@@ -65,7 +67,7 @@ D-1 HIDE household cashflow · D-2 HIDE tax module (pack ships) · D-3 HIDE CFO 
 | # | Decision | Ruling |
 |---|---|---|
 | D-10 | v1 identity & positioning | **Per-property record system + accountant pack** (§1 line). "Full income/expense tracking" is scoped to the INVESTMENT surface (properties, their loans, simple assets) — household/everyday-spend tracking stays hidden until Basiq (it is the free-app commodity zone and dishonest without feeds). |
-| D-11 | AI in v1 | **Intake only, propose→confirm, never silent write.** AI reads PM statements / bank statements / receipts → proposes categorized, property-linked, deduction-flagged rows → one-tap confirm (the confirm event = ATO defensibility). **NO AI advice/chat surface in v1** (AFSL boundary + trust). |
+| D-11 | AI in v1 | **Intake only, propose→confirm, never silent write.** AI reads PM statements / bank statements / receipts → proposes categorized, property-linked, deduction-flagged rows → one-tap confirm (the confirm event = ATO defensibility). **NO AI advice/chat surface in v1** (AFSL boundary + trust). Governed by the §1 automation design law: AI does the work, the user confirms. |
 | D-12 | Accountant connection v1 | **The pack, not a portal:** per-property per-FY pack (PDF + CSV) in ATO rental-schedule headings + export/share. Read-only accountant access returns later (elements exist in hidden modules). This is the conversion trigger — every paid competitor has a version. |
 | D-13 | Notifications v1 | **EOFY completeness nudges only** ("3 expenses missing receipts", "no rates entered for X this FY") — tied to the pack, not a notification platform. |
 | D-14 | "Best-outcome tax planning" | **Reframed to completeness + correctness + substantiation** (guided repair-vs-capital classification at entry, per-loan interest, nothing missed in July). Planning/optimisation surfaces return at R2 (property-tax slice) on verified numbers — never through the v1 side door. |
@@ -85,7 +87,7 @@ D-1 HIDE household cashflow · D-2 HIDE tax module (pack ships) · D-3 HIDE CFO 
 
 Full route/API/key inventory: `PROD_SIMPLIFICATION_PLAN.md` §2 (binding).
 
-### 3.5 Pain point → solution map (research 2026-08-19; the v1 promise, falsifiably)
+### 3.5 Pain point → solution map (research 2026-08-19 + Reza additions; the v1 promise, falsifiably)
 
 | # | User pain (ranked by evidence frequency) | What exists today | The v1 answer | Milestone |
 |---|---|---|---|---|
@@ -97,6 +99,10 @@ Full route/API/key inventory: `PROD_SIMPLIFICATION_PLAN.md` §2 (binding).
 | 6 | **EOFY scramble / not knowing what's missing** | — | Completeness nudges ("3 receipts missing", "no rates this FY") on the scoreboard dashboard + before pack export | M3 (with D-16 dashboard) |
 | 7 | **Fear of app lock-in** — experienced investors stay on Excel because "software ties you in"; "tax agents die and you're screwed using them as your archive" | Unknown — verify | Full-data CSV export, always available, first-class — stated in marketing | M3.3 |
 | 8 | **Distrust of app numbers** ("numbers can't be validated" — the accountant critique that started this programme) | Golden baseline + Ring-3 machinery | Every published number traces to ONE producer, Ring-3-verified on live data before launch; no number ships unverified | M2 (the launch gate) |
+| 9 | **Manual transaction reconciliation** (Reza 2026-08-19) — matching bank/PM rows to the right property, loan or recurring item by hand | reconcile→link flow + managed-rental reconciliation exist but are user-driven | AI auto-matches every imported/uploaded row via the LinkingRules cascade and PROPOSES the reconciliation (property link, loan match, recurring-item match, duplicate detection) — user one-tap confirms or bulk-accepts; unmatched rows queue with a best-guess, never silently dropped | M4 |
+| 10 | **Categorisation drudgery + wrong categories** (Reza 2026-08-19) — picking categories row by row, deductibility guessed | Manual category pick; per-category `isTaxDeductible` defaults (M4.3) | AI proposes ATO category + deductibility per row with a confidence signal, learns from the user's corrections, bulk accept-all-correct; low-confidence rows surfaced first | M4 |
+| 11 | **Document filing & chasing** (Reza 2026-08-19) — receipts scattered across email, phone photos, drawers; filing them is its own job | Vault + Vision OCR + auto-linking already built | Drop ANYTHING (photo, PDF, statement, invoice) → OCR → auto-filed to the right property AND linked to the matching transaction — filing becomes a byproduct of upload; the missing-doc nudge (M3.2) closes the loop from the other side | v1 today — sharpened M3, auto-link-to-transaction M4 |
+| 12 | **META — users hate manual work; they expect AI to do most of it** (Reza 2026-08-19) | — | The §1 automation design law governs every flow: "you confirm, Monitrax does." Measured: taps-to-done + time-to-first-correct-number (<5 min, M4.4); every remaining manual step is a named automation-backlog candidate | ALL — design law, not a feature |
 
 ---
 
@@ -134,12 +140,16 @@ The validation/issue-tracker programme, resumed and filtered to the kept surface
 - [ ] M3.5 🧑🟩 **The pilot = the user research:** Reza's accountant + 2–3 friendlies run the pack on real FY2025-26 data. Acceptance: the accountant needs NOTHING else to complete the rental schedule. Findings → registry issues, fixed, re-run.
 **Gate:** accountant sign-off captured in this doc; dashboard live as the scoreboard. **This gate closes the flagged user-voice research gap.**
 
-### M4 — AI intake (P4 rescoped by D-11 — the differentiator)
+### M4 — AI intake (P4 rescoped by D-11 — the differentiator; pain rows 1, 9, 10, 11)
+The automation design law made real: AI does the keying, matching, classifying and filing; the user confirms.
 - [ ] M4.1 🟦 Statement agent v1: upload PM statement / bank statement (PDF/CSV) → existing Vision OCR + analyze pipeline → classify + property-link via LinkingRules cascade → **propose→confirm queue** (one review moment per statement; accept-all-correct in one tap); every confirmed row carries its source-document link
-- [ ] M4.2 🟦 QS depreciation schedule upload → OCR → schedule lines
-- [ ] M4.3 🟦 Onboarding rebuilt to 3 steps (property → loan → rent+agent); hidden-module wizard steps removed; `isTaxDeductible` defaults per category
-- [ ] M4.4 🟩🧑 Time-to-first-correct-number < 5 min on a fresh account; zero silent writes (audit: every AI row has a confirm event)
-**Gate:** a new user reaches a correct per-property number in one sitting. AFSL note: extraction/classification only — no advice surface, in code or copy.
+- [ ] M4.2 🟦 **AI reconciliation (pain 9):** every imported/uploaded row auto-matched — property link, loan match, recurring-item match, duplicate detection — proposed for confirm; unmatched rows queue with best-guess, never silently dropped
+- [ ] M4.3 🟦 **AI categorisation (pain 10):** ATO category + deductibility proposed per row with confidence; learns from corrections; low-confidence rows surfaced first; bulk accept
+- [ ] M4.4 🟦 **Docs auto-filed to transactions (pain 11):** any uploaded document OCR'd, auto-filed to its property AND auto-linked to the matching transaction row (extends the existing vault cascade)
+- [ ] M4.5 🟦 QS depreciation schedule upload → OCR → schedule lines
+- [ ] M4.6 🟦 Onboarding rebuilt to 3 steps (property → loan → rent+agent); hidden-module wizard steps removed; `isTaxDeductible` defaults per category
+- [ ] M4.7 🟩🧑 Time-to-first-correct-number < 5 min on a fresh account; taps-to-done measured per flow; zero silent writes (audit: every AI row has a confirm event)
+**Gate:** a new user reaches a correct per-property number in one sitting, with AI doing the work and the user only confirming. AFSL note: extraction/classification only — no advice surface, in code or copy.
 
 ### M5 — Publish 🚀
 - [ ] M5.1 🧑🟩 Positioning/site rewrite to the §1 story (the queued row-66 follow-up — a marketing defect if skipped)
@@ -205,4 +215,4 @@ Golden baseline self-diff CLEAN on every phase-gate (`.audit/golden-baseline-129
 
 ## 9. Session log
 
-- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-16 (incl. dashboard-as-scoreboard); §3.5 pain-point→solution map added; §0 boot protocol added (one doc, four actors, CLAUDE.md-first); this master plan created at `380a526a`; M1 defined = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
+- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-16 (incl. dashboard-as-scoreboard); §3.5 pain-point→solution map (rows 1-8 research-ranked, rows 9-12 Reza-added: manual recon, categorisation, doc filing, AI-does-the-work) + §1 automation design law; §0 boot protocol (one doc, four actors, CLAUDE.md-first); M4 expanded to 7 tasks covering the automation pains; this master plan created at `380a526a`; M1 defined = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
