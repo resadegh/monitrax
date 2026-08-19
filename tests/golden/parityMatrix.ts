@@ -85,6 +85,12 @@ export const SURFACE_RESOLVERS: Record<string, (c: ParityCtx) => number> = {
  * with the reason a faithful resolver isn't wired and where the growth lands.
  */
 export const KNOWN_UNRESOLVED: Record<string, { reason: string; growth: string }> = {
+  'ui.reports.taxPackExport': {
+    reason:
+      'The D-12 pack export (M3 PR-1) is a single-surface artefact — packIncomeGross/packExpenseTotal render nowhere else yet, so there is no cross-surface parity to assert; its correctness gate is the RING3_M3_PACK_FIX.md live-data run (dry-run → apply → export, identity check printed in the artefact) plus the Ring-0 worked-example fixture (mon169170PackReconciliation).',
+    growth:
+      'NeoAudit growth: a golden-data resolver for buildTaxPackSummary once the scoreboard EOFY tile (M3 PR-2) renders the same reconciliation counts — that creates the second surface a parity group needs.',
+  },
   'ui.cashflow.hero': {
     reason:
       '/cashflow hero renders the canonical monthly cashflow + a page-derived savings rate; the route exposes a 30-day FORECAST summary, not a clean monthlyCashflow/savingsRate scalar. A faithful resolver needs the canonical-cashflow accessor — guessing a forecast field would be a false green.',

@@ -1679,7 +1679,7 @@
     "tests/golden/coreEngines.test.ts": "51172754ed7f4550",
     "tests/golden/goldenHousehold.ts": "3140b6616866054a",
     "tests/golden/parityMatrix.test.ts": "a57b51588886673d",
-    "tests/golden/parityMatrix.ts": "9626d2ab00cf68be",
+    "tests/golden/parityMatrix.ts": "eaaebd915b3dcab7",
     "tests/golden/properties.engines.test.ts": "06ef2daf19ee5eab",
     "tests/golden/properties.frequencies.test.ts": "fe3c1b4f01a0f61b",
     "tests/golden/ring2.calcSsotWall.test.ts": "b2c796ab1f1c06c2",
