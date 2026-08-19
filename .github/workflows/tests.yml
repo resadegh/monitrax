@@ -54,6 +54,10 @@ jobs:
   playwright:
     name: playwright (UAT)
     runs-on: ubuntu-latest
+    # 2026-08-19 CI hardening (Reza GO): a runner-side network stall left the
+    # dependency-install step hanging twice in a row (39s on the last green
+    # run → 40+ min zombie). Without a job timeout the default is 6 HOURS.
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -101,11 +105,57 @@ jobs:
         # (.ts via the ESM loader). Forcing commonjs avoids it.
         run: |
           npx ts-node --compiler-options '{"module":"commonjs","moduleResolution":"node"}' prisma/seed-lighthouse.ts
+      - name: Cache Playwright browsers
+        # Keyed on the floating spec, not the resolved version — a new
+        # Playwright minor just means a browser-revision cache miss and a
+        # fresh download inside `playwright install`, which is correct.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-spec-1.49
       - name: Install Playwright + firebase-tools (kept out of package.json so `npm ci` stays lockstep)
+        # Each command gets a hard per-attempt kill (`timeout`) + 3 attempts,
+        # so a hung npm/apt connection fails fast and retries instead of
+        # zombie-ing the job (2026-08-19 incident: this step sat 40+ min in
+        # a runner-side network stall; normal duration is ~40s).
+        timeout-minutes: 15
         run: |
-          npm i -D @playwright/test@^1.49.0 --no-save
-          npm i -g firebase-tools@^13
-          npx playwright install --with-deps chromium
+          set -e
+          retry() {
+            for i in 1 2 3; do
+              if timeout 240 "$@"; then return 0; fi
+              echo "::warning::attempt $i failed/hung: $*" >&2
+              # A killed apt leaves dpkg locked — recover so the retry can run.
+              sudo dpkg --configure -a 2>/dev/null || true
+              sudo rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock 2>/dev/null || true
+              sleep 10
+            done
+            return 1
+          }
+          # The hang lives in the APT half of `--with-deps` (proven by the
+          # first hardened run: npm installs took 17s, the playwright
+          # install hung to its 240s kill, then retries failed FAST — a
+          # killed apt leaves dpkg locked). So: apt gets transfer timeouts
+          # (a stalled mirror fails in seconds), the browser download
+          # (Playwright CDN) is split from the OS deps (apt), and dpkg
+          # state is recovered between attempts inside retry().
+          sudo tee /etc/apt/apt.conf.d/99monitrax-timeouts >/dev/null <<'APT'
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          Acquire::Retries "3";
+          APT
+          # 2026-08-19 run 2 evidence: the runner's mirrorlist LEADS with
+          # azure.archive.ubuntu.com, which was dead — apt cycled Ign:
+          # retries against it and blew every 240s attempt window before
+          # its archive.ubuntu.com fallback could finish. Excise the azure
+          # mirror up front so apt goes straight to the canonical archive.
+          for f in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] && sudo sed -i 's|https\?://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' "$f" || true
+          done
+          retry npm i -D @playwright/test@^1.49.0 --no-save
+          retry npm i -g firebase-tools@^13
+          retry npx playwright install chromium
+          retry sudo -E npx playwright install-deps chromium
       - name: Build (NEXT_PUBLIC_* emulator flags are inlined here)
         run: npm run build
       - name: Run UAT under the Firebase Auth emulator
