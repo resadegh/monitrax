@@ -36,13 +36,13 @@
 
 | Field | Value |
 |---|---|
-| **Current milestone** | M1 — mechanics close-out (Code session NOT yet started; brief merged #1588 + addenda below) |
-| **Last session** | 2026-08-19 · Matrix HQ · market/user research run; v1 focus ruled (D-10…D-18); this plan created |
-| **Next action** | Reza kicks off the M1 Code session (§4 M1 kickoff block) |
+| **Current milestone** | M1 — IN PROGRESS: Code (2026-08-19, pre-dating this plan) built **#1590** (P2 gate + MON-160 dynamic-gating fix; brief sections A+B) and **#1591** (R0 overrides; section C, STACKED on #1590) — both open as DRAFTS |
+| **Last session** | 2026-08-19 · Code (#1590/#1591 built) · Matrix HQ (research, D-10…D-18, this plan) |
+| **Next action** | 🧑 Reza: mark ready + merge **#1590 → #1591 → #1592** (that order; #1591 is stacked on #1590; #1592 = this plan, file-independent) → then M1.5 R0 acceptance + MON-160 live flip check (Matrix+Chrome+Reza) |
 | **Blockers** | none |
 | **Baseline of record** | `.audit/golden-baseline-12954ff.json` (VR-048, 1,756 leaves, treeHash `0d6753ef…`) |
 | **PROD state** | v1 shape live — 13 MODULE_* keys HIDDEN (verified by Reza 2026-08-19) |
-| **Preview state** | full app, all 13 flags ON, full PROD data copy (2026-08-11), `connection_limit=1` applied — `monitrax-git-preview-dev-full-app-…vercel.app` |
+| **Preview state** | full app, all 13 flags ON, full PROD data copy (2026-08-11), `connection_limit=1` applied — `monitrax-git-preview-dev-full-app-…vercel.app` (#1590 notes this workaround branch becomes obsolete once MON-160 deploys) |
 
 ---
 
@@ -127,13 +127,13 @@ No stage completes without its gate review. The plan is a living document — im
 ### M0 — Simplification executed ✅ DONE (2026-08-04 → 08-11)
 Plan+rulings (#1584) · P0 freeze (#1586) · P1 module gate (#1587) · flag-phase acceptance CLOSED (P1.10 static-equivalent, P2.2 CLEAN, P2.2b CLEAN 0/0/0, P2.1 pass — #1587 comments) · PROD live in v1 shape · P2.5 full data copy + tested runbook + standing preview branch (#1589) · preview verified with full data · `connection_limit=1` durable fix. *(Gate review for M0 = the 2026-08-19 research + refocus session that produced this plan.)*
 
-### M1 — Mechanics close-out 🟡 NEXT (one Code session; brief = `BRIEF_SIMP_P2R_R0.md` #1588 + the addenda below) — enhance-only (D-18 ✓)
-- [ ] M1.1 🟦 Execute the #1588 brief in full: P2.3 Reports→pack only · P2.4 D-6 safe entity default · P2.6 positioning row refresh · P2-gate close-out (tick P2.1/2.2/2.2b/2.5 in the old plan citing #1587 comments + runbook log) · §13.6/§7 full-copy amendment · `scripts/dev/set-module-flags.mjs` · **R0 FeatureFlagOverride wiring** (user-scoped reader, admin CRUD, Modules-panel affordance, tests).
-- [ ] M1.2 🟦 **ADDENDUM — static-prerender defect fix** (predates the brief; registered #1587 comment 2026-08-11): gated routes bake the guard verdict at BUILD time — force-dynamic on the ~20 gated layouts or `noStore()` inside `moduleRouteGuard` (SSOT preferred). Register in `docs/issues/` first, fix in the same PR set.
-- [ ] M1.3 🟦 **ADDENDUM — tracker pointers** (carry texts in the PR body, P0.1 precedent): STATE.md cursor line + 01_ACTIVE_WORKSTREAMS row pointing at THIS plan; banner on `PROD_SIMPLIFICATION_PLAN.md` ("live tracking moved to MONITRAX_V1_MASTER_PLAN.md; this doc = decision record + gate design archive"); its cursor block frozen with a pointer; hub `Last updated` bump. Update the old plan's §1 story line to §1 here (D-10). **Also: add a one-line pointer to this master plan + its §0 boot protocol into CLAUDE.md's session-boot section (so every future session lands here by law).**
-- [ ] M1.4 🟦 **ADDENDUM — D-16 dashboard dependency inventory** (analysis, no build): with MODULE_HOME on in Preview, list every Home widget → API/engine dependency and its gate status (`wealth-graph`/MODULE_ENTITIES, `money-flow`, master-snapshot, household feeds…) → the M3 scoreboard rebuild spec starts from this table. Record it in this file under M3.
-- [ ] M1.5 🟩🌐🧑 R0 acceptance on PROD: MODULE_TAX override for Reza's account only → he sees `/dashboard/tax`, a test account still 404s; flag-flip visibility now changes WITHOUT redeploy (M1.2 proof). Verdicts recorded on the PR.
-- [ ] M1.6 🧑 Merge(s); Preview refreshed if flags were touched.
+### M1 — Mechanics close-out 🟡 IN PROGRESS (Code built #1590 + #1591 on 2026-08-19, executing the #1588 brief; that session pre-dates this plan, so M1.3/M1.4 remain open) — enhance-only (D-18 ✓)
+- [ ] M1.1 🟦 Execute the #1588 brief in full — **BUILT, awaiting Reza's merges:** sections A+B on **#1590** (P2.3 Reports→pack · P2.4 D-6 safe default with the correction-dialog write path blocked · P2.6 row 66 refresh · P2 close-out ticked in the old plan · §13.6/§7 full-copy amendment · `set-module-flags.mjs` with PROD-refusal proof) and section C on **#1591** (R0 overrides — reader, user-aware enforcement, admin Overrides UI, 58 tests; NOTE the surfaced deviation: layouts can't know the user (Bearer-token auth), so override windows use client-gate + API-503 defense-in-depth; standing hidden state stays a server 404). Tick on merge.
+- [ ] M1.2 🟦 Static-prerender defect — **BUILT on #1590 as MON-160** (registered FIXING; fixed at the ONE shared guard — request-time decision, order-locked by test — the SSOT choice over 20 per-layout exports). VERIFIED condition = Reza's post-deploy check: flip a module ON in the panel → pages load in ~30s WITHOUT redeploy → flip OFF → 404 again. Tick on merge + VERIFIED.
+- [ ] M1.3 🟦 **STILL OPEN — tracker pointers** (the Code session pre-dates this plan): STATE.md cursor line + 01_ACTIVE_WORKSTREAMS row pointing at THIS plan; banner + frozen cursor on `PROD_SIMPLIFICATION_PLAN.md`; hub bump; old plan §1 story line → §1 here (D-10); one-line master-plan/§0 pointer in CLAUDE.md's session-boot section. Small docs PR (Code or Matrix).
+- [ ] M1.4 🟦 **STILL OPEN — D-16 dashboard dependency inventory** (analysis, no build): with MODULE_HOME on in Preview, list every Home widget → API/engine dependency and its gate status (`wealth-graph`/MODULE_ENTITIES, `money-flow`, master-snapshot, household feeds…) → the M3 scoreboard rebuild spec starts from this table. Record it in this file under M3.
+- [ ] M1.5 🟩🌐🧑 R0 acceptance on PROD (post-merge; #1591's §C.6 procedure): MODULE_TAX shows HIDDEN → Overrides → add Reza's email → ~30s → `/dashboard/tax` loads AS REZA (capture 1) · not-found for a test account/signed-out (capture 2) · remove override → 404s again in ~30s. Captures pasted on #1591. Plus the MON-160 live flip check (M1.2). 
+- [ ] M1.6 🧑 Merges in order **#1590 → #1591 → #1592**; Preview refreshed if flags were touched.
 - [ ] M1.7 🟩 **GATE REVIEW** (D-17 ritual) recorded here.
 **Gate:** all boxes; golden self-diff CLEAN (`changesNumbers: NO`). **Model: Fable 5.**
 
@@ -186,7 +186,7 @@ The automation design law made real: AI does the keying, matching, classifying a
 
 ## 5. Launch-blocking issues (the M2 working set)
 
-**Law:** `docs/issues/ISSUES.md` + `docs/issues/ISSUES.json` remain the REGISTRY OF RECORD (all ~146 issues, full history). This table is the launch-blocking SUBSET only; status changes land in BOTH (same PR — Neo-sync discipline). Hidden-module issues stay HELD (P0.2 freeze) and are NOT listed.
+**Law:** `docs/issues/ISSUES.md` + `docs/issues/ISSUES.json` remain the REGISTRY OF RECORD (all ~147 issues, full history). This table is the launch-blocking SUBSET only; status changes land in BOTH (same PR — Neo-sync discipline). Hidden-module issues stay HELD (P0.2 freeze) and are NOT listed.
 
 | Issue | What | Status at 2026-08-19 |
 |---|---|---|
@@ -195,10 +195,10 @@ The automation design law made real: AI does the keying, matching, classifying a
 | MON-145 | Undated rate | OPEN → M2.3 |
 | MON-146 | 100× rate render | OPEN → M2.3 |
 | MON-129 | Producer-class sweep where producers feed pack/Activity | OPEN → M2.3 |
-| (unregistered) | Static-prerender flag gating (#1587 comment 2026-08-11) | → registered + fixed in M1.2 |
+| MON-160 | Static-prerender flag gating (was the #1587 comment 2026-08-11) | REGISTERED + FIXING on #1590 → VERIFIED at M1.5's live flip check |
 | + M2.1 additions | Whatever the kept-surface census re-count surfaces (MON-149…153 candidates) | → triaged into this table at M2.1 |
 
-Registry counts at last full count (P0.6, 2026-08-04, `e588a837`): 65 OPEN/FIXING · 5 critical · 146 total. Re-count at M2.1; never quote these numbers later without a re-pull.
+Registry counts at last full count (P0.6, 2026-08-04, `e588a837`): 65 OPEN/FIXING · 5 critical · 146 total (147 with MON-160). Re-count at M2.1; never quote these numbers later without a re-pull.
 
 ---
 
@@ -235,4 +235,5 @@ Golden baseline self-diff CLEAN on every phase-gate (`.audit/golden-baseline-129
 
 ## 9. Session log
 
-- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-18 (identity · AI propose→confirm · pack-not-portal · nudges · no-planning-side-door · one doc · dashboard-as-scoreboard · living-plan gate reviews · perfect-what-exists build law); §3.5 pain map rows 1-8 research-ranked + rows 9-12 Reza-added (manual recon, categorisation, doc filing, AI-does-the-work) + §1 automation + build laws; §0 boot protocol (one doc, four actors, CLAUDE.md-first); M4 put under D-18 HOLD (per-task GO at M3 gate review); GATE REVIEW ritual on every milestone; plan created at `380a526a`; M1 = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
+- 2026-08-19 · Code (Fable 5, session pre-dating this plan) · #1590 built (P2 gate: MON-160 dynamic-gating fix · P2.3/P2.4/P2.6 · close-out ticks in the old plan · §13.6/§7 amendment · set-module-flags.mjs; suite 4,509 green) + #1591 built (R0 overrides, stacked; layout-user deviation surfaced; suite 4,523 green). Both DRAFT, awaiting Reza.
+- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-18 (identity · AI propose→confirm · pack-not-portal · nudges · no-planning-side-door · one doc · dashboard-as-scoreboard · living-plan gate reviews · perfect-what-exists build law); §3.5 pain map rows 1-8 research-ranked + rows 9-12 Reza-added + §1 automation + build laws; §0 boot protocol; M4 under D-18 HOLD; GATE REVIEW ritual on every milestone; plan created at `380a526a`; then #1590/#1591 discovered and folded into the M1 cursor with merge order #1590→#1591→#1592.
