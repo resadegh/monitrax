@@ -184,11 +184,6 @@
       "count": 2
     },
     {
-      "file": "lib/calculations/entityBreakdown.ts",
-      "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 1
-    },
-    {
       "file": "lib/calculations/loanAggregator.ts",
       "pattern": "RAW_MIN_REPAYMENT_COST",
       "count": 2
@@ -201,7 +196,7 @@
     {
       "file": "lib/calculations/propertyCashflow.ts",
       "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 3
+      "count": 2
     },
     {
       "file": "lib/cashflow/buildCFEInput.ts",
@@ -321,7 +316,7 @@
     {
       "file": "lib/reports/contextBuilder.ts",
       "pattern": "RAW_FREQ_RUN_RATE",
-      "count": 2
+      "count": 1
     },
     {
       "file": "lib/reports/contextBuilder.ts",

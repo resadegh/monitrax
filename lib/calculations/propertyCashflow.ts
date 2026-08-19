@@ -27,7 +27,7 @@
  * (engine.propertyCashflow.computePropertyCashflow).
  */
 
-import { toMonthly } from '@/lib/utils/frequencies';
+import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
 import { resolveMonthly, type ResolverTx, type DetectedFrequency } from '@/lib/calculations/monthlyResolver';
 
 const RENT_TYPES = new Set(['RENT', 'RENTAL']);
@@ -46,6 +46,12 @@ export interface CashflowIncome {
    * with the tax position. Undefined/null/'DIRECT' = the credit IS gross.
    */
   rentalMode?: string | null;
+  /**
+   * MON-129 (M2): one-off income (isRecurring === false) never enters the
+   * declared run-rate fallback — same gate the expense loop applies. Absent
+   * (undefined/null) = recurring, so existing feeds are unchanged.
+   */
+  isRecurring?: boolean | null;
 }
 export interface CashflowExpense {
   id?: string;
@@ -286,7 +292,10 @@ export function computePropertyCashflow(input: PropertyCashflowInput): PropertyC
   const rentalRows = income.filter((i) => RENT_TYPES.has(i.type));
   const rentalIds = new Set(rentalRows.map((r) => r.id).filter(Boolean) as string[]);
   const rentalTx = txs.filter((t) => t.incomeId != null && rentalIds.has(t.incomeId));
-  const declaredRentalMonthly = rentalRows.reduce((s, r) => s + toMonthly(r.amount, r.frequency as never), 0);
+  // MON-129 (M2): `monthlyRunRate` — the one-off-gated canonical — replaces the
+  // raw toMonthly reduce; a one-off rent row no longer annualises into the
+  // declared fallback (actuals, when present, already dominate).
+  const declaredRentalMonthly = rentalRows.reduce((s, r) => s + monthlyRunRate(r), 0);
   const rent = resolveMonthly({
     declaredMonthly: declaredRentalMonthly,
     cadenceHintFrequency: rentalRows[0]?.frequency ?? 'MONTHLY',

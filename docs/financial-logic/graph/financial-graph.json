@@ -4780,7 +4780,7 @@
       "kind": "engine",
       "label": "Report context builder",
       "file": "lib/reports/contextBuilder.ts",
-      "line": 34,
+      "line": 37,
       "layer": "engine",
       "domain": "reports",
       "trailStage": null,
@@ -4793,7 +4793,7 @@
       "astHash": null,
       "verifiedBy": "lib/reports/contextBuilder.ts:32 (NI-4 modelled; fixture pending)",
       "workedExample": null,
-      "verifiedDate": "2026-06-26",
+      "verifiedDate": "2026-08-19",
       "status": "documented"
     },
     {
@@ -5444,7 +5444,7 @@
       "kind": "engine",
       "label": "Per-property cashflow",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 272,
+      "line": 278,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -5500,7 +5500,7 @@
       "astHash": null,
       "verifiedBy": "tests/calculations/propertyCashflow.test.ts (\u00a719.2 worked examples + \u00a719.4 one-source proof)",
       "workedExample": "Lot 1: rent 14,340 \u2212 expenses 43,546 \u2212 P&I 71,704.56 = \u2212100,910.56 cash (tax \u221290,671.23 using interest 61,465.23)",
-      "verifiedDate": "2026-07-03",
+      "verifiedDate": "2026-08-19",
       "status": "documented",
       "notes": "MON-096: rentalMode (MANAGED) marks rentCadenceSuspect as managed (informational, not a warning) \u2014 lease cadence vs agent disbursement cadence legitimately differ."
     },
@@ -6109,7 +6109,7 @@
       "kind": "engine",
       "label": "Per-loan monthly cost (interest floor)",
       "file": "lib/calculations/propertyCashflow.ts",
-      "line": 230,
+      "line": 236,
       "layer": "engine",
       "domain": "core",
       "trailStage": null,
@@ -6153,7 +6153,7 @@
       "astHash": null,
       "verifiedBy": "tests/golden/ring2.calcSsotWall.test.ts (Wall B1: IO floor 2,500 never $0; weekly 700 \u2192 3,033.33; engine-loop === standalone identity)",
       "workedExample": "principal 500,000 \u00d7 0.06 / 12 = 2,500/mo floor when minRepayment = 0; minRepayment 700 WEEKLY \u2192 700\u00d752/12 = 3,033.33/mo",
-      "verifiedDate": "2026-07-17",
+      "verifiedDate": "2026-08-19",
       "status": "documented"
     },
     {
@@ -10439,6 +10439,46 @@
       "toUnit": "rate (decimal p.a.)",
       "evidence": "effectiveLoanRate.ts:178-186 resolvedMonthlyRepayment x 12 / interestBearing \u2014 DERIVED_IO_REPAYMENT, gated on isInterestOnly (a P&I repayment mixes principal and is never rate evidence)",
       "verifiedDate": "2026-07-31"
+    },
+    {
+      "from": "engine.propertyActuals.calculateMonthlyAverage",
+      "to": "engine.reports.contextBuilder.buildReportContext",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "MON-164: contextBuilder.ts annualContribution \u2014 recurring rows with reconciled transactions read the ONE day-span producer (\u00d712) for the pack rows",
+      "verifiedDate": "2026-08-19"
+    },
+    {
+      "from": "engine.frequencies.monthlyRunRate",
+      "to": "engine.reports.contextBuilder.buildReportContext",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "MON-164 companion: the one-off-once rule mirrors monthlyRunRate/salaryBanked oneOffAmount; declared fallback via toAnnual for recurring rows (contextBuilder.ts annualContribution)",
+      "verifiedDate": "2026-08-19"
+    },
+    {
+      "from": "engine.depreciation.calculateDepreciationAnnual",
+      "to": "engine.reports.contextBuilder.buildReportContext",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "MON-165: fetchPropertyData + fetchDepreciationData read the ONE canonical engine (first-year-only inline math deleted) \u2014 contextBuilder.ts",
+      "verifiedDate": "2026-08-19"
+    },
+    {
+      "from": "engine.calculations.calculateEquity",
+      "to": "engine.reports.contextBuilder.buildReportContext",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "MON-164: fetchPropertyData equity reads the canonical signed producer \u2014 contextBuilder.ts",
+      "verifiedDate": "2026-08-19"
+    },
+    {
+      "from": "engine.calculations.calculateLVR",
+      "to": "engine.reports.contextBuilder.buildReportContext",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "MON-164: fetchPropertyData LVR reads the canonical producer \u2014 contextBuilder.ts",
+      "verifiedDate": "2026-08-19"
     }
   ]
 }

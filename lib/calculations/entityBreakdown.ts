@@ -28,7 +28,7 @@
  */
 
 import { calculateNetWorth, type NetWorthResult } from '@/lib/calculations/netWorthCalculator';
-import { toMonthly } from '@/lib/utils/frequencies';
+import { toMonthly, monthlyRunRate } from '@/lib/utils/frequencies';
 
 export interface EntityRef {
   id: string;
@@ -61,7 +61,7 @@ export interface EntityBreakdownInput {
    *  per-row attribution — lib/income/banked/assembly.ts). Entity income
    *  slices sum from THIS, never a local re-derivation. */
   bankedPerRowMonthly?: Map<string, number>;
-  expenses: Array<OwnedRow & { amount: number; frequency: string }>;
+  expenses: Array<OwnedRow & { amount: number; frequency: string; isRecurring?: boolean | null }>;
 }
 
 export interface EntityPosition {
@@ -165,8 +165,11 @@ export function buildEntityBreakdown(input: EntityBreakdownInput): EntityPositio
       (sum, i) => sum + (i.id ? (input.bankedPerRowMonthly?.get(i.id) ?? 0) : 0),
       0,
     );
+    // MON-129 (M2): mirror the income leg's discipline — a one-off expense
+    // is not a recurring monthly cost and never enters the run-rate
+    // (`monthlyRunRate` is THE one-off-gated canonical; MON-037 class).
     const monthlyExpenses = b.expenses.reduce(
-      (sum, e) => sum + toMonthly(e.amount, e.frequency as Parameters<typeof toMonthly>[1]),
+      (sum, e) => sum + monthlyRunRate(e),
       0,
     );
     positions.push({

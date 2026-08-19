@@ -159,6 +159,7 @@ const LINK_PATTERNS = [
   /\bhref\s*=\s*["'`]([^"'`$]+)/g, // href="..." (attr, incl. template prefix)
   /\bhref\s*=\s*\{\s*["'`]([^"'`$]+)/g, // href={'...'} / href={`...`}
   /\bhref\s*:\s*["'`]([^"'`$]+)/g, // { href: '...' }
+  /\bto\s*:\s*["'`]([^"'`$]+)/g, // { to: '...' } (MON-167 — editorial link objects)
   /\bfallbackHref\s*=\s*["'`]([^"'`$]+)/g,
   /\brouter\.(?:push|replace)\(\s*["'`]([^"'`$]+)/g,
   /\bredirect\(\s*["'`]([^"'`$]+)/g,

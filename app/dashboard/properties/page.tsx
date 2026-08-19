@@ -490,7 +490,6 @@ function PropertiesPageContent() {
   const calculateAnnualLoanRepayments = (property: Property) =>
     cashflowOf(property).annualLoanRepayment;
 
-  const calculateAnnualInterest = (property: Property) => cashflowOf(property).annualLoanInterest;
 
   // Exclude RENTAL properties from value/equity calculations (they're not owned)
   const ownedProperties = properties.filter(p => p.type !== 'RENTAL');
@@ -1659,7 +1658,9 @@ function PropertiesPageContent() {
                             <div className="text-right">
                               <p className="font-bold">{formatCurrency(dep.cost)}</p>
                               <p className="text-sm text-muted-foreground">
-                                {(dep.rate * 100).toFixed(2)}% p.a.
+                                {/* MON-166: rate is stored AS a percentage (2.5 = 2.5%) —
+                                    the old ×100 rendered a 2.5% schedule as 250.00%. */}
+                                {dep.rate.toFixed(2)}% p.a.
                               </p>
                             </div>
                           </div>
