@@ -31,6 +31,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Info, Landmark, PieChart, Plus, User, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 
 export type OwnershipSelectionValue =
   | { mode: 'sole' }
@@ -65,6 +66,14 @@ const CARD_IDLE = 'border-foreground/10 bg-background/50 hover:border-sky-300/60
 const CARD_SELECTED = 'border-sky-400 bg-sky-50/40 ring-1 ring-sky-400/60';
 
 export default function OwnershipPicker({ token, value, onChange }: OwnershipPickerProps) {
+  // PROD Simplification P2.4 (D-6 safe reading): while MODULE_ENTITIES is
+  // OFF the picker does not render AT ALL — every create form keeps its
+  // initial `{ mode: 'sole' }`, which the canonical writer
+  // (ownershipSelectionService) resolves to the user's auto-personal
+  // entity. A default, never a migration: existing attribution is
+  // untouched and no destructive path exists (§12.11 — checked at every
+  // call site: all six initialise and reset to `sole`).
+  const entitiesModuleEnabled = useModuleEnabled('MODULE_ENTITIES');
   const [entities, setEntities] = useState<EntityOption[]>([]);
   const [members, setMembers] = useState<HouseholdMemberOption[]>([]);
   const [people, setPeople] = useState<HouseholdMemberOption[]>([]);
@@ -168,6 +177,12 @@ export default function OwnershipPicker({ token, value, onChange }: OwnershipPic
 
   const sharedTotal =
     value.mode === 'shared' ? value.owners.reduce((s, o) => s + (o.sharePct || 0), 0) : 0;
+
+  // P2.4: hidden while MODULE_ENTITIES is off — the form's `sole` default
+  // stands (→ auto-personal entity at the canonical writer).
+  if (!entitiesModuleEnabled) {
+    return null;
+  }
 
   return (
     <div className="space-y-3">

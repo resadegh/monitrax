@@ -40,6 +40,7 @@
     "app/dashboard/properties/[id]/strategy/layout.tsx": "PROD Simplification P1 (2026-08-04) — 20-line module-gate layout guard (notFound when the module flag is off); no financial calculation. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
     "app/dashboard/requests/layout.tsx": "PROD Simplification P1 (2026-08-04) — 20-line module-gate layout guard (notFound when the module flag is off); no financial calculation. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
     "app/dashboard/safety-net/layout.tsx": "PROD Simplification P1 (2026-08-04) — 20-line module-gate layout guard (notFound when the module flag is off); no financial calculation. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
-    "app/dashboard/tax/layout.tsx": "PROD Simplification P1 (2026-08-04) — 20-line module-gate layout guard (notFound when the module flag is off); no financial calculation. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration."
+    "app/dashboard/tax/layout.tsx": "PROD Simplification P1 (2026-08-04) — 20-line module-gate layout guard (notFound when the module flag is off); no financial calculation. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration.",
+    "tests/featureFlags/p2Narrowing.test.ts": "PROD Simplification P2 (2026-08-19) — source-scan test for the P2.3/P2.4 narrowing; tests are not semantic nodes. graphify local-only CLI unavailable in this environment. REMOVE at the next graphify regeneration."
   }
 }
