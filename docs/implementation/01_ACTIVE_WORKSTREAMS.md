@@ -51,7 +51,7 @@
 - **Blocking:** the Matrix's registry-reconciliation PR (issue ids) + golden-baseline capture (real data) before any number-moving tranche.
 
 ### 0·SIMP. PROD Simplification — the first Monitrax (property scoreboard v1)
-- **Status:** 📋 PLAN LANDED (#1584, merged 2026-08-04) — P0 in progress.
+- **Status:** ✅ M0+M1 CLOSED (2026-08-19). Live tracking moved to `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` — that doc is the state; this entry is a pointer (SSOT). Current milestone: M2 — kept-surface correctness + depth (the launch gate).
 - **Started:** 2026-08-04 · **Owner:** Code (build) · Reza (switches, merges, P0.4 answer) · Matrix (golden self-diff verdicts, Ring-3).
 - **Spec of record:** `docs/strategy/PROD_SIMPLIFICATION_PLAN.md` — a TRACKING doc; its cursor block is the state, its checkboxes are the progress. This entry is a pointer, not a duplicate (SSOT).
 - **Why:** Reza's 8 rulings + 3 directives (plan §0), Q-SCOPE-1 (#1577), scope filter. Simplification runs BEFORE MON-131 T3 (sequence change 2026-08-04).
