@@ -1,9 +1,32 @@
 # MONITRAX V1 MASTER PLAN — the ONE tracking document
 
 **Status:** 🟢 LIVE TRACKER · **Raised:** 2026-08-19 · **By:** Matrix HQ (Cowork, Fable 5) on Reza's merge-the-docs directive · **At HEAD:** `380a526a`
-**This document is THE single entry point and tracker for the Monitrax v1 programme.** Every session — Reza, Matrix HQ (Cowork), Code, Chrome-relay — starts here, reads the cursor, does its slice, ticks its boxes, updates the cursor, appends the session log. One doc to rule the state; registries keep the detail (§8 doc map).
+**This document is THE single entry point and tracker for the Monitrax v1 programme — the shared channel between Reza, Matrix HQ (Cowork), Code sessions, and the Chrome relay.** One doc read, updated and tracked by all four; registries keep the detail (§8 doc map).
 
 **Supersession:** this plan ABSORBS the live-tracking role of `PROD_SIMPLIFICATION_PLAN.md` (now the decision-record + design archive for the module gate — its §0 rulings and §2–§4 designs remain binding and are NOT restated in full here) and the roadmap role of `PRODUCT_SCOPE_V1_RECOMMENDATION.md` (Q-SCOPE-1, archived DECIDED). It does NOT absorb: `docs/issues/ISSUES.md` (the issue REGISTRY of record — this plan carries only the launch-blocking subset, §5), the MON-131 tranche ledger (owns tranche mechanics), or `STATE.md` (stays the cross-programme cursor; carries a pointer here). SSOT: one fact, one home, pointers everywhere else.
+
+---
+
+## 0. BOOT PROTOCOL — every session, every surface (no drift, no guesswork)
+
+**Read order, before ANY work:**
+1. **`CLAUDE.md`** — the repo laws (SSOT · never fix a number in passing · PRs only, never merge to main · hidden ≠ deleted · §13.6 data rules · §20.6/§16.5 PR blocks). Non-negotiable on every surface.
+2. **`STATE.md`** — the cross-programme "you are here" cursor.
+3. **THIS FILE** — cursor block → current milestone → the tasks carrying YOUR role's icon (§4 owners legend).
+4. Your session's brief (Code: the `BRIEF_*.md` named in the current milestone; Matrix: the project boot ritual; Chrome relay runs only under Matrix direction with the relay runbook).
+
+**Standing rules for all four actors:**
+- **Read live, never recall.** No claim about Monitrax state from memory or summaries — read it from HEAD or flag it unverified (cite-or-flag).
+- **Do only what the current milestone briefs.** Found work → registry issue or a proposal in this doc, never a side quest.
+- **Before ending a session:** tick your boxes HERE, update the cursor, append one §9 session-log line — in the SAME PR for Code builds; Matrix lands doc updates as their own PR; Reza's actions (merges, switches, rulings) are recorded by the next session that boots.
+- **If this doc and any other doc disagree:** for programme state, THIS doc wins; for laws, CLAUDE.md wins; for issue detail, the registry wins; for tranche mechanics, the ledger wins. Fix the disagreement in the same session, don't work around it.
+
+| Actor | Reads | Writes here |
+|---|---|---|
+| 🧑 Reza | cursor + current milestone + gates awaiting him | rulings (via chat → Matrix records), merge/switch confirmations |
+| 🟩 Matrix (Cowork) | everything; owns this doc's integrity | cursor, briefs, verdicts, research, session log |
+| 🟦 Code | §0 → cursor → its brief → its milestone tasks | box ticks, cursor, session log (same PR as the build) |
+| 🌐 Chrome relay | the specific runbook step Matrix hands it | nothing directly — Matrix records its results |
 
 ---
 
@@ -46,7 +69,7 @@ D-1 HIDE household cashflow · D-2 HIDE tax module (pack ships) · D-3 HIDE CFO 
 | D-12 | Accountant connection v1 | **The pack, not a portal:** per-property per-FY pack (PDF + CSV) in ATO rental-schedule headings + export/share. Read-only accountant access returns later (elements exist in hidden modules). This is the conversion trigger — every paid competitor has a version. |
 | D-13 | Notifications v1 | **EOFY completeness nudges only** ("3 expenses missing receipts", "no rates entered for X this FY") — tied to the pack, not a notification platform. |
 | D-14 | "Best-outcome tax planning" | **Reframed to completeness + correctness + substantiation** (guided repair-vs-capital classification at entry, per-loan interest, nothing missed in July). Planning/optimisation surfaces return at R2 (property-tax slice) on verified numbers — never through the v1 side door. |
-| D-15 | One tracking doc | **This file.** Registries stay SSOT for their detail (§8); every other strategy doc is archive or pointer. |
+| D-15 | One tracking doc | **This file.** Registries stay SSOT for their detail (§8); every other strategy doc is archive or pointer. Boot protocol §0 binds all four actors. |
 | D-16 | Dashboard in v1 | **The dashboard RETURNS, rebuilt as the v1 scoreboard — it does not return as the old wealth-OS Home.** The old Home reads gated feeds (`wealth-graph` → MODULE_ENTITIES, `money-flow` → MODULE_HOME) and tells the pre-simplification story; flicking MODULE_HOME on as-is would render broken/off-story widgets (P1.2 audit). Sequence: M1 inventories exactly what breaks with MODULE_HOME on; M3 lands the scoreboard version (per-property portfolio summary + EOFY-readiness from kept engines only) and THEN the flag flips ON. Amends D-4's "Home returns R4": the v1 scoreboard comes forward to M3; the full wealth-OS Home stays R4. |
 
 **Scope traps (research-confirmed; do NOT add):** tenant ops (rent collection/leases/maintenance) · multi-currency · lifestyle budgeting breadth · forecasting before records are right · anything that locks data in (full CSV export is a TRUST requirement — M3 verifies it exists).
@@ -80,7 +103,7 @@ Full route/API/key inventory: `PROD_SIMPLIFICATION_PLAN.md` §2 (binding).
 ## 4. ROADMAP — milestones, owners, gates
 
 **Owners legend:** 🧑 Reza (rulings, merges, switches, credentials, pilot) · 🟩 Matrix = Cowork HQ (briefs, research, Ring-3 verdicts, doc-keeping) · 🟦 Code (build PRs) · 🌐 Chrome = browser relay driven by Matrix (console ops, golden-baseline runs, PROD checks; Reza types all credentials).
-**Rituals (unchanged):** Code sessions boot on STATE.md → this cursor → their brief. Every build PR ticks its boxes HERE in the same PR. Matrix cuts one consolidated brief per Code session. Golden self-diff CLEAN required on every phase-gate. Never fix a number in passing — registry issue instead. PRs only, Reza merges.
+**Rituals:** boot per §0. Every build PR ticks its boxes HERE in the same PR. Matrix cuts one consolidated brief per Code session. Golden self-diff CLEAN required on every phase-gate. Never fix a number in passing — registry issue instead. PRs only, Reza merges.
 
 ### M0 — Simplification executed ✅ DONE (2026-08-04 → 08-11)
 Plan+rulings (#1584) · P0 freeze (#1586) · P1 module gate (#1587) · flag-phase acceptance CLOSED (P1.10 static-equivalent, P2.2 CLEAN, P2.2b CLEAN 0/0/0, P2.1 pass — #1587 comments) · PROD live in v1 shape · P2.5 full data copy + tested runbook + standing preview branch (#1589) · preview verified with full data · `connection_limit=1` durable fix.
@@ -88,7 +111,7 @@ Plan+rulings (#1584) · P0 freeze (#1586) · P1 module gate (#1587) · flag-phas
 ### M1 — Mechanics close-out 🟡 NEXT (one Code session; brief = `BRIEF_SIMP_P2R_R0.md` #1588 + the addenda below)
 - [ ] M1.1 🟦 Execute the #1588 brief in full: P2.3 Reports→pack only · P2.4 D-6 safe entity default · P2.6 positioning row refresh · P2-gate close-out (tick P2.1/2.2/2.2b/2.5 in the old plan citing #1587 comments + runbook log) · §13.6/§7 full-copy amendment · `scripts/dev/set-module-flags.mjs` · **R0 FeatureFlagOverride wiring** (user-scoped reader, admin CRUD, Modules-panel affordance, tests).
 - [ ] M1.2 🟦 **ADDENDUM — static-prerender defect fix** (predates the brief; registered #1587 comment 2026-08-11): gated routes bake the guard verdict at BUILD time — force-dynamic on the ~20 gated layouts or `noStore()` inside `moduleRouteGuard` (SSOT preferred). Register in `docs/issues/` first, fix in the same PR set.
-- [ ] M1.3 🟦 **ADDENDUM — tracker pointers** (carry texts in the PR body, P0.1 precedent): STATE.md cursor line + 01_ACTIVE_WORKSTREAMS row pointing at THIS plan; banner on `PROD_SIMPLIFICATION_PLAN.md` ("live tracking moved to MONITRAX_V1_MASTER_PLAN.md; this doc = decision record + gate design archive"); its cursor block frozen with a pointer; hub `Last updated` bump. Update the old plan's §1 story line to §1 here (D-10).
+- [ ] M1.3 🟦 **ADDENDUM — tracker pointers** (carry texts in the PR body, P0.1 precedent): STATE.md cursor line + 01_ACTIVE_WORKSTREAMS row pointing at THIS plan; banner on `PROD_SIMPLIFICATION_PLAN.md` ("live tracking moved to MONITRAX_V1_MASTER_PLAN.md; this doc = decision record + gate design archive"); its cursor block frozen with a pointer; hub `Last updated` bump. Update the old plan's §1 story line to §1 here (D-10). **Also: add a one-line pointer to this master plan + its §0 boot protocol into CLAUDE.md's session-boot section (so every future session lands here by law).**
 - [ ] M1.4 🟦 **ADDENDUM — D-16 dashboard dependency inventory** (analysis, no build): with MODULE_HOME on in Preview, list every Home widget → API/engine dependency and its gate status (`wealth-graph`/MODULE_ENTITIES, `money-flow`, master-snapshot, household feeds…) → the M3 scoreboard rebuild spec starts from this table. Record it in this file under M3.
 - [ ] M1.5 🟩🌐🧑 R0 acceptance on PROD: MODULE_TAX override for Reza's account only → he sees `/dashboard/tax`, a test account still 404s; flag-flip visibility now changes WITHOUT redeploy (M1.2 proof). Verdicts recorded on the PR.
 - [ ] M1.6 🧑 Merge(s); Preview refreshed if flags were touched.
@@ -169,7 +192,8 @@ Golden baseline self-diff CLEAN on every phase-gate (`.audit/golden-baseline-129
 
 | Question | Read |
 |---|---|
-| Programme state, roadmap, who does what next | **THIS FILE (cursor + §4)** |
+| Programme state, roadmap, who does what next | **THIS FILE (§0 boot → cursor → §4)** |
+| Repo laws binding every session | `CLAUDE.md` |
 | Module-gate rulings D-1…D-9 + gate/route/API design | `PROD_SIMPLIFICATION_PLAN.md` (archive; binding design) |
 | Every issue, full history | `docs/issues/ISSUES.md` / `.json` (registry of record) |
 | MON-131 tranche mechanics + ledger | `docs/implementation/MON-131_TRANCHE_LEDGER.md` |
@@ -181,4 +205,4 @@ Golden baseline self-diff CLEAN on every phase-gate (`.audit/golden-baseline-129
 
 ## 9. Session log
 
-- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-16 (incl. dashboard-as-scoreboard); §3.5 pain-point→solution map added; this master plan created at `380a526a`; M1 defined = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
+- 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-16 (incl. dashboard-as-scoreboard); §3.5 pain-point→solution map added; §0 boot protocol added (one doc, four actors, CLAUDE.md-first); this master plan created at `380a526a`; M1 defined = #1588 brief + prerender fix + tracker pointers + dashboard inventory.
