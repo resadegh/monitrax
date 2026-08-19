@@ -16,7 +16,7 @@ import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 // =============================================================================
 
 export const GET = withPermission('report.read', async (_request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
@@ -63,7 +63,7 @@ export const GET = withPermission('report.read', async (_request, auth) => {
 // =============================================================================
 
 export const PUT = withPermission('settings.write', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY');
+    const gateBlocked = await moduleApiGuard('MODULE_STRATEGY', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;

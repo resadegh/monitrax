@@ -44,6 +44,17 @@ interface ModuleRow {
   flag: FeatureFlag | undefined;
 }
 
+/** R0 — one per-user override row as the overrides API returns it. */
+interface OverrideRow {
+  id: string;
+  userId: string;
+  email: string;
+  enabled: boolean;
+  reason: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
 export default function FeatureFlagsPage() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -51,6 +62,82 @@ export default function FeatureFlagsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  // R0 overrides panel — one module's overrides expanded at a time.
+  const [overridesKey, setOverridesKey] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<OverrideRow[]>([]);
+  const [overridesLoading, setOverridesLoading] = useState(false);
+  const [overrideEmail, setOverrideEmail] = useState('');
+  const [overrideExpiry, setOverrideExpiry] = useState('');
+  const [overrideBusy, setOverrideBusy] = useState(false);
+
+  const loadOverrides = useCallback(async (key: string) => {
+    setOverridesLoading(true);
+    try {
+      const res = await fetch(`/api/admin/feature-flags/${key}/overrides`, {});
+      const data = await res.json();
+      setOverrides(res.ok ? (data.overrides ?? []) : []);
+    } catch {
+      setOverrides([]);
+    } finally {
+      setOverridesLoading(false);
+    }
+  }, []);
+
+  const openOverrides = (key: string) => {
+    if (overridesKey === key) {
+      setOverridesKey(null);
+      return;
+    }
+    setOverridesKey(key);
+    setOverrideEmail('');
+    setOverrideExpiry('');
+    loadOverrides(key);
+  };
+
+  const addOverride = async () => {
+    if (!overridesKey || !overrideEmail.trim()) return;
+    setOverrideBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/feature-flags/${overridesKey}/overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: overrideEmail.trim(),
+          enabled: true,
+          expiresAt: overrideExpiry ? new Date(overrideExpiry).toISOString() : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || 'Failed to add override');
+      }
+      setOverrideEmail('');
+      setOverrideExpiry('');
+      await loadOverrides(overridesKey);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add override');
+    } finally {
+      setOverrideBusy(false);
+    }
+  };
+
+  const removeOverride = async (overrideId: string) => {
+    if (!overridesKey) return;
+    setOverrideBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/feature-flags/${overridesKey}/overrides/${overrideId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to remove override');
+      await loadOverrides(overridesKey);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove override');
+    } finally {
+      setOverrideBusy(false);
+    }
+  };
 
   const fetchFlags = useCallback(async () => {
     setLoading(true);
@@ -232,6 +319,20 @@ export default function FeatureFlagsPage() {
                 render: (row) => formatFlip(row.flag),
               },
               {
+                key: 'overrides',
+                header: '',
+                render: (row) => (
+                  <button
+                    onClick={() => openOverrides(row.key)}
+                    className={`text-xs font-medium underline-offset-2 hover:underline ${
+                      overridesKey === row.key ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'
+                    }`}
+                  >
+                    Overrides
+                  </button>
+                ),
+              },
+              {
                 key: 'toggle',
                 header: '',
                 render: (row) =>
@@ -246,6 +347,71 @@ export default function FeatureFlagsPage() {
             keyExtractor={(row) => row.key}
             emptyMessage="No modules registered"
           />
+        )}
+        {/* R0 — per-user overrides for the selected module. This is the
+            go-live verification mechanism: enable a hidden module in
+            PROD for one user (Reza) so Ring-3 runs on live data before
+            any public re-enable. The P1-removed override controls were
+            dead (§4.5); these are wired to isModuleEnabledForUser. */}
+        {overridesKey && (
+          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+              Per-user overrides — <span className="font-mono text-xs">{overridesKey}</span>
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              An override shows this module to ONE user while it stays hidden for everyone else —
+              for verifying a hidden module on live data (R0). Takes effect within ~30 seconds.
+            </p>
+            {overridesLoading ? (
+              <p className="text-sm text-gray-500">Loading overrides…</p>
+            ) : overrides.length === 0 ? (
+              <p className="text-sm text-gray-400 mb-3">No overrides for this module.</p>
+            ) : (
+              <ul className="mb-3 space-y-1">
+                {overrides.map((o) => (
+                  <li key={o.id} className="flex items-center gap-3 text-sm">
+                    <span className="font-medium text-gray-900 dark:text-white">{o.email}</span>
+                    <span className="text-xs text-gray-500">
+                      since {new Date(o.createdAt).toLocaleDateString()}
+                      {o.expiresAt ? ` · expires ${new Date(o.expiresAt).toLocaleDateString()}` : ''}
+                      {!o.enabled ? ' · disabled' : ''}
+                    </span>
+                    <button
+                      onClick={() => removeOverride(o.id)}
+                      disabled={overrideBusy}
+                      className="text-xs text-red-600 hover:underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">User email</label>
+                <input
+                  type="email"
+                  value={overrideEmail}
+                  onChange={(e) => setOverrideEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="h-9 w-64 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Expires (optional)</label>
+                <input
+                  type="date"
+                  value={overrideExpiry}
+                  onChange={(e) => setOverrideExpiry(e.target.value)}
+                  className="h-9 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                />
+              </div>
+              <AdminButton size="sm" onClick={addOverride} disabled={overrideBusy || !overrideEmail.trim()}>
+                Add override
+              </AdminButton>
+            </div>
+          </div>
         )}
       </AdminCard>
 

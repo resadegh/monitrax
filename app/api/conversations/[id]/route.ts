@@ -25,7 +25,7 @@ interface ActionBody {
 }
 
 export const GET = withPermission<RouteContext>('report.read', async (_request, auth, context) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   try {
@@ -53,7 +53,7 @@ export const GET = withPermission<RouteContext>('report.read', async (_request, 
 });
 
 export const POST = withPermission<RouteContext>('report.read', async (request, auth, context) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   let body: ActionBody;

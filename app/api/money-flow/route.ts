@@ -19,7 +19,7 @@ import { getMoneyFlow } from '@/lib/services/moneyFlowService';
 import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (_request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOME');
+    const gateBlocked = await moduleApiGuard('MODULE_HOME', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const flow = await getMoneyFlow(auth.userId);

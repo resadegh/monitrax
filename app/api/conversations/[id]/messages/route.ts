@@ -24,7 +24,7 @@ import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 type RouteContext = { params: Promise<{ id: string }> };
 
 export const GET = withPermission<RouteContext>('report.read', async (request, auth, context) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   const { searchParams } = new URL(request.url);
@@ -63,7 +63,7 @@ interface PostBody {
 }
 
 export const POST = withPermission<RouteContext>('report.read', async (request, auth, context) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   const { id } = await context!.params;
   let body: PostBody;

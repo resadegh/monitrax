@@ -21,7 +21,7 @@ import { createAuditLog } from '@/lib/security/auditLog';
 import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (_request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const items = await listRequestsForUser(auth.userId);
@@ -36,7 +36,7 @@ export const GET = withPermission('report.read', async (_request, auth) => {
 });
 
 export const POST = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL');
+    const gateBlocked = await moduleApiGuard('MODULE_SOCIAL', auth.userId);
     if (gateBlocked) return gateBlocked;
   let body: Partial<SubmitRequestInput>;
   try {

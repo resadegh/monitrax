@@ -21,7 +21,7 @@ import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
  * Returns cashflow strategies from database
  */
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;
@@ -121,7 +121,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
  * Update strategy status
  */
 export const PATCH = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;

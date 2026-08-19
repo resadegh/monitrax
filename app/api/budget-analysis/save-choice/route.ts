@@ -17,7 +17,7 @@ import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 // =============================================================================
 
 export const POST = withPermission('expense.write', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD');
+    const gateBlocked = await moduleApiGuard('MODULE_HOUSEHOLD', auth.userId);
     if (gateBlocked) return gateBlocked;
     try {
       const userId = auth.userId;

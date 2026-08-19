@@ -22,7 +22,7 @@ import { computeSafetyScore } from '@/lib/calculations/safetyScore';
 import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_SAFETY_NET');
+    const gateBlocked = await moduleApiGuard('MODULE_SAFETY_NET', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const userId = auth.userId;
