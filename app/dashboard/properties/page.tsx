@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadFailedState } from '@/components/ui/LoadFailedState';
 import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
@@ -202,6 +203,7 @@ function PropertiesPageContent() {
   const { openLinkedEntity } = useCrossModuleNavigation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false); // M2.6 #5
   const [showDialog, setShowDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -256,6 +258,9 @@ function PropertiesPageContent() {
   }, [token]);
 
   const loadProperties = async () => {
+    // M2.6 #5: a failed fetch must render an error state, never the
+    // "No properties yet" empty state (duplicate-entry trap).
+    setLoadError(false);
     try {
       const response = await fetch('/api/properties', {
         headers: { Authorization: `Bearer ${token}` },
@@ -265,9 +270,12 @@ function PropertiesPageContent() {
         // Handle GRDCS format: { data: [...], _meta: {...} }
         const data = result.data || result;
         setProperties(data);
+      } else {
+        setLoadError(true);
       }
     } catch (error) {
       console.error('Error loading properties:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -604,6 +612,8 @@ function PropertiesPageContent() {
             <p className="text-sm text-muted-foreground">Loading properties...</p>
           </div>
         </div>
+      ) : loadError ? (
+        <LoadFailedState what="your properties" onRetry={loadProperties} />
       ) : properties.length === 0 ? (
         <EmptyState
           icon={Home}

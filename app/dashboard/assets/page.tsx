@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadFailedState } from '@/components/ui/LoadFailedState';
 import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
@@ -271,6 +272,7 @@ function AssetsPageContent() {
   const { token } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false); // M2.6 #5
   const [showDialog, setShowDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -328,6 +330,8 @@ function AssetsPageContent() {
   }, [token]);
 
   const loadAssets = async () => {
+    // M2.6 #5: failed fetch → error state, never the empty state.
+    setLoadError(false);
     try {
       const response = await fetch('/api/assets', {
         headers: { Authorization: `Bearer ${token}` },
@@ -336,9 +340,12 @@ function AssetsPageContent() {
         const result = await response.json();
         setAssets(result.data || []);
         setSummary(result.summary || null);
+      } else {
+        setLoadError(true);
       }
     } catch (error) {
       console.error('Error loading assets:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -827,7 +834,9 @@ function AssetsPageContent() {
         </div>
 
         {/* Assets List */}
-        {assets.length === 0 ? (
+        {loadError ? (
+          <LoadFailedState what="your assets" onRetry={loadAssets} />
+        ) : assets.length === 0 ? (
           <EmptyState
             icon={Package}
             title="No assets yet"

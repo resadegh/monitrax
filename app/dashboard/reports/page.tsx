@@ -155,7 +155,9 @@ export default function ReportsPage() {
       });
 
       if (!response.ok) {
-        const err = await response.json();
+        // M2.6 #32: a gateway error returns HTML — .json() would throw and
+        // surface "Unexpected token '<' …" as the user-facing reason.
+        const err = await response.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to generate report');
       }
 

@@ -185,7 +185,8 @@ export async function buildTaxPackSummary(
   // ---- ATO label totals ----
   // For each transaction, look up its category's tax mappings
   // (preferring user overrides over system seeds), then attribute
-  // the SIGNED amount to each label. A transaction can map to
+  // the ABSOLUTE amount to each label (M2.6 #48: the code uses
+  // Math.abs — this comment previously claimed SIGNED). A transaction can map to
   // multiple labels (rare but legitimate — split across schedules).
   const atoTotals = new Map<string, AtoLabelTotals>();
 

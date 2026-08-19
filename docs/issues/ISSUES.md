@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**154 total** · 93 open · 🔵 38 · 🟡 10 · 🟠 33 · 🟢 12 · ✅ 59
+**166 total** · 105 open · 🔵 50 · 🟡 10 · 🟠 33 · 🟢 12 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -161,6 +161,18 @@
 | MON-165 | 🟠 FIXING | 🔴 | yes | Depreciation has FOUR divergent producers on kept surfaces — the pack and the depreciation page use a first-year-only formula (1.95x off the canonical engine on a 3-year-old DV schedule) | ##1595 | ✅ |
 | MON-166 | 🟠 FIXING | 🟡 | no | Depreciation rate rendered 100x too large on the properties dialog — 2.5% schedule shows as 250.00% p.a. | ##1595 | ✅ |
 | MON-167 | 🟠 FIXING | 🟢 | no | Dead-link guard misses object-literal 'to:' link fields — EditorialMoneyStoryHero carries three hidden-module links the guard cannot see | ##1595 | ✅ |
+| MON-168 | 🔵 OPEN | 🔴 | yes | Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking | — | — |
+| MON-169 | 🔵 OPEN | 🔴 | yes | The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted) | — | — |
+| MON-170 | 🔵 OPEN | 🟠 | yes | Pack ATO-label totals silently drop unmapped and uncategorised transactions | — | — |
+| MON-171 | 🔵 OPEN | 🟠 | yes | Onboarding Review screen runs a parallel financial engine — raw minRepayment, no one-off gate, first number a user ever sees | — | — |
+| MON-172 | 🔵 OPEN | 🟠 | yes | CASH accounts invisible on /dashboard/balances — the cash-wallet the quick-add creates appears in no section and no total | — | — |
+| MON-173 | 🔵 OPEN | 🟠 | yes | Properties dialog local frequency table missing HALF_YEARLY — 6x overstated Budget column for half-yearly rows | — | — |
+| MON-174 | 🔵 OPEN | 🟠 | yes | Receipt-OCR loan confirm invents financial values — missing rate becomes 5%, missing term becomes 360 months | — | — |
+| MON-175 | 🔵 OPEN | 🟠 | yes | Properties dialog renders raw minRepayment per loan next to the engine total — IO loans show $0/month on the same card as a real total | — | — |
+| MON-176 | 🔵 OPEN | 🟠 | yes | Properties page local convertToAnnual alias launders ungated raw-row sums past the source-lock lint (RENTAL hero + tiles) | — | — |
+| MON-177 | 🔵 OPEN | 🟡 | yes | Recurring page hand-rolls monthly run-rate with approximate constants (4.33/2.17) and treats unknown patterns as monthly | — | — |
+| MON-178 | 🔵 OPEN | 🟡 | yes | Legacy tax-time report labels an engine-free subtraction 'Net Taxable Income' in a document meant for an accountant | — | — |
+| MON-179 | 🔵 OPEN | 🟡 | yes | HELD (hidden-only) trio in the legacy report layer: ANNUAL treated as monthly in declared burn; second health-score producer; investments valued two ways in one context | — | — |
 
 ---
 
@@ -2785,4 +2797,136 @@ DepreciationSchedule.rate is stored AS a percentage (schema comment + engine div
 - **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · M2 B-1 diagnosis 2026-08-19 (surfaced in the coverage-boundary sweep)`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: tests/featureFlags/deadLinkGuard.test.ts.
+
+### MON-168 — Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+
+> **What was wrong:** When you link imported bank rows to a property's income, expenses or loans, the link never records WHICH property on the transaction itself. The accountant pack builds its per-property section only from that missing field - so a fully-linked year can export with an empty per-property breakdown.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #1 (2026-08-19) · LIVE-CHECK 1 on the Matrix list`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/transactions/[id]/link/route.ts.
+
+### MON-169 — The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted)
+
+**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+
+> **What was wrong:** Money moved between your own accounts, and loan principal repayments, are counted in the tax pack's income and expense totals as if they were real earnings and deductible costs. The rest of the app deliberately excludes these; the pack does not.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #2 (2026-08-19) · LIVE-CHECK 2`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts.
+
+### MON-170 — Pack ATO-label totals silently drop unmapped and uncategorised transactions
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+
+> **What was wrong:** Rows without a category, or whose category has no ATO label mapping, simply vanish from the pack's ATO-label totals with no 'unmapped' bucket and no warning - the accountant can receive totals materially below the true spend without knowing.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #9 (2026-08-19)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts.
+
+### MON-171 — Onboarding Review screen runs a parallel financial engine — raw minRepayment, no one-off gate, first number a user ever sees
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: onboarding · opened 2026-08-19
+
+> **What was wrong:** The wizard's Review screen computes net worth, income, expenses and monthly cashflow with its own private math instead of the app's engines. An interest-only loan counts as costing $0, so the very first cashflow figure a new user sees is too rosy and disagrees with the properties page they land on next.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #6 (2026-08-19)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: components/onboarding/wizard/types.ts.
+
+### MON-172 — CASH accounts invisible on /dashboard/balances — the cash-wallet the quick-add creates appears in no section and no total
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: balances · opened 2026-08-19
+
+> **What was wrong:** Using the cash quick-add creates a Cash Wallet account, but the accounts page only shows savings/transactional/offset and credit cards - the wallet shows up nowhere and the page's Cash total excludes it, while the app's true liquid-cash number includes it.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #7 (2026-08-19) · LIVE-CHECK 8`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/balances/page.tsx.
+
+### MON-173 — Properties dialog local frequency table missing HALF_YEARLY — 6x overstated Budget column for half-yearly rows
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-19
+
+> **What was wrong:** A private per-month conversion table in the property pop-up doesn't know the 'half-yearly' frequency, so a half-yearly bill shows its monthly Budget at six times the truth - and disagrees with the annual figure two lines away.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #13 (2026-08-19)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/page.tsx.
+
+### MON-174 — Receipt-OCR loan confirm invents financial values — missing rate becomes 5%, missing term becomes 360 months
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: documents · opened 2026-08-19
+
+> **What was wrong:** If the receipt scanner can't read a loan's interest rate or term, the system silently writes a made-up 5% rate and 30-year term into your records, and every interest calculation then treats the invented number as fact.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #15 (2026-08-19) · §19 never-invent breach`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/documents/analyze/confirm/route.ts.
+
+### MON-175 — Properties dialog renders raw minRepayment per loan next to the engine total — IO loans show $0/month on the same card as a real total
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-19
+
+> **What was wrong:** Inside the property pop-up, each loan row shows the typed minimum repayment raw - $0 for an interest-only loan - while the total underneath uses the real engine and charges interest. The card contradicts itself.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #18 (2026-08-19) · MON-032 class`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/page.tsx.
+
+### MON-176 — Properties page local convertToAnnual alias launders ungated raw-row sums past the source-lock lint (RENTAL hero + tiles)
+
+**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-19
+
+> **What was wrong:** A locally-renamed copy of the annual-conversion helper sums raw expense rows with no one-off gate for rental properties' hero segment and tiles - and because of the rename, the automated guard built to catch exactly this cannot see it. Rental tiles can disagree with the engine on the same screen.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #20 (2026-08-19)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/dashboard/properties/page.tsx.
+
+### MON-177 — Recurring page hand-rolls monthly run-rate with approximate constants (4.33/2.17) and treats unknown patterns as monthly
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: intake · opened 2026-08-19
+
+> **What was wrong:** The recurring-payments page estimates monthly amounts with rounded shortcuts instead of the exact converter, so its 'Untracked Monthly' figure is slightly off and drifts from every other surface; unknown payment patterns are silently assumed monthly.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #25 (2026-08-19)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/(dashboard)/recurring/page.tsx.
+
+### MON-178 — Legacy tax-time report labels an engine-free subtraction 'Net Taxable Income' in a document meant for an accountant
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: reports · opened 2026-08-19
+
+> **What was wrong:** The old tax-time report subtracts all deductible expenses from all taxable income - no tax engine, no thresholds, no entity attribution - and presents the result as 'Net Taxable Income'. That framing overstates what the number is.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep finding #46 (2026-08-19)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/generators/taxTime.ts.
+
+### MON-179 — HELD (hidden-only) trio in the legacy report layer: ANNUAL treated as monthly in declared burn; second health-score producer; investments valued two ways in one context
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **yes** · area: reports · opened 2026-08-19
+
+> **What was wrong:** Three defects inside the old financial-overview/investment reports, all on hidden-in-v1 surfaces: a yearly amount mistakenly treated as monthly in the fallback burn-rate (12x), a private health-score formula competing with the real health engine, and investments valued at live price in one section but at cost in another. Registered so they cannot return unnoticed when those modules are switched back on.
+>
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M2.6 depth sweep findings #34/#35/#36 (2026-08-19) · HELD under M2.0/D-20 — do NOT fix while hidden; re-scope at the MODULE_HOME/MODULE_INVESTMENTS returns`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/contextBuilder.ts.
 

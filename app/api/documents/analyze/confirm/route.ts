@@ -406,6 +406,15 @@ async function createExpenseFromAnalysis(
       },
     });
 
+    // M2.6 #16: when the expense is attributed to a property, the receipt
+    // must ALSO surface in that property's Documents section — the global
+    // scan / SmartInbox path previously linked the EXPENSE only, so the
+    // evidence never appeared on the property (the auto-link engine that
+    // would have added it, resolveAutoLinks, has no callers).
+    if (expense.propertyId) {
+      await linkDocIfMissing(documentId, 'PROPERTY', expense.propertyId);
+    }
+
     // Phase 50 D.4 — learn the vendor→asset/property/loan routing (suggest-only)
     // when the user attributed this expense to one. Fire-and-forget.
     const vendor = data.vendor ?? data.name;
@@ -581,14 +590,10 @@ async function linkDocumentToProperty(
   try {
     const propertyId = String(data.propertyId);
 
-    // Create link
-    await prisma.documentLink.create({
-      data: {
-        documentId,
-        entityType: 'PROPERTY',
-        entityId: propertyId,
-      },
-    });
+    // Create link (M2.6 #42: idempotent — a repeat confirm previously hit
+    // the unique constraint and surfaced a failure for an already-correct
+    // state; linkDocIfMissing uses skipDuplicates).
+    await linkDocIfMissing(documentId, 'PROPERTY', propertyId);
 
     // Phase 50 D.4 — learn vendor→property routing (suggest-only).
     void recordVendorEntityHint(userId, data.vendor ?? data.name, 'PROPERTY', propertyId);
