@@ -4448,7 +4448,7 @@
     {
       "id": "MON-161",
       "title": "Gated-route 404 responses are cacheable \u2014 a module flip is invisible on the bare URL until the cached 404 expires",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "opened": "2026-08-19",
@@ -4467,7 +4467,9 @@
         "the admin Modules panel's ~30s flip promise + every R-stage return (the reason this is launch-relevant)",
         "kept routes are deliberately UNTOUCHED - their caching behaviour is unchanged (locked by test)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1594"
+      ],
       "test": "tests/featureFlags/mon161NoStoreCache.test.ts",
       "tracker": "MONITRAX_V1_MASTER_PLAN.md \u00a75 \u00b7 found in the R0 acceptance run 2026-08-19",
       "notes": "Root cause (verified live on PROD 2026-08-19, R0 acceptance run): request-time gating was correct post-MON-160, but the 404 response for a gated bare URL carried no Cache-Control directive, so browser/CDN heuristics cached it (~2 min observed TTL); a cache-busted query returned the fresh verdict instantly. Fix at the ONE shared chokepoint that can stamp response headers for a route tree: middleware.ts sets 'Cache-Control: no-store, must-revalidate' for paths matching any MODULE_REGISTRY routePrefix (registry-derived, no second route list; Edge-safe pure-data import). Ring-3 re-check: re-run the M1.5 flip check on the BARE url in both directions."
@@ -4494,7 +4496,7 @@
     {
       "id": "MON-163",
       "title": "Kept property-detail page links into hidden modules (tax, income, CFO what-if) \u2014 v1 users hit 404s from the core surface",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": false,
       "opened": "2026-08-19",
@@ -4514,7 +4516,9 @@
         "components/loans/LoanDetailDialog.tsx (What-If panel -> MODULE_CFO), components/LinkedDataPanel.tsx (Add Income/Add Holding CTAs), components/shell/TrailStagePill.tsx (My Guide pill de-linked), components/help/HelpDrawer.tsx + app/help/layout.tsx (portal links), app/(dashboard)/recurring/page.tsx (View Expense action), components/strategy/EntityStrategyTab.tsx (self-gated)",
         "the class guard: tests/featureFlags/deadLinkGuard.test.ts walks the kept-reachable import graph from every non-gated route file and fails CI on any link into a hidden routePrefix from a non-module-aware file"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1594"
+      ],
       "test": "tests/featureFlags/deadLinkGuard.test.ts",
       "tracker": "MONITRAX_V1_MASTER_PLAN.md \u00a75 \u00b7 found by Matrix static scan 2026-08-19, confirmed live in PROD",
       "notes": "The Matrix's static scan found 2 files; the repo-wide guard found 8 kept-reachable files (14 link sites) - all gated in the fix PR. Hidden-only files (pages/components inside gated route trees, unreachable in v1) are exempt by the guard's registry-derived reachability walk and join it automatically when their module's registry entry is dropped at its R-stage return."
