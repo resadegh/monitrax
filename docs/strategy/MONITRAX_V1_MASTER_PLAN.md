@@ -36,13 +36,13 @@
 
 | Field | Value |
 |---|---|
-| **Current milestone** | M1 — IN PROGRESS: Code (2026-08-19, pre-dating this plan) built **#1590** (P2 gate + MON-160 dynamic-gating fix; brief sections A+B) and **#1591** (R0 overrides; section C, STACKED on #1590) — both open as DRAFTS |
-| **Last session** | 2026-08-19 · Code (#1590/#1591 built) · Matrix HQ (research, D-10…D-18, this plan) |
-| **Next action** | 🧑 Reza: mark ready + merge **#1590 → #1591 → #1592** (that order; #1591 is stacked on #1590; #1592 = this plan, file-independent) → then M1.5 R0 acceptance + MON-160 live flip check (Matrix+Chrome+Reza) |
+| **Current milestone** | **M1 ✅ CLOSED (2026-08-19)** → **M2 open** (kept-surface correctness — THE LAUNCH GATE). Next Code session: `BRIEF_M2_CORRECTNESS.md` |
+| **Last session** | 2026-08-19 · Matrix HQ · R0 acceptance PASS on PROD + MON-160 verified live · M1.4 inventory · M1.7 gate review · M2 brief cut |
+| **Next action** | 🧑 Reza merges this PR, then kicks off the M2 Code session (`docs/strategy/BRIEF_M2_CORRECTNESS.md`) |
 | **Blockers** | none |
 | **Baseline of record** | `.audit/golden-baseline-12954ff.json` (VR-048, 1,756 leaves, treeHash `0d6753ef…`) |
-| **PROD state** | v1 shape live — 13 MODULE_* keys HIDDEN (verified by Reza 2026-08-19) |
-| **Preview state** | full app, all 13 flags ON, full PROD data copy (2026-08-11), `connection_limit=1` applied — `monitrax-git-preview-dev-full-app-…vercel.app` (#1590 notes this workaround branch becomes obsolete once MON-160 deploys) |
+| **PROD state** | v1 shape live — 13 MODULE_* keys HIDDEN, **zero overrides** (R0 teardown verified 2026-08-19 from override-holder, other-account and signed-out viewpoints) |
+| **Preview state** | full app, all 13 flags ON, full PROD data copy (2026-08-11), `connection_limit=1` applied — `monitrax-git-preview-dev-full-app-…vercel.app`. NOTE: with MON-160 deployed, the standing-branch workaround is no longer needed for flag visibility |
 
 ---
 
@@ -127,18 +127,34 @@ No stage completes without its gate review. The plan is a living document — im
 ### M0 — Simplification executed ✅ DONE (2026-08-04 → 08-11)
 Plan+rulings (#1584) · P0 freeze (#1586) · P1 module gate (#1587) · flag-phase acceptance CLOSED (P1.10 static-equivalent, P2.2 CLEAN, P2.2b CLEAN 0/0/0, P2.1 pass — #1587 comments) · PROD live in v1 shape · P2.5 full data copy + tested runbook + standing preview branch (#1589) · preview verified with full data · `connection_limit=1` durable fix. *(Gate review for M0 = the 2026-08-19 research + refocus session that produced this plan.)*
 
-### M1 — Mechanics close-out 🟡 IN PROGRESS (Code built #1590 + #1591 on 2026-08-19, executing the #1588 brief; that session pre-dates this plan, so M1.3/M1.4 remain open) — enhance-only (D-18 ✓)
-- [ ] M1.1 🟦 Execute the #1588 brief in full — **BUILT, awaiting Reza's merges:** sections A+B on **#1590** (P2.3 Reports→pack · P2.4 D-6 safe default with the correction-dialog write path blocked · P2.6 row 66 refresh · P2 close-out ticked in the old plan · §13.6/§7 full-copy amendment · `set-module-flags.mjs` with PROD-refusal proof) and section C on **#1591** (R0 overrides — reader, user-aware enforcement, admin Overrides UI, 58 tests; NOTE the surfaced deviation: layouts can't know the user (Bearer-token auth), so override windows use client-gate + API-503 defense-in-depth; standing hidden state stays a server 404). Tick on merge.
-- [ ] M1.2 🟦 Static-prerender defect — **BUILT on #1590 as MON-160** (registered FIXING; fixed at the ONE shared guard — request-time decision, order-locked by test — the SSOT choice over 20 per-layout exports). VERIFIED condition = Reza's post-deploy check: flip a module ON in the panel → pages load in ~30s WITHOUT redeploy → flip OFF → 404 again. Tick on merge + VERIFIED.
-- [ ] M1.3 🟦 **STILL OPEN — tracker pointers** (the Code session pre-dates this plan): STATE.md cursor line + 01_ACTIVE_WORKSTREAMS row pointing at THIS plan; banner + frozen cursor on `PROD_SIMPLIFICATION_PLAN.md`; hub bump; old plan §1 story line → §1 here (D-10); one-line master-plan/§0 pointer in CLAUDE.md's session-boot section. Small docs PR (Code or Matrix).
-- [ ] M1.4 🟦 **STILL OPEN — D-16 dashboard dependency inventory** (analysis, no build): with MODULE_HOME on in Preview, list every Home widget → API/engine dependency and its gate status (`wealth-graph`/MODULE_ENTITIES, `money-flow`, master-snapshot, household feeds…) → the M3 scoreboard rebuild spec starts from this table. Record it in this file under M3.
-- [ ] M1.5 🟩🌐🧑 R0 acceptance on PROD (post-merge; #1591's §C.6 procedure): MODULE_TAX shows HIDDEN → Overrides → add Reza's email → ~30s → `/dashboard/tax` loads AS REZA (capture 1) · not-found for a test account/signed-out (capture 2) · remove override → 404s again in ~30s. Captures pasted on #1591. Plus the MON-160 live flip check (M1.2). 
-- [ ] M1.6 🧑 Merges in order **#1590 → #1591 → #1592**; Preview refreshed if flags were touched.
-- [ ] M1.7 🟩 **GATE REVIEW** (D-17 ritual) recorded here.
-**Gate:** all boxes; golden self-diff CLEAN (`changesNumbers: NO`). **Model: Fable 5.**
+### M1 — Mechanics close-out ✅ **CLOSED 2026-08-19** — enhance-only (D-18 ✓)
+- [x] **M1.1** 🟦 #1588 brief executed in full — **#1590** (P2.3 Reports→pack · P2.4 D-6 safe default · P2.6 row 66 · P2 close-out ticks · §13.6/§7 full-copy amendment · `set-module-flags.mjs` with PROD-refusal proof) + **#1591** (R0 overrides: user-scoped reader, user-aware API enforcement across 35 handlers, admin Overrides UI, 58 featureFlags tests). Both merged 2026-08-19. Deviation surfaced honestly on #1591: server layouts have no user identity (Bearer-token auth, zero `cookies()` repo-wide) → override windows enforce client-gate + API-503; the standing no-override state remains a hard server 404.
+- [x] **M1.2** 🟦 Static-prerender defect → **MON-160** registered + fixed on #1590 at the ONE shared guard (request-time decision, order-locked by test). **VERIFIED live 2026-08-19** (see M1.5).
+- [ ] **M1.3** 🟦 **CARRIED TO M2** — tracker pointers (STATE.md cursor line · 01_ACTIVE_WORKSTREAMS row · banner + frozen cursor on `PROD_SIMPLIFICATION_PLAN.md` · hub bump · old-plan §1 story line → §1 here · **CLAUDE.md boot-section pointer to this plan + §0**). Not doable from Cowork: STATE.md (78 KB) and the trackers exceed the GitHub connector's safe carry size (P0.1 precedent). Carry texts: `BRIEF_M2_CORRECTNESS.md` §A.
+- [x] **M1.4** 🟦→🟩 **D-16 dashboard dependency inventory — DONE by Matrix 2026-08-19** (analysis, no build; run at `bea895f1`). Result recorded under **M3.4** below. Headline: the old Home is **not** flip-on-able — 7 outbound links point into hidden modules and both of its data APIs return the household/CFO story. D-16's sequencing is confirmed empirically, not assumed.
+- [x] **M1.5** 🟩🌐🧑 **R0 ACCEPTANCE — PASS on PROD** (2026-08-19, #1591 comments): `MODULE_TAX` HIDDEN → override for `reza.sadegh@ymail.com` → **Tax Position renders for the holder** (FY2026-27, taxable $145,426, refund $5,218) · **404 for the other account and signed-out** · override removed → **404 again for the holder** (cache-busted). **MON-160 live check:** `MODULE_HOUSEKEEPING` ON → page + content + **sidebar nav entry** appeared within the cache window **with no redeploy** → OFF → 404 again. Caveat found → MON-161 (below).
+- [x] **M1.6** 🧑 #1590 → #1591 → #1592 merged in order; PROD redeployed; standing state restored (13 hidden, 0 overrides).
+- [x] **M1.7** 🟩 **GATE REVIEW — recorded below.**
+
+#### M1.7 GATE REVIEW (D-17 ritual) — Matrix HQ, 2026-08-19
+
+**1. Progress vs plan (evidence-audited, not recalled).** M1.1/M1.2/M1.5/M1.6 complete with PR + live-run evidence. **M1.3 slipped and is named, not dropped** → carried into M2's brief §A with its carry texts. M1.4 completed by Matrix instead of Code (analysis only, no build — cheaper than a Code round-trip). Two findings surfaced during the live run and are registered (§5: MON-161, MON-162) rather than fixed in passing (§23.2.1). Net: **the R-stage machinery is operational** — the last mechanical precondition to the correctness programme is done.
+
+**2. Market + regulatory re-check (delta since 2026-08-19 research, same day).** No material change in-window; the watchlist stands unchanged (TaxTank $15/mo · The Property Accountant $3.99/property/mo · Propva on the statement-AI wedge · Moorr free/no pack). The two open verification items remain open and are **not** M2 blockers: (a) per-property vs pooled loss quarantining under the 1-Jul-2027 regime — read the Act before any R2 loss-ledger logic; (b) the ATO "9-in-10 wrong" figure — re-verify against an ATO-primary source before it appears in marketing copy (M5.1). Next substantive re-check due at the **M2 gate**.
+
+**3. Upgrade proposals (need Reza's ruling; none actioned unilaterally — D-18).**
+- **P-1 (recommended).** Fold M1.3 into M2's PR rather than spending a separate Code session on docs. *Adopted in the M2 brief as §A; overturn by saying so.*
+- **P-2 (recommended).** Treat **MON-161** (stale cached 404 on the bare URL after a flip) as an **M2 item, not a nice-to-have**: it directly undercuts the admin panel's ~30s promise that every R-stage return depends on. Cheap fix, high trust value. *In the M2 brief as §C.*
+- **P-3 (defer, register only).** **MON-162** (admin portal and app cannot hold independent sessions in one browser) — Reza ruled "future fix" during the run. Registered; no work until it blocks something.
+- **P-4 (proposal, NOT adopted).** M3.4's scoreboard could reuse `/api/dashboard/charts`' NetWorth series. **Recommend against** until M2 proves the producers behind it: the same endpoint carries household/CFO quantities that v1 does not claim. Revisit at the M3 gate with M2's census result in hand.
+- **P-5 (proposal, NOT adopted).** Server-side session identity (cookie-based) would let layouts enforce overrides server-side and would also fix MON-162 — but it is an auth-architecture change, far outside v1's D-18 boundary. Named here so the option is not lost.
+
+**4. Cursor + §9 updated.** ✓ (this PR)
+
+**Gate:** all boxes ticked or explicitly carried; both merged PRs shipped `changesNumbers: NO`; PROD verified in standing state from three viewpoints. **M1 CLOSED.**
 
 ### M2 — Correct numbers on the kept surface (P3) — 🔒 THE LAUNCH GATE — enhance-only (D-18 ✓: fixing what exists)
-The validation/issue-tracker programme, resumed and filtered to the kept surface (by producer, never by tranche — held doctrine).
+The validation/issue-tracker programme, resumed and filtered to the kept surface (by producer, never by tranche — held doctrine). **Brief: `docs/strategy/BRIEF_M2_CORRECTNESS.md`.**
 - [ ] M2.1 🟦 Producer census re-run filtered to kept surface at current HEAD (expect ≈8–10 quantities; MON-131_SCOPE_FILTER §1.1)
 - [ ] M2.2 🟩🌐 T2 (loan cost) Ring-3 on live data — first Ring-3 through R0's override
 - [ ] M2.3 🟦🟩 Launch-blocking defect cluster → VERIFIED (§5 table; Opus 4.8 diagnosis briefs, Fable 5 mechanical fixes)
@@ -151,7 +167,30 @@ The validation/issue-tracker programme, resumed and filtered to the kept surface
 - [ ] M3.1 🟦 Pack restructured to ATO rental-schedule line headings, per property per FY: income · interest (per loan) · repairs vs capital vs Div 40/43 (from the depreciation schedules) · other deductions by schedule line · linked evidence (vault docs) per row · PDF + CSV
 - [ ] M3.2 🟦 EOFY completeness nudges (D-13): missing-receipt / missing-category / no-rates-this-FY style checks surfaced before pack export
 - [ ] M3.3 🟦 Full-data CSV export verified/added (anti-lock-in trust requirement — PropertyChat's #1 stated reason for staying on Excel)
-- [ ] M3.4 🟦 **D-16 scoreboard dashboard:** `/dashboard` rebuilt from the M1.4 inventory using KEPT engines only — per-property portfolio summary (cashflow, yield, equity from existing engines), EOFY-readiness panel (M3.2 nudges), roadmap-aligned (no wealth-OS widgets). MODULE_HOME flips ON at this gate; redirect retired.
+- [ ] M3.4 🟦 **D-16 scoreboard dashboard:** `/dashboard` rebuilt using KEPT engines only — per-property portfolio summary, EOFY-readiness panel (M3.2 nudges), roadmap-aligned (no wealth-OS widgets). MODULE_HOME flips ON at this gate; the redirect is retired. **Build from the M1.4 inventory (below), not from the old HomeClient.**
+
+<details open>
+<summary><b>M1.4 — D-16 dashboard dependency inventory (Matrix, 2026-08-19, at <code>bea895f1</code>)</b></summary>
+
+**Verdict: the old Home is NOT flip-on-able.** `app/dashboard/page.tsx` is already the correct thin server wrapper (force-dynamic · redirect when hidden · `ModuleOverrideGate` in an override window · never 404s, D-4) — the problem is entirely `HomeClient.tsx` (1,826 lines), which tells the pre-simplification wealth-OS story.
+
+*API surface it fetches (`HomeClient.tsx:375-415`) — gate status from `moduleRegistry.ts`:*
+
+| Endpoint | Gate status | Usable by the v1 scoreboard? |
+|---|---|---|
+| `/api/portfolio/snapshot` | KEEP-OPEN | **Yes** — property portfolio value/equity/LVR |
+| `/api/accounts` | KEEP-OPEN | Yes (kept intake) |
+| `/api/settings/balance-upgrade-nudge` | KEEP-OPEN | Yes (nudge plumbing — reusable for M3.2) |
+| `/api/dashboard/insights` | KEEP-OPEN **but** | **Partly.** Reads `canonicalCashflow` (household — hidden D-1), `financialIndependence` + `lib/health` (CFO — hidden D-3), `moneyStoryTrend`, `masterFinancialService`. The route stays open (kept surfaces use it); its *content* is the household/CFO story. |
+| `/api/dashboard/charts` | KEEP-OPEN **but** | **Partly.** Reads `masterFinancialService`, `moneyStoryTrend`, `entityValueBreakdown` (entities — hidden D-5/R5), `netWorthHistory`. |
+| `/api/wealth-graph` (via `WealthUniverseWidget` → `useWealthExplorerData`) | **GATED → MODULE_ENTITIES (R5)** | **No** — 503s in v1. Widget must not ship on the scoreboard. |
+
+*Outbound links into HIDDEN modules (would 404 today):* `/dashboard/investments/accounts` (R5) · `/dashboard/debt-planner` (R3) · `/dashboard/cfo` (R4) · `/dashboard/income` (R3) · `/dashboard/expenses` (R3) · `/dashboard/entities` (R5) · `/dashboard/budget-analysis` (R3) — **7 dead links.**
+
+*Widgets rendered today:* FinancialHealthScore · EmergencyFundTracker · MoneyBleedingCard · SpendingByCategory · ActionableInsights · MonthlyBudgetSummary · DebtQualityWidget · EntityCashflowSummary · WealthUniverseWidget · InvestmentIncomeDisplay · LinkageHealthIndicator · QuickActionsBar · Editorial{Chart,Donut,EntityBars,Line}. **Every one is household/CFO/entity-scoped except the portfolio and property tiles.**
+
+**M3.4 build rule (from this inventory):** the scoreboard is a NEW client composed from `/api/portfolio/snapshot` + the per-property cashflow engine + the M3.2 completeness checks. `HomeClient.tsx` is **not deleted** (hidden ≠ deleted) — it stays for the R4 wealth-OS Home. Do not lift its widgets wholesale; do not add the WealthUniverse tile; every link must point at a KEPT route. **P-4 (M1.7 gate review) is unresolved:** reusing `/api/dashboard/charts`' NetWorth series awaits M2's census verdict — do not assume it.
+</details>
 - [ ] M3.5 🧑🟩 **The pilot = the user research:** Reza's accountant + 2–3 friendlies run the pack on real FY2025-26 data. Acceptance: the accountant needs NOTHING else to complete the rental schedule. Findings → registry issues, fixed, re-run.
 - [ ] M3.6 🟩 **GATE REVIEW** (D-17 ritual) recorded here — **includes the D-18 GO decision: Reza rules which M4 tasks (if any) are authorised to build, one by one.**
 **Gate:** accountant sign-off captured in this doc; dashboard live as the scoreboard. **This gate closes the flagged user-voice research gap.**
@@ -195,7 +234,9 @@ The automation design law made real: AI does the keying, matching, classifying a
 | MON-145 | Undated rate | OPEN → M2.3 |
 | MON-146 | 100× rate render | OPEN → M2.3 |
 | MON-129 | Producer-class sweep where producers feed pack/Activity | OPEN → M2.3 |
-| MON-160 | Static-prerender flag gating (was the #1587 comment 2026-08-11) | REGISTERED + FIXING on #1590 → VERIFIED at M1.5's live flip check |
+| MON-160 | Static-prerender flag gating (build-time-baked module guards) | **FIXED on #1590 · VERIFIED live 2026-08-19** (M1.5 flip test) → flip to VERIFIED in the registry at M2 |
+| MON-161 | **NEW (M1.5 run):** stale **cached 404** on a gated route's bare URL for ~2 min after a flag flip — a cache-busted request gets the correct verdict immediately, so request-time gating works; the artefact is response/browser caching of the 404 for that exact URL. Undercuts the panel's ~30s promise every R-stage return relies on. Fix: `Cache-Control: no-store` (or equivalent) on gated-route 404 responses. | TO REGISTER + FIX in M2 (brief §C) |
+| MON-162 | **NEW (Reza, M1.5 run):** the admin portal and the app **cannot hold independent sessions in one browser** — signing into either signs the other out (shared auth storage, same origin). They are separate surfaces and should support separate sessions. | TO REGISTER in M2 (brief §A); **fix deferred by Reza's ruling** — no work until it blocks something |
 | + M2.1 additions | Whatever the kept-surface census re-count surfaces (MON-149…153 candidates) | → triaged into this table at M2.1 |
 
 Registry counts at last full count (P0.6, 2026-08-04, `e588a837`): 65 OPEN/FIXING · 5 critical · 146 total (147 with MON-160). Re-count at M2.1; never quote these numbers later without a re-pull.
@@ -231,9 +272,10 @@ Golden baseline self-diff CLEAN on every phase-gate (`.audit/golden-baseline-129
 | Preview/dev data refresh | `docs/operations/PREVIEW_DATA_REFRESH_RUNBOOK.md` + `PREVIEW_BRANCH.md` |
 | Golden-baseline / relay mechanics | `scripts/matrix/` + project memory `matrix-relay-runbook` |
 | v1 scope four-lens analysis (archive) | `PRODUCT_SCOPE_V1_RECOMMENDATION.md` (Q-SCOPE-1, DECIDED) |
-| Code-session briefs | `docs/strategy/BRIEF_*.md` (M1: `BRIEF_SIMP_P2R_R0.md` + §4 M1 addenda) |
+| Code-session briefs | `docs/strategy/BRIEF_*.md` (M2: `BRIEF_M2_CORRECTNESS.md`; M1 archive: `BRIEF_SIMP_P2R_R0.md`) |
 
 ## 9. Session log
 
 - 2026-08-19 · Code (Fable 5, session pre-dating this plan) · #1590 built (P2 gate: MON-160 dynamic-gating fix · P2.3/P2.4/P2.6 · close-out ticks in the old plan · §13.6/§7 amendment · set-module-flags.mjs; suite 4,509 green) + #1591 built (R0 overrides, stacked; layout-user deviation surfaced; suite 4,523 green). Both DRAFT, awaiting Reza.
 - 2026-08-19 · Matrix HQ (Fable 5) · Deep market/user/analogue research (3 agent sweeps); v1 focus ruled D-10…D-18 (identity · AI propose→confirm · pack-not-portal · nudges · no-planning-side-door · one doc · dashboard-as-scoreboard · living-plan gate reviews · perfect-what-exists build law); §3.5 pain map rows 1-8 research-ranked + rows 9-12 Reza-added + §1 automation + build laws; §0 boot protocol; M4 under D-18 HOLD; GATE REVIEW ritual on every milestone; plan created at `380a526a`; then #1590/#1591 discovered and folded into the M1 cursor with merge order #1590→#1591→#1592.
+- 2026-08-19 · Matrix HQ (Fable 5 → Opus 5) · **M1 CLOSED.** R0 acceptance PASS on live PROD (override holder sees `/dashboard/tax`; other account + signed-out 404; teardown verified from all three viewpoints — #1591 comments) · MON-160 verified live (flip → page + nav within cache window, no redeploy) · M1.4 dashboard inventory run at `bea895f1` and recorded under M3.4 (verdict: old Home not flip-on-able — 7 dead links, gated `wealth-graph` widget, household/CFO-scoped data APIs) · M1.7 gate review recorded with 5 upgrade proposals (P-1/P-2 adopted into the M2 brief, P-3 deferred per Reza, P-4/P-5 open) · MON-161 + MON-162 raised for registration · `BRIEF_M2_CORRECTNESS.md` cut. Cursor → M2, the launch gate.
