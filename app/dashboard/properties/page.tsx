@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -204,6 +205,16 @@ function PropertiesPageContent() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false); // M2.6 #5
+  // M2.6 #14 — the detail page's Edit affordance deep-links here with
+  // ?edit=<id>; open the edit dialog once the list has loaded.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (!editId || properties.length === 0) return;
+    const target = properties.find((p) => p.id === editId);
+    if (target) handleEdit(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, properties.length]);
   const [showDialog, setShowDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);

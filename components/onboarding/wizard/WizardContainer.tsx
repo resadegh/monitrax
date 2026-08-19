@@ -23,6 +23,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2, AlertCircle } from 'lucide-react';
+import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 import {
   WizardData,
   INITIAL_WIZARD_DATA,
@@ -284,6 +285,11 @@ export function WizardContainer({
   // hasInvestments), and `isSubmitStep` stays as belt-and-braces —
   // the submit button can only ever appear on the real review step.
   // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.7.
+  // M2.6 #4 — hidden-module steps are filtered out (fail-closed): a v1
+  // user must never key data into modules they can't open. Outside the
+  // ModuleGateProvider (the /onboarding mount) the map is empty, which
+  // hides every module-keyed step — the correct v1 default.
+  const enabledModules = useEnabledModules();
   const steps = useMemo(() => {
     const effectiveProfile = data.profileType ?? 'MIXED';
     return getStepsForProfile(effectiveProfile, {
@@ -292,8 +298,9 @@ export function WizardContainer({
       // Phase 44 Part 1d — the relationship skeleton step is shown only
       // when there is a structure to wire (≥1 non-personal entity).
       hasStructureEntities: data.entities.some((e) => e.type !== 'PERSONAL_NAME'),
+      enabledModules,
     });
-  }, [data.profileType, data.housing, data.debtCategories, data.entities]);
+  }, [data.profileType, data.housing, data.debtCategories, data.entities, enabledModules]);
 
   const currentStep = steps[currentStepIndex];
   const isFirstStep = currentStepIndex === 0;

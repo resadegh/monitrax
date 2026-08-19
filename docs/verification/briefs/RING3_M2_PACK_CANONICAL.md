@@ -26,3 +26,15 @@ The tax-time pack's per-row `annualAmount` is produced by `annualContribution` (
 
 ## Coverage boundary
 CI verifies the row rule, the canonical depreciation value, and source topology (`tests/reports/mon164PackCanonicalRows.test.ts`); it does NOT verify the rendered pack on live data — that is THIS run. The pack's per-loan interest line does NOT exist yet (M3.1); nothing here predicts it.
+
+---
+
+## SCOPE CORRECTION (M2.6 sweep, 2026-08-19) — the D-12 pack was OUT of this handout
+
+The predictions above cover the **legacy** `/api/reports` tax-time generator (`lib/reports/contextBuilder.ts`). The **D-12 pack the user actually exports** — `buildTaxPackSummary` via `POST /api/bookkeeping/tax-pack/export` (`TaxPackExportButton` on /dashboard/reports) — was not in the M2.1 census and carries its own registered defects, **not yet fixed**:
+
+- **MON-168** — reconcile→link never stamps `UnifiedTransaction.propertyId` → the pack's per-property P&L can be EMPTY on a fully-linked year (LIVE-CHECK 1).
+- **MON-169** — transfers + loan repayments counted as income/expense (`isTransfer` never consulted) (LIVE-CHECK 2).
+- **MON-170** — ATO-label totals silently drop unmapped/uncategorised rows.
+
+**Consequence for the M2 gate:** M2.5 ("five-condition done on kept quantities") must NOT close on this handout alone — the pack's quantities converge only after the MON-168/169/170 fix PR lands and gets its own Ring-3. Run the predictions above now (they verify the PR-2 fixes); run the pack checks (LIVE-CHECK 1/2/9 in `M2_DEPTH_SWEEP_CATALOGUE.md`) to baseline the pack's pre-fix state.
