@@ -11,9 +11,9 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | P0 — ✅ DONE (2026-08-05) · P1 — built (PR-B #1587, CI green); awaiting P1.10 verdicts |
-| **Last session** | 2026-08-05 · Code (P0 close-out: P0.4 recorded, #1577 flip; Matrix handout for P1.10 written) |
-| **Next action** | Matrix: run `MATRIX_HANDOUT_P1_10_GOLDEN_SELFDIFF.md`, record verdicts on #1587 → Reza merges #1587 → P2 |
+| **Current phase** | P0 ✅ · P1 ✅ (#1587 merged; P1.10 → P2.2/P2.2b CLEAN) · P2 — gate PR open (Code-side items done; MON-160 fix aboard) · R0 — built (own PR) |
+| **Last session** | 2026-08-19 · Code (P2 remainder + preview script + MON-160 fix + R0 override wiring, per BRIEF_SIMP_P2R_R0) |
+| **Next action** | Reza: merge the P2-gate PR (deploys the MON-160 fix) + the R0 PR → run the R0 acceptance (§ R-stages precondition) → P2.1 crumbs → P3 kickoff |
 | **Blockers** | none |
 | **Baseline of record** | `.audit/golden-baseline-12954ff.json` (VR-048, 1,756 leaves, treeHash `0d6753ef…`) |
 
@@ -192,13 +192,15 @@ The Edit / Overrides / "Create Override" controls have no `onClick` and no API; 
 - [ ] **P1.10 ACCEPTANCE: golden-baseline self-diff = `CLEAN`** against `.audit/golden-baseline-12954ff.json` (via the Matrix relay `POST /api/admin/matrix/golden-baseline/diff`, or `npx tsx scripts/matrix/golden-baseline.mjs` with DATABASE_URL). **Any numeric leaf moved ⇒ a producer changed ⇒ DEFECT; the phase STOPS** (held doctrine #2). Run once with all flags off (ship state) and once with flags on in Preview (dev DB) — both must be CLEAN. ⏳ **HANDBACK to Matrix HQ (2026-08-04):** PR-B is open with CI-relevant gates green locally; verdicts (verdict + treeHash + HEAD, both runs) get recorded in the PR body before Reza merges.
 **Gate:** P1.10 CLEAN recorded (verdict + treeHash in the PR body). **Model: Fable 5.** Touches no `lib/calculations/**` producer — if a diff says otherwise, that IS the defect.
 
-### P2 — The flip *(PROD state change; Reza's hands on the switches)* — 📋
-- [ ] P2.1 Verify PROD came up hidden after deploy (**keys default hidden — nothing to flip**): smoke-test each §2.2 route → 404/redirect, each gated API → 503, nav shows: Properties · Assets · Loans · Documents · Activity · Reports · Settings
-- [ ] P2.2 Post-deploy golden self-diff on PROD: `CLEAN` (same criterion as P1.10)
-- [ ] P2.3 Reports page narrowed in-page to the property/tax-time pack
-- [ ] P2.4 D-6 safe default: new-capture ownership defaults to personal entity; picker hidden behind `MODULE_ENTITIES`; **zero writes to existing attribution** (§12.11 guard — destructive path is out of scope permanently per D-6)
-- [ ] P2.5 D-7 Preview copy executed per §7 runbook; copy date + hash recorded here
-- [ ] P2.6 Positioning follow-up registered (site copy vs one-module app — Q-SCOPE-1 risk 2; queued row 66 in 02_UP_NEXT.md) — not built in this phase
+### P2 — The flip *(PROD state change; Reza's hands on the switches)* — 🟡 gate PR open (P2.1 crumbs + MON-160 deploy remain)
+- [x] P2.1 Verify PROD came up hidden after deploy (**keys default hidden — nothing to flip**): smoke-test each §2.2 route → 404/redirect, each gated API → 503, nav shows: Properties · Assets · Loans · Documents · Activity · Reports · Settings. ✅ **Core pass 2026-08-09 (Reza + Matrix, #1587 addendum comment):** `/dashboard` → `/dashboard/properties` redirect ✓ · sidebar = exact v1 set ✓ · `/dashboard/tax` 404 ✓ · `/cashflow` 404 ✓. **Remaining crumbs (not yet run):** the rest of the §2.2 route sweep transcript, gated-API 503 spot-checks, mobile tab bar glance — carried in the P2-gate PR.
+- [x] P2.2 Post-deploy golden self-diff on PROD: `CLEAN` (same criterion as P1.10). ✅ **CLEAN 2026-08-09 (Matrix, #1587 comment):** fresh PROD capture treeHash `0d6753ef…` identical to `.audit/golden-baseline-12954ff.json`; 1,756 leaves; per-tree counts identical across all eight engines; `captureErrors: []`.
+- [x] **P2.2b flags-on pair diff (added by the P1.10 static-equivalent verdict): `CLEAN`.** ✅ 2026-08-09 (Matrix, same comment): flags-OFF capture parked → all 13 keys ON via the admin panel → 35s wait → server-side pair diff **changed 0 · added 0 · removed 0** → all keys restored OFF (verified twice). Flag-phase acceptance empirically closed (held doctrine #2).
+- [x] P2.3 Reports page narrowed in-page to the property/tax-time pack ✅ 2026-08-19, P2-gate PR — tiles carry registry `moduleKey`s (financial-overview→HOME · income-expense→HOUSEHOLD · loan-debt→DEBT_PLANNER · investment→INVESTMENTS; property-portfolio + tax-time unkeyed = the kept pack) and filter via the SAME `filterNavByModules` the nav uses; the help section now renders from the same list (the hardcoded second list is gone, §12.2.1). TaxPackExportButton stays.
+- [x] P2.4 D-6 safe default: new-capture ownership defaults to personal entity; picker hidden behind `MODULE_ENTITIES`; **zero writes to existing attribution** (§12.11 guard — destructive path is out of scope permanently per D-6) ✅ 2026-08-19, P2-gate PR — `OwnershipPicker` returns null when the module is off (all six call sites verified to initialise + reset `{mode:'sole'}` → the canonical writer resolves the auto-personal entity); `CorrectOwnershipDialog`'s write path is blocked with an in-dialog notice (a hidden picker there could otherwise have silently overwritten joint/shared attribution with `sole`).
+- [x] P2.5 D-7 Preview copy executed per §7 runbook; copy date + hash recorded here ✅ **Executed 2026-08-11 (Matrix + Reza, ahead of this gate PR — #1587 comment):** full-instance copy per the 2026-08-09 ruling; 140 tables / 36 users / 58 properties verified; dev flags all ON; refresh log in §7.3.
+- [x] P2.6 Positioning follow-up registered (site copy vs one-module app — Q-SCOPE-1 risk 2; queued row 66 in 02_UP_NEXT.md) — not built in this phase ✅ 2026-08-19 — row 66 refreshed: target story = the plan §1 v1 line (post-purchase property scoreboard), trigger re-anchored to "before public v1 traffic".
+- [x] **MON-160 fix (defect found in live use, #1587 comment 2026-08-11):** module gates were baked at BUILD time — statically pre-rendered gated layouts froze the guard's verdict, so a flag flip could not unhide within 30s (every R-stage re-enable would silently need a redeploy). ✅ Fixed 2026-08-19, P2-gate PR: `moduleRouteGuard()` now awaits `connection()` BEFORE the flag read — the ONE place all ~20 gated layouts share (SSOT), so none can be statically rendered; locked by a test asserting the dynamic opt-out precedes the read. Registered as MON-160 (`changesNumbers: NO`). The `preview/dev-full-app` workaround branch is obsolete once this deploys.
 **Gate:** PROD is the v1 surface; both self-diffs CLEAN; screenshots or route-check transcript in the PR. **Model: Fable 5** + **Reza** (deploy click, Preview-copy runbook §7).
 
 ### P3 — Kept-surface convergence *(the correctness programme, producer-scoped)* — 📋
@@ -246,10 +248,16 @@ Builds ONLY on P3-verified engines (automation on top of wrong numbers = wrong n
 
 ## 7. D-7 — the Preview-copy exception (written, narrow, sunset)
 
-Ruled by Reza 2026-08-04 with the counter-recommendation surfaced (brief §5.3). Encoded as:
-1. **Lawful basis today:** all PROD data is Reza's own manually-entered portfolio; no CDR-sourced data exists (Basiq dark). Copying it to `monitrax-db-dev` breaches no external obligation today — only the internal §13.6 rule, which P0.3 amends rather than silently violates.
-2. **Amendment text (P0.3):** *"§13.6 exception (Reza 2026-08-04): a one-way PROD→dev copy of Reza's own account data is permitted for hidden-module development under PROD_SIMPLIFICATION_PLAN.md §7. This exception SUNSETS permanently the day any CDR/Basiq-sourced data lands in PROD; from that day dev reverts to synthetic-only and the copy is purged."*
-3. **Runbook (P2.5):** point-in-time dump of Reza's rows → restore into dev; one direction only; never dev→PROD; refresh on demand, each refresh logged in this file; no other users' data ever included (single-user today; the rule is written for the day that changes).
+Ruled by Reza 2026-08-04 with the counter-recommendation surfaced (brief §5.3); **widened to FULL-INSTANCE by Reza 2026-08-09** (supersedes the earlier selective-copy plan — no export/import scripts are built). Encoded as:
+1. **Lawful basis today:** the whole PROD dataset is **attested non-real/pre-launch (Reza, 2026-08-09)** — all accounts are Reza plus friendlies/test accounts with non-real financial data; no CDR-sourced data exists (Basiq dark). Copying it to `monitrax-db-dev` breaches no external obligation today — only the internal §13.6 rule, which P0.3 amended (and the 2026-08-09 widening re-amends) rather than silently violates.
+2. **Amendment text (P0.3, widened 2026-08-09 — mirrored verbatim in CLAUDE.md §13.6):** a one-way full-instance Cloud SQL export → import of the current PROD dataset into `monitrax-db-dev` is permitted for hidden-module development. **Hard trigger:** the day the first genuine customer account or any CDR/Basiq-sourced data exists in PROD, full-instance copying is prohibited — dev reverts to synthetic-only or Reza's-rows-only. The CDR sunset stands unchanged (CDR/Basiq data in PROD ⇒ exception SUNSETS permanently, dev synthetic-only, copy purged).
+3. **Runbook (P2.5 — §7.3):**
+   - Full-instance Cloud SQL export → import into `monitrax-db-dev`, over the GCP console (Matrix drives; Reza types all credentials). One direction only; never dev→PROD. Refresh on demand; **each refresh + flag re-apply logged in the table below.**
+   - **Post-refresh step (MANDATORY):** the copy imports PROD's `GlobalFeatureFlag` rows (all OFF). After EVERY refresh, re-run `node scripts/dev/set-module-flags.mjs --all on` against dev, then verify via `GET /api/feature-flags/modules` on a Preview URL (allow the 30s cache). **Standing dev state: all 13 ON** (Preview shows the full app; PROD stays hidden). The script refuses PROD URLs by design (D-9).
+   - **Until MON-160's fix deploys** (module gates were baked at build time — statically pre-rendered layouts), a dev flag flip also needs the standing branch `preview/dev-full-app` re-pushed so the Preview rebuilds with flags visible (see `docs/operations/PREVIEW_BRANCH.md` on that branch). Obsolete once the fix is live.
+   - **Refresh log:** | Date | What | Evidence |
+     |---|---|---|
+     | 2026-08-11 | First full-instance copy executed (Matrix + Reza): 140 tables / 36 users / 58 properties verified; dev grants applied; dev flags → all 13 ON; Preview sign-in fixed by adding `https://*.vercel.app/*` to the Auth (Web) API key referrer allowlist (hardening follow-up: stable preview domain) | #1587 comment, 2026-08-11 |
 4. **What the copy does NOT do:** it does not verify anything. Ring-3 runs on live PROD data only — hence R0. The copy is a development convenience, not a verification path.
 
 ## 8. Risks · deliberately not planned · coverage boundary
@@ -265,3 +273,4 @@ Ruled by Reza 2026-08-04 with the counter-recommendation surfaced (brief §5.3).
 - 2026-08-04 · Cowork (Fable 5) · Plan created; §0 rulings taken; HEAD `e90a9195`.
 - 2026-08-04 · Code (Fable 5) · PR-A: P0.1/P0.2/P0.3/P0.6 landed (P0.4/P0.5 flagged Reza-side); #1577 noted still-open. HEAD `e588a837`.
 - 2026-08-04 · Code (Fable 5) · PR-B: P1.1–P1.9 built (registry · gate · nav filter · 20 layout guards + 38 guarded API routes · modules endpoint + client context · unconditional invalidation · seed · admin Modules panel · 38 tests); §2.3 final audit table recorded; P1.10 handed back to Matrix. Neomatrix: 1 anchor re-pinned + 6 nodes re-verified + Layer-0 allowlist/manifest per local-CLI precedent. HEAD `e588a837`.
+- 2026-08-19 · Code (Fable 5) · P2R/R0 brief executed: P2.3 reports narrowing (registry-keyed, second list deleted) · P2.4 D-6 default (picker null when off; correction dialog write path blocked) · P2.6 row-66 refresh · MON-160 fix (`connection()` in `moduleRouteGuard`, one place + test) · `scripts/dev/set-module-flags.mjs` (PROD-refusing, registry-parsed, dry-run proofs in the PR) · §13.6/§7 full-instance amendment + hard trigger · §7.3 post-refresh rule + 2026-08-11 refresh log · P2.1/2.2/2.2b/2.5 ticked citing the #1587 verdict comments. R0 override wiring in its own PR (layout-guard user-gap deviation surfaced there). HEAD `3e43eb6`.

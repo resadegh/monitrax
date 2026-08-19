@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**146 total** · 85 open · 🔵 38 · 🟡 9 · 🟠 27 · 🟢 11 · ✅ 59
+**147 total** · 86 open · 🔵 38 · 🟡 9 · 🟠 28 · 🟢 11 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -153,6 +153,7 @@
 | MON-157 | 🟢 VERIFIED | 🟠 | no | The golden-baseline REFERENCE was persisted as a hash, never as a tree — so no tranche can run the whole-tree declared-vs-undeclared diff retrospectively (T2 G7 is unclosable because of it) | ##NEXT | ✅ |
 | MON-158 | 🟡 DIAGNOSED | 🟢 | no | riskRadar mints a fresh UUID and detectedAt on every scan — risk identities are not stable across runs | — | n/a |
 | MON-159 | 🟡 DIAGNOSED | 🟡 | no | The full vitest suite intermittently aborts with a Prisma query-engine panic (engine.rs:74, exit 134) — measured at 2 failures in 6 runs, and it invites misattribution | — | n/a |
+| MON-160 | 🟠 FIXING | 🟠 | no | Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy | ##PENDING-P2GATE | ✅ |
 
 ---
 
@@ -2640,4 +2641,22 @@ Found by VR-048 (the golden-baseline reference capture) and VERIFIED IN SOURCE b
 - **Detail:** `neoaudit-run:VR-048`
 
 MEASURED, not impressionistic, and measured only because it was nearly misdiagnosed TWICE in one session. While adding the MON-157 ratchet the full suite aborted; the obvious inference was that the new test caused it, and two rounds of restructuring followed (moving the JSON parse out of collection scope, then caching it) — each looked like it helped and neither did. Running the suite SIX times with the new block absent settled it: 2 failures in 6 (runs 3 and 6), versus 3 in 10 with the block present. Indistinguishable. The change was innocent. SIGNATURE: `thread '<unnamed>' panicked at query-engine/query-engine-node-api/src/engine.rs:74:45` -> `core/src/panicking.rs:221:5` -> `thread caused non-unwinding panic. aborting.` -> exit 134 (SIGABRT). A non-unwinding panic in Rust cannot be caught by the Node host, which is why the whole run dies rather than one test failing. NON-DETERMINISTIC IN POSITION: the last file to report differed on every abort (tax-engine/divisions/reformSkeletons, calc-audit/findingService, calculations/financial), so it is not one bad test — it is the engine being initialised or torn down in a worker where it has no business existing. Prisma 5.22.0. WHY IT MATTERS BEYOND ANNOYANCE: an intermittent red build that lands on a different file each time is the ideal environment for a wrong conclusion. Two costs, both real: a session blames its own change and rewrites working code (happened twice here), or a session learns to re-run until green and stops reading failures at all — which is how a genuine regression ships. NOT YET INVESTIGATED, and stated rather than guessed: which import path pulls the real PrismaClient into worker processes that mock @/lib/db, and whether a global test-setup mock or a vitest pool/isolation setting removes it. That is the fix's first question, not its answer. || rootCause is deliberately EMPTY, following the MON-147 precedent: the panic is inside Prisma's native query engine, so there is no line in this codebase verified to cause it, and guessing one (`tests/setup.ts` does not even exist; vitest.config declares no setupFiles) would put an unverified anchor into the registry — the exact §19.2 failure the four-step audit exists to prevent. It gets a rootCause when someone traces which import pulls the real PrismaClient into a mocked worker, not before.
+
+### MON-160 — Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-11
+
+> **What was wrong:** Flipping a module switch in the admin panel didn't reliably bring a hidden section back (or hide it again) — some pages stayed 404 until the app was redeployed, because Next.js had frozen the hidden/visible decision into the build itself.
+>
+> **What changed:** The route guard every gated section shares now tells Next.js 'always decide at request time, never at build time' — one line, in the one place all ~20 gated sections pass through.
+>
+> **What you should see:** After this deploys: flip any module ON in Admin → Feature Flags, wait ~30 seconds, and its pages load without a redeploy; flip it OFF and they 404 again within ~30 seconds. The Preview workaround branch (preview/dev-full-app) is no longer needed.
+
+- **Root cause:** `lib/featureFlags/moduleRouteGuard.ts:29`
+- **Downstream consumers (§19.4):** `all ~20 module-gated layout.tsx files (app/dashboard/{household-profile,plan,budget-analysis,income,expenses,debt-planner,safety-net,entities,investments,tax,cfo,housekeeping,conversations,requests,labs}, app/(dashboard)/{cashflow,strategy}, per-item strategy layouts, app/marketplace, app/portal) — every one calls moduleRouteGuard, so the one-place fix covers them all`, `app/dashboard/page.tsx (MODULE_HOME wrapper — already force-dynamic since P1, unaffected)`, `admin Modules panel promise (flip propagates ≤30s) + every R-stage re-enable (would otherwise silently require a rebuild)`, `gated API routes (moduleApiGuard) — NOT affected: their handlers read request auth headers and are dynamic by construction`
+- **Fix PR(s):** ##PENDING-P2GATE
+- **Holistic test (§19.4):** `tests/featureFlags/moduleGuards.test.ts#MON-160: forces dynamic rendering (connection()) BEFORE reading the flag`
+- **Detail:** `resadegh/monitrax#1587 (comment 2026-08-11, Matrix HQ)`
+
+Root-cause mechanism (verified in source pre-fix): moduleRouteGuard read the flag with NO dynamic-rendering opt-out, so Next.js statically pre-rendered gated layouts and baked notFound()/pass verdicts into the deployment; only dynamically-rendered routes evaluated isModuleEnabled() live — the mixed-404 fingerprint the Matrix observed on Preview 2026-08-11 with all 13 flags ON. Found by the Matrix in live Preview use (dev DB, all 13 flags ON): mixed 404s across gated routes = static pre-render fingerprint. changesNumbers NO — routing visibility only; P2.2b had verified engine numbers, which could not catch this class. Fix: await connection() (next/server) in moduleRouteGuard before the flag read (SSOT — the one shared chokepoint), locked by an order-asserting unit test. VERIFIED when Reza confirms a live PROD flip propagates without redeploy (the plain.check).
 

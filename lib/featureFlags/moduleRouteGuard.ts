@@ -20,12 +20,20 @@
  */
 
 import { notFound } from 'next/navigation';
-import { NextResponse } from 'next/server';
+import { NextResponse, connection } from 'next/server';
 import { isModuleEnabled } from './moduleGate';
 import type { ModuleKey } from './moduleRegistry';
 
 /** Layout-level guard: 404 the whole subtree when the module is hidden. */
 export async function moduleRouteGuard(key: ModuleKey): Promise<void> {
+  // MON-160 fix: force dynamic rendering BEFORE reading the flag. Without
+  // this, Next.js statically pre-renders gated layouts at build time and
+  // BAKES the guard's verdict into the deployment — an admin flag flip
+  // then cannot unhide (or re-hide) the module without a redeploy, which
+  // silently breaks the Modules panel's ≤30s propagation promise and every
+  // R-stage re-enable. `connection()` is the one-place (SSOT) opt-out: all
+  // ~20 gated layouts call this guard, so none can be statically rendered.
+  await connection();
   const enabled = await isModuleEnabled(key);
   if (!enabled) {
     notFound();

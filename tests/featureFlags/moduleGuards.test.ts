@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { findUnique, notFoundMock, redirectMock } = vi.hoisted(() => ({
+const { findUnique, notFoundMock, redirectMock, connectionMock } = vi.hoisted(() => ({
   findUnique: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
@@ -22,6 +22,7 @@ const { findUnique, notFoundMock, redirectMock } = vi.hoisted(() => ({
   redirectMock: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   }),
+  connectionMock: vi.fn(async () => {}),
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -33,6 +34,13 @@ vi.mock('next/navigation', () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
 }));
+
+// Partial mock: keep the real NextResponse (moduleApiGuard builds real 503s),
+// stub only `connection` — outside a request scope the real one throws.
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>();
+  return { ...actual, connection: connectionMock };
+});
 
 import { moduleApiGuard, moduleRouteGuard } from '@/lib/featureFlags/moduleRouteGuard';
 import { invalidateFlagCache } from '@/lib/featureFlags/moduleGate';
@@ -46,6 +54,7 @@ beforeEach(() => {
   findUnique.mockReset();
   notFoundMock.mockClear();
   redirectMock.mockClear();
+  connectionMock.mockClear();
   invalidateFlagCache();
 });
 
@@ -84,6 +93,17 @@ describe('moduleRouteGuard', () => {
     findUnique.mockResolvedValueOnce({ enabled: true });
     await expect(moduleRouteGuard('MODULE_TAX')).resolves.toBeUndefined();
     expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  it('MON-160: forces dynamic rendering (connection()) BEFORE reading the flag — build-time flag state must never bake the verdict', async () => {
+    findUnique.mockResolvedValueOnce({ enabled: true });
+    await moduleRouteGuard('MODULE_TAX');
+    expect(connectionMock).toHaveBeenCalledTimes(1);
+    // Order matters: the dynamic opt-out must precede the flag read, so a
+    // statically-attempted render bails out before any verdict is computed.
+    expect(connectionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      findUnique.mock.invocationCallOrder[0],
+    );
   });
 });
 
