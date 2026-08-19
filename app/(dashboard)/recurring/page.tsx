@@ -19,6 +19,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import {
   MatchConfirmationDialog,
   CreateExpenseFromRecurring,
@@ -220,7 +221,8 @@ function RecurringPaymentCard({
   onViewMatch: (payment: RecurringPayment) => void;
   onCreateExpense: (payment: RecurringPayment) => void;
   onUnlink: (payment: RecurringPayment) => void;
-  onViewExpense: (expenseId: string) => void;
+  // MON-163: optional — absent when the Spending page (MODULE_HOUSEHOLD) is hidden.
+  onViewExpense?: (expenseId: string) => void;
 }) {
   const daysUntil = getDaysUntil(payment.nextExpected);
   const isUpcoming = daysUntil !== null && daysUntil >= 0 && daysUntil <= 7;
@@ -268,10 +270,12 @@ function RecurringPaymentCard({
           <DropdownMenuContent align="end">
             {isLinked ? (
               <>
-                <DropdownMenuItem onClick={() => onViewExpense(payment.linkedExpenseId!)}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Expense
-                </DropdownMenuItem>
+                {onViewExpense && (
+                  <DropdownMenuItem onClick={() => onViewExpense(payment.linkedExpenseId!)}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Expense
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => onUnlink(payment)}>
                   <Link2Off className="h-4 w-4 mr-2" />
                   Unlink Expense
@@ -594,6 +598,8 @@ function PriceAlerts({ payments }: { payments: RecurringPayment[] }) {
 
 export default function RecurringPaymentsCenter() {
   const { token } = useAuth();
+  // MON-163: the View-Expense drill-through targets /dashboard/expenses (hidden module).
+  const householdModuleEnabled = useModuleEnabled('MODULE_HOUSEHOLD');
   const [payments, setPayments] = useState<RecurringPayment[]>([]);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [summary, setSummary] = useState<RecurringSummary | null>(null);
@@ -947,7 +953,7 @@ export default function RecurringPaymentsCenter() {
                 onViewMatch={handleViewMatch}
                 onCreateExpense={handleCreateExpense}
                 onUnlink={handleUnlink}
-                onViewExpense={handleViewExpense}
+                onViewExpense={householdModuleEnabled ? handleViewExpense : undefined}
               />
             ))}
           </div>

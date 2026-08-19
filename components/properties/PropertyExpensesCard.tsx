@@ -42,6 +42,7 @@ import { Receipt, Plus, Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { ExpenseDialog, type Expense as DialogExpense } from '@/components/ExpenseDialog';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 
 /** The expense shape the card needs — a superset of the detail page's row that
  *  also carries the fields the canonical ExpenseDialog needs for editing. */
@@ -103,6 +104,9 @@ export default function PropertyExpensesCard({
   token,
   onChanged,
 }: PropertyExpensesCardProps) {
+  // MON-163: "View all in Spending" targets /dashboard/expenses (MODULE_HOUSEHOLD,
+  // hidden in v1) — the affordance is absent until that module returns.
+  const householdModuleEnabled = useModuleEnabled('MODULE_HOUSEHOLD');
   const [addOpen, setAddOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<PropertyExpense | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -277,13 +281,15 @@ export default function PropertyExpensesCard({
                 <Plus className="h-4 w-4" />
                 Add expense
               </button>
-              <Link
-                href="/dashboard/expenses"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline dark:text-sky-300"
-              >
-                View all in Spending
-                <span aria-hidden>→</span>
-              </Link>
+              {householdModuleEnabled && (
+                <Link
+                  href="/dashboard/expenses"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline dark:text-sky-300"
+                >
+                  View all in Spending
+                  <span aria-hidden>→</span>
+                </Link>
+              )}
             </div>
           </>
         ) : (

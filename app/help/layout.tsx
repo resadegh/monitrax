@@ -8,6 +8,8 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { connection } from 'next/server';
+import { isModuleEnabled } from '@/lib/featureFlags/moduleGate';
 
 export const metadata = {
   title: 'Help Center · Monitrax',
@@ -15,7 +17,15 @@ export const metadata = {
     'Documentation, training, and compliance resources for Monitrax users, organisations, and their compliance teams.',
 };
 
-export default function HelpLayout({ children }: { children: ReactNode }) {
+export default async function HelpLayout({ children }: { children: ReactNode }) {
+  // MON-163: the "Practice" nav item targets /portal/dashboard — a
+  // MODULE_ORG_PORTAL surface, hidden in v1. Server-side flag read (this
+  // is a server layout; the fail-closed gate hides the link on any error).
+  // MON-160 class: force request-time rendering so a build never bakes
+  // the flag verdict into the static shell (same doctrine as the ONE
+  // shared route guard).
+  await connection();
+  const portalModuleEnabled = await isModuleEnabled('MODULE_ORG_PORTAL');
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
       <header className="border-b border-slate-200/70 bg-white/70 backdrop-blur-md sticky top-0 z-30">
@@ -36,12 +46,14 @@ export default function HelpLayout({ children }: { children: ReactNode }) {
             >
               Open app
             </Link>
-            <Link
-              href="/portal/dashboard"
-              className="px-3 py-1.5 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            >
-              Practice
-            </Link>
+            {portalModuleEnabled && (
+              <Link
+                href="/portal/dashboard"
+                className="px-3 py-1.5 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                Practice
+              </Link>
+            )}
           </nav>
         </div>
       </header>

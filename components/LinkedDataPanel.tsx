@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import {
   Home,
   Banknote,
@@ -119,6 +120,25 @@ export function LinkedDataPanel({
   onNavigate,
 }: LinkedDataPanelProps) {
   const router = useRouter();
+  // MON-163: the empty-state CTAs drill into module surfaces that are
+  // hidden in v1 — each affordance is absent until its module returns.
+  const householdModuleEnabled = useModuleEnabled('MODULE_HOUSEHOLD');
+  const investmentsModuleEnabled = useModuleEnabled('MODULE_INVESTMENTS');
+  // ADD_LINK_ROUTES targets per entity type — income/expense pages are
+  // MODULE_HOUSEHOLD, investment pages MODULE_INVESTMENTS; the rest are kept.
+  const addLinkAllowed = (type: GRDCSEntityType): boolean => {
+    switch (type) {
+      case 'income':
+      case 'expense':
+        return householdModuleEnabled;
+      case 'investmentAccount':
+      case 'investmentHolding':
+      case 'investmentTransaction':
+        return investmentsModuleEnabled;
+      default:
+        return true;
+    }
+  };
 
   // Handle entity click with CMNF navigation
   const handleEntityClick = (entity: GRDCSLinkedEntity, e: React.MouseEvent) => {
@@ -179,12 +199,14 @@ export function LinkedDataPanel({
                     Add Loan
                   </Button>
                 </Link>
-                <Link href="/dashboard/income">
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Plus className="h-3 w-3" />
-                    Add Income
-                  </Button>
-                </Link>
+                {householdModuleEnabled && (
+                  <Link href="/dashboard/income">
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <Plus className="h-3 w-3" />
+                      Add Income
+                    </Button>
+                  </Link>
+                )}
               </>
             )}
             {entityType === 'loan' && (
@@ -195,7 +217,7 @@ export function LinkedDataPanel({
                 </Button>
               </Link>
             )}
-            {entityType === 'investmentAccount' && (
+            {entityType === 'investmentAccount' && investmentsModuleEnabled && (
               <Link href="/dashboard/investments/holdings">
                 <Button variant="outline" size="sm" className="gap-1">
                   <Plus className="h-3 w-3" />
@@ -313,11 +335,13 @@ export function LinkedDataPanel({
                     {entities.length}
                   </Badge>
                 </CardTitle>
-                <Link href={ADD_LINK_ROUTES[entityType]}>
-                  <Button variant="ghost" size="sm" className="h-7 px-2">
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </Link>
+                {addLinkAllowed(entityType) && (
+                  <Link href={ADD_LINK_ROUTES[entityType]}>
+                    <Button variant="ghost" size="sm" className="h-7 px-2">
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                )}
               </div>
             </CardHeader>
             <CardContent className="pt-0">
@@ -391,16 +415,18 @@ export function LinkedDataPanel({
                         </p>
                       )}
                     </div>
-                    <Link href={ADD_LINK_ROUTES[missing.type]}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add
-                      </Button>
-                    </Link>
+                    {addLinkAllowed(missing.type) && (
+                      <Link href={ADD_LINK_ROUTES[missing.type]}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 );
               })}

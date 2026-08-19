@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Lightbulb, TrendingUp, AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 
 // =============================================================================
 // TYPES
@@ -52,6 +53,10 @@ export default function EntityStrategyTab({
   entityName,
 }: EntityStrategyTabProps) {
   const { token } = useAuth();
+  // MON-163: this whole tab is a MODULE_STRATEGY surface (its links target
+  // /strategy). Render sites already gate it; this self-gate is the SSOT
+  // belt-and-braces so no future render site can leak it into v1.
+  const strategyModuleEnabled = useModuleEnabled('MODULE_STRATEGY');
   const [recommendations, setRecommendations] = useState<StrategyRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +76,11 @@ export default function EntityStrategyTab({
   };
 
   useEffect(() => {
-    if (token) fetchEntityRecommendations();
-  }, [entityId, entityType, token]);
+    if (token && strategyModuleEnabled) fetchEntityRecommendations();
+  }, [entityId, entityType, token, strategyModuleEnabled]);
+
+  // MON-163 self-gate — after every hook (rules of hooks), before any render.
+  if (!strategyModuleEnabled) return null;
 
   async function fetchEntityRecommendations() {
     try {

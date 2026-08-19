@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "note": "sha256 (first 16 hex) of every Layer-0 covered file AT EXTRACTION TIME. `check-layer0-coverage.mjs` rehashes on every build; a mismatch means the code moved and Layer 0 did not. Generated — do not hand-edit.",
+    "note": "sha256 (first 16 hex) of every Layer-0 covered file AT EXTRACTION TIME. `check-layer0-coverage.mjs` rehashes on every build; a mismatch means the code moved and Layer 0 did not. Generated \u2014 do not hand-edit.",
     "builtAtCommit": "4ae037056764a8f4421e0cf658766ecde0807ef8",
     "algorithm": "sha256:16",
     "files": 1852
@@ -471,7 +471,7 @@
     "app/dashboard/page.tsx": "0ec3e803ae887c1c",
     "app/dashboard/plan/page.tsx": "8ea791662e5d3296",
     "app/dashboard/properties/[id]/depreciation/page.tsx": "77315d5d271b31c3",
-    "app/dashboard/properties/[id]/page.tsx": "cf9f0bfb19267641",
+    "app/dashboard/properties/[id]/page.tsx": "d9eb4b9a8a51cbe9",
     "app/dashboard/properties/[id]/strategy/page.tsx": "39e91d30668383be",
     "app/dashboard/properties/page.tsx": "087f48bbe9443699",
     "app/dashboard/reports/page.tsx": "86737a309492112f",

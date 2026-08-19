@@ -42,6 +42,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
   ArrowLeft,
@@ -196,6 +197,13 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const { token } = useAuth();
   const propertyId = params.id as string;
+
+  // MON-163: this KEPT page must never link into a hidden module — gate
+  // every cross-module affordance on its target's flag so it is absent
+  // (not broken) in v1 and reappears by itself when the stage returns.
+  const cfoModuleEnabled = useModuleEnabled('MODULE_CFO');
+  const taxModuleEnabled = useModuleEnabled('MODULE_TAX');
+  const strategyModuleEnabled = useModuleEnabled('MODULE_STRATEGY');
 
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
@@ -398,7 +406,7 @@ export default function PropertyDetailPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {isInvestment && (
+                  {isInvestment && cfoModuleEnabled && (
                     <Link
                       href={`/dashboard/cfo/what-if/sellProperty?propertyId=${encodeURIComponent(property.id)}`}
                       title="What if you sold this?"
@@ -540,20 +548,28 @@ export default function PropertyDetailPage() {
 
           {/* RIGHT column (1/3 width) */}
           <div className="flex flex-col gap-5">
-            <InsightCard
-              icon={Sparkles}
-              title="Growth scenarios"
-              body="Model how this property's value, equity and tax position shift under different growth, rate and yield assumptions."
-              cta="View scenarios"
-              href={isInvestment ? `/dashboard/cfo/what-if/sellProperty?propertyId=${encodeURIComponent(property.id)}` : `/dashboard/properties/${property.id}/strategy`}
-              tint="sky"
-            />
+            {/* MON-163: the scenarios card is purely an affordance into a
+                hidden module (CFO what-if for investments, Strategy tabs
+                otherwise) — absent when its target module is off. */}
+            {(isInvestment ? cfoModuleEnabled : strategyModuleEnabled) && (
+              <InsightCard
+                icon={Sparkles}
+                title="Growth scenarios"
+                body="Model how this property's value, equity and tax position shift under different growth, rate and yield assumptions."
+                cta="View scenarios"
+                href={isInvestment ? `/dashboard/cfo/what-if/sellProperty?propertyId=${encodeURIComponent(property.id)}` : `/dashboard/properties/${property.id}/strategy`}
+                tint="sky"
+              />
+            )}
+            {/* MON-163: the tax numbers are stated by the KEPT cashflow
+                engine, so the card stays — only the link into the hidden
+                tax module (and the sentence promising it) is gated. */}
             <InsightCard
               icon={FileText}
               title="Tax position"
-              body={`For tax, this property's result is ${formatCurrency(cf.annualTaxCashflow)}/yr (rent − expenses − loan interest; principal isn't deductible). Cash cashflow is ${formatCurrency(cf.annualCashflow)}/yr. See its impact in your FY26 tax position.`}
-              cta="View tax position"
-              href="/dashboard/tax"
+              body={`For tax, this property's result is ${formatCurrency(cf.annualTaxCashflow)}/yr (rent − expenses − loan interest; principal isn't deductible). Cash cashflow is ${formatCurrency(cf.annualCashflow)}/yr.${taxModuleEnabled ? ' See its impact in your FY26 tax position.' : ''}`}
+              cta={taxModuleEnabled ? 'View tax position' : undefined}
+              href={taxModuleEnabled ? '/dashboard/tax' : undefined}
               tint="emerald"
             />
             <InsightCard
@@ -698,7 +714,12 @@ function PolishedKpiTile({
 }
 
 function LinkedEntitiesCard({ property }: { property: Property }) {
-  const items: { id: string; icon: typeof Landmark; iconTone: string; title: string; subtitle: string; amount: string; amountTone: string; href: string }[] = [];
+  // MON-163: income rows show KEPT engine data, but their drill-through
+  // target (/dashboard/income) is a MODULE_HOUSEHOLD surface — when that
+  // module is off the row renders without a link instead of 404ing.
+  const householdModuleEnabled = useModuleEnabled('MODULE_HOUSEHOLD');
+  const incomeHref = householdModuleEnabled ? '/dashboard/income' : undefined;
+  const items: { id: string; icon: typeof Landmark; iconTone: string; title: string; subtitle: string; amount: string; amountTone: string; href?: string }[] = [];
 
   (property.loans ?? []).forEach((l) => {
     items.push({
@@ -743,7 +764,7 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
         : `${cadence} · from ${rentalRows.length} ${rentalRows.length === 1 ? 'source' : 'sources'}`,
       amount: `+${formatCurrency(cf.monthlyRent)}/mo`,
       amountTone: suspectWarns ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300',
-      href: '/dashboard/income',
+      href: incomeHref,
     });
   }
   otherIncome.forEach((i) => {
@@ -755,7 +776,7 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
       subtitle: `${i.frequency.toLowerCase()} · ${i.type.toLowerCase()}`,
       amount: `+${formatCurrency(i.amount)}`,
       amountTone: 'text-emerald-700 dark:text-emerald-300',
-      href: '/dashboard/income',
+      href: incomeHref,
     });
   });
 
@@ -789,12 +810,9 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-foreground/10">
-            {items.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={item.href}
-                  className="flex items-center gap-3 py-3 transition-colors hover:bg-foreground/[0.03]"
-                >
+            {items.map((item) => {
+              const rowBody = (
+                <>
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.iconTone}`}>
                     <item.icon className="h-4 w-4" />
                   </div>
@@ -803,10 +821,25 @@ function LinkedEntitiesCard({ property }: { property: Property }) {
                     <p className="truncate text-xs text-muted-foreground">{item.subtitle}</p>
                   </div>
                   <p className={`shrink-0 text-sm font-semibold tabular-nums ${item.amountTone}`}>{item.amount}</p>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Link>
-              </li>
-            ))}
+                  {item.href && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                </>
+              );
+              return (
+                <li key={item.id}>
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      className="flex items-center gap-3 py-3 transition-colors hover:bg-foreground/[0.03]"
+                    >
+                      {rowBody}
+                    </Link>
+                  ) : (
+                    // MON-163: drill-through target hidden in v1 — plain row.
+                    <div className="flex items-center gap-3 py-3">{rowBody}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -928,8 +961,9 @@ function InsightCard({
   icon: typeof Sparkles;
   title: string;
   body: string;
-  cta: string;
-  href: string;
+  /** Omit BOTH cta and href to render an informational card with no link (MON-163). */
+  cta?: string;
+  href?: string;
   tint: 'emerald' | 'sky' | 'indigo' | 'violet';
 }) {
   const linkTone = {
@@ -948,10 +982,12 @@ function InsightCard({
         </div>
         <h3 className="mt-3 text-sm font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>
-        <Link href={href} className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${linkTone} hover:underline`}>
-          {cta}
-          <ArrowUpRight className="h-3 w-3" />
-        </Link>
+        {cta && href && (
+          <Link href={href} className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${linkTone} hover:underline`}>
+            {cta}
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        )}
       </div>
     </div>
   );

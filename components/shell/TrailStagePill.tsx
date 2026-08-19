@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { TRAIL_STAGE_TONES } from '@/lib/navigation/trailNav';
 import { useTrailStage } from '@/hooks/useTrailStage';
 import { getTrailStageInfo } from '@/lib/cfo/trailStage';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 
 interface TrailStagePillProps {
   className?: string;
@@ -30,6 +31,10 @@ interface TrailStagePillProps {
 
 export function TrailStagePill({ className }: TrailStagePillProps) {
   const { stage, loading } = useTrailStage();
+  // MON-163: the pill deep-links to /dashboard/cfo (My Guide) — a
+  // MODULE_CFO surface, hidden in v1. The stage badge stays informative;
+  // only the link affordance goes with the module.
+  const cfoModuleEnabled = useModuleEnabled('MODULE_CFO');
 
   // Loading state — render an unobtrusive skeleton so the layout
   // doesn't shift when the stage resolves.
@@ -53,22 +58,38 @@ export function TrailStagePill({ className }: TrailStagePillProps) {
   const tone = TRAIL_STAGE_TONES[stage];
   const info = getTrailStageInfo(stage);
 
-  return (
-    <Link
-      href="/dashboard/cfo"
-      aria-label={`You're at stage ${stage} — ${info.name}. Open My Guide.`}
-      title={`Stage ${stage} — ${info.name}: ${info.tagline}`}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-foreground/10 px-2 py-0.5 text-[10px] font-medium tracking-[0.08em] transition-colors hover:bg-foreground/[0.04]',
-        tone.activeText,
-        className
-      )}
-    >
+  const pillBody = (
+    <>
       <span
         aria-hidden
         className={cn('h-1.5 w-1.5 rounded-full', tone.accent)}
       />
       <span>Stage {stage} · {info.name}</span>
+    </>
+  );
+  const pillClass = cn(
+    'inline-flex items-center gap-1.5 rounded-full border border-foreground/10 px-2 py-0.5 text-[10px] font-medium tracking-[0.08em]',
+    tone.activeText,
+    className
+  );
+
+  if (!cfoModuleEnabled) {
+    // Informative badge only — no dead link into the hidden module.
+    return (
+      <span className={pillClass} title={`Stage ${stage} — ${info.name}: ${info.tagline}`}>
+        {pillBody}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href="/dashboard/cfo"
+      aria-label={`You're at stage ${stage} — ${info.name}. Open My Guide.`}
+      title={`Stage ${stage} — ${info.name}: ${info.tagline}`}
+      className={cn(pillClass, 'transition-colors hover:bg-foreground/[0.04]')}
+    >
+      {pillBody}
     </Link>
   );
 }
