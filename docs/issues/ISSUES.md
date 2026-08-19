@@ -153,7 +153,7 @@
 | MON-157 | 🟢 VERIFIED | 🟠 | no | The golden-baseline REFERENCE was persisted as a hash, never as a tree — so no tranche can run the whole-tree declared-vs-undeclared diff retrospectively (T2 G7 is unclosable because of it) | ##NEXT | ✅ |
 | MON-158 | 🟡 DIAGNOSED | 🟢 | no | riskRadar mints a fresh UUID and detectedAt on every scan — risk identities are not stable across runs | — | n/a |
 | MON-159 | 🟡 DIAGNOSED | 🟡 | no | The full vitest suite intermittently aborts with a Prisma query-engine panic (engine.rs:74, exit 134) — measured at 2 failures in 6 runs, and it invites misattribution | — | n/a |
-| MON-160 | 🟠 FIXING | 🟠 | no | Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy | ##PENDING-P2GATE | ✅ |
+| MON-160 | 🟠 FIXING | 🟠 | no | Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy | ##1590 | ✅ |
 
 ---
 
@@ -2654,7 +2654,7 @@ MEASURED, not impressionistic, and measured only because it was nearly misdiagno
 
 - **Root cause:** `lib/featureFlags/moduleRouteGuard.ts:29`
 - **Downstream consumers (§19.4):** `all ~20 module-gated layout.tsx files (app/dashboard/{household-profile,plan,budget-analysis,income,expenses,debt-planner,safety-net,entities,investments,tax,cfo,housekeeping,conversations,requests,labs}, app/(dashboard)/{cashflow,strategy}, per-item strategy layouts, app/marketplace, app/portal) — every one calls moduleRouteGuard, so the one-place fix covers them all`, `app/dashboard/page.tsx (MODULE_HOME wrapper — already force-dynamic since P1, unaffected)`, `admin Modules panel promise (flip propagates ≤30s) + every R-stage re-enable (would otherwise silently require a rebuild)`, `gated API routes (moduleApiGuard) — NOT affected: their handlers read request auth headers and are dynamic by construction`
-- **Fix PR(s):** ##PENDING-P2GATE
+- **Fix PR(s):** ##1590
 - **Holistic test (§19.4):** `tests/featureFlags/moduleGuards.test.ts#MON-160: forces dynamic rendering (connection()) BEFORE reading the flag`
 - **Detail:** `resadegh/monitrax#1587 (comment 2026-08-11, Matrix HQ)`
 
