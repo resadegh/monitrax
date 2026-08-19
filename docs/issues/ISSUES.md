@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**150 total** · 89 open · 🔵 39 · 🟡 11 · 🟠 27 · 🟢 12 · ✅ 59
+**150 total** · 89 open · 🔵 39 · 🟡 9 · 🟠 29 · 🟢 12 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -154,9 +154,9 @@
 | MON-158 | 🟡 DIAGNOSED | 🟢 | no | riskRadar mints a fresh UUID and detectedAt on every scan — risk identities are not stable across runs | — | n/a |
 | MON-159 | 🟡 DIAGNOSED | 🟡 | no | The full vitest suite intermittently aborts with a Prisma query-engine panic (engine.rs:74, exit 134) — measured at 2 failures in 6 runs, and it invites misattribution | — | n/a |
 | MON-160 | 🟢 VERIFIED | 🟠 | no | Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy | ##1590 | ✅ |
-| MON-161 | 🟡 DIAGNOSED | 🟡 | no | Gated-route 404 responses are cacheable — a module flip is invisible on the bare URL until the cached 404 expires | — | ✅ |
+| MON-161 | 🟠 FIXING | 🟡 | no | Gated-route 404 responses are cacheable — a module flip is invisible on the bare URL until the cached 404 expires | ##1594 | ✅ |
 | MON-162 | 🔵 OPEN | 🟢 | no | Admin portal and the app cannot hold independent sessions in one browser — signing into either signs the other out | — | n/a |
-| MON-163 | 🟡 DIAGNOSED | 🟠 | no | Kept property-detail page links into hidden modules (tax, income, CFO what-if) — v1 users hit 404s from the core surface | — | ✅ |
+| MON-163 | 🟠 FIXING | 🟠 | no | Kept property-detail page links into hidden modules (tax, income, CFO what-if) — v1 users hit 404s from the core surface | ##1594 | ✅ |
 
 ---
 
@@ -2665,7 +2665,7 @@ Root-cause mechanism (verified in source pre-fix): moduleRouteGuard read the fla
 
 ### MON-161 — Gated-route 404 responses are cacheable — a module flip is invisible on the bare URL until the cached 404 expires
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: gating · opened 2026-08-19
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: gating · opened 2026-08-19
 
 > **What was wrong:** After switching a module back on, its pages could still show 'not found' for a couple of minutes unless you changed the address slightly. The switch had worked; the browser was showing a saved copy of the old 'not found' answer.
 >
@@ -2675,6 +2675,7 @@ Root-cause mechanism (verified in source pre-fix): moduleRouteGuard read the fla
 
 - **Root cause:** `middleware.ts:12`
 - **Downstream consumers (§19.4):** `every module-gated route prefix in MODULE_REGISTRY (13 modules, layout-guarded trees + the MODULE_HOME /dashboard redirect) - the middleware matcher derives from the registry, so new modules inherit the header automatically`, `the admin Modules panel's ~30s flip promise + every R-stage return (the reason this is launch-relevant)`, `kept routes are deliberately UNTOUCHED - their caching behaviour is unchanged (locked by test)`
+- **Fix PR(s):** ##1594
 - **Holistic test (§19.4):** `tests/featureFlags/mon161NoStoreCache.test.ts`
 - **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · found in the R0 acceptance run 2026-08-19`
 
@@ -2693,7 +2694,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/admin/lo
 
 ### MON-163 — Kept property-detail page links into hidden modules (tax, income, CFO what-if) — v1 users hit 404s from the core surface
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **no** · area: navigation · opened 2026-08-19
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: navigation · opened 2026-08-19
 
 > **What was wrong:** On a property's page, some buttons and links pointed to sections that are switched off in this release, so clicking them landed on a 'page not found' screen instead of doing anything useful.
 >
@@ -2703,6 +2704,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/admin/lo
 
 - **Root cause:** `app/dashboard/properties/[id]/page.tsx:403`
 - **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx - what-if icon link, Growth-scenarios card, Tax-position CTA, linked-income row hrefs (all now gated per target module)`, `components/properties/PropertyTile.tsx (list-page sell-what-if icon -> MODULE_CFO), components/properties/PropertyExpensesCard.tsx ('View all in Spending' -> MODULE_HOUSEHOLD)`, `components/loans/LoanDetailDialog.tsx (What-If panel -> MODULE_CFO), components/LinkedDataPanel.tsx (Add Income/Add Holding CTAs), components/shell/TrailStagePill.tsx (My Guide pill de-linked), components/help/HelpDrawer.tsx + app/help/layout.tsx (portal links), app/(dashboard)/recurring/page.tsx (View Expense action), components/strategy/EntityStrategyTab.tsx (self-gated)`, `the class guard: tests/featureFlags/deadLinkGuard.test.ts walks the kept-reachable import graph from every non-gated route file and fails CI on any link into a hidden routePrefix from a non-module-aware file`
+- **Fix PR(s):** ##1594
 - **Holistic test (§19.4):** `tests/featureFlags/deadLinkGuard.test.ts`
 - **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · found by Matrix static scan 2026-08-19, confirmed live in PROD`
 
