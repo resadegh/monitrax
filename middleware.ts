@@ -8,9 +8,32 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { MODULE_REGISTRY } from '@/lib/featureFlags/moduleRegistry';
+
+// MON-161: module-gated routes must never serve a cacheable response —
+// after an admin flips a flag, a cached 404 (or cached page) on the bare
+// URL would hide the flip for as long as the cache lives, breaking the
+// admin panel's ~30s promise that every R-stage return relies on. Derived
+// from MODULE_REGISTRY (SSOT — no second route list); the registry is
+// pure data, so this import is Edge-safe. MODULE_HOME (`redirect`
+// behaviour) matches its prefix exactly: /dashboard itself flips between
+// redirect and page, but /dashboard/* kept routes stay cacheable.
+const GATED_ROUTE_MATCHERS: RegExp[] = MODULE_REGISTRY.flatMap((m) => {
+  const toRegex = (prefix: string, exact: boolean) =>
+    new RegExp(
+      `^${prefix.replace(/[.*+^${}()|\\]/g, '\\$&').replace(/\[[^\]]+\]/g, '[^/]+')}${exact ? '$' : '(/|$)'}`,
+    );
+  return m.routePrefixes.map((p) => toRegex(p, m.behaviour === 'redirect'));
+});
 
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
+
+  // MON-161: flag-gated surface — the verdict (404 vs page vs redirect)
+  // is request-time state and must never be cached at any layer.
+  if (GATED_ROUTE_MATCHERS.some((r) => r.test(request.nextUrl.pathname))) {
+    response.headers.set('Cache-Control', 'no-store, must-revalidate');
+  }
 
   // Security headers
   response.headers.set('X-Frame-Options', 'DENY');
