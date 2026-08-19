@@ -106,3 +106,57 @@ Verifies precedence/expiry/cache/invalidation semantics and the wiring by source
 verify the live override window end-to-end — that is the R0 ACCEPTANCE (post-merge, on PROD:
 MODULE_TAX globally OFF + override for Reza ⇒ he sees /dashboard/tax; a second account gets
 not-found; both captured on the PR).
+
+---
+
+## Session: M2 PR-1 (Code, Fable 5) — §D dead links + guard · §A tracker pointers · §C no-store · §B-5
+
+**Milestone:** M2 (kept-surface correctness + depth — THE LAUNCH GATE), per `BRIEF_M2_CORRECTNESS.md` v2
+(carried into main in this PR — the Matrix's plan-v2/brief-v2 commits existed only on the merged #1593 branch).
+Kickoff order honoured: **§D first** (MON-163 is live in PROD), then §A, §C, §B-5. `changesNumbers: NO`.
+
+### §D — MON-163: kept pages linked into hidden modules (live PROD 404s)
+- **Root cause:** the P2.1 sweep verified hidden routes hide; nothing verified kept routes stopped
+  POINTING at them. The Matrix's static scan found 2 files; the new repo-wide guard found **8
+  kept-reachable files / 14 link sites**.
+- **Fix pattern (SSOT):** each link gated on its TARGET module's flag via `useModuleEnabled(key)` —
+  affordance absent when off, reappears by itself at the R-stage return. No second route list anywhere;
+  everything derives from `MODULE_REGISTRY`.
+- **Files:** `app/dashboard/properties/[id]/page.tsx` (what-if icon · Growth-scenarios card · Tax-position
+  CTA+sentence · linked-income row hrefs), `components/properties/PropertyTile.tsx` (sell-what-if icon),
+  `components/properties/PropertyExpensesCard.tsx` ("View all in Spending"),
+  `components/loans/LoanDetailDialog.tsx` (What-If panel), `components/LinkedDataPanel.tsx` (Add Income /
+  Add Holding CTAs), `components/shell/TrailStagePill.tsx` (pill stays as an informative badge, link only
+  when MODULE_CFO on), `components/help/HelpDrawer.tsx` + `app/help/layout.tsx` (portal links; the server
+  layout reads the flag with `connection()` first — MON-160 doctrine, never bake the verdict),
+  `app/(dashboard)/recurring/page.tsx` (View-Expense action), `components/strategy/EntityStrategyTab.tsx`
+  (self-gated: returns null unless MODULE_STRATEGY — belt-and-braces for every render site).
+- **The permanent guard:** `tests/featureFlags/deadLinkGuard.test.ts` — walks the import graph from every
+  non-gated route file (kept-reachable set; traversal stops at server gate wrappers), extracts link targets
+  (href attrs/fields, router.push/replace, redirect, fallbackHref — incl. template-literal prefixes), and
+  fails CI when a kept-reachable file links into a hidden module's `routePrefixes` without mentioning that
+  module key. Hidden-only files are exempt via reachability and JOIN the guard automatically when their
+  module's registry entry is dropped at its R-stage return.
+
+### §C — MON-161: cacheable gated-route 404s
+- Fix at the ONE chokepoint that can stamp headers for a route tree: `middleware.ts` sets
+  `Cache-Control: no-store, must-revalidate` for every path matching a `MODULE_REGISTRY` routePrefix
+  (registry-derived; Edge-safe pure-data import; MODULE_HOME matches `/dashboard` exactly so kept
+  `/dashboard/*` routes keep their normal caching). Locked by `tests/featureFlags/mon161NoStoreCache.test.ts`.
+- **Live re-check after deploy (Matrix):** re-run the M1.5 flip on the BARE url — flip ON → renders ≤~30s
+  with no cache-busting query; flip OFF → 404 again on the bare url.
+
+### §A — M1.3 carry-over tracker pointers (all six, verbatim brief texts)
+STATE.md master-plan block · `01_ACTIVE_WORKSTREAMS.md` 0·SIMP → pointer · old plan superseded-banner +
+frozen cursor + §1 story pointer (D-10) · CLAUDE.md programme-boot line (D-18/D-20 named) · hub
+`Last updated` bump · MON-162 registered (OPEN, fix deferred per Reza P-3/P-5).
+
+### §B-5 + registry
+MON-160 → VERIFIED (M1.5 live flip evidence, #1591 comment). MON-161 + MON-163 raised → DIAGNOSED with
+full trios/root causes; flipped to FIXING with the PR number immediately after the draft PR opened
+(the registry gate requires fixPRs at FIXING).
+
+### Coverage boundary
+The guard verifies STATIC link topology (string-literal hrefs + template prefixes on the kept-reachable
+graph); it does NOT verify runtime-assembled hrefs, nor that the CDN honours no-store on a deployment —
+the latter is the MON-161 bare-URL flip re-check on PROD. The plan/§5/§9/cursor updated in this PR.
