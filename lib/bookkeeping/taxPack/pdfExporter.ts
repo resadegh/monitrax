@@ -125,14 +125,32 @@ function renderCover(doc: PDFKit.PDFDocument, summary: TaxPackSummary): void {
 }
 
 function renderTotals(doc: PDFKit.PDFDocument, summary: TaxPackSummary): void {
-  sectionHeading(doc, 'Totals');
+  sectionHeading(doc, 'Totals (property-scoped)');
   const rows: Array<[string, string]> = [
     ['Income (gross)', formatCurrency(summary.totals.incomeGross)],
     ['Expenses', formatCurrency(summary.totals.expenseTotal)],
     ['Net cashflow', formatCurrency(summary.totals.netCashflow)],
-    ['Transactions', summary.totals.transactionCount.toLocaleString('en-AU')],
+    ['Transactions included', summary.totals.transactionCount.toLocaleString('en-AU')],
   ];
   renderTwoColumnTable(doc, rows);
+  doc.moveDown(1);
+
+  // MON-170: the nothing-silent reconciliation — every excluded row is
+  // counted with its dollars, and the identity line is printed so the
+  // accountant can see the pack accounts for the whole window.
+  const r = summary.reconciliation;
+  sectionHeading(doc, 'Reconciliation');
+  const excludedCount =
+    r.excluded.transfers.count + r.excluded.loanRepayments.count + r.excluded.notPropertyScoped.count;
+  renderTwoColumnTable(doc, [
+    ['All transactions in window', r.transactionsTotal.toLocaleString('en-AU')],
+    ['Included (property-scoped)', `${r.included.count} rows · ${formatCurrency(r.included.amount)}`],
+    ['Excluded — transfers', `${r.excluded.transfers.count} rows · ${formatCurrency(r.excluded.transfers.amount)}`],
+    ['Excluded — loan repayments', `${r.excluded.loanRepayments.count} rows · ${formatCurrency(r.excluded.loanRepayments.amount)}`],
+    ['Excluded — not property-scoped', `${r.excluded.notPropertyScoped.count} rows · ${formatCurrency(r.excluded.notPropertyScoped.amount)}`],
+    ['Identity check', `${r.included.count} included + ${excludedCount} excluded = ${r.transactionsTotal} total`],
+    ['ATO labelling', `${r.atoLabelling.labelled.count} labelled · ${r.atoLabelling.noCategory.count} no category (review on the Housekeeping page) · ${r.atoLabelling.noAtoMapping.count} unmapped`],
+  ]);
   doc.moveDown(1);
 }
 

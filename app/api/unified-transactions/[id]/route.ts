@@ -24,6 +24,7 @@ import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
 import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
+import { resolveLinkPropertyId } from '@/lib/bookkeeping/propertyLink';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -212,6 +213,19 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
       }
       if (body.expenseId !== undefined) {
         updateData.expenseId = body.expenseId || null;
+      }
+      // MON-168: setting a link target without an explicit propertyId derives
+      // the stamp from the target via the ONE rule; an explicit propertyId in
+      // the body (the re-attribution path) always wins.
+      if (
+        body.propertyId === undefined &&
+        (body.incomeId || body.expenseId || body.loanId)
+      ) {
+        updateData.propertyId = await resolveLinkPropertyId(auth.userId, {
+          incomeId: body.incomeId ?? null,
+          expenseId: body.expenseId ?? null,
+          loanId: body.loanId ?? null,
+        });
       }
 
       // Recurring override

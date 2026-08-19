@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { resolveLinkPropertyId } from '@/lib/bookkeeping/propertyLink';
 import { withPermission } from '@/lib/auth/guards';
 import { SuggestedActionType } from '@/lib/documents/intelligence';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
@@ -280,6 +281,8 @@ async function applyReceiptMatch(
         merchantStandardised: vendor ?? null,
         source: 'RECEIPT',
         expenseId,
+        // MON-168: property attribution rides the link (ONE rule).
+        propertyId: await resolveLinkPropertyId(userId, { expenseId }),
         matchedDocumentId: documentId,
         userCorrectedCategory: false,
         processedAt: new Date(),

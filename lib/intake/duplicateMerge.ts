@@ -293,13 +293,20 @@ export async function executeMerge(
   kind: 'income' | 'expense',
   survivorId: string,
   mergeIds: string[],
+  /**
+   * MON-168: the SURVIVOR's property attribution (resolved by the caller via
+   * lib/bookkeeping/propertyLink — the ONE rule). Repointing a transaction's
+   * link id re-derives its propertyId stamp; siblings merged from a
+   * differently-scoped duplicate must not keep a stale stamp.
+   */
+  survivorPropertyId: string | null,
 ): Promise<MergeResult> {
   let droppedDisbursementRule = false;
 
   if (kind === 'income') {
     await db.unifiedTransaction.updateMany({
       where: { userId, incomeId: { in: mergeIds } },
-      data: { incomeId: survivorId },
+      data: { incomeId: survivorId, propertyId: survivorPropertyId },
     });
     await db.transaction.updateMany({
       where: { incomeId: { in: mergeIds } },
@@ -339,7 +346,7 @@ export async function executeMerge(
 
   await db.unifiedTransaction.updateMany({
     where: { userId, expenseId: { in: mergeIds } },
-    data: { expenseId: survivorId },
+    data: { expenseId: survivorId, propertyId: survivorPropertyId },
   });
   await db.transaction.updateMany({
     where: { expenseId: { in: mergeIds } },

@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 291 · **Edges:** 410
-- **By kind:** orchestrator 17 · engine 159 · input-field 34 · number 16 · ui-surface 18 · law 40 · verification 7
-- **By status:** documented 290 · suspected-issue 1
-- **Edge provenance:** verified 410 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/192 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 297 · **Edges:** 417
+- **By kind:** orchestrator 17 · engine 161 · input-field 34 · number 18 · ui-surface 19 · law 41 · verification 7
+- **By status:** documented 296 · suspected-issue 1
+- **Edge provenance:** verified 417 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/196 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -89,7 +89,7 @@
 | **Transaction import pipeline** | `app/api/accounts/[id]/import/route.ts:106` | route | neobrain | QIF/CSV import — parse, dedup, categoriseWithLearning, classifyByConfidence, write auto-accepts to UnifiedTransaction + park the rest in the review queue. | Phase 29 / Phase 51 |  | documented |
 | **Document upload intake** | `app/api/documents/upload/route.ts:25` | route | neobrain | Upload intake — DME.processUpload (store + route) then optional DIE.analyzeDocument (recognise + extract). | Phase 25/26/50 |  | documented |
 | **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
-| **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
+| **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:56` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
 | **LVR — loan-to-value ratio** | `lib/utils/calculations.ts:9` | engine | core | LVR as a percentage (0–100). | Loan-to-value ratio (standard lending metric). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.LVR' fixture) | documented |
 | **Property equity** | `lib/utils/calculations.ts:33` | engine | core | Property equity (AUD), SIGNED = value − loan (MON-011: was floored at 0, which overstated propertyPortfolioEquity and hid underwater properties). | Equity = asset value less secured debt, floored at 0. | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.equity' fixture) | documented |
 | **Rental yield (annual)** | `lib/utils/calculations.ts:43` | engine | core | Gross annual rental yield as a percentage. | Gross rental yield (annual rent ÷ value). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.rentalYield' fixture) | documented |
@@ -194,6 +194,8 @@
 | **L1 banked received-cash (INVESTMENT/OTHER)** | `lib/income/banked/receivedBanked.ts:24` | engine | core | BankedRowResult — cash as received; gross ≡ banked; franking credits NEVER added (Layer-3 offset). One-off gate via the canonical monthlyRunRate. | D17 + D20. IncomeType has no DIVIDEND/BUSINESS values — INVESTMENT covers dividends/distributions/interest; business-distribution intelligence stays with the LegalEntity tables (T1 coverage boundary). | lib/income/banked/receivedBanked.ts:24 (read this session, MON-131 T1-A) | documented |
 | **L2 banked-income aggregator (pure summation)** | `lib/income/banked/aggregator.ts:83` | engine | core | BankedIncomeResult — banked/gross/grossTaxable + withholding components + bySource + oneOff. projectAggregation() = the legacy IncomeAggregation-shape projection used at the T1-B flip. | D20 L2 (pure summation, no arithmetic of its own) + build brief §3 invariants (amended). Ratchets: tests/income/bankedIncome.test.ts + calc-audit income.bankedAggregator. | lib/income/banked/aggregator.ts:83 (read this session, MON-131 T1-A) | documented |
 | **Effective loan rate — evidence beats the typed rate (MON-142)** | `lib/calculations/effectiveLoanRate.ts:130` | engine | core | EffectiveLoanRate — annualRate + basis (DERIVED_CHARGED \| DERIVED_IO_REPAYMENT \| STORED), storedRateAnnual, impliedRateAnnual, divergencePp, flags (RATE_STALE \| RATE_UNVERIFIED \| NO_INTEREST_BEARING_BALANCE), interestBearingBalance. | MON-142 + D17 FACT-hierarchy pattern applied to a rate + D21 (interest nets the offset). Threshold 0.10pp: lenders move variable rates in 0.25pp steps, so a real change clears it while partial-period/day-count artefacts do not. |  | documented |
+| **D-12 accountant pack summary builder** | `lib/bookkeeping/taxPack/summary.ts:159` | engine | reports | TaxPackSummary — PROPERTY-SCOPED totals + per-property P&L + ATO-label rollup + the MON-170 reconciliation block (every excluded row counted). | M3 brief §A scope ruling (property-scoped, exclusions stated) · §19.1 nothing-silent · actualCashflow.ts transfer convention | lib/bookkeeping/taxPack/summary.ts:159 + tests/bookkeeping/mon169170PackReconciliation.test.ts (worked example) | documented |
+| **Link → property attribution rule (MON-168)** | `lib/bookkeeping/propertyLink.ts:49` | engine | core | UnifiedTransaction.propertyId — DERIVED: the link target's (Income/Expense/Loan) propertyId ?? null; cleared when the link clears. | MON-168 (Ring-3 FAIL 2026-08-19 on #1595) · §12.2.1 one rule | lib/bookkeeping/propertyLink.ts:49 + tests/bookkeeping/mon168PropertyStampGuard.test.ts (every write site) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -237,6 +239,7 @@
 | **PSI input assembler (the numerics all-or-nothing capture gate)** | $150,000 PSI, $135,000 (90%) largest client, no tests established → 80%-one-client FAILS → NOT PSB → $150,000 attributed per s86-15 (locked in the ratchet) |
 | **Div 152 input assembler (the all-or-nothing capture gate)** | gain $120,000, MNAV $4.2M, active, 64 months, reduction + retirement exemption with $400k used → AAR −$60,000 → exemption −$60,000 (cap remaining $100k) → assessable $0 (locked in the ratchet) |
 | **Budget analysis generator** | recurring essential $100/mo + IO loan resolved from linked repayments + $50,000 one-off contributing $0/mo → committed = $100 + canonical loan costs (tests/budget/mon125BudgetGeneratorSsot.test.ts) |
+| **D-12 accountant pack summary builder** | 7 fixture rows: included 3 ($850) + transfers 2 ($1,050) + loanRepayments 1 ($300) + notPropertyScoped 1 ($2,000) = 7; incomeGross $500, expenseTotal $350. |
 
 ## Number lineage — how each displayed number is born
 
@@ -258,6 +261,8 @@
 | **Property depreciation / yr (displayed)** (`propertyDepreciation`) | Property depreciation (annual) |  | Σ calculateDepreciationAnnual(schedule).annualDepreciation | engine.depreciation.calculateDepreciationAnnual |
 | **Agent-cost deduction (managed rental gap)** (`rental.agentCostDeduction`) | Managed-rental agent-cost reconciliation |  | = reconcileManagedRental(...).gap (per disbursement period) / .gapAnnual (annualised). ONE producer (§12.2.1) — R1 source-lock. | ITAA 1997 s8-1; copy stays "usually deductible — confirm with your statement or tax agent" (spec §10). |
 | **Managed rental gross declared (assessable)** (`rental.grossDeclared`) | Managed-rental agent-cost reconciliation |  | = toAnnual(Income.amount, Income.frequency) — annualised by the canonical tax engine income loop, exactly as a DIRECT stream. | ITAA 1997 s6-5 — gross rent is assessable income; never a netted figure. |
+| **Pack income (gross, property-scoped)** (`packIncomeGross`) | D-12 accountant pack summary builder, Link → property attribution rule (MON-168), Transfer auto-pairer, Review-queue confirm (SSOT), Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop |  | = Σ included IN \|amount\| (== Σ perProperty income — identity by construction) | M3 brief §A / D-21 |
+| **Pack expenses (property-scoped)** (`packExpenseTotal`) | D-12 accountant pack summary builder, Link → property attribution rule (MON-168), Transfer auto-pairer, Review-queue confirm (SSOT), Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop |  | = Σ included OUT \|amount\| (== Σ perProperty expenses) | M3 brief §A / D-21 |
 
 ## Governing laws / authorities (B6)
 
@@ -303,6 +308,7 @@
 | **AI proposes, the user confirms (AI never auto-files)** | A categorisation with source==='AI' is NEVER written straight to the ledger, regardless of confidence — it is always parked in the review queue for a human confirm. This upholds the KB echo-chamber-safety rule (only human confirmations graduate patterns) and keeps an AI guess from silently becoming a user's spend fact (§19). Deterministic sources (RULE/USER/KB/transfer) may auto-file. | Phase 54.2 — docs/blueprint/PHASE_54_NEOBRAIN.md §17; CLAUDE.md §19 + Phase 52 echo-chamber safety | Confidence-band classifier |
 | **Accessibility buckets sum to net worth** | liquidToday + accessible + lockedLongTerm = netWorth | Derived from the accounting identity (law.accountingIdentity) — every asset and liability lands in exactly one bucket. | Hidden Wealth — accessibility buckets |
 | **One canonical row per real source (Mechanism A)** | one source ⇒ one row; converge iff signature matches ∧ scopeCompatible; distinct scopes ⇒ distinct rows | docs/architecture/CALC_SSOT_WALL.md 'Mechanism A' + Reza correction (Cienna/Ingeus are distinct incomes) | Intake classifier (MON-078 keystone + Mechanism A signature reuse), Duplicate-source preview + confirmed merge (Mechanism A Part 2) |
+| **Pack reconciliation identity (MON-170)** | a tax artefact never loses money silently: every exclusion is a counted bucket with dollars. | Reza / Matrix Ring-3 verdict 2026-08-19 · §19.1 | D-12 accountant pack summary builder |
 
 ## Assurance — the Trust Engine (what proves each number correct)
 
@@ -730,6 +736,13 @@
 | Property depreciation (annual) | → | Report context builder | feeds | — | verified | MON-165: fetchPropertyData + fetchDepreciationData read the ONE canonical engine (first-year-only inline math deleted) — contextBuilder.ts |
 | Property equity | → | Report context builder | feeds | — | verified | MON-164: fetchPropertyData equity reads the canonical signed producer — contextBuilder.ts |
 | LVR — loan-to-value ratio | → | Report context builder | feeds | — | verified | MON-164: fetchPropertyData LVR reads the canonical producer — contextBuilder.ts |
+| Link → property attribution rule (MON-168) | → | D-12 accountant pack summary builder | feeds | — | verified | summary.ts keys perProperty + inclusion on tx.propertyId, which every link write derives via propertyLink (MON-168 guard test) |
+| D-12 accountant pack summary builder | → | Pack income (gross, property-scoped) | feeds | — | verified | summary.ts totals loop over `included` |
+| D-12 accountant pack summary builder | → | Pack expenses (property-scoped) | feeds | — | verified | summary.ts totals loop over `included` |
+| D-12 accountant pack summary builder | → | Pack reconciliation identity (MON-170) | governed-by | — | verified | summary.ts hard-assert (throws on violation) |
+| D-12 accountant pack summary builder | → | Reports — D-12 tax pack export (JSON/CSV/XLSX/PDF/pack) | rendered-at | — | verified | export/route.ts:60 renders the summary via csv/xlsx/pdf/json/pack exporters; downloaded from /dashboard/reports |
+| UnifiedTransaction | → | D-12 accountant pack summary builder | feeds | — | verified | summary.ts:172 fetches the FY window rows (id/amount/direction/isTransfer/loanId/propertyId/category*) |
+| Transfer auto-pairer | → | D-12 accountant pack summary builder | feeds | — | verified | transfer marking writes isTransfer, the pack classifier reads it (excluded.transfers) |
 
 ---
 

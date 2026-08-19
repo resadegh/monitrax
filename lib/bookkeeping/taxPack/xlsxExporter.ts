@@ -47,11 +47,33 @@ export function buildTaxPackXlsx(
     ['Window', summary.window.label],
     ['Generated', summary.generatedAt.toISOString()],
     [],
-    ['Totals'],
+    ['Totals (property-scoped)'],
     ['Income (gross)', summary.totals.incomeGross],
     ['Expenses', summary.totals.expenseTotal],
     ['Net cashflow', summary.totals.netCashflow],
-    ['Transactions', summary.totals.transactionCount],
+    ['Transactions included', summary.totals.transactionCount],
+    [],
+    // MON-170: the nothing-silent reconciliation — the identity line lets the
+    // accountant verify no money was dropped without a counter.
+    ['Reconciliation'],
+    ['All transactions in window', summary.reconciliation.transactionsTotal],
+    ['Included (property-scoped)', summary.reconciliation.included.count, summary.reconciliation.included.amount],
+    ['Excluded — transfers', summary.reconciliation.excluded.transfers.count, summary.reconciliation.excluded.transfers.amount],
+    ['Excluded — loan repayments', summary.reconciliation.excluded.loanRepayments.count, summary.reconciliation.excluded.loanRepayments.amount],
+    ['Excluded — not property-scoped', summary.reconciliation.excluded.notPropertyScoped.count, summary.reconciliation.excluded.notPropertyScoped.amount],
+    [
+      'Identity check',
+      `${summary.reconciliation.included.count} included + ${
+        summary.reconciliation.excluded.transfers.count +
+        summary.reconciliation.excluded.loanRepayments.count +
+        summary.reconciliation.excluded.notPropertyScoped.count
+      } excluded = ${summary.reconciliation.transactionsTotal} total`,
+    ],
+    [],
+    ['ATO labelling (of included rows)'],
+    ['Reached a label', summary.reconciliation.atoLabelling.labelled.count, summary.reconciliation.atoLabelling.labelled.amount],
+    ['No category yet — review these on the Housekeeping page', summary.reconciliation.atoLabelling.noCategory.count, summary.reconciliation.atoLabelling.noCategory.amount],
+    ['Category has no ATO mapping', summary.reconciliation.atoLabelling.noAtoMapping.count, summary.reconciliation.atoLabelling.noAtoMapping.amount],
     [],
     ['Data sources'],
     ...Object.entries(summary.dataSources.sources).map(([k, v]) => [k, v]),

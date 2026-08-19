@@ -21,6 +21,7 @@
  */
 
 import prisma from '@/lib/db';
+import { resolveLinkPropertyId } from '@/lib/bookkeeping/propertyLink';
 import type { UnifiedTransaction } from '@prisma/client';
 
 /** Date window, in days, around the receipt date. */
@@ -347,11 +348,14 @@ export async function linkReceiptToTransaction(args: {
   }
 
   const before = pickLinkFields(existing);
+  // MON-168: the expense's property attribution rides the link (ONE rule).
+  const linkPropertyId = await resolveLinkPropertyId(args.userId, { expenseId: args.expenseId });
   const updated = await prisma.unifiedTransaction.update({
     where: { id: existing.id },
     data: {
       expenseId: args.expenseId,
       matchedDocumentId: args.documentId,
+      propertyId: linkPropertyId,
     },
   });
   recordTransactionEdit({

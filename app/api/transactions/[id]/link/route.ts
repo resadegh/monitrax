@@ -23,6 +23,7 @@ import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRe
 import { buildManagedRentalSuggestion } from '@/lib/services/managedRentalService';
 import { calculateMonthlyAverage } from '@/lib/calculations/actualsMonthlyAverage';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
+import { propertyIdOf } from '@/lib/bookkeeping/propertyLink';
 import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
 import { decodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
@@ -143,6 +144,9 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
 
           let targetName = '';
           let targetCategory = '';
+          // MON-168: the link target's property attribution — stamped on every
+          // linked transaction via the ONE rule (lib/bookkeeping/propertyLink).
+          let linkPropertyId: string | null = null;
           // Phase 59: the linked MANAGED rental stream (drives the
           // suggest-and-confirm card in the response, spec §3/§8).
           let linkedRentalStream: Awaited<ReturnType<typeof prisma.income.findFirst>> = null;
@@ -160,6 +164,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
             targetName = income.name;
             targetCategory = income.type; // SALARY, RENT, RENTAL, INVESTMENT, OTHER
+            linkPropertyId = propertyIdOf(income); // MON-168
             linkedRentalStream = income;
 
             // Optionally update the income amount (Phase 30: with budget tracking)
@@ -187,6 +192,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
             targetName = expense.name;
             targetCategory = expense.category; // HOUSING, UTILITIES, etc.
+            linkPropertyId = propertyIdOf(expense); // MON-168
 
             // Optionally update the expense amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
@@ -213,6 +219,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
             targetName = loan.name;
             targetCategory = 'Loan Repayment'; // Loan repayments are categorized as such
+            linkPropertyId = propertyIdOf(loan); // MON-168
 
             // Optionally update the loan minRepayment
             if (body.updateAmount) {
@@ -232,6 +239,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               loanId: body.type === 'loan' ? body.targetId : null,
               isRecurring: true,
               categoryLevel1: targetCategory,
+              propertyId: linkPropertyId, // MON-168
             },
           });
 
@@ -258,6 +266,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   loanId: body.type === 'loan' ? body.targetId : null,
                   isRecurring: true,
                   categoryLevel1: targetCategory,
+                  propertyId: linkPropertyId, // MON-168
                 },
               });
               batchCount = validIds.length;
@@ -322,6 +331,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 loanId: null,
                 isRecurring: true,
                 categoryLevel1: targetCategory,
+                propertyId: linkPropertyId, // MON-168
               },
               excludeIds: body.additionalTransactionIds,
             });
@@ -587,6 +597,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 incomeId: income.id,
                 isRecurring: true,
                 categoryLevel1: body.category || 'Income',
+                propertyId: propertyIdOf(income), // MON-168
               },
             });
 
@@ -611,6 +622,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                     incomeId: income.id,
                     isRecurring: true,
                     categoryLevel1: body.category || 'Income',
+                    propertyId: propertyIdOf(income), // MON-168
                   },
                 });
                 batchCount = validIds.length;
@@ -665,6 +677,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   incomeId: income.id,
                   isRecurring: true,
                   categoryLevel1: body.category || 'Income',
+                  propertyId: propertyIdOf(income), // MON-168
                 },
                 excludeIds: body.additionalTransactionIds,
               });
@@ -864,6 +877,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 isRecurring: body.isRecurring ?? false,
                 isEssential: body.isEssential ?? false,
                 categoryLevel1: body.category || 'Expense',
+                propertyId: propertyIdOf(expense), // MON-168
               },
             });
 
@@ -889,6 +903,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                     isRecurring: body.isRecurring ?? false,
                     isEssential: body.isEssential ?? false,
                     categoryLevel1: body.category || 'Expense',
+                    propertyId: propertyIdOf(expense), // MON-168
                   },
                 });
                 batchCount = validIds.length;
@@ -956,6 +971,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   isRecurring: body.isRecurring ?? false,
                   isEssential: body.isEssential ?? false,
                   categoryLevel1: body.category || 'Expense',
+                  propertyId: propertyIdOf(expense), // MON-168
                 },
                 excludeIds: body.additionalTransactionIds,
               });
@@ -1014,6 +1030,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 incomeId: body.targetId,
                 isRecurring: true,
                 categoryLevel1: income.type, // Set category from income type
+                propertyId: propertyIdOf(income), // MON-168
               },
             });
 
@@ -1052,6 +1069,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 expenseId: body.targetId,
                 isRecurring: true,
                 categoryLevel1: expense.category, // Set category from expense category
+                propertyId: propertyIdOf(expense), // MON-168
               },
             });
 
@@ -1073,6 +1091,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 loanId: body.targetId,
                 isRecurring: true,
                 categoryLevel1: 'Loan Repayment', // Set category for loan repayment
+                propertyId: propertyIdOf(loan), // MON-168
               },
             });
 
@@ -1177,6 +1196,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               incomeId: null,
               expenseId: null,
               loanId: null,
+              propertyId: null, // MON-168: derived state never outlives its link
               isRecurring: false,
               isTransfer: false,
               transferToAccountId: null,
@@ -1204,6 +1224,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   incomeId: null,
                   expenseId: null,
                   loanId: null,
+                  propertyId: null, // MON-168
                   isRecurring: false,
                   isEssential: false,
                   categoryLevel1: null,
@@ -1250,6 +1271,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             incomeId: null,
             expenseId: null,
             loanId: null,
+            propertyId: null, // MON-168
           };
 
           await prisma.unifiedTransaction.update({
@@ -1374,6 +1396,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               incomeId: null,
               expenseId: null,
               loanId: null,
+              propertyId: null, // MON-168
               categoryLevel1: 'Investment',
             },
           });
@@ -1431,6 +1454,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   incomeId: null,
                   expenseId: null,
                   loanId: null,
+                  propertyId: null, // MON-168
                   categoryLevel1: 'Investment',
                 },
               });
