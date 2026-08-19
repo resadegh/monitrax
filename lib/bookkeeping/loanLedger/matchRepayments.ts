@@ -18,6 +18,7 @@
  */
 
 import prisma from '@/lib/db';
+import { resolveLinkPropertyId } from '@/lib/bookkeeping/propertyLink';
 import { LoanMatchStatus } from '@prisma/client';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 
@@ -239,6 +240,9 @@ export async function linkRepaymentToTransaction(
   ]);
   if (!row || !txn) return { ok: false };
 
+  // MON-168: resolve the loan's property attribution via the ONE rule.
+  const linkPropertyId = await resolveLinkPropertyId(userId, { loanId: row.loanId });
+
   await prisma.$transaction(async (tx) => {
     await tx.loanTransaction.update({
       where: { id: row.id },
@@ -252,7 +256,12 @@ export async function linkRepaymentToTransaction(
       where: { id: transactionId, userId },
       // Loan repayment linked → fully categorise + confirm (§12.2.1) so it
       // doesn't linger as "Uncategorised / Not confirmed yet".
-      data: { ...confirmedTransferFields({ level2: 'Loan repayment' }), loanId: row.loanId },
+      // MON-168: stamp the loan's property so the pack can attribute the row.
+      data: {
+        ...confirmedTransferFields({ level2: 'Loan repayment' }),
+        loanId: row.loanId,
+        propertyId: linkPropertyId,
+      },
     });
   });
   return { ok: true };

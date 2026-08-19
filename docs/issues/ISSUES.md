@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**166 total** · 105 open · 🔵 50 · 🟡 10 · 🟠 33 · 🟢 12 · ✅ 59
+**166 total** · 105 open · 🔵 47 · 🟡 10 · 🟠 36 · 🟢 12 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -161,9 +161,9 @@
 | MON-165 | 🟠 FIXING | 🔴 | yes | Depreciation has FOUR divergent producers on kept surfaces — the pack and the depreciation page use a first-year-only formula (1.95x off the canonical engine on a 3-year-old DV schedule) | ##1595 | ✅ |
 | MON-166 | 🟠 FIXING | 🟡 | no | Depreciation rate rendered 100x too large on the properties dialog — 2.5% schedule shows as 250.00% p.a. | ##1595 | ✅ |
 | MON-167 | 🟠 FIXING | 🟢 | no | Dead-link guard misses object-literal 'to:' link fields — EditorialMoneyStoryHero carries three hidden-module links the guard cannot see | ##1595 | ✅ |
-| MON-168 | 🔵 OPEN | 🔴 | yes | Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking | — | — |
-| MON-169 | 🔵 OPEN | 🔴 | yes | The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted) | — | — |
-| MON-170 | 🔵 OPEN | 🟠 | yes | Pack ATO-label totals silently drop unmapped and uncategorised transactions | — | — |
+| MON-168 | 🟠 FIXING | 🔴 | yes | Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking | ##1601 | ✅ |
+| MON-169 | 🟠 FIXING | 🔴 | yes | The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted) | ##1601 | ✅ |
+| MON-170 | 🟠 FIXING | 🟠 | yes | Pack ATO-label totals silently drop unmapped and uncategorised transactions | ##1601 | ✅ |
 | MON-171 | 🔵 OPEN | 🟠 | yes | Onboarding Review screen runs a parallel financial engine — raw minRepayment, no one-off gate, first number a user ever sees | — | — |
 | MON-172 | 🔵 OPEN | 🟠 | yes | CASH accounts invisible on /dashboard/balances — the cash-wallet the quick-add creates appears in no section and no total | — | — |
 | MON-173 | 🔵 OPEN | 🟠 | yes | Properties dialog local frequency table missing HALF_YEARLY — 6x overstated Budget column for half-yearly rows | — | — |
@@ -2800,36 +2800,60 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: tests/featur
 
 ### MON-168 — Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
 
 > **What was wrong:** When you link imported bank rows to a property's income, expenses or loans, the link never records WHICH property on the transaction itself. The accountant pack builds its per-property section only from that missing field - so a fully-linked year can export with an empty per-property breakdown.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** Every way of linking a bank row to income/expenses/loans now also records which property the link belongs to, using one shared rule; a one-time admin backfill stamps the rows linked before the fix (it previews its counts before writing anything).
+>
+> **What you should see:** Export the tax pack for FY2025-26 after the backfill: the per-property section now has one entry per property with linked rows, instead of being empty.
+
+- **Root cause:** `app/api/transactions/[id]/link/route.ts:227`, `lib/bookkeeping/taxPack/summary.ts:151`
+- **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
+- **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts - perProperty P&L (keys solely on tx.propertyId, :151) -> export route JSON/XLSX/PDF/pack renderings`, `app/api/bookkeeping/tax-pack/export/route.ts - all six formats render perProperty`, `lib/bookkeeping/taxPack/xlsxExporter.ts - one sheet per property (:73)`, `lib/bookkeeping/taxPack/pdfExporter.ts - renderPerProperty (:165/:172)`, `lib/bookkeeping/taxPack/accountantPackBuilder.ts - bundles the same summary`, `app/api/intake/duplicates/route.ts - selects tx.propertyId (read-only)`
+- **Fix PR(s):** ##1601
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts + tests/bookkeeping/mon168PropertyStampGuard.test.ts`
 - **Detail:** `M2.6 depth sweep finding #1 (2026-08-19) · LIVE-CHECK 1 on the Matrix list`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/transactions/[id]/link/route.ts.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/transactions/[id]/link/route.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 VR verdict on #1595 confirmed live (perProperty:[] on 387 tx). Producer census - 16 sites set target ids on UnifiedTransaction without propertyId: link/route.ts :227 (link primary), :251 (link batch), :312 (link auto-apply), :584/:606/:659 (create-income primary/batch/auto-apply), :860/:883/:949 (create-expense primary/batch/auto-apply), :1011 (update-income), :1049 (update-expense), :1070 (update-loan); lib/bookkeeping/loanLedger/matchRepayments.ts:251 (linkRepaymentToTransaction, loanId); app/api/bank/import/route.ts:481 (import auto-link createMany); lib/bookkeeping/receiptMatcher.ts:350 (linkReceiptToTransaction, expenseId); app/api/documents/analyze/confirm/route.ts:270 (RECEIPT-synthesised create, expenseId). Clear-sites that must also null propertyId: link/route.ts :1174/:1201 (unlink), :1242 (transfer), :1364/:1422 (investment). Manual field editor app/api/unified-transactions/[id]/route.ts:204-214 accepts link ids AND propertyId directly - derive when a link id is set without an explicit propertyId. TransactionSplit rows carry their own propertyId (separate model, out of scope). matchRepayments.ts:195 (accept path) sets isTransfer only, no target id - no stamp needed. Fix = ONE resolver (lib/bookkeeping/propertyLink.ts) + idempotent admin backfill (dry-run first, section 12.11).
 
 ### MON-169 — The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted)
 
-**🔵 OPEN** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
 
 > **What was wrong:** Money moved between your own accounts, and loan principal repayments, are counted in the tax pack's income and expense totals as if they were real earnings and deductible costs. The rest of the app deliberately excludes these; the pack does not.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** The pack now moves transfers between your own accounts and loan repayments into their own informational section with a count and total - they no longer inflate the income and expense totals.
+>
+> **What you should see:** The $1,000 transfer and the loan repayments appear under "excluded - transfers / loan repayments" with their amounts, and the income/expense totals drop accordingly.
+
+- **Root cause:** `lib/bookkeeping/taxPack/summary.ts:143`
+- **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
+- **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts totals.incomeGross/expenseTotal/netCashflow -> export route JSON + xlsxExporter Summary sheet (:51-53) + pdfExporter summary (:130-132) + accountantPackBuilder`
+- **Fix PR(s):** ##1601
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts + tests/bookkeeping/mon168PropertyStampGuard.test.ts`
 - **Detail:** `M2.6 depth sweep finding #2 (2026-08-19) · LIVE-CHECK 2`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 verdict confirmed ($1,000 transfer inside totals; isTransfer schema:2878 never referenced in summary.ts). Canonical predicate: actualCashflow.ts:111 excludes isTransfer===true rows by design; loan repayments linked via the Phase 51 ledger get isTransfer=true (confirmedTransferFields), but the plain link/update loan actions set loanId WITHOUT isTransfer - so the pack must divert BOTH isTransfer rows AND loanId-linked rows to the informational section. Input-feed census: buildTaxPackSummary fetches all window rows (:126) and sums by direction only (:143-146).
 
 ### MON-170 — Pack ATO-label totals silently drop unmapped and uncategorised transactions
 
-**🔵 OPEN** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
 
 > **What was wrong:** Rows without a category, or whose category has no ATO label mapping, simply vanish from the pack's ATO-label totals with no 'unmapped' bucket and no warning - the accountant can receive totals materially below the true spend without knowing.
 >
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+> **What changed:** Nothing is dropped silently any more: the pack now shows exactly how many rows (and how many dollars) were left out of the ATO-label totals and why (no category, no ATO mapping, transfer, not property-scoped), and the counts are checked to add up to the full transaction total.
+>
+> **What you should see:** The pack shows a reconciliation section: total transactions, included, and each exclusion bucket with counts and dollars - and the numbers add up to the total.
+
+- **Root cause:** `lib/bookkeeping/taxPack/summary.ts:214`, `lib/bookkeeping/taxPack/summary.ts:217`
+- **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
+- **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts atoLabels -> export JSON + xlsxExporter ATO Labels sheet (:70/:84) + pdfExporter renderAtoLabels (:139) + accountantPackBuilder`
+- **Fix PR(s):** ##1601
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts + tests/bookkeeping/mon168PropertyStampGuard.test.ts`
 - **Detail:** `M2.6 depth sweep finding #9 (2026-08-19)`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 verdict measured the live blast radius - 8 of 387 transactions / $6,830.50 of $192,933.48 reach any ATO label; :214 (no categoryLevel1) and :217 (no registry match) drop rows with no counter. Fix = every continue becomes a COUNTED exclusion; the payload + all renderings gain a reconciliation block with the asserted identity included + sum(excluded) = total.
 
 ### MON-171 — Onboarding Review screen runs a parallel financial engine — raw minRepayment, no one-off gate, first number a user ever sees
 

@@ -32,17 +32,57 @@ export interface TaxPackSummary {
   userId: string;
   generatedAt: Date;
   window: TaxPackWindow;
+  /**
+   * M3 PR-1 (MON-169): PROPERTY-SCOPED totals — income/expenses attributed to
+   * a property, transfers and loan repayments excluded. Everything excluded is
+   * COUNTED in `reconciliation` (MON-170: a tax artefact never loses money
+   * silently). `transactionCount` here = the included rows.
+   */
   totals: {
     incomeGross: number;
     expenseTotal: number;
     netCashflow: number;
     transactionCount: number;
   };
+  /** MON-170: the nothing-silent reconciliation — see buildTaxPackSummary. */
+  reconciliation: PackReconciliation;
   atoLabels: AtoLabelTotals[];
   perProperty: PerPropertyPL[];
   dataSources: DataSourceDisclosure;
   /** Hard-coded disclaimer surfaced verbatim in every export. */
   disclaimer: string;
+}
+
+export interface ExclusionBucket {
+  count: number;
+  amount: number;
+}
+
+/**
+ * MON-170 — every transaction in the window lands in EXACTLY ONE of:
+ * included · transfers · loanRepayments · notPropertyScoped. The identity
+ * `included.count + Σ excluded.count === transactionsTotal` is HARD-ASSERTED
+ * in buildTaxPackSummary (a violated identity throws rather than exporting a
+ * silently-wrong pack) and printed in every rendering. The labelling
+ * counters partition the INCLUDED rows: labelled + noCategory + noAtoMapping.
+ */
+export interface PackReconciliation {
+  transactionsTotal: number;
+  included: ExclusionBucket;
+  excluded: {
+    /** Internal account-to-account moves (isTransfer — actualCashflow.ts convention). */
+    transfers: ExclusionBucket;
+    /** Loan-linked rows: principal+interest repayments (per-loan interest split = M3.1). */
+    loanRepayments: ExclusionBucket;
+    /** Rows with no property attribution (salary, personal spend, unlinked rows). */
+    notPropertyScoped: ExclusionBucket;
+  };
+  /** How far the ATO-label rollup reaches into the INCLUDED rows. */
+  atoLabelling: {
+    labelled: ExclusionBucket;
+    noCategory: ExclusionBucket;
+    noAtoMapping: ExclusionBucket;
+  };
 }
 
 export interface AtoLabelTotals {
@@ -137,17 +177,69 @@ export async function buildTaxPackSummary(
   });
   const propertyById = new Map(properties.map((p) => [p.id, p]));
 
-  // ---- totals ----
+  // ---- classification (MON-169/170) ----
+  // Every row lands in exactly one class, in this precedence order:
+  //   1. transfer      — isTransfer === true (the actualCashflow.ts:111
+  //                      convention: internal moves are neither spend nor
+  //                      income; Phase 51 loan-ledger confirms also set it)
+  //   2. loanRepayment — loanId linked (principal+interest repayment; the
+  //                      plain link/update loan actions set loanId WITHOUT
+  //                      isTransfer, so this class is checked independently)
+  //   3. notPropertyScoped — no propertyId stamp (salary, personal spend,
+  //                      unlinked rows; the pack is property-scoped per the
+  //                      M3 brief §A scope ruling)
+  //   4. included      — property-scoped income/expense rows: THE pack rows.
+  // NOTE: object literals, deliberately NOT a `const bucket = () => …` helper —
+  // the census splits function units on arrow-consts, and a helper here mints
+  // a phantom producer unit that swallows the classification code below
+  // (the PR-2 `basisChip`/`loanCost` lesson; never reseed a rise).
+  const transfers = { count: 0, amount: 0 };
+  const loanRepayments = { count: 0, amount: 0 };
+  const notPropertyScoped = { count: 0, amount: 0 };
+  const includedBucket = { count: 0, amount: 0 };
+  const included: UnifiedTransaction[] = [];
+  for (const tx of transactions) {
+    const abs = Math.abs(tx.amount);
+    if (tx.isTransfer === true) {
+      transfers.count++;
+      transfers.amount += abs;
+    } else if (tx.loanId) {
+      loanRepayments.count++;
+      loanRepayments.amount += abs;
+    } else if (!tx.propertyId) {
+      notPropertyScoped.count++;
+      notPropertyScoped.amount += abs;
+    } else {
+      includedBucket.count++;
+      includedBucket.amount += abs;
+      included.push(tx);
+    }
+  }
+
+  // THE identity (MON-170): included + Σexcluded = total. A violation means
+  // the classifier double-counted or dropped a row — fail LOUD (§12.8), never
+  // export a silently-wrong tax artefact. Locked by Ring-0 fixtures.
+  const classifiedTotal =
+    includedBucket.count + transfers.count + loanRepayments.count + notPropertyScoped.count;
+  if (classifiedTotal !== transactions.length) {
+    throw new Error(
+      `Tax pack reconciliation identity violated: included ${includedBucket.count} + ` +
+        `transfers ${transfers.count} + loanRepayments ${loanRepayments.count} + ` +
+        `notPropertyScoped ${notPropertyScoped.count} !== total ${transactions.length}`
+    );
+  }
+
+  // ---- totals (property-scoped — MON-169) ----
   let incomeGross = 0;
   let expenseTotal = 0;
-  for (const tx of transactions) {
+  for (const tx of included) {
     if (tx.direction === 'IN') incomeGross += Math.abs(tx.amount);
     else expenseTotal += Math.abs(tx.amount);
   }
 
-  // ---- per-property ----
+  // ---- per-property (over the included rows only) ----
   const propertyMap = new Map<string, PerPropertyPL>();
-  for (const tx of transactions) {
+  for (const tx of included) {
     if (!tx.propertyId) continue;
     const property = propertyById.get(tx.propertyId);
     if (!property) continue;
@@ -193,7 +285,7 @@ export async function buildTaxPackSummary(
   // Pre-resolve category id for each transaction's (level1, level2)
   // triple so we can batch the mapping lookups.
   const distinctTriples = new Set<string>();
-  for (const tx of transactions) {
+  for (const tx of included) {
     if (!tx.categoryLevel1) continue;
     distinctTriples.add(`${tx.categoryLevel1}|${tx.categoryLevel2 ?? ''}|${tx.subcategory ?? ''}`);
   }
@@ -210,12 +302,37 @@ export async function buildTaxPackSummary(
     }
   }
 
-  for (const tx of transactions) {
-    if (!tx.categoryLevel1) continue;
+  // Resolve each distinct category's mappings ONCE (was per-transaction — an
+  // N+1 the Ring-3 run flagged; depth-sweep item 12).
+  const mappingsByCategoryId = new Map<
+    string,
+    Awaited<ReturnType<typeof getMappingsForCategory>>
+  >();
+  for (const categoryId of new Set(categoryIdByTriple.values())) {
+    mappingsByCategoryId.set(categoryId, await getMappingsForCategory(userId, categoryId));
+  }
+
+  // MON-170: every row that fails to reach a label is COUNTED, never dropped.
+  const labelled = { count: 0, amount: 0 };
+  const noCategory = { count: 0, amount: 0 };
+  const noAtoMapping = { count: 0, amount: 0 };
+  for (const tx of included) {
+    const abs = Math.abs(tx.amount);
+    if (!tx.categoryLevel1) {
+      noCategory.count++;
+      noCategory.amount += abs;
+      continue;
+    }
     const triple = `${tx.categoryLevel1}|${tx.categoryLevel2 ?? ''}|${tx.subcategory ?? ''}`;
     const categoryId = categoryIdByTriple.get(triple);
-    if (!categoryId) continue;
-    const mappings = await getMappingsForCategory(userId, categoryId);
+    const mappings = categoryId ? (mappingsByCategoryId.get(categoryId) ?? []) : [];
+    if (!categoryId || mappings.length === 0) {
+      noAtoMapping.count++;
+      noAtoMapping.amount += abs;
+      continue;
+    }
+    labelled.count++;
+    labelled.amount += abs;
     for (const mapping of mappings) {
       let entry = atoTotals.get(mapping.atoLabel);
       if (!entry) {
@@ -232,6 +349,15 @@ export async function buildTaxPackSummary(
       entry.totalAmount += Math.abs(tx.amount);
       entry.transactionCount++;
     }
+  }
+
+  // Labelling identity over the included rows (same fail-loud rule).
+  if (labelled.count + noCategory.count + noAtoMapping.count !== included.length) {
+    throw new Error(
+      `Tax pack labelling identity violated: labelled ${labelled.count} + ` +
+        `noCategory ${noCategory.count} + noAtoMapping ${noAtoMapping.count} !== ` +
+        `included ${included.length}`
+    );
   }
 
   // ---- data sources ----
@@ -258,7 +384,13 @@ export async function buildTaxPackSummary(
       incomeGross,
       expenseTotal,
       netCashflow: incomeGross - expenseTotal,
-      transactionCount: transactions.length,
+      transactionCount: included.length,
+    },
+    reconciliation: {
+      transactionsTotal: transactions.length,
+      included: includedBucket,
+      excluded: { transfers, loanRepayments, notPropertyScoped },
+      atoLabelling: { labelled, noCategory, noAtoMapping },
     },
     atoLabels: Array.from(atoTotals.values()).sort((a, b) =>
       a.atoLabel.localeCompare(b.atoLabel)

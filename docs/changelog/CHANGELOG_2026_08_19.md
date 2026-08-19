@@ -241,3 +241,28 @@ CI playwright hang root-caused: the apt half of `playwright install --with-deps`
 tsc clean · all lints/census/neomatrix green (anchors re-pinned: detail :332, list :494; 12 manifests
 rehashed; LoadFailedState + catalogue allowlisted) · targeted suites green. Coverage: static fixes
 verified by type/lint/test gates; the RENDERED behaviour of each fix is on the Matrix LIVE-CHECK list.
+
+
+## Session: m3-pr1-pack-fix (Code, Fable 5)
+
+### Changes Made
+- **Type**: Fix (changesNumbers: YES — D-21 conditions honoured, expected movements written first)
+- **Scope**: the D-12 accountant pack (MON-168 / MON-169 / MON-170) — M3 PR-1 per `BRIEF_M3_PACK_AND_SCOREBOARD.md` §A
+- **Root Cause**: (1) 17 link-write sites set `incomeId/expenseId/loanId` on UnifiedTransaction and none stamped `propertyId` — the pack's per-property P&L keys solely on it (`summary.ts:151`); (2) `isTransfer` never consulted in `buildTaxPackSummary`; (3) label-path `continue`s dropped 97.9% of rows with no counter (Ring-3 verdict on #1595).
+- **Solution**: ONE resolver `lib/bookkeeping/propertyLink.ts` used by every write path + clears on unlink/transfer/investment + PATCH derive; admin backfill (dry-run default, §12.11, idempotent); summary rewritten property-scoped with counted exclusion buckets and the HARD-ASSERTED identity `included + Σexcluded = total`, printed in XLSX/PDF; mapping N+1 removed; uncategorised rows point at Housekeeping.
+
+### Files Modified
+- `lib/bookkeeping/propertyLink.ts` — NEW: the ONE link→property attribution rule (+ batch variant)
+- `app/api/transactions/[id]/link/route.ts` — 12 stamps + 5 clears
+- `lib/bookkeeping/loanLedger/matchRepayments.ts`, `lib/bookkeeping/receiptMatcher.ts`, `app/api/bank/import/route.ts`, `app/api/documents/analyze/confirm/route.ts` — stamps
+- `lib/intake/duplicateMerge.ts` + `app/api/intake/duplicates/route.ts` — the 17th site (caught by the new guard test): survivor repoint re-stamps
+- `app/api/unified-transactions/[id]/route.ts` — PATCH derives when a link id is set without an explicit propertyId
+- `app/api/admin/maintenance/backfill-transaction-property/route.ts` — NEW: dry-run-default backfill
+- `lib/bookkeeping/taxPack/summary.ts` — property-scoped classification + reconciliation + identity asserts (bucket helper deliberately inlined; `labelCoverage` renamed `atoLabelling` — census phantom, see ledger)
+- `lib/bookkeeping/taxPack/xlsxExporter.ts` / `pdfExporter.ts` — reconciliation rendered, identity line printed
+- `tests/bookkeeping/mon168PropertyStampGuard.test.ts` (Ring-1 guard) + `tests/bookkeeping/mon169170PackReconciliation.test.ts` (Ring-0 worked example, 5 tests)
+- `docs/verification/briefs/RING3_M3_PACK_FIX.md` — NEW handout (P0–P7 + mustNotMove), written BEFORE fix code
+- Registry (168/169/170 → DIAGNOSED → FIXING), Neomatrix (6 new nodes/edges — the D-12 pack modelled), ledger §6 row, master plan cursor/§5/§9
+
+### Build Status
+- [x] TypeScript clean · [x] bookkeeping suite 323 green (incl. the two new files) · [x] `lint:source-lock` ✓ · [x] `lint:financial-surfaces` ✓ · [x] `census:producers:check` ✓ (phantom fixed by inlining, never reseeded) · [x] `neomatrix:check` ✓ (0 uncovered) · [x] `issues:check` ✓ (166 valid)

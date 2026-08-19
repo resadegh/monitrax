@@ -32,6 +32,7 @@ import {
   type MergeableRow,
   type MergeDbClient,
 } from '@/lib/intake/duplicateMerge';
+import { resolveLinkPropertyId } from '@/lib/bookkeeping/propertyLink';
 
 async function fetchRows(userId: string): Promise<{ income: MergeableRow[]; expense: MergeableRow[] }> {
   const [income, expense] = await Promise.all([
@@ -123,9 +124,16 @@ export const POST = withPermission('income.write', async (request, auth) => {
       );
     }
 
+    // MON-168: resolve the survivor's property attribution ONCE (the ONE
+    // rule) so the repointed transactions carry the correct stamp.
+    const survivorPropertyId = await resolveLinkPropertyId(
+      auth.userId,
+      kind === 'income' ? { incomeId: survivorId } : { expenseId: survivorId },
+    );
+
     const { result, editedFields } = await prisma.$transaction(async (tx: unknown) => {
       const mergeResult = await executeMerge(
-        tx as MergeDbClient, auth.userId, kind, survivorId, group.mergeIds,
+        tx as MergeDbClient, auth.userId, kind, survivorId, group.mergeIds, survivorPropertyId,
       );
       // §12.11: only the fields present, only the survivor row, ownership in
       // the WHERE. A no-edit merge skips this entirely (byte-identical to

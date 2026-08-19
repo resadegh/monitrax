@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'crypto';
 import { prisma } from '@/lib/db';
+import { resolveLinkPropertyIdMaps } from '@/lib/bookkeeping/propertyLink';
 import { withPermission } from '@/lib/auth/guards';
 import {
   parseCSV,
@@ -455,6 +456,17 @@ export const POST = withPermission('account.write', async (request, auth) => {
             );
           }
           const safeAccountId = resolvedAccountId;
+          // MON-168: batch-resolve each auto-link's property attribution via
+          // the ONE rule (three queries total — §12.10 no N+1).
+          const linkIdsByType = Object.values(effectiveLinks).reduce(
+            (acc, l) => {
+              if (l?.type === 'income') acc.incomeIds.push(l.id);
+              else if (l?.type === 'expense') acc.expenseIds.push(l.id);
+              return acc;
+            },
+            { incomeIds: [] as string[], expenseIds: [] as string[], loanIds: [] as string[] }
+          );
+          const propertyMaps = await resolveLinkPropertyIdMaps(userId, linkIdsByType);
           await prisma.unifiedTransaction.createMany({
             data: categorisationResult.transactions.map((tx, index) => {
               const link = effectiveLinks[index];
@@ -480,6 +492,13 @@ export const POST = withPermission('account.write', async (request, auth) => {
                 // Apply income/expense links
                 incomeId: link?.type === 'income' ? link.id : null,
                 expenseId: link?.type === 'expense' ? link.id : null,
+                // MON-168: property attribution rides the auto-link.
+                propertyId:
+                  link?.type === 'income'
+                    ? (propertyMaps.byIncomeId.get(link.id) ?? null)
+                    : link?.type === 'expense'
+                      ? (propertyMaps.byExpenseId.get(link.id) ?? null)
+                      : null,
               };
             }),
           });
