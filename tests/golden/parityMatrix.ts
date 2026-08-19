@@ -85,6 +85,18 @@ export const SURFACE_RESOLVERS: Record<string, (c: ParityCtx) => number> = {
  * with the reason a faithful resolver isn't wired and where the growth lands.
  */
 export const KNOWN_UNRESOLVED: Record<string, { reason: string; growth: string }> = {
+  'ui.scoreboard.propertyCashflowStrip': {
+    reason:
+      'The M3 PR-2 scoreboard strip calls computePropertyCashflow client-side with the SAME inputs the properties list passes — convergence with the list/detail surfaces is by construction (one engine call, no route in between), and the existing propertyCashflow parity group already asserts the engine across the property surfaces. A resolver here would re-run the identical call the group already covers.',
+    growth:
+      'NeoAudit growth: fold the strip into the propertyCashflow parity group once a golden-data DOM/render harness exists (the strip has no independent serialization path to diverge today).',
+  },
+  'ui.scoreboard.portfolioTile': {
+    reason:
+      'Renders three DIRECT fields off /api/portfolio/snapshot (netWorth · assets.properties.totalValue · gearing.portfolioLVR) with zero screen arithmetic; the netWorth parity group already asserts the producer. No independent derivation exists on this surface to diverge.',
+    growth:
+      'NeoAudit growth: a snapshot-route golden resolver asserting the three fields byte-match the engines (arrives with the Ring-2 snapshot-route harness).',
+  },
   'ui.reports.taxPackExport': {
     reason:
       'The D-12 pack export (M3 PR-1) is a single-surface artefact — packIncomeGross/packExpenseTotal render nowhere else yet, so there is no cross-surface parity to assert; its correctness gate is the RING3_M3_PACK_FIX.md live-data run (dry-run → apply → export, identity check printed in the artefact) plus the Ring-0 worked-example fixture (mon169170PackReconciliation).',
