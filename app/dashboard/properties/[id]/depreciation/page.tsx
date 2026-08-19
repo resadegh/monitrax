@@ -17,6 +17,7 @@ import { Calculator, Plus, Edit2, Trash2, ArrowLeft, Home, TrendingDown, Clock, 
 import { formatCurrency } from '@/lib/utils/formatters';
 import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import { StatCard } from '@/components/StatCard';
+import { LoadFailedState } from '@/components/ui/LoadFailedState';
 
 interface Property {
   id: string;
@@ -43,6 +44,7 @@ export default function DepreciationPage() {
   const [property, setProperty] = useState<Property | null>(null);
   const [schedules, setSchedules] = useState<DepreciationSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false); // M2.6 #5
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<DepreciationSchedule>>({
@@ -76,15 +78,20 @@ export default function DepreciationPage() {
   };
 
   const loadSchedules = async () => {
+    // M2.6 #5: failed fetch → error state, never the empty state.
+    setLoadError(false);
     try {
       const response = await fetch(`/api/properties/${propertyId}/depreciation`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         setSchedules(await response.json());
+      } else {
+        setLoadError(true);
       }
     } catch (error) {
       console.error('Error loading depreciation schedules:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -227,7 +234,7 @@ export default function DepreciationPage() {
           Properties
         </Button>
         <span className="text-muted-foreground">/</span>
-        <Button variant="ghost" onClick={() => router.push(`/dashboard/properties?view=${propertyId}`)}>
+        <Button variant="ghost" onClick={() => router.push(`/dashboard/properties/${propertyId}`)}>
           <Home className="mr-2 h-4 w-4" />
           {property?.name || 'Property'}
         </Button>
@@ -236,7 +243,7 @@ export default function DepreciationPage() {
       </div>
 
       <PageHeader
-        title={`Depreciation - ${property?.name || 'Loading...'}`}
+        title={`Depreciation - ${property?.name || (isLoading ? 'Loading...' : 'Property')}`}
         description="Manage depreciation schedules for tax deductions"
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
@@ -287,6 +294,8 @@ export default function DepreciationPage() {
             <p className="text-sm text-muted-foreground">Loading depreciation schedules...</p>
           </div>
         </div>
+      ) : loadError ? (
+        <LoadFailedState what="this property's depreciation schedules" onRetry={loadSchedules} />
       ) : schedules.length === 0 ? (
         <EmptyState
           icon={Calculator}

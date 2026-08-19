@@ -1,11 +1,21 @@
 # CODE BRIEF — M2: kept-surface correctness **and depth** (THE LAUNCH GATE)
 
 **For:** a fresh Code session · **Kind:** BUILD + DIAGNOSIS (model routing per section).
-**Prepared by:** Matrix HQ (Cowork), 2026-08-19 · **Pinned HEAD:** `bea895f1` — re-pull before quoting anything.
+**Prepared by:** Matrix HQ (Cowork), 2026-08-19 · **Pinned HEAD:** re-pull before quoting anything.
 **Spec of record:** `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` — **the plan wins any disagreement with this brief.**
 
 ## BOOT FIRST (plan §0, non-negotiable)
 `CLAUDE.md` → `STATE.md` → the master plan (cursor → §2 decision record → §4 M2 → §5 issue table) → this brief. **Read live, never recall.**
+
+---
+
+## ✅ AUTHORISATION — read this before you touch a producer (D-21, Reza 2026-08-19)
+
+Reza asked directly whether M2 changes Monitrax's code, and ruled:
+
+> **D-21 — number-moving fixes are AUTHORISED for M2.** The M2 correctness slice (§B) may change displayed numbers, because some are wrong today (MON-001: fortnightly rent treated as monthly, rent ≈54% off). **Conditions, all mandatory:** (1) every numbers-moving fix writes its **expected movement first**, before the fix code (MON-131 discipline) — movement is predicted, never discovered; (2) the **golden-baseline self-diff** must show only the predicted leaves moving — any unexpected leaf STOPS the phase; (3) **Ring-3 on live data** verifies the movement was correct, not merely different; (4) **Reza merges every PR** — nothing reaches PROD without his click.
+
+**What is NOT authorised, restated:** no new features · no deletions · no scope expansion · no work on hidden modules (D-20) · no new capability of any kind (D-18). **The end state of the programme is today's Monitrax with every module unhidden — plus its numbers corrected and its dead ends closed.** If a change you are about to make would alter *what Monitrax does* rather than *whether it does it correctly*, STOP and hand back.
 
 ---
 
@@ -22,7 +32,7 @@ M0/M1 were *exposure* control — they changed what is visible, not what is corr
 
 ## Hard lines (violations are defects)
 - **Never fix a number in passing** (§23.2.1) → `npm run issues:raise`, never an inline patch.
-- Numbers-moving work: expected movement written and Ring-0-walked **before** the fix code (MON-131 discipline). `changesNumbers` honest, per PR.
+- Numbers-moving work: expected movement written and Ring-0-walked **before** the fix code. `changesNumbers` honest, per PR.
 - Hidden ≠ deleted. No deletions of module code. No schema changes. No `.github/workflows/`.
 - **No new capability** (D-18). Believe something new is needed? Write it into the plan's M2.7 gate-review slot and STOP.
 - §20.6 tri-axis + §16.5 doc-sync in every PR body. Plan checkboxes + cursor updated in the SAME PR.
@@ -35,7 +45,7 @@ Cowork could not land these (STATE.md is 78 KB; ISSUES.json/md ~510 KB each — 
 
 **1. `STATE.md`** — add to the cursor area (do not restructure), after the existing PROD SIMPLIFICATION block:
 ```
-**MONITRAX V1 MASTER PLAN (2026-08-19):** `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` (#1592) is now THE single tracking doc for the v1 programme — one document read, ticked and cursored by Reza, Matrix (Cowork), Code and the Chrome relay. Boot order for EVERY session: CLAUDE.md → STATE.md → that plan's §0 → its cursor → your brief. Rulings D-10…D-20 (identity = per-property record system + accountant pack · AI = intake propose→confirm only · pack not portal · EOFY nudges · dashboard returns rebuilt as the v1 scoreboard at M3 with stage-aware tiles · gate review at every milestone · NO new capability without Reza's GO · DEPTH BEFORE SURFACE). M0 (simplification) and M1 (mechanics + R0) are CLOSED; M2 = kept-surface correctness + depth is the LAUNCH GATE.
+**MONITRAX V1 MASTER PLAN (2026-08-19):** `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` (#1592) is now THE single tracking doc for the v1 programme — one document read, ticked and cursored by Reza, Matrix (Cowork), Code and the Chrome relay. Boot order for EVERY session: CLAUDE.md → STATE.md → that plan's §0 → its cursor → your brief. Rulings D-10…D-21 (identity = per-property record system + accountant pack · AI = intake propose→confirm only · pack not portal · EOFY nudges · dashboard returns rebuilt as the v1 scoreboard at M3 with stage-aware tiles · gate review at every milestone · NO new capability without Reza's GO · DEPTH BEFORE SURFACE · number-moving fixes authorised for M2 under the four conditions). M0 (simplification) and M1 (mechanics + R0) are CLOSED; M2 = kept-surface correctness + depth is the LAUNCH GATE.
 ```
 
 **2. `docs/implementation/01_ACTIVE_WORKSTREAMS.md`** — replace the `0·SIMP` Status line (keep the entry; do not delete history):
@@ -66,19 +76,19 @@ npm run issues:raise -- --title "Admin portal and the app cannot hold independen
 
 ---
 
-## §B — Correctness on the kept surface
+## §B — Correctness on the kept surface *(authorised to move numbers — D-21 conditions apply)*
 
 ### B-1 · M2.1 Kept-surface producer census (DIAGNOSIS — **Opus, highest effort**) — DO THIS FIRST
 `npm run census:producers` at your HEAD, **filtered to the plan's §2.1 kept surface** (`MON-131_SCOPE_FILTER.md §1.1` is the method; expect ≈8–10 quantities). Deliverable: a table in the plan under M2.1 — quantity · producers reaching a kept surface · convergence status · attached issue ids. **T5–T7 fall out → HELD.** This table is the scope contract for B-2; anything not in it does not get fixed.
 
-### B-2 · M2.3 The defect cluster (statuses pulled live at `bea895f1` — re-pull; do not trust this table)
+### B-2 · M2.3 The defect cluster (statuses pulled live 2026-08-19 — re-pull; do not trust this table)
 | Issue | Live status | Scope call |
 |---|---|---|
-| MON-001 | **FIXING**, critical | Fortnightly rent treated as monthly (~54% off), kept surface. **The highest-value fix in M2** — rent is the top line of every property number and of the pack. |
+| MON-001 | **FIXING**, critical | Fortnightly rent treated as monthly (~54% off), kept surface. **The highest-value fix in M2** — rent is the top line of every property number and of the pack. Expected movement written first. |
 | MON-129 | **OPEN**, critical | 23 `lib/` producers convert rows to run-rates with no one-off gate. **Scope strictly to producers B-1 proves reach a kept surface.** Do not sweep all 23 by reflex — that is breadth, and D-20 forbids it. |
 | MON-145 | **OPEN**, high | Undated `Loan.interestRateAnnual` vs dated repayments. **In scope** — feeds the pack's per-loan interest (pain 3, the #1 ATO error class). |
-| MON-146 | **OPEN**, medium | Rate rendered 100× too small — cited surface `/dashboard/expenses` is **HIDDEN**. **Scoping question for B-1: does the same render path appear on any KEPT surface?** Yes → fix. No → **mark HELD and say so in the PR**. Do not fix a hidden surface. |
-| MON-143 | **VERIFIED already** | Closed. The plan's §5 said OPEN — that was drift; it is corrected. Nothing to do. |
+| MON-146 | **OPEN**, medium | Rate rendered 100× too small — cited surface `/dashboard/expenses` is **HIDDEN**. **Scoping question for B-1: does the same render path appear on any KEPT surface?** Yes → fix. No → **mark HELD and say so in the PR**. |
+| MON-143 | **VERIFIED already** | Closed. The plan's §5 said OPEN — that was drift; corrected. Nothing to do. |
 
 ### B-3 · M2.4 Kill the properties-list inline re-derivation (BUILD)
 `app/dashboard/properties/page.tsx` (~:1200, inside the `selectedProperty.type === 'INVESTMENT'` block) re-derives annual income/expense/loan totals and a budget-vs-actual cashflow **inline in the component**, bypassing `computePropertyCashflow` — the SSOT engine. A screen doing arithmetic violates the first law (screens only read). Replace with the engine's stated values. **`changesNumbers` may be YES** — if the inline math disagrees with the engine, that gap IS the finding: write the expected movement first, then fix.
@@ -153,7 +163,7 @@ Checklist (evidence per item — a transcript, screenshot or test, not an assert
 
 ## Deliver as
 **PR-1 (§A + §C + §D + §B-5)** — docs, registrations, the no-store fix, the dead-link fix + its permanent guard. `changesNumbers: NO`. Safe to merge fast; **§D ships a live-PROD fix, so prioritise it.**
-**PR-2 (§B-1 → B-4)** — the correctness slice; expect `changesNumbers: YES` with written expected movements. **Hand back to Matrix HQ for the Ring-3 verdict on live data (M2.2) — that verdict, not CI, closes the correctness half of the gate.**
+**PR-2 (§B-1 → B-4)** — the correctness slice; expect `changesNumbers: YES` with written expected movements (D-21). **Hand back to Matrix HQ for the Ring-3 verdict on live data (M2.2) — that verdict, not CI, closes the correctness half of the gate.**
 **PR-3 (§E)** — the depth sweep catalogue + any launch-blocking fixes it surfaces.
 
 **Done =** plan boxes M2.1/M2.3/M2.4/M2.5/M2.6 ticked in their PRs · cursor updated · MON statuses correct in both registry files · the dead-link guard green in CI · handback posted for M2.2 Ring-3 · Matrix records the M2.7 gate review.

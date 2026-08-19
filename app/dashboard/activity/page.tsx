@@ -1153,7 +1153,10 @@ function ActivityPageContent() {
         ) : error ? (
           <ErrorState error={error} onRetry={fetchTransactions} />
         ) : transactions.length === 0 ? (
-          <EmptyState />
+          <EmptyState
+            filtered={advancedActiveCount > 0 || search.trim().length > 0}
+            onImport={() => setShowImportWizard(true)}
+          />
         ) : (
           <>
             <div className="space-y-6 anim-rise">
@@ -2332,16 +2335,30 @@ function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => void })
   );
 }
 
-function EmptyState() {
+function EmptyState({ filtered, onImport }: { filtered: boolean; onImport: () => void }) {
+  // M2.6 #33: a fresh account (nothing ever imported) and a filtered-to-zero
+  // list are different situations — the copy and the next action differ, and
+  // the next action is a BUTTON, not prose (§0 psychology: celebrate the
+  // next achievable action).
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 sm:p-14 text-center anim-rise">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-50 text-sky-600 mb-4">
         <Sparkles className="w-7 h-7" />
       </div>
-      <h3 className="text-xl font-semibold tracking-tight">No transactions match</h3>
+      <h3 className="text-xl font-semibold tracking-tight">
+        {filtered ? 'No transactions match' : 'No transactions yet'}
+      </h3>
       <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-        Try clearing a filter, or import transactions from a CSV / OFX / QIF file.
+        {filtered
+          ? 'Try clearing a filter, or widen the date range.'
+          : 'Import a bank or agent statement (CSV / OFX / QIF) and every row lands here, ready to link to your properties.'}
       </p>
+      {!filtered && (
+        <Button onClick={onImport} className="mt-5">
+          <Upload className="w-4 h-4 mr-1.5" />
+          Import transactions
+        </Button>
+      )}
     </div>
   );
 }

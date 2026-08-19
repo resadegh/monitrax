@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { EmptyState } from '@/components/EmptyState';
+import { useRouter } from 'next/navigation';
 import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 import { filterNavByModules } from '@/lib/navigation/trailNav';
 import type { ModuleKey } from '@/lib/featureFlags/moduleRegistry';
@@ -124,6 +126,7 @@ const variantStyles = {
 
 export default function ReportsPage() {
   const { token } = useAuth();
+  const router = useRouter();
   // PROD Simplification P2.3: narrow in-page to the v1 pack. Tiles for
   // hidden modules drop out via the SAME registry filter the nav uses.
   const enabledModules = useEnabledModules();
@@ -133,6 +136,31 @@ export default function ReportsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // M2.6 #19 — with no properties there is nothing to report on: show a
+  // real empty state instead of tiles that export an empty workbook.
+  // null = still checking (render the page normally rather than flashing).
+  const [hasProperties, setHasProperties] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/properties', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const result = await res.json();
+        const data = result.data || result;
+        if (!cancelled) setHasProperties(Array.isArray(data) && data.length > 0);
+      } catch {
+        // Signal unavailable — keep the page usable (null = no empty state).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const handleGenerateReport = async () => {
     if (!selectedReport || !token) return;
@@ -155,7 +183,9 @@ export default function ReportsPage() {
       });
 
       if (!response.ok) {
-        const err = await response.json();
+        // M2.6 #32: a gateway error returns HTML — .json() would throw and
+        // surface "Unexpected token '<' …" as the user-facing reason.
+        const err = await response.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to generate report');
       }
 
@@ -202,6 +232,17 @@ export default function ReportsPage() {
         description="Generate and export financial reports"
       />
 
+      {hasProperties === false ? (
+        <EmptyState
+          icon={FileText}
+          title="Nothing to report on yet"
+          description="Reports are built from your properties and their linked transactions. Add your first property and this page comes alive."
+          action={{
+            label: 'Add your first property',
+            onClick: () => router.push('/dashboard/properties'),
+          }}
+        />
+      ) : (
       <div className="space-y-6">
         {/* Phase 42 PR 5.6 — Tax Pack export. Categorised P&L +
             ATO labels + per-property breakdown. Hand to accountant. */}
@@ -348,6 +389,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+      )}
     </DashboardLayout>
   );
 }

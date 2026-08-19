@@ -38,7 +38,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -67,6 +67,16 @@ import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
 import { activityFrequencyLabel } from '@/lib/properties/activityFrequencyLabel';
 import { calculateDepreciationAnnual } from '@/lib/depreciation';
 import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import PropertyExpensesCard from '@/components/properties/PropertyExpensesCard';
 import { DocumentsSection } from '@/components/documents';
 import { LinkedEntityType } from '@/lib/documents/types';
@@ -211,6 +221,32 @@ export default function PropertyDetailPage() {
   const [dataVersion, setDataVersion] = useState(0); // bump to re-fetch property data (e.g. after an expense add/edit/delete)
   const [heroBlobUrl, setHeroBlobUrl] = useState<string | null>(null);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  // M2.6 #14 — Edit/Delete were dead Links to the list page. Delete is a
+  // real two-step confirm + DELETE; Edit deep-links to the list page's
+  // edit dialog (?edit=<id>).
+  const router = useRouter();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleConfirmDelete = async () => {
+    setDeletePending(true);
+    setDeleteError(null);
+    try {
+      const response = await fetch(`/api/properties/${propertyId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error?.message || err?.error || 'Delete failed');
+      }
+      router.push('/dashboard/properties');
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Delete failed');
+      setDeletePending(false);
+    }
+  };
 
   useEffect(() => {
     if (!propertyId || !token) return;
@@ -427,19 +463,22 @@ export default function PropertyDetailPage() {
                     <Camera className="h-4 w-4" />
                   </button>
                   <Link
-                    href="/dashboard/properties"
+                    href={`/dashboard/properties?edit=${encodeURIComponent(property.id)}`}
                     title="Edit"
+                    aria-label="Edit this property"
                     className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
                   >
                     <Edit2 className="h-4 w-4" />
                   </Link>
-                  <Link
-                    href="/dashboard/properties"
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmOpen(true)}
                     title="Delete"
+                    aria-label="Delete this property"
                     className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-600"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -586,6 +625,34 @@ export default function PropertyDetailPage() {
         {/* Phase 45.2.5 change-photo dialog (mounted at page root so its
             backdrop covers the full viewport — see ChangePhotoDialog
             JSDoc + .stitch/designs/phase45.2.5/). */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {property.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the property and its links from your records. This
+                can&rsquo;t be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError && (
+              <p className="text-sm text-rose-600">{deleteError}</p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  void handleConfirmDelete();
+                }}
+                disabled={deletePending}
+                className="bg-rose-600 text-white hover:bg-rose-700"
+              >
+                {deletePending ? 'Deleting…' : 'Delete property'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <ChangePhotoDialog
           open={photoDialogOpen}
           onClose={() => setPhotoDialogOpen(false)}

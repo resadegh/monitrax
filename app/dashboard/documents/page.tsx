@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { LoadFailedState } from '@/components/ui/LoadFailedState';
 import {
   Upload,
   Search,
@@ -154,6 +155,7 @@ export default function DocumentsLibraryPage() {
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false); // M2.6 #5
   const [searchQuery, setSearchQuery] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -178,6 +180,8 @@ export default function DocumentsLibraryPage() {
     if (!token) return;
 
     setIsLoading(true);
+    // M2.6 #5: failed fetch → error state, never the empty folder view.
+    setLoadError(false);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
@@ -195,6 +199,7 @@ export default function DocumentsLibraryPage() {
       setTotal(data.total);
     } catch (err) {
       console.error('Error fetching documents:', err);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -1000,6 +1005,9 @@ export default function DocumentsLibraryPage() {
                 )}
               </div>
               <div className="p-4 sm:p-5">
+                {loadError ? (
+                  <LoadFailedState what="your documents" onRetry={fetchDocuments} />
+                ) : (
                 <DocumentFolderView
                   documents={filteredDocuments}
                   subFolders={subFolders}
@@ -1011,6 +1019,7 @@ export default function DocumentsLibraryPage() {
                   loading={isLoading}
                   viewMode={viewMode}
                 />
+                )}
               </div>
             </div>
           </div>

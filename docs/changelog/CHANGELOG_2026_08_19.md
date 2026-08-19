@@ -205,3 +205,39 @@ Full suite **4,539 passed / 0 failed** · tsc clean · all gates green. Coverage
 row rule + canonical values + source topology; the RENDERED pack on live data is the Matrix's Ring-3
 (M2.2) per `docs/verification/briefs/RING3_M2_PACK_CANONICAL.md` — that verdict, not CI, closes the
 correctness half of the launch gate.
+
+---
+
+## Session: M2 PR-3 — the §E depth sweep + no-number fixes (`changesNumbers: NO`)
+
+49 findings (Opus sweep at `be6ad808`) → `docs/strategy/M2_DEPTH_SWEEP_CATALOGUE.md`. Dispositions:
+11 fixed here · 12 registered (MON-168…179, incl. the three critical pack defects) · census correction
+(the D-12 pack was outside M2.1's scope — Ring-3 handout amended; **M2.5 blocked** until the pack fix
+PR + its Ring-3) · the rest = the M3.6 depth backlog + 10 LIVE-CHECK items.
+
+### Fixed in this PR (no number moves — every number defect went to the registry instead)
+- Onboarding steps carry `moduleKey` and filter fail-closed — a v1 user is no longer walked through
+  six hidden-module steps (household, entities×2, investments, super, income-expenses).
+- `LoadFailedState` (shared) on properties / assets / documents / depreciation: fetch failure renders
+  an error state with Retry, never "you have no data yet".
+- Property detail: Edit deep-links to the list's edit dialog (`?edit=` now honoured); Delete is a real
+  two-step confirm + DELETE with error surfacing (both were dead Links).
+- Receipt confirm: a property-attributed expense also links the document to the PROPERTY (the
+  documented upload→property chain — `resolveAutoLinks` is dead code with zero callers); repeat
+  confirms are idempotent.
+- Activity: fresh-account vs filtered empty states, Import CTA wired to the existing handler.
+- Reports: empty state when no properties exist; error-body parse guarded; (tile-narrowing question
+  sent to Reza — D-4 says "Reports→one pack").
+- Depreciation breadcrumb → the detail page; pack SIGNED/abs comment corrected.
+- Sweep finding #38 corrected during review: the documents API family deliberately uses the
+  `report.*` permission tier (no `document.*` permission exists) — not a defect.
+
+### Also this window (separate PR #1597, Reza-authorized workflows exception)
+CI playwright hang root-caused: the apt half of `playwright install --with-deps` stalls runner-side
+(39s on the last green run → 40-min hangs, twice). #1597: job timeout 30m, per-attempt 240s kill +
+3 retries with dpkg-lock recovery, apt transfer timeouts, browser download split from OS deps + cached.
+
+### Verification
+tsc clean · all lints/census/neomatrix green (anchors re-pinned: detail :332, list :494; 12 manifests
+rehashed; LoadFailedState + catalogue allowlisted) · targeted suites green. Coverage: static fixes
+verified by type/lint/test gates; the RENDERED behaviour of each fix is on the Matrix LIVE-CHECK list.

@@ -16,12 +16,21 @@ describe('Phase 44 Part 1d — getStepsForProfile relationship-step gate', () =>
   const hasStep = (steps: { id: string }[]) =>
     steps.some((s) => s.id === 'entity-relationships');
 
+  // M2.6 #4: entity steps are module-gated fail-closed. These tests exercise
+  // the RELATIONSHIP gate, so they enable MODULE_ENTITIES explicitly — the
+  // module-gating behaviour itself is covered below.
+  const entitiesOn = { enabledModules: { MODULE_ENTITIES: true } };
+
   it('shows entity-relationships when the user has a structure entity', () => {
-    expect(hasStep(getStepsForProfile('MIXED', { hasStructureEntities: true }))).toBe(true);
+    expect(
+      hasStep(getStepsForProfile('MIXED', { hasStructureEntities: true, ...entitiesOn }))
+    ).toBe(true);
   });
 
   it('hides entity-relationships when there is no non-personal entity', () => {
-    expect(hasStep(getStepsForProfile('MIXED', { hasStructureEntities: false }))).toBe(false);
+    expect(
+      hasStep(getStepsForProfile('MIXED', { hasStructureEntities: false, ...entitiesOn }))
+    ).toBe(false);
   });
 
   it('hides entity-relationships in the legacy no-context call', () => {
@@ -29,11 +38,17 @@ describe('Phase 44 Part 1d — getStepsForProfile relationship-step gate', () =>
   });
 
   it('places entity-relationships immediately after the entities step', () => {
-    const steps = getStepsForProfile('INVESTOR', { hasStructureEntities: true });
+    const steps = getStepsForProfile('INVESTOR', { hasStructureEntities: true, ...entitiesOn });
     const entitiesIdx = steps.findIndex((s) => s.id === 'entities');
     const relIdx = steps.findIndex((s) => s.id === 'entity-relationships');
     expect(entitiesIdx).toBeGreaterThanOrEqual(0);
     expect(relIdx).toBe(entitiesIdx + 1);
+  });
+
+  it('M2.6 #4: hides entities + entity-relationships when MODULE_ENTITIES is disabled (fail-closed)', () => {
+    const steps = getStepsForProfile('MIXED', { hasStructureEntities: true });
+    expect(steps.findIndex((s) => s.id === 'entities')).toBe(-1);
+    expect(hasStep(steps)).toBe(false);
   });
 });
 

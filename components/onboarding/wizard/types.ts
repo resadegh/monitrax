@@ -34,6 +34,14 @@ export interface WizardStep {
   icon: string;
   isOptional?: boolean;
   profiles: OnboardingProfileType[]; // Which profiles see this step
+  /**
+   * M2.6 #4 — the module whose surfaces this step's data lands on. A step
+   * keyed to a HIDDEN module is filtered out of the wizard: a v1 user must
+   * never be walked through keying data they can then never see, edit or
+   * delete. null/absent = the step belongs to the kept v1 surface.
+   * Derived per MODULE_REGISTRY semantics — never a second route list.
+   */
+  moduleKey?: import('@/lib/featureFlags/moduleRegistry').ModuleKey | null;
 }
 
 export const WIZARD_STEPS: WizardStep[] = [
@@ -46,6 +54,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 'household',
+    moduleKey: 'MODULE_HOUSEHOLD',
     title: 'Household',
     description: 'Add your household members',
     icon: '👨‍👩‍👧‍👦',
@@ -58,6 +67,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   // backfill) and lets the user move on without ceremony.
   {
     id: 'entities',
+    moduleKey: 'MODULE_ENTITIES',
     title: 'Your structure',
     description: 'How is your wealth held?',
     icon: '🏛️',
@@ -71,6 +81,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   // it). Optional + finishable later in My Structure (PHASE_44 §11, Q3).
   {
     id: 'entity-relationships',
+    moduleKey: 'MODULE_ENTITIES',
     title: 'Who runs what',
     description: 'Map the people behind your structures',
     icon: '🔗',
@@ -106,6 +117,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 'investments',
+    moduleKey: 'MODULE_INVESTMENTS',
     title: 'Investments',
     description: 'Add your investment accounts',
     icon: '📈',
@@ -116,6 +128,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   // Creates real SuperannuationAccount rows (not InvestmentAccount type=SUPERS).
   {
     id: 'super',
+    moduleKey: 'MODULE_INVESTMENTS',
     title: 'Super',
     description: 'Add your superannuation accounts',
     icon: '🛡️',
@@ -132,6 +145,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 'income-expenses',
+    moduleKey: 'MODULE_HOUSEHOLD',
     title: 'Income & Expenses',
     description: 'Set up your cashflow',
     icon: '💰',
@@ -805,11 +819,23 @@ export function getStepsForProfile(
      * structure to wire.
      */
     hasStructureEntities?: boolean;
+    /**
+     * M2.6 #4 — the enabled-modules map (useEnabledModules). Fail-closed:
+     * a step keyed to a module not confirmed ON is hidden. Omitted ⇒ all
+     * module-keyed steps hidden (the correct v1 default — the /onboarding
+     * mount sits outside ModuleGateProvider today).
+     */
+    enabledModules?: Partial<Record<import('@/lib/featureFlags/moduleRegistry').ModuleKey, boolean>>;
   }
 ): WizardStep[] {
   return WIZARD_STEPS.filter((step) => {
     // Profile gate — always applied
     if (!step.profiles.includes(profile)) return false;
+
+    // M2.6 #4 — module gate (fail-closed): hidden-module steps never render.
+    if (step.moduleKey && context?.enabledModules?.[step.moduleKey] !== true) {
+      return false;
+    }
 
     // PR 3b runtime gates
     if (context) {
