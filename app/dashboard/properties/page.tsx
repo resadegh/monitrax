@@ -1403,29 +1403,32 @@ function PropertiesPageContent() {
                       // same screen. Per-record Budget columns below still
                       // show each row's declared amount — labelled as the
                       // plan, never re-aggregated (§19.1).
+                      // (No helper arrow here on purpose: the producer-census
+                      // splits units on `const X = () =>`, and a helper would
+                      // swallow the loans tab below into a phantom new unit.)
                       const cf = cashflowOf(selectedProperty);
-                      const basisChip = (used: boolean) => (
-                        <p className="text-xs text-muted-foreground">
-                          {used ? 'from reconciled transactions' : 'from declared amounts'}
-                        </p>
-                      );
-
                       return (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="p-3 bg-green-50 rounded-lg">
                             <p className="text-xs text-muted-foreground">Income /mo</p>
                             <p className="text-lg font-bold text-green-600">{formatCurrency(cf.monthlyRent)}</p>
-                            {basisChip(cf.usedActuals.income)}
+                            <p className="text-xs text-muted-foreground">
+                              {cf.usedActuals.income ? 'from reconciled transactions' : 'from declared amounts'}
+                            </p>
                           </div>
                           <div className="p-3 bg-red-50 rounded-lg">
                             <p className="text-xs text-muted-foreground">Expenses /mo</p>
                             <p className="text-lg font-bold text-red-600">{formatCurrency(cf.monthlyExpenses)}</p>
-                            {basisChip(cf.usedActuals.expenses)}
+                            <p className="text-xs text-muted-foreground">
+                              {cf.usedActuals.expenses ? 'from reconciled transactions' : 'from declared amounts'}
+                            </p>
                           </div>
                           <div className="p-3 bg-orange-50 rounded-lg">
                             <p className="text-xs text-muted-foreground">Loan Repayments /mo</p>
                             <p className="text-lg font-bold text-red-600">{formatCurrency(cf.monthlyLoanRepayment)}</p>
-                            {basisChip(cf.usedActuals.loans)}
+                            <p className="text-xs text-muted-foreground">
+                              {cf.usedActuals.loans ? 'from reconciled transactions' : 'from declared amounts'}
+                            </p>
                           </div>
                           <div className={`p-3 rounded-lg ${cf.monthlyCashflow >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
                             <p className="text-xs text-muted-foreground">Net Cashflow /mo</p>

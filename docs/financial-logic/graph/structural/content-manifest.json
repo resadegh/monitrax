@@ -473,7 +473,7 @@
     "app/dashboard/properties/[id]/depreciation/page.tsx": "77315d5d271b31c3",
     "app/dashboard/properties/[id]/page.tsx": "d9eb4b9a8a51cbe9",
     "app/dashboard/properties/[id]/strategy/page.tsx": "39e91d30668383be",
-    "app/dashboard/properties/page.tsx": "043181d617e7a5ea",
+    "app/dashboard/properties/page.tsx": "ce65e2c71269f5ee",
     "app/dashboard/reports/page.tsx": "86737a309492112f",
     "app/dashboard/requests/page.tsx": "9611d1ef13f45051",
     "app/dashboard/safety-net/page.tsx": "cc14db67555bb396",

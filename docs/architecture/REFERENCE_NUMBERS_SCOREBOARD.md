@@ -24,7 +24,7 @@ ledger is where the cause of each movement is written down, and it is the honest
 
 ## The headline
 
-- **40 quantities** tracked · **1249 producing sites** across `lib/`, `app/api/`, `app/dashboard/`, `components/`
+- **40 quantities** tracked · **1245 producing sites** across `lib/`, `app/api/`, `app/dashboard/`, `components/`
 - **5/40** join to a Neomatrix `semanticKey`; **35 do not**
 - **13/40** have a same-named quantity contract
 - **`loanCost` is at 30** — T2 is the tranche that takes it to one. That single number is the fairest test of the programme so far.
@@ -39,11 +39,11 @@ ledger is where the cause of each movement is written down, and it is the honest
 
 | Quantity | Seed | Now | Δ |
 |---|---:|---:|---:|
+| `incomeRunRate` | 135 | 125 | -10 |
 | `payg` | 64 | 54 | -10 |
-| `incomeRunRate` | 135 | 126 | -9 |
+| `expenseRunRate` | 84 | 78 | -6 |
 | `medicareLevy` | 26 | 20 | -6 |
-| `expenseRunRate` | 84 | 79 | -5 |
-| `cashflow` | 59 | 57 | -2 |
+| `cashflow` | 59 | 55 | -4 |
 | `loanCost` | 32 | 30 | -2 |
 | `incomeTax` | 77 | 76 | -1 |
 
@@ -56,20 +56,20 @@ Quantities tracked from the seed that have not moved:
 |---|---:|---:|---:|---|---|
 | `assetsLiabilitiesBreakdown` | 24 | — | — | **not modelled** | `assets-liabilities-breakdown.md` |
 | `budgetVariance` | 20 | — | — | **not modelled** | `budget-variance.md` |
-| `cashflow` | 57 | 59 | -2 | **not modelled** | — |
+| `cashflow` | 55 | 59 | -4 | **not modelled** | — |
 | `cgt` | 98 | — | — | **not modelled** | — |
 | `deductions` | 104 | — | — | **not modelled** | `deductions.md` |
 | `depreciation` | 15 | 15 | 0 | **not modelled** | `depreciation.md` |
 | `div293` | 4 | — | — | **not modelled** | — |
 | `emergencyMonths` | 14 | 14 | 0 | **not modelled** | — |
-| `expenseRunRate` | 79 | 84 | -5 | **not modelled** | — |
+| `expenseRunRate` | 78 | 84 | -6 | **not modelled** | — |
 | `forecastFlows` | 69 | — | — | **not modelled** | — |
 | `freedomHorizon` | 6 | — | — | **not modelled** | — |
 | `fteIeeElections` | 13 | — | — | **not modelled** | — |
 | `grossIncome` | 36 | — | — | **not modelled** | — |
 | `gst` | 15 | — | — | **not modelled** | — |
 | `healthScore` | 19 | — | — | modelled | — |
-| `incomeRunRate` | 126 | 135 | -9 | **not modelled** | — |
+| `incomeRunRate` | 125 | 135 | -10 | **not modelled** | — |
 | `incomeTax` | 76 | 77 | -1 | **not modelled** | `income-tax.md` |
 | `insuranceAdequacy` | 15 | — | — | **not modelled** | — |
 | `investmentReturns` | 22 | — | — | **not modelled** | — |
@@ -100,48 +100,48 @@ before-value. It is not a zero and must not be read as one._
 
 ## Census snapshots
 
-| Quantity | 2026-07-29#1 | 2026-07-29#2 | 2026-07-30 | 2026-07-31#4 | 2026-07-31#5 | 2026-08-03 | 2026-08-19 | now |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `assetsLiabilitiesBreakdown` | — | 24 | 24 | 24 | 24 | 24 | 24 | 24 |
-| `budgetVariance` | — | 21 | 21 | 20 | 20 | 20 | 20 | 20 |
-| `cashflow` | 59 | 59 | 59 | 57 | 57 | 57 | 57 | 57 |
-| `cgt` | — | 98 | 98 | 98 | 98 | 98 | 98 | 98 |
-| `deductions` | — | 105 | 107 | 106 | 105 | 105 | 104 | 104 |
-| `depreciation` | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 |
-| `div293` | — | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
-| `emergencyMonths` | 14 | 14 | 15 | 15 | 14 | 14 | 14 | 14 |
-| `expenseRunRate` | 84 | 84 | 87 | 81 | 79 | 79 | 79 | 79 |
-| `forecastFlows` | — | 70 | 70 | 69 | 69 | 69 | 69 | 69 |
-| `freedomHorizon` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
-| `fteIeeElections` | — | 13 | 13 | 13 | 13 | 13 | 13 | 13 |
-| `grossIncome` | — | 43 | 47 | 38 | 36 | 36 | 36 | 36 |
-| `gst` | — | 15 | 15 | 15 | 15 | 15 | 15 | 15 |
-| `healthScore` | — | 19 | 19 | 19 | 19 | 19 | 19 | 19 |
-| `incomeRunRate` | 135 | 135 | 141 | 128 | 126 | 126 | 126 | 126 |
-| `incomeTax` | 77 | 77 | 77 | 76 | 76 | 76 | 76 | 76 |
-| `insuranceAdequacy` | — | 15 | 16 | 15 | 15 | 15 | 15 | 15 |
-| `investmentReturns` | — | 22 | 22 | 22 | 22 | 22 | 22 | 22 |
-| `landTax` | — | 8 | 8 | 8 | 8 | 8 | 8 | 8 |
-| `liquidCash` | — | 58 | 58 | 58 | 58 | 58 | 58 | 58 |
-| `loanAmortisation` | — | 8 | 8 | 8 | 8 | 8 | 8 | 8 |
-| `loanCost` | 32 | 32 | 32 | 31 | 31 | 30 | 30 | 30 |
-| `lvrGearing` | — | 39 | 39 | 39 | 39 | 39 | 39 | 39 |
-| `medicareLevy` | 26 | 26 | 26 | 20 | 20 | 20 | 20 | 20 |
-| `moneyStoryMargin` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
-| `negativeGearing` | — | 6 | 7 | 7 | 7 | 7 | 7 | 7 |
-| `netIncome` | — | 45 | 46 | 34 | 33 | 33 | 33 | 33 |
-| `netWorth` | 7 | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
-| `payg` | 64 | 64 | 73 | 56 | 54 | 54 | 54 | 54 |
-| `propertyCashflowYield` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
-| `propertyEquity` | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 |
-| `propertyValuationGrowth` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
-| `psiAttribution` | — | 11 | 11 | 11 | 11 | 11 | 11 | 11 |
-| `savingsRate` | 30 | 30 | 30 | 30 | 30 | 30 | 30 | 30 |
-| `stampDuty` | — | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
-| `superCap` | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
-| `superProjection` | — | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
-| `taxOffsetsFranking` | — | 50 | 50 | 48 | 48 | 48 | 48 | 48 |
-| `taxableIncome` | — | 38 | 41 | 38 | 38 | 38 | 38 | 38 |
+| Quantity | 2026-07-29#1 | 2026-07-29#2 | 2026-07-30 | 2026-07-31#4 | 2026-07-31#5 | 2026-08-03 | 2026-08-19#7 | 2026-08-19#8 | now |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `assetsLiabilitiesBreakdown` | — | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 24 |
+| `budgetVariance` | — | 21 | 21 | 20 | 20 | 20 | 20 | 20 | 20 |
+| `cashflow` | 59 | 59 | 59 | 57 | 57 | 57 | 57 | 55 | 55 |
+| `cgt` | — | 98 | 98 | 98 | 98 | 98 | 98 | 98 | 98 |
+| `deductions` | — | 105 | 107 | 106 | 105 | 105 | 104 | 104 | 104 |
+| `depreciation` | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 |
+| `div293` | — | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
+| `emergencyMonths` | 14 | 14 | 15 | 15 | 14 | 14 | 14 | 14 | 14 |
+| `expenseRunRate` | 84 | 84 | 87 | 81 | 79 | 79 | 79 | 78 | 78 |
+| `forecastFlows` | — | 70 | 70 | 69 | 69 | 69 | 69 | 69 | 69 |
+| `freedomHorizon` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
+| `fteIeeElections` | — | 13 | 13 | 13 | 13 | 13 | 13 | 13 | 13 |
+| `grossIncome` | — | 43 | 47 | 38 | 36 | 36 | 36 | 36 | 36 |
+| `gst` | — | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 |
+| `healthScore` | — | 19 | 19 | 19 | 19 | 19 | 19 | 19 | 19 |
+| `incomeRunRate` | 135 | 135 | 141 | 128 | 126 | 126 | 126 | 125 | 125 |
+| `incomeTax` | 77 | 77 | 77 | 76 | 76 | 76 | 76 | 76 | 76 |
+| `insuranceAdequacy` | — | 15 | 16 | 15 | 15 | 15 | 15 | 15 | 15 |
+| `investmentReturns` | — | 22 | 22 | 22 | 22 | 22 | 22 | 22 | 22 |
+| `landTax` | — | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 |
+| `liquidCash` | — | 58 | 58 | 58 | 58 | 58 | 58 | 58 | 58 |
+| `loanAmortisation` | — | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 |
+| `loanCost` | 32 | 32 | 32 | 31 | 31 | 30 | 30 | 30 | 30 |
+| `lvrGearing` | — | 39 | 39 | 39 | 39 | 39 | 39 | 39 | 39 |
+| `medicareLevy` | 26 | 26 | 26 | 20 | 20 | 20 | 20 | 20 | 20 |
+| `moneyStoryMargin` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
+| `negativeGearing` | — | 6 | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
+| `netIncome` | — | 45 | 46 | 34 | 33 | 33 | 33 | 33 | 33 |
+| `netWorth` | 7 | 7 | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
+| `payg` | 64 | 64 | 73 | 56 | 54 | 54 | 54 | 54 | 54 |
+| `propertyCashflowYield` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
+| `propertyEquity` | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 |
+| `propertyValuationGrowth` | — | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 |
+| `psiAttribution` | — | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 |
+| `savingsRate` | 30 | 30 | 30 | 30 | 30 | 30 | 30 | 30 | 30 |
+| `stampDuty` | — | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
+| `superCap` | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
+| `superProjection` | — | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
+| `taxOffsetsFranking` | — | 50 | 50 | 48 | 48 | 48 | 48 | 48 | 48 |
+| `taxableIncome` | — | 38 | 41 | 38 | 38 | 38 | 38 | 38 | 38 |
 
 ## What this scoreboard does NOT tell you
 
