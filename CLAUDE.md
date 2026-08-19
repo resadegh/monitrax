@@ -68,6 +68,8 @@ At the START of every new session, BEFORE making ANY changes, you MUST complete 
 
 > **EVERY NEW TASK starts with the self-review/scoring gate (§20.5).** Before substantive work on any request, invoke the §20 gate against the requirement (one line to say it's on), target 10/10, and remember the autonomy rule: **10/10 → proceed autonomously through build + PR + verification and present for Reza's review; < 10/10 → stop and surface the specific blocker.** This is a per-task ritual, not only a session-start one.
 
+**Programme boot (2026-08-19):** after this file and STATE.md, every session reads `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` §0 (boot protocol) and its cursor before doing any work. That plan is the single tracker for the v1 programme across Reza, Cowork, Code and the Chrome relay. Its D-18 (no new capability without Reza's GO) and D-20 (depth before surface) bind every session.
+
 ### Step 0: Read This File (CLAUDE.md) — FIRST
 
 **Before reading any other file, before writing any code, before making any design decision:**

@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**147 total** · 86 open · 🔵 38 · 🟡 9 · 🟠 28 · 🟢 11 · ✅ 59
+**150 total** · 89 open · 🔵 39 · 🟡 9 · 🟠 29 · 🟢 12 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -153,7 +153,10 @@
 | MON-157 | 🟢 VERIFIED | 🟠 | no | The golden-baseline REFERENCE was persisted as a hash, never as a tree — so no tranche can run the whole-tree declared-vs-undeclared diff retrospectively (T2 G7 is unclosable because of it) | ##NEXT | ✅ |
 | MON-158 | 🟡 DIAGNOSED | 🟢 | no | riskRadar mints a fresh UUID and detectedAt on every scan — risk identities are not stable across runs | — | n/a |
 | MON-159 | 🟡 DIAGNOSED | 🟡 | no | The full vitest suite intermittently aborts with a Prisma query-engine panic (engine.rs:74, exit 134) — measured at 2 failures in 6 runs, and it invites misattribution | — | n/a |
-| MON-160 | 🟠 FIXING | 🟠 | no | Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy | ##1590 | ✅ |
+| MON-160 | 🟢 VERIFIED | 🟠 | no | Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy | ##1590 | ✅ |
+| MON-161 | 🟠 FIXING | 🟡 | no | Gated-route 404 responses are cacheable — a module flip is invisible on the bare URL until the cached 404 expires | ##1594 | ✅ |
+| MON-162 | 🔵 OPEN | 🟢 | no | Admin portal and the app cannot hold independent sessions in one browser — signing into either signs the other out | — | n/a |
+| MON-163 | 🟠 FIXING | 🟠 | no | Kept property-detail page links into hidden modules (tax, income, CFO what-if) — v1 users hit 404s from the core surface | ##1594 | ✅ |
 
 ---
 
@@ -2644,7 +2647,7 @@ MEASURED, not impressionistic, and measured only because it was nearly misdiagno
 
 ### MON-160 — Module gates baked at build time — statically pre-rendered gated layouts freeze the flag verdict; admin flips need a redeploy
 
-**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-11
+**🟢 VERIFIED** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-11
 
 > **What was wrong:** Flipping a module switch in the admin panel didn't reliably bring a hidden section back (or hide it again) — some pages stayed 404 until the app was redeployed, because Next.js had frozen the hidden/visible decision into the build itself.
 >
@@ -2658,5 +2661,52 @@ MEASURED, not impressionistic, and measured only because it was nearly misdiagno
 - **Holistic test (§19.4):** `tests/featureFlags/moduleGuards.test.ts#MON-160: forces dynamic rendering (connection()) BEFORE reading the flag`
 - **Detail:** `resadegh/monitrax#1587 (comment 2026-08-11, Matrix HQ)`
 
-Root-cause mechanism (verified in source pre-fix): moduleRouteGuard read the flag with NO dynamic-rendering opt-out, so Next.js statically pre-rendered gated layouts and baked notFound()/pass verdicts into the deployment; only dynamically-rendered routes evaluated isModuleEnabled() live — the mixed-404 fingerprint the Matrix observed on Preview 2026-08-11 with all 13 flags ON. Found by the Matrix in live Preview use (dev DB, all 13 flags ON): mixed 404s across gated routes = static pre-render fingerprint. changesNumbers NO — routing visibility only; P2.2b had verified engine numbers, which could not catch this class. Fix: await connection() (next/server) in moduleRouteGuard before the flag read (SSOT — the one shared chokepoint), locked by an order-asserting unit test. VERIFIED when Reza confirms a live PROD flip propagates without redeploy (the plain.check).
+Root-cause mechanism (verified in source pre-fix): moduleRouteGuard read the flag with NO dynamic-rendering opt-out, so Next.js statically pre-rendered gated layouts and baked notFound()/pass verdicts into the deployment; only dynamically-rendered routes evaluated isModuleEnabled() live — the mixed-404 fingerprint the Matrix observed on Preview 2026-08-11 with all 13 flags ON. Found by the Matrix in live Preview use (dev DB, all 13 flags ON): mixed 404s across gated routes = static pre-render fingerprint. changesNumbers NO — routing visibility only; P2.2b had verified engine numbers, which could not catch this class. Fix: await connection() (next/server) in moduleRouteGuard before the flag read (SSOT — the one shared chokepoint), locked by an order-asserting unit test. VERIFIED when Reza confirms a live PROD flip propagates without redeploy (the plain.check). VERIFIED LIVE 2026-08-19 (M1.5 flip test on PROD, #1591 comment): MODULE_HOUSEKEEPING flipped ON -> page + content + sidebar nav entry appeared within the cache window with NO redeploy -> flipped OFF -> 404 again. The one observed artefact (stale cached 404 on the bare URL for ~2 min) is NOT this defect - request-time gating held; it is registered separately as MON-161.
+
+### MON-161 — Gated-route 404 responses are cacheable — a module flip is invisible on the bare URL until the cached 404 expires
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: gating · opened 2026-08-19
+
+> **What was wrong:** After switching a module back on, its pages could still show 'not found' for a couple of minutes unless you changed the address slightly. The switch had worked; the browser was showing a saved copy of the old 'not found' answer.
+>
+> **What changed:** Every module-gated web address now tells browsers and the CDN 'never keep a saved copy of this answer' - so the moment a module is switched on or off, the very next visit to the same address shows the new state.
+>
+> **What you should see:** Flip any module ON in Admin -> Feature Flags, wait ~30 seconds, then open its page at the plain address (no query string): it renders. Flip it OFF: the same plain address shows 'not found' within ~30 seconds. No cache-busting query needed in either direction.
+
+- **Root cause:** `middleware.ts:12`
+- **Downstream consumers (§19.4):** `every module-gated route prefix in MODULE_REGISTRY (13 modules, layout-guarded trees + the MODULE_HOME /dashboard redirect) - the middleware matcher derives from the registry, so new modules inherit the header automatically`, `the admin Modules panel's ~30s flip promise + every R-stage return (the reason this is launch-relevant)`, `kept routes are deliberately UNTOUCHED - their caching behaviour is unchanged (locked by test)`
+- **Fix PR(s):** ##1594
+- **Holistic test (§19.4):** `tests/featureFlags/mon161NoStoreCache.test.ts`
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · found in the R0 acceptance run 2026-08-19`
+
+Root cause (verified live on PROD 2026-08-19, R0 acceptance run): request-time gating was correct post-MON-160, but the 404 response for a gated bare URL carried no Cache-Control directive, so browser/CDN heuristics cached it (~2 min observed TTL); a cache-busted query returned the fresh verdict instantly. Fix at the ONE shared chokepoint that can stamp response headers for a route tree: middleware.ts sets 'Cache-Control: no-store, must-revalidate' for paths matching any MODULE_REGISTRY routePrefix (registry-derived, no second route list; Edge-safe pure-data import). Ring-3 re-check: re-run the M1.5 flip check on the BARE url in both directions.
+
+### MON-162 — Admin portal and the app cannot hold independent sessions in one browser — signing into either signs the other out
+
+**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: auth · opened 2026-08-19
+
+> **What was wrong:** The staff admin portal and the customer app are separate surfaces but share one browser session, so signing in to one signs you out of the other. Verifying a change as an admin and as a user needs two browsers or two profiles.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · found during the R0 acceptance run 2026-08-19 (Reza) · fix DEFERRED (P-3/P-5)`
+
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/admin/login/page.tsx.
+
+### MON-163 — Kept property-detail page links into hidden modules (tax, income, CFO what-if) — v1 users hit 404s from the core surface
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: navigation · opened 2026-08-19
+
+> **What was wrong:** On a property's page, some buttons and links pointed to sections that are switched off in this release, so clicking them landed on a 'page not found' screen instead of doing anything useful.
+>
+> **What changed:** Those buttons and links now appear only when their target section is switched on - and a permanent automated check now scans the whole app on every build, so no page that is part of this release can ever again link into a switched-off section without failing the build.
+>
+> **What you should see:** On any property's page: no 'View tax position' link, no what-if sparkle buttons, no 'View all in Spending' link while those modules are off. The information cards themselves stay (the numbers still show); only the dead links are gone. When a module is switched back on, its links reappear by themselves.
+
+- **Root cause:** `app/dashboard/properties/[id]/page.tsx:403`
+- **Downstream consumers (§19.4):** `app/dashboard/properties/[id]/page.tsx - what-if icon link, Growth-scenarios card, Tax-position CTA, linked-income row hrefs (all now gated per target module)`, `components/properties/PropertyTile.tsx (list-page sell-what-if icon -> MODULE_CFO), components/properties/PropertyExpensesCard.tsx ('View all in Spending' -> MODULE_HOUSEHOLD)`, `components/loans/LoanDetailDialog.tsx (What-If panel -> MODULE_CFO), components/LinkedDataPanel.tsx (Add Income/Add Holding CTAs), components/shell/TrailStagePill.tsx (My Guide pill de-linked), components/help/HelpDrawer.tsx + app/help/layout.tsx (portal links), app/(dashboard)/recurring/page.tsx (View Expense action), components/strategy/EntityStrategyTab.tsx (self-gated)`, `the class guard: tests/featureFlags/deadLinkGuard.test.ts walks the kept-reachable import graph from every non-gated route file and fails CI on any link into a hidden routePrefix from a non-module-aware file`
+- **Fix PR(s):** ##1594
+- **Holistic test (§19.4):** `tests/featureFlags/deadLinkGuard.test.ts`
+- **Detail:** `MONITRAX_V1_MASTER_PLAN.md §5 · found by Matrix static scan 2026-08-19, confirmed live in PROD`
+
+The Matrix's static scan found 2 files; the repo-wide guard found 8 kept-reachable files (14 link sites) - all gated in the fix PR. Hidden-only files (pages/components inside gated route trees, unreachable in v1) are exempt by the guard's registry-derived reachability walk and join it automatically when their module's registry entry is dropped at its R-stage return.
 

@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import Link from 'next/link';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { appleEase, springSnap as springy } from '@/components/shell/motion';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 import {
   ArrowUpRight,
   Edit2,
@@ -165,6 +166,8 @@ function typeMeta(type: PropertyTileData['type']) {
 }
 
 export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onDelete }: PropertyTileProps) {
+  // MON-163: the sell-this-property what-if lives under /dashboard/cfo (hidden in v1).
+  const cfoModuleEnabled = useModuleEnabled('MODULE_CFO');
   const reduced = useReducedMotion() ?? false;
   const isMobile = useIsMobile();
   const meta = typeMeta(property.type);
@@ -292,7 +295,7 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
               5991501424852019479): light 929d25f22321425a9a0317d331fca3f8,
               dark f88ce0a309464ccfa4234ac0ba0d366b. */}
           <div className="flex shrink-0 items-center gap-1 opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 sm:flex">
-            {isInvestment && (
+            {isInvestment && cfoModuleEnabled && (
               <Link
                 href={`/dashboard/cfo/what-if/sellProperty?propertyId=${encodeURIComponent(property.id)}`}
                 title="What if you sold this?"

@@ -32,6 +32,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, Search, ArrowUpRight, ChevronRight } from 'lucide-react';
 import type { HelpAudience } from '@/lib/help/content';
+import { useModuleEnabled } from '@/lib/featureFlags/ModuleGateContext';
 
 interface DrawerArticleSummary {
   audience: HelpAudience;
@@ -62,6 +63,9 @@ interface HelpDrawerProps {
 }
 
 export function HelpDrawer({ open, onClose, audiences }: HelpDrawerProps) {
+  // MON-163: "Send feedback" targets /portal/feedback — a MODULE_ORG_PORTAL
+  // page, hidden in v1 (the drawer itself is kept shell).
+  const portalModuleEnabled = useModuleEnabled('MODULE_ORG_PORTAL');
   const pathname = usePathname();
   const [payload, setPayload] = useState<DrawerPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -363,7 +367,7 @@ export function HelpDrawer({ open, onClose, audiences }: HelpDrawerProps) {
                   (audience set includes any org-* audience). The route param
                   pre-fills `surfaceRoute` on the new-thread form so the
                   adviser doesn't have to remember which page they were on. */}
-              {audiences.some((a) => a.startsWith('org-')) && pathname && (
+              {portalModuleEnabled && audiences.some((a) => a.startsWith('org-')) && pathname && (
                 <Link
                   href={`/portal/feedback?route=${encodeURIComponent(pathname)}`}
                   onClick={closeAndReset}

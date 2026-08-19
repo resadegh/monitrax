@@ -806,6 +806,11 @@ export function LoanDetailDialog({
 // ============================================================================
 
 function WhatIfLoanAffordances({ loanId, loanName }: { loanId: string; loanName: string }) {
+  // MON-163: both affordances deep-link into /dashboard/cfo/what-if — a
+  // MODULE_CFO surface, hidden in v1. The panel's only purpose is those
+  // links, so it is absent (not disabled) until the module returns.
+  const cfoModuleEnabled = useModuleEnabled('MODULE_CFO');
+  if (!cfoModuleEnabled) return null;
   return (
     <div className="rounded-[16px] border border-foreground/10 bg-card/70 p-5 backdrop-blur-xl">
       <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-foreground/60">

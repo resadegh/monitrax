@@ -1,5 +1,7 @@
 # PROD Simplification — Implementation Plan (TRACKING DOC)
 
+> **📍 SUPERSEDED FOR TRACKING (2026-08-19).** Live state, roadmap and checkboxes now live in `MONITRAX_V1_MASTER_PLAN.md`. **This document remains binding as the module-gate DECISION RECORD (§0 rulings D-1…D-9) and DESIGN ARCHIVE (§2 route/API inventory, §3 registry, §4 gate shape).** Do not update its cursor — it is frozen at the M1 close-out.
+
 **Status:** 📋 PLAN APPROVED-PENDING-REZA · **Kind:** phased implementation plan + live tracker. Code sessions progress THIS document.
 **Raised:** 2026-08-04 · **By:** Cowork planning session (Fable 5) per `BRIEF_PROD_SIMPLIFICATION_PLANNING.md` (PR #1583) · **Pinned HEAD:** `e90a9195` (merge of #1582, 2026-08-04)
 **Decision record:** §0 — all eight §5 brief decisions RULED by Reza 2026-08-04 (this session). Do not re-litigate.
@@ -7,7 +9,7 @@
 
 ---
 
-## CURSOR — update this block every session that advances the plan
+## CURSOR — FROZEN at the M1 close-out (2026-08-19) — live cursor: `MONITRAX_V1_MASTER_PLAN.md`
 
 | Field | Value |
 |---|---|
@@ -49,7 +51,7 @@
 
 ## 1. The first Monitrax (context — why this scope)
 
-> **The post-purchase scoreboard for Australian property investors: know exactly what each property is actually doing — and hand your accountant a clean year.**
+> **Identity superseded by D-10 (2026-08-19):** the v1 story is now the `MONITRAX_V1_MASTER_PLAN.md` §1 line — *the per-property record system for Australian property investors: AI reads your statements, every dollar lands in the right ATO category with its evidence attached, and your accountant gets a clean pack in one click.* The paragraph below is the 2026-08-04 market evidence that led there (kept as the decision archive).
 
 Confirmed by Reza 2026-08-04 after market research (this session). The evidence in one row each: 2.26M AU individuals declare rental interests (ATO 2022-23 stats, secondary-sourced); 86-87% lodge via tax agents and the ATO says 9/10 rental returns are wrong — with the failure in the records clients hand over (ato.gov.au media releases); NG/CGT reform is **legislated effective 1 Jul 2027** (deemed disposal, per-property quarantined losses, cost-base indexation — ATO new-legislation pages) making per-property records mandatory homework on a known date; no competitor owns both "post-purchase scoreboard" and "accountant handoff" at scale (TaxTank closest, ~$220k revenue UNVERIFIED via GetLatka; Moorr free/no ledger; propkt/The Property Accountant sub-scale); the **variance loop** (modelled-at-purchase vs actual) is owned by nobody; manual entry is survivable ONLY in this niche (~10-30 tx/property/yr; the agent statement is the canonical record — statement OCR substitutes for a bank feed here). Full four-lens analysis: Q-SCOPE-1 (PR #1577). Deeper market write-up intentionally NOT duplicated here (SSOT: session record + Q-SCOPE-1).
 

@@ -97,6 +97,7 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
 > **PROD SIMPLIFICATION (2026-08-04):** plan + decision record at `docs/strategy/PROD_SIMPLIFICATION_PLAN.md` (#1584, merged). 8 rulings taken (hide household cashflow · tax · CFO · Home/Housekeeping · Investments; safe entity default; Preview copy w/ §13.6 amendment + CDR sunset; WIP=1 freeze). Flag-phase acceptance = CLEAN golden self-diff. Next: P0→P1 (kickoff brief).
+> **MONITRAX V1 MASTER PLAN (2026-08-19):** `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` (#1592) is now THE single tracking doc for the v1 programme — one document read, ticked and cursored by Reza, Matrix (Cowork), Code and the Chrome relay. Boot order for EVERY session: CLAUDE.md → STATE.md → that plan's §0 → its cursor → your brief. Rulings D-10…D-20 (identity = per-property record system + accountant pack · AI = intake propose→confirm only · pack not portal · EOFY nudges · dashboard returns rebuilt as the v1 scoreboard at M3 with stage-aware tiles · gate review at every milestone · NO new capability without Reza's GO · DEPTH BEFORE SURFACE). M0 (simplification) and M1 (mechanics + R0) are CLOSED; M2 = kept-surface correctness + depth is the LAUNCH GATE.
 >
 > **SCOPE FREEZE (Reza 2026-08-04):** modules hidden by PROD_SIMPLIFICATION_PLAN.md §2.2 get no work, no fixes, no new issues; registry entries → HELD. Exception: THE one module in active development (WIP limit = 1). Re-enable = R-stage gate only.
 
