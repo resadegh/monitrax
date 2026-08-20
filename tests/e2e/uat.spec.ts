@@ -40,15 +40,18 @@ async function waitForShell(page: Page): Promise<void> {
 async function readDashboardNetWorth(page: Page): Promise<number> {
   await page.goto('/dashboard');
   await waitForShell(page);
-  await expect(page.getByText(/net worth/i).first()).toBeVisible({ timeout: LOAD });
+  // The scoreboard's net-worth MiniStat carries a test id — a body-wide
+  // regex is a trap here (the previous label-first pattern could reach
+  // ACROSS tile boundaries into the cashflow strip's "+$0/mo" and capture
+  // 0 forever). The element's own text is unambiguous.
+  const stat = page.getByTestId('scoreboard-net-worth');
+  await expect(stat).toBeVisible({ timeout: LOAD });
   let value = NaN;
   await expect
     .poll(
       async () => {
-        const body = await page.locator('body').innerText();
-        const m =
-          body.match(/Net\s*Worth[\s\S]{0,80}?\$\s?([\d,]+)/i) ??
-          body.match(/\$\s?([\d,]+)[\s\S]{0,40}?Net\s*worth/i);
+        const text = (await stat.innerText()).trim();
+        const m = text.match(/\$\s?([\d,]+)/);
         value = m ? Number(m[1].replace(/,/g, '')) : NaN;
         return Number.isFinite(value) && value > 0 ? 'ready' : 'pending';
       },

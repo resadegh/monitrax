@@ -198,7 +198,11 @@ export default function ScoreboardClient() {
             <BigNumber label="Property value" value={formatCurrency(data?.snapshot?.propertyValue ?? 0)} />
             <div className="mt-3 grid grid-cols-2 gap-3">
               <MiniStat label="Portfolio LVR" value={`${(data?.snapshot?.portfolioLVR ?? 0).toFixed(1)}%`} />
-              <MiniStat label="Net worth" value={formatCurrency(data?.snapshot?.netWorth ?? 0)} />
+              <MiniStat
+                label="Net worth"
+                value={formatCurrency(data?.snapshot?.netWorth ?? 0)}
+                testId="scoreboard-net-worth"
+              />
             </div>
           </ScoreTile>
         )}
@@ -367,10 +371,12 @@ function BigNumber({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function MiniStat({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
     <div className="rounded-[12px] border border-foreground/10 bg-background/50 px-3 py-2">
-      <p className="tabular-nums text-sm font-semibold text-foreground">{value}</p>
+      <p className="tabular-nums text-sm font-semibold text-foreground" data-testid={testId}>
+        {value}
+      </p>
       <p className="text-[11px] text-muted-foreground">{label}</p>
     </div>
   );
