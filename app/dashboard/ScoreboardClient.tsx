@@ -33,6 +33,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useEnabledModules } from '@/lib/featureFlags/ModuleGateContext';
 import {
@@ -168,13 +169,16 @@ export default function ScoreboardClient() {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
-        <LoadFailedState what="your scoreboard" onRetry={fetchAll} />
-      </div>
+      <DashboardLayout>
+        <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
+          <LoadFailedState what="your scoreboard" onRetry={fetchAll} />
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -303,6 +307,7 @@ export default function ScoreboardClient() {
         ))}
       </div>
     </div>
+    </DashboardLayout>
   );
 }
 

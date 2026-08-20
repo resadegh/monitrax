@@ -28,7 +28,15 @@ async function waitForShell(page: Page): Promise<void> {
   await expect(page.getByText('My Wealth').first()).toBeVisible({ timeout: LOAD });
 }
 
-/** Read the dashboard's headline net-worth figure (waits for the snapshot to populate). */
+/**
+ * Read the dashboard's headline net-worth figure (waits for the data to
+ * populate). M3 PR-2: /dashboard is the v1 SCOREBOARD (ScoreboardClient) —
+ * its portfolio tile renders the net-worth VALUE above its label
+ * (value-then-label MiniStat), where the old HomeClient printed the label
+ * first — so both orders are accepted. The figure is still
+ * /api/portfolio/snapshot netWorth either way, so "add a property moves it"
+ * keeps meaning the same thing.
+ */
 async function readDashboardNetWorth(page: Page): Promise<number> {
   await page.goto('/dashboard');
   await waitForShell(page);
@@ -38,7 +46,9 @@ async function readDashboardNetWorth(page: Page): Promise<number> {
     .poll(
       async () => {
         const body = await page.locator('body').innerText();
-        const m = body.match(/Net\s*Worth[\s\S]{0,80}?\$\s?([\d,]+)/i);
+        const m =
+          body.match(/Net\s*Worth[\s\S]{0,80}?\$\s?([\d,]+)/i) ??
+          body.match(/\$\s?([\d,]+)[\s\S]{0,40}?Net\s*worth/i);
         value = m ? Number(m[1].replace(/,/g, '')) : NaN;
         return Number.isFinite(value) && value > 0 ? 'ready' : 'pending';
       },
@@ -106,7 +116,12 @@ test.describe('UAT — seeded-archetype real-human flows (emulator auth)', () =>
     await expect(page.getByText(/capital gain split across \d+ owner/i).first()).toBeVisible({ timeout: LOAD });
   });
 
-  test('entity-value widget carries the legal-title label (PR #1114 / L2-1 Option B)', async ({ page }) => {
+  // M3 PR-2: /dashboard is the v1 SCOREBOARD; EntityBreakdownWidget renders
+  // ONLY in HomeClient, which is retired from the route until its R4 return
+  // (plan M3.4 — no wealth-OS widgets on the scoreboard). The L2-1 label has
+  // no rendered surface to assert until then. RE-ENABLE when HomeClient
+  // returns at R4 (or the widget gains a kept surface).
+  test.skip('entity-value widget carries the legal-title label (PR #1114 / L2-1 Option B)', async ({ page }) => {
     // EntityBreakdownWidget renders for ≥2 entities (David qualifies); the
     // footer carries the legal-title label (components/ownership/EntityBreakdownWidget.tsx).
     await page.goto('/dashboard');
