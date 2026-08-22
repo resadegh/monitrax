@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**173 total** · 112 open · 🔵 48 · 🟡 12 · 🟠 37 · 🟢 15 · ✅ 59
+**173 total** · 112 open · 🔵 48 · 🟡 10 · 🟠 39 · 🟢 15 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -175,9 +175,9 @@
 | MON-179 | 🔵 OPEN | 🟡 | yes | HELD (hidden-only) trio in the legacy report layer: ANNUAL treated as monthly in declared burn; second health-score producer; investments valued two ways in one context | — | — |
 | MON-180 | 🟠 FIXING | 🟡 | no | Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back | ##1605 | ✅ |
 | MON-181 | 🟠 FIXING | 🟡 | no | Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without | ##1605 | n/a |
-| MON-182 | 🟡 DIAGNOSED | 🟠 | yes | Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal) | — | — |
+| MON-182 | 🟠 FIXING | 🟠 | yes | Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal) | ##1606 | ✅ |
 | MON-183 | 🟠 FIXING | 🟢 | no | Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule | ##1605 | ✅ |
-| MON-184 | 🟡 DIAGNOSED | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | — | — |
+| MON-184 | 🟠 FIXING | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | ##1606 | ✅ |
 | MON-185 | 🔵 OPEN | 🟡 | no | DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix | — | n/a |
 | MON-186 | 🟠 FIXING | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | ##1605 | ✅ |
 
@@ -2999,7 +2999,7 @@ Root cause verified in source: ScoreboardClient fetches /api/unified-transaction
 
 ### MON-182 — Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal)
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-22
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-22
 
 > **What was wrong:** The dashboard says your portfolio LVR is 41.3% while the properties page says 40.8% on the same data. Two different formulas are alive: the dashboard divides ALL loan debt (including personal loans and credit cards) by ALL property value (including rentals you don't own); the properties page divides property-attached loan principal by owned-property value, computed in the page itself.
 >
@@ -3008,11 +3008,13 @@ Root cause verified in source: ScoreboardClient fetches /api/unified-transaction
 > **What you should see:** The dashboard scoreboard and the properties banner show the IDENTICAL LVR figure (~40.8% on current data, the owned-only basis), and the label says what the number means.
 
 - **Root cause:** `app/api/portfolio/snapshot/route.ts:1024`, `app/dashboard/properties/page.tsx:521`
+- **Neomatrix:** `number.portfolio.ownedPortfolioLvr`
 - **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx portfolio tile — renders gearing.portfolioLVR off /api/portfolio/snapshot`, `app/dashboard/properties/page.tsx hero banner AVG LVR — currently page-side arithmetic (deleted by the fix)`, `app/api/portfolio/snapshot/route.ts gearing block — any other consumer of gearing.portfolioLVR`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Fix PR(s):** ##1606
+- **Holistic test (§19.4):** `tests/calculations/portfolioLvr.test.ts#MON-182 — Ring-0 worked example + Ring-1 one-producer guard`
 - **Detail:** `M3 punch list §C-3 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22 · D-21 applies (number moves)`
 
-SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLVR = nw.liabilities.total / nw.assets.properties (:646,:655,:1024) where liabilities.total includes personal loans + credit cards (calculateTotalLiabilities) and assets.properties sums ALL properties incl. RENTAL (calculateTotalAssets, no type filter); page banner = owned-only (type !== 'RENTAL') sum of property-attached loan.principal / sum currentValue (:515-521). D-21 expected movement: snapshot/scoreboard figure moves 41.3% -> the owned-only figure (~40.8%); the properties-page figure does NOT move. Nuance to flag: loans attached to RENTAL properties leave the numerator with their property; personal/credit-card debt never belonged in a PROPERTY LVR.
+SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLVR = nw.liabilities.total / nw.assets.properties (:646,:655,:1024) where liabilities.total includes personal loans + credit cards (calculateTotalLiabilities) and assets.properties sums ALL properties incl. RENTAL (calculateTotalAssets, no type filter); page banner = owned-only (type !== 'RENTAL') sum of property-attached loan.principal / sum currentValue (:515-521). D-21 expected movement: snapshot/scoreboard figure moves 41.3% -> the owned-only figure (~40.8%); the properties-page figure does NOT move. Nuance to flag: loans attached to RENTAL properties leave the numerator with their property; personal/credit-card debt never belonged in a PROPERTY LVR. FIXING on #1606 (punch-list PR-2, 2026-08-22): lib/calculations/portfolioLvr.ts is THE producer; snapshot inline basis + page screen arithmetic DELETED; both surfaces basis-labelled. Hidden-family variants HELD under D-20 (portfolioEngine.ts:493, health/metricAggregation.ts:402, testing/exporter.ts:334) — recorded, untouched. VERIFIED gates on RING3_M3_PUNCH_FIXES.md Part 2.
 
 ### MON-183 — Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule
 
@@ -3034,7 +3036,7 @@ Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no c
 
 ### MON-184 — Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels [])
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-22
+**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-22
 
 > **What was wrong:** The accountant pack is supposed to group your property income and expenses under official ATO labels (rental schedule lines). On real data, not a single row gets a label — all 35 categorised rows fall into 'no ATO mapping', because the matching is too literal: it requires an exact three-part category match against a seed vocabulary that doesn't speak the same words your live categories use.
 >
@@ -3043,11 +3045,13 @@ Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no c
 > **What you should see:** Export the FY2025-26 pack: the ATO Labels section is populated with rental-schedule lines, the labelled count is >0, the totals (income/expenses/count) are UNCHANGED to the byte, and labelled + noCategory + noAtoMapping still adds up to the included count.
 
 - **Root cause:** `lib/bookkeeping/taxPack/summary.ts:326`, `lib/bookkeeping/taxCategoryMapping.ts:48`
+- **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
 - **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts atoLabels + reconciliation.atoLabelling -> export route JSON (all formats)`, `lib/bookkeeping/taxPack/xlsxExporter.ts ATO Labels sheet`, `lib/bookkeeping/taxPack/pdfExporter.ts renderAtoLabels`, `lib/bookkeeping/taxPack/accountantPackBuilder.ts (bundles the same summary)`, `app/dashboard/ScoreboardClient.tsx EOFY tile (renders notReadyCount = noCategory + noAtoMapping)`
-- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Fix PR(s):** ##1606
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts#MON-184 — (l1,l2) fallback labels; unmapped row still counted`
 - **Detail:** `M3 punch list §B (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) — the M3.1 opener · Ring-3 PASS verdict on #1601 (2026-08-22) measured the live blast radius · D-21 applies`
 
-Live evidence (Ring-3 2026-08-22, FY2025-26): atoLabelling {labelled:0, noCategory:0, noAtoMapping:35/$24,980.26}, atoLabels []. NOT an unseeded-mappings bug — seedSystemMappings runs on every export (summary.ts:164). Verified mechanism: summary.ts resolves each tx by the EXACT triple level1|level2|subcategory (:326 against the :299 map) while SYSTEM_TAX_MAPPING_SEEDS registers title-case (level1, level2, subcategory:null) vocabulary ('Property'/'Rates'); the live rows carry the UPPERCASE ExpenseCategoryType enum values the link route writes as categoryLevel1 (RATES, INSURANCE, UTILITIES, MAINTENANCE, MODIFICATIONS per the verdict's category listing) — so BOTH a hierarchy fallback AND seed vocabulary for the live level1 values are required. D-21: totals/identity/perProperty byte-identical; movement confined to atoLabelling.labelled 0->N, noAtoMapping 35->(35-N), atoLabels []->populated.
+Live evidence (Ring-3 2026-08-22, FY2025-26): atoLabelling {labelled:0, noCategory:0, noAtoMapping:35/$24,980.26}, atoLabels []. NOT an unseeded-mappings bug — seedSystemMappings runs on every export (summary.ts:164). Verified mechanism: summary.ts resolves each tx by the EXACT triple level1|level2|subcategory (:326 against the :299 map) while SYSTEM_TAX_MAPPING_SEEDS registers title-case (level1, level2, subcategory:null) vocabulary ('Property'/'Rates'); the live rows carry the UPPERCASE ExpenseCategoryType enum values the link route writes as categoryLevel1 (RATES, INSURANCE, UTILITIES, MAINTENANCE, MODIFICATIONS per the verdict's category listing) — so BOTH a hierarchy fallback AND seed vocabulary for the live level1 values are required. D-21: totals/identity/perProperty byte-identical; movement confined to atoLabelling.labelled 0->N, noAtoMapping 35->(35-N), atoLabels []->populated. FIXING on #1606 (punch-list PR-2, 2026-08-22): hierarchy fallback at the ONE lookup + enum seed vocabulary (9 seeds); MODIFICATIONS + RENT deliberately unmapped (stated in the PR + the D-21 brief). VERIFIED gates on RING3_M3_PUNCH_FIXES.md Part 1 (totals byte-identical; labelled 0->N).
 
 ### MON-185 — DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix
 
