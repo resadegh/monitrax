@@ -5,10 +5,11 @@
  * modules pull the whole dashboard shell, so scanning source keeps these
  * cheap — same pattern as tests/dashboard/entityCashflowWidget.test.ts):
  *
- *  - Reports (P2.3): the v1 kept pack (property-portfolio, tax-time)
- *    carries NO moduleKey; every other tile is keyed to a registry
- *    module; tiles render via the SAME `filterNavByModules` the nav
- *    uses; the once-hardcoded help-section list is gone.
+ *  - Reports (P2.3, re-cut by MON-186): the v1 kept pack
+ *    (property-portfolio ONLY) carries NO moduleKey; every other tile —
+ *    tax-time included since the 2026-08-22 MODULE_HOME flip — is keyed
+ *    to a registry module; tiles render via the SAME `filterNavByModules`
+ *    the nav uses; the once-hardcoded help-section list is gone.
  *  - Ownership (P2.4): the picker bails out on MODULE_ENTITIES and the
  *    correction dialog gates its write path.
  *
@@ -32,9 +33,14 @@ describe('P2.3 — reports page narrowed via the registry', () => {
       const end = src.indexOf('},', start);
       return src.slice(start, end);
     };
+    // MON-186 (M3 punch list §D) re-cut the P2.3 keys after the 2026-08-22
+    // MODULE_HOME flip changed the key's meaning: the kept pack is now
+    // property-portfolio ONLY; financial-overview moved MODULE_HOME→MODULE_CFO
+    // and the once-unkeyed tax-time is gated MODULE_TAX. The full expected
+    // map lives in tests/dashboard/reportTileKeys.test.ts (the MON-186 guard).
     expect(tile('property-portfolio')).not.toContain('moduleKey');
-    expect(tile('tax-time')).not.toContain('moduleKey');
-    expect(tile('financial-overview')).toContain("moduleKey: 'MODULE_HOME'");
+    expect(tile('tax-time')).toContain("moduleKey: 'MODULE_TAX'");
+    expect(tile('financial-overview')).toContain("moduleKey: 'MODULE_CFO'");
     expect(tile('income-expense')).toContain("moduleKey: 'MODULE_HOUSEHOLD'");
     expect(tile('loan-debt')).toContain("moduleKey: 'MODULE_DEBT_PLANNER'");
     expect(tile('investment')).toContain("moduleKey: 'MODULE_INVESTMENTS'");

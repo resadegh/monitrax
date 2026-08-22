@@ -49,7 +49,14 @@ interface ReportTypeInfo {
   /**
    * PROD Simplification P2.3: a report tile is visible only while its
    * parent module's flag is ON (registry key — plan §2.2). The v1 kept
-   * pack (property-portfolio, tax-time) carries NO key and always shows.
+   * pack (property-portfolio ONLY) carries NO key and always shows.
+   *
+   * MON-186 (M3 punch list §D): keys name the module that owns the tile's
+   * CONTENT family, because a key's MEANING can change at a flip —
+   * MODULE_HOME flipped 2026-08-22 to mean "the v1 scoreboard", which
+   * resurfaced the Financial Overview tile keyed to it. Keys here are
+   * pinned by tests/dashboard/reportTileKeys.test.ts (the expected map) so
+   * a future flip can't silently resurface a legacy tile again.
    */
   moduleKey?: ModuleKey;
 }
@@ -63,7 +70,10 @@ const reportTypes: ReportTypeInfo[] = [
       'A comprehensive snapshot of your financial position including net worth calculation, asset allocation, liability breakdown, and financial health score.',
     icon: Wallet,
     variant: 'blue',
-    moduleKey: 'MODULE_HOME', // whole-position overview — the Home dashboard family (returns R4)
+    // MON-186: was MODULE_HOME — resurfaced at the 2026-08-22 scoreboard flip.
+    // Re-keyed to the module that owns the whole-position wealth-OS story
+    // (returns R4). Hidden, not deleted.
+    moduleKey: 'MODULE_CFO',
   },
   {
     id: 'income-expense',
@@ -112,6 +122,12 @@ const reportTypes: ReportTypeInfo[] = [
       'Compiles all tax-relevant data including taxable income, deductible expenses, depreciation claims, and rental property statements for easy tax filing.',
     icon: Calculator,
     variant: 'green',
+    // MON-186: was UNKEYED (always visible) despite the 2026-08-19 ruling to
+    // hide legacy report tiles — its generator is the calendar-YTD
+    // contextBuilder path the M2 Ring-3 FAIL condemned (disagrees with the
+    // D-12 pack by $271,546 on the same data). Returns only if the tax
+    // family does (R2). The D-12 pack export card below is untouched.
+    moduleKey: 'MODULE_TAX',
   },
 ];
 

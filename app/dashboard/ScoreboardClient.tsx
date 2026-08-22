@@ -10,9 +10,12 @@
  *                      (the ONE per-property cashflow engine — same as the
  *                      properties list + detail pages; screens only read)
  *   eofy-readiness   → the D-12 pack's reconciliation block (M3 PR-1) —
- *                      "N rows aren't tax-ready yet → review"
+ *                      "N rows aren't tax-ready yet → review". MON-180: in the
+ *                      EOFY season an empty current FY defers to the just-ended
+ *                      FY window (rule in lib/dashboard/scoreboardDisplay.ts)
  *   documents-status → /api/documents count
- *   intake-queue     → /api/unified-transactions/review-queue count
+ *   intake-queue     → /api/unified-transactions/review-queue, medium+low
+ *                      bands summed (MON-181 — the route requires a band)
  *
  * Stage tiles are registered DARK in lib/dashboard/tileRegistry.ts and render
  * here as link tiles the moment their module flips — no deploy. The
@@ -43,6 +46,15 @@ import {
   type TileId,
 } from '@/lib/dashboard/tileRegistry';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import {
+  auFyLabel,
+  auFyStartYear,
+  isEofySeason,
+  orderStripWorstFirst,
+  resolveEofyTileState,
+  type EofyTileState,
+  type EofyWindowSlice,
+} from '@/lib/dashboard/scoreboardDisplay';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { LoadFailedState } from '@/components/ui/LoadFailedState';
 
@@ -63,17 +75,10 @@ interface PropertyRow {
   linkedTransactions?: unknown[];
 }
 
-interface EofySlice {
-  fyLabel: string;
-  notReadyCount: number;
-  includedCount: number;
-  transactionsTotal: number;
-}
-
 interface ScoreboardData {
   snapshot: SnapshotSlice | null;
   properties: PropertyRow[];
-  eofy: EofySlice | null;
+  eofy: EofyTileState;
   documentsCount: number | null;
   intakeCount: number | null;
 }
@@ -92,15 +97,29 @@ export default function ScoreboardClient() {
     setLoadError(false);
     const headers = { Authorization: `Bearer ${token}` };
     try {
+      // MON-180 (§C-1): during the EOFY work season (Jul–Oct) the tile also
+      // reads the JUST-ENDED FY via the export route's existing ?fy= param —
+      // same producer, second window — so an empty new FY can't render a
+      // vacuous "all tax-ready" while last year's rows still need review.
+      const now = new Date();
+      const justEndedFy = auFyLabel(auFyStartYear(now) - 1);
+
       // Each fetch degrades independently — one slow feed must not blank the
       // scoreboard; only total failure shows LoadFailedState.
-      const [snapshotRes, propertiesRes, packRes, documentsRes, intakeRes, flagsRes] =
+      // MON-181 (§C-2): the review-queue route REQUIRES band=medium|low (400s
+      // otherwise), so the tile fetches BOTH bands and sums — same route, no
+      // second producer.
+      const [snapshotRes, propertiesRes, packRes, packPrevRes, documentsRes, intakeMedRes, intakeLowRes, flagsRes] =
         await Promise.allSettled([
           fetch('/api/portfolio/snapshot', { headers }),
           fetch('/api/properties', { headers }),
           fetch('/api/bookkeeping/tax-pack/export?format=json', { headers }),
+          isEofySeason(now)
+            ? fetch(`/api/bookkeeping/tax-pack/export?format=json&fy=${justEndedFy}`, { headers })
+            : Promise.reject(new Error('out of EOFY season — just-ended window not fetched')),
           fetch('/api/documents?limit=1', { headers }),
-          fetch('/api/unified-transactions/review-queue', { headers }),
+          fetch('/api/unified-transactions/review-queue?band=medium', { headers }),
+          fetch('/api/unified-transactions/review-queue?band=low', { headers }),
           fetch('/api/feature-flags/modules', { headers, cache: 'no-store' }),
         ]);
 
@@ -110,14 +129,34 @@ export default function ScoreboardClient() {
       const snapshotJson = await json(snapshotRes);
       const propertiesJson = await json(propertiesRes);
       const packJson = await json(packRes);
+      const packPrevJson = await json(packPrevRes);
       const documentsJson = await json(documentsRes);
-      const intakeJson = await json(intakeRes);
+      const intakeMedJson = await json(intakeMedRes);
+      const intakeLowJson = await json(intakeLowRes);
       const flagsJson = await json(flagsRes);
 
       if (flagsJson?.suppressedTiles) setSuppressed(new Set(flagsJson.suppressedTiles));
 
-      const packSummary = packJson?.data ?? null;
-      const reconciliation = packSummary?.reconciliation ?? null;
+      const eofySlice = (packPayload: unknown): EofyWindowSlice | null => {
+        const summary = (packPayload as { data?: { window?: { label?: string }; reconciliation?: {
+          transactionsTotal?: number;
+          included?: { count?: number };
+          atoLabelling?: { noCategory?: { count?: number }; noAtoMapping?: { count?: number } };
+        } } } | null)?.data;
+        const rec = summary?.reconciliation;
+        if (!rec) return null;
+        return {
+          fyLabel: summary?.window?.label ?? '',
+          notReadyCount:
+            (rec.atoLabelling?.noCategory?.count ?? 0) +
+            (rec.atoLabelling?.noAtoMapping?.count ?? 0),
+          includedCount: rec.included?.count ?? 0,
+          transactionsTotal: rec.transactionsTotal ?? 0,
+        };
+      };
+
+      const intakeMedItems = intakeMedJson?.data?.items;
+      const intakeLowItems = intakeLowJson?.data?.items;
       const next: ScoreboardData = {
         snapshot: snapshotJson
           ? {
@@ -128,24 +167,24 @@ export default function ScoreboardClient() {
             }
           : null,
         properties: propertiesJson?.data ?? [],
-        eofy: reconciliation
-          ? {
-              fyLabel: packSummary?.window?.label ?? '',
-              notReadyCount:
-                (reconciliation.atoLabelling?.noCategory?.count ?? 0) +
-                (reconciliation.atoLabelling?.noAtoMapping?.count ?? 0),
-              includedCount: reconciliation.included?.count ?? 0,
-              transactionsTotal: reconciliation.transactionsTotal ?? 0,
-            }
-          : null,
+        eofy: resolveEofyTileState({
+          now,
+          current: eofySlice(packJson),
+          justEnded: eofySlice(packPrevJson),
+        }),
         documentsCount:
           documentsJson?.pagination?.total ??
           documentsJson?.total ??
           (Array.isArray(documentsJson?.documents) ? documentsJson.documents.length : null),
-        intakeCount: Array.isArray(intakeJson?.data?.items) ? intakeJson.data.items.length : null,
+        // A real 0 renders as 0; '—' only when BOTH band fetches genuinely failed.
+        intakeCount:
+          Array.isArray(intakeMedItems) || Array.isArray(intakeLowItems)
+            ? (Array.isArray(intakeMedItems) ? intakeMedItems.length : 0) +
+              (Array.isArray(intakeLowItems) ? intakeLowItems.length : 0)
+            : null,
       };
       const allFailed =
-        !next.snapshot && next.properties.length === 0 && !next.eofy &&
+        !next.snapshot && next.properties.length === 0 && next.eofy.kind === 'unavailable' &&
         next.documentsCount === null && next.intakeCount === null;
       if (allFailed) {
         setLoadError(true);
@@ -218,29 +257,32 @@ export default function ScoreboardClient() {
               <EmptyLine text="Add your first property to see its cashflow here." />
             ) : (
               <ul className="space-y-2">
-                {data?.properties.slice(0, 4).map((p) => {
-                  // The ONE engine — identical inputs to the properties list page.
-                  const cf = computePropertyCashflow({
-                    income: (p.income ?? []) as never,
-                    expenses: (p.expenses ?? []) as never,
-                    loans: (p.loans ?? []) as never,
-                    transactions: (p.linkedTransactions ?? []) as never,
-                  });
-                  const monthly = cf.monthlyCashflow;
-                  return (
-                    <li key={p.id} className="flex items-baseline justify-between gap-3">
-                      <span className="truncate text-sm text-muted-foreground">{p.name}</span>
-                      <span
-                        className={`tabular-nums text-sm font-semibold ${
-                          monthly >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'
-                        }`}
-                      >
-                        {monthly >= 0 ? '+' : ''}
-                        {formatCurrency(monthly)}/mo
-                      </span>
-                    </li>
-                  );
-                })}
+                {/* MON-183 (§C-4): ALL properties render — no silent cap —
+                    ordered worst monthly figure first (orderStripWorstFirst). */}
+                {orderStripWorstFirst(
+                  (data?.properties ?? []).map((p) => {
+                    // The ONE engine — identical inputs to the properties list page.
+                    const cf = computePropertyCashflow({
+                      income: (p.income ?? []) as never,
+                      expenses: (p.expenses ?? []) as never,
+                      loans: (p.loans ?? []) as never,
+                      transactions: (p.linkedTransactions ?? []) as never,
+                    });
+                    return { id: p.id, name: p.name, monthly: cf.monthlyCashflow };
+                  })
+                ).map(({ id, name, monthly }) => (
+                  <li key={id} className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-sm text-muted-foreground">{name}</span>
+                    <span
+                      className={`tabular-nums text-sm font-semibold ${
+                        monthly >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'
+                      }`}
+                    >
+                      {monthly >= 0 ? '+' : ''}
+                      {formatCurrency(monthly)}/mo
+                    </span>
+                  </li>
+                ))}
               </ul>
             )}
           </ScoreTile>
@@ -249,32 +291,11 @@ export default function ScoreboardClient() {
         {visibleIds.has('eofy-readiness') && (
           <ScoreTile
             href="/dashboard/reports"
-            eyebrow={`EOFY readiness${data?.eofy?.fyLabel ? ` · ${data.eofy.fyLabel}` : ''}`}
+            eyebrow={`EOFY readiness${eofyLabelOf(data?.eofy) ? ` · ${eofyLabelOf(data?.eofy)}` : ''}`}
             accent="from-amber-400 to-orange-500"
             loading={loading}
           >
-            {data?.eofy ? (
-              data.eofy.notReadyCount > 0 ? (
-                <>
-                  <BigNumber
-                    label="Rows not tax-ready yet"
-                    value={String(data.eofy.notReadyCount)}
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Of {data.eofy.includedCount} property rows this year — review before the pack.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <BigNumber label="Tax-ready" value="All rows" />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Every property row this year reaches an ATO label.
-                  </p>
-                </>
-              )
-            ) : (
-              <EmptyLine text="The readiness check appears once transactions are in." />
-            )}
+            <EofyTileBody state={data?.eofy ?? { kind: 'unavailable' }} />
           </ScoreTile>
         )}
 
@@ -316,6 +337,47 @@ export default function ScoreboardClient() {
 }
 
 /* ── presentational pieces (glass vocabulary, §18.7.2) ──────────────────── */
+
+function eofyLabelOf(state: EofyTileState | undefined): string {
+  if (!state) return '';
+  if (state.kind === 'lead-just-ended' || state.kind === 'current') return state.slice.fyLabel;
+  if (state.kind === 'no-rows-yet') return state.fyLabel;
+  return '';
+}
+
+/**
+ * MON-180 (§C-1) render states. The season/lead rule itself lives in
+ * lib/dashboard/scoreboardDisplay.ts (resolveEofyTileState) — this component
+ * only renders the resolved state.
+ */
+function EofyTileBody({ state }: { state: EofyTileState }) {
+  switch (state.kind) {
+    case 'lead-just-ended':
+    case 'current': {
+      const s = state.slice;
+      const yearWord = state.kind === 'lead-just-ended' ? 'last FY' : 'this year';
+      return s.notReadyCount > 0 ? (
+        <>
+          <BigNumber label="Rows not tax-ready yet" value={String(s.notReadyCount)} />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Of {s.includedCount} property rows {yearWord} — review before the pack.
+          </p>
+        </>
+      ) : (
+        <>
+          <BigNumber label="Tax-ready" value="All rows" />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Every property row {yearWord} reaches an ATO label.
+          </p>
+        </>
+      );
+    }
+    case 'no-rows-yet':
+      return <EmptyLine text="No property rows yet this FY." />;
+    case 'unavailable':
+      return <EmptyLine text="The readiness check appears once transactions are in." />;
+  }
+}
 
 function ScoreTile({
   href,
