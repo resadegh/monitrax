@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 299 · **Edges:** 419
-- **By kind:** orchestrator 17 · engine 161 · input-field 34 · number 18 · ui-surface 21 · law 41 · verification 7
-- **By status:** documented 298 · suspected-issue 1
-- **Edge provenance:** verified 419 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/196 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 302 · **Edges:** 424
+- **By kind:** orchestrator 17 · engine 162 · input-field 34 · number 19 · ui-surface 22 · law 41 · verification 7
+- **By status:** documented 301 · suspected-issue 1
+- **Edge provenance:** verified 424 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/198 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -64,7 +64,7 @@
 | **Loan/debt aggregation (interest)** | `lib/calculations/loanAggregator.ts:69` | engine | core | LoanAggregation — totalPrincipal, totalRepayments, totalInterest, weightedInterestRate, byType. The §6.2 debt SSOT. | Standard interest = principal × annual rate; CLAUDE.md §19.2 (interestRateAnnual decimal — the prior 100× bug, P0-fixed 2026-06-23) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced — locks the 100× class) + lib/calculations/loanAggregator.ts:69 | documented |
 | **Declared expense aggregation** | `lib/calculations/expenseAggregator.ts:76` | engine | core | ExpenseAggregation — total, essential, discretionary, taxDeductible, byCategory. The §6.2 expense SSOT. | CLAUDE.md §6.2 (expense SSOT) + lib/utils/frequencies.ts toMonthly | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/expenseAggregator.ts:76 | documented |
 | **Dashboard insights composer** | `app/api/dashboard/insights/route.ts:187` | route | core | The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. Phase 57: kpiTiles.canonical serves the trailing-12-month basis (declared-plan fallback) that the dashboard KPI tiles headline. | CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc | app/api/dashboard/insights/route.ts:186,191,212 (read 2026-07-02) | documented |
-| **Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)** | `app/api/portfolio/snapshot/route.ts:496` | route | intelligence | SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master. | CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master) | app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session) | documented |
+| **Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)** | `app/api/portfolio/snapshot/route.ts:497` | route | intelligence | SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master. | CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master) | app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session) | documented |
 | **Transaction categoriser (hybrid cascade)** | `lib/tie/categorisation.ts:695` | engine | neobrain | CategoryResult — categoryLevel1/2, subcategory, isEssential, isRecurring, confidence, source (USER\|RULE\|KB\|AI\|FALLBACK). The categorised label for one transaction. | CLAUDE.md §12.2.1 (one source) + Phase 52 §2 (two-layer KB) |  | documented |
 | **Import categoriser (learning-aware)** | `lib/bank/aiCategorisation.ts:328` | engine | neobrain | Per-transaction predictions enriched with the user's learned MerchantMappings + adjusted confidence, for the import pipeline. | Phase 29 (AI transaction categorisation & smart import) |  | documented |
 | **Confidence-band classifier** | `lib/bank/aiCategorisation.ts:145` | engine | neobrain | Partition of results into autoAccept (≥0.90) / needsReview (0.70–0.90) / requiresManual (<0.70). | Phase 29 + UserCategorizationSettings defaults |  | documented |
@@ -196,6 +196,7 @@
 | **Effective loan rate — evidence beats the typed rate (MON-142)** | `lib/calculations/effectiveLoanRate.ts:130` | engine | core | EffectiveLoanRate — annualRate + basis (DERIVED_CHARGED \| DERIVED_IO_REPAYMENT \| STORED), storedRateAnnual, impliedRateAnnual, divergencePp, flags (RATE_STALE \| RATE_UNVERIFIED \| NO_INTEREST_BEARING_BALANCE), interestBearingBalance. | MON-142 + D17 FACT-hierarchy pattern applied to a rate + D21 (interest nets the offset). Threshold 0.10pp: lenders move variable rates in 0.25pp steps, so a real change clears it while partial-period/day-count artefacts do not. |  | documented |
 | **D-12 accountant pack summary builder** | `lib/bookkeeping/taxPack/summary.ts:159` | engine | reports | TaxPackSummary — PROPERTY-SCOPED totals + per-property P&L + ATO-label rollup + the MON-170 reconciliation block (every excluded row counted). | M3 brief §A scope ruling (property-scoped, exclusions stated) · §19.1 nothing-silent · actualCashflow.ts transfer convention | lib/bookkeeping/taxPack/summary.ts:159 + tests/bookkeeping/mon169170PackReconciliation.test.ts (worked example) | documented |
 | **Link → property attribution rule (MON-168)** | `lib/bookkeeping/propertyLink.ts:49` | engine | core | UnifiedTransaction.propertyId — DERIVED: the link target's (Income/Expense/Loan) propertyId ?? null; cleared when the link clears. | MON-168 (Ring-3 FAIL 2026-08-19 on #1595) · §12.2.1 one rule | lib/bookkeeping/propertyLink.ts:49 + tests/bookkeeping/mon168PropertyStampGuard.test.ts (every write site) | documented |
+| **Owned-portfolio LVR (the ONE producer)** | `lib/calculations/portfolioLvr.ts:32` | engine | core | Portfolio LVR percent (2dp, producer-owned rounding) on the ruled basis: OWNED properties only (type !== 'RENTAL'), property-attached loan principal over owned current value. | M3 punch-list brief §C-3 ruling (one producer wins; basis labelled on every surface) · MON-182 census (snapshot all-liabilities basis deleted; page screen arithmetic deleted) | lib/calculations/portfolioLvr.ts:32 + tests/calculations/portfolioLvr.test.ts (§19.2 worked example + Ring-1 one-producer guard) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -239,7 +240,8 @@
 | **PSI input assembler (the numerics all-or-nothing capture gate)** | $150,000 PSI, $135,000 (90%) largest client, no tests established → 80%-one-client FAILS → NOT PSB → $150,000 attributed per s86-15 (locked in the ratchet) |
 | **Div 152 input assembler (the all-or-nothing capture gate)** | gain $120,000, MNAV $4.2M, active, 64 months, reduction + retirement exemption with $400k used → AAR −$60,000 → exemption −$60,000 (cap remaining $100k) → assessable $0 (locked in the ratchet) |
 | **Budget analysis generator** | recurring essential $100/mo + IO loan resolved from linked repayments + $50,000 one-off contributing $0/mo → committed = $100 + canonical loan costs (tests/budget/mon125BudgetGeneratorSsot.test.ts) |
-| **D-12 accountant pack summary builder** | 7 fixture rows: included 3 ($850) + transfers 2 ($1,050) + loanRepayments 1 ($300) + notPropertyScoped 1 ($2,000) = 7; incomeGross $500, expenseTotal $350. |
+| **D-12 accountant pack summary builder** | 9 fixture rows: included 5 ($990) + transfers 2 ($1,050) + loanRepayments 1 ($300) + notPropertyScoped 1 ($2,000) = 9; incomeGross $500, expenseTotal $490; labelling partition labelled 2 ($580, one via the (l1,l2) fallback) + noCategory 1 ($150) + noAtoMapping 2 ($260) = 5. |
+| **Owned-portfolio LVR (the ONE producer)** | owned 900k+600k=1.5M value, attached 500k+300k=800k debt, RENTAL 380k/100k excluded → 53.33%. |
 
 ## Number lineage — how each displayed number is born
 
@@ -263,6 +265,7 @@
 | **Managed rental gross declared (assessable)** (`rental.grossDeclared`) | Managed-rental agent-cost reconciliation |  | = toAnnual(Income.amount, Income.frequency) — annualised by the canonical tax engine income loop, exactly as a DIRECT stream. | ITAA 1997 s6-5 — gross rent is assessable income; never a netted figure. |
 | **Pack income (gross, property-scoped)** (`packIncomeGross`) | D-12 accountant pack summary builder, Link → property attribution rule (MON-168), Transfer auto-pairer, Review-queue confirm (SSOT), Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop |  | = Σ included IN \|amount\| (== Σ perProperty income — identity by construction) | M3 brief §A / D-21 |
 | **Pack expenses (property-scoped)** (`packExpenseTotal`) | D-12 accountant pack summary builder, Link → property attribution rule (MON-168), Transfer auto-pairer, Review-queue confirm (SSOT), Transfer auto-pairer (across accounts), Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop |  | = Σ included OUT \|amount\| (== Σ perProperty expenses) | M3 brief §A / D-21 |
+| **Portfolio LVR — owned properties** (`ownedPortfolioLvr`) | Owned-portfolio LVR (the ONE producer), Intake classifier (MON-078 keystone + Mechanism A signature reuse), Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) | Properties hero — Portfolio LVR (owned) KPI, Scoreboard — portfolio tile (value · LVR · net worth) | = calculateOwnedPortfolioLvr(properties) | M3 punch-list brief §C-3 · RING3_M3_PUNCH_FIXES.md Part 2 (D-21 predicted movement: scoreboard 41.3 → 40.8; page unchanged) |
 
 ## Governing laws / authorities (B6)
 
@@ -745,6 +748,11 @@
 | Transfer auto-pairer | → | D-12 accountant pack summary builder | feeds | — | verified | transfer marking writes isTransfer, the pack classifier reads it (excluded.transfers) |
 | Per-property cashflow | → | Scoreboard — per-property cashflow strip | rendered-at | — | verified | ScoreboardClient computePropertyCashflow({income,expenses,loans,transactions}) — identical inputs to the properties list page |
 | Net worth (displayed) | → | Scoreboard — portfolio tile (value · LVR · net worth) | rendered-at | — | verified | ScoreboardClient reads /api/portfolio/snapshot netWorth (calculateNetWorth-produced) directly |
+| Owned-portfolio LVR (the ONE producer) | → | Portfolio LVR — owned properties | feeds | — | verified | the function IS the number's producer; snapshot route assigns it to gearing.portfolioLVR unrounded-further |
+| Portfolio LVR — owned properties | → | Properties hero — Portfolio LVR (owned) KPI | rendered-at | — | verified | properties/page.tsx averageLvr = calculateOwnedPortfolioLvr(properties) → PropertiesHero KpiCell |
+| Portfolio LVR — owned properties | → | Scoreboard — portfolio tile (value · LVR · net worth) | rendered-at | — | verified | ScoreboardClient MiniStat 'Portfolio LVR — owned' reads snapshot gearing.portfolioLVR (the same producer via the route) |
+| Property.currentValue | → | Owned-portfolio LVR (the ONE producer) | feeds | — | verified | portfolioLvr.ts sums owned (type !== 'RENTAL') currentValue as the denominator |
+| Loan.principal | → | Owned-portfolio LVR (the ONE producer) | feeds | — | verified | portfolioLvr.ts sums property-attached loans[].principal over owned rows as the numerator |
 
 ---
 

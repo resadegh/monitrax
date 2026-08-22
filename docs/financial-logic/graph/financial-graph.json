@@ -2515,7 +2515,7 @@
       "kind": "orchestrator",
       "label": "Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)",
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 496,
+      "line": 497,
       "layer": "route",
       "domain": "intelligence",
       "trailStage": null,
@@ -5551,7 +5551,7 @@
       "kind": "ui-surface",
       "label": "Property list — tile cashflow",
       "file": "app/dashboard/properties/page.tsx",
-      "line": 494,
+      "line": 495,
       "layer": "ui",
       "domain": "core",
       "trailStage": null,
@@ -6781,13 +6781,13 @@
       "regime": null,
       "semanticKey": null,
       "produces": "TaxPackSummary — PROPERTY-SCOPED totals + per-property P&L + ATO-label rollup + the MON-170 reconciliation block (every excluded row counted).",
-      "formula": "classify each window transaction into exactly one of {included (propertyId set), transfers (isTransfer), loanRepayments (loanId), notPropertyScoped}; totals/perProperty/atoLabels over included only; HARD-ASSERT included + Σexcluded = total.",
+      "formula": "classify each window transaction into exactly one of {included (propertyId set), transfers (isTransfer), loanRepayments (loanId), notPropertyScoped}; totals/perProperty/atoLabels over included only; HARD-ASSERT included + Σexcluded = total; MON-184: label lookup falls back through the category hierarchy (l1,l2,sub) → (l1,l2) → (l1) — a row is noAtoMapping only when NO level is mapped.",
       "authority": "M3 brief §A scope ruling (property-scoped, exclusions stated) · §19.1 nothing-silent · actualCashflow.ts transfer convention",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "lib/bookkeeping/taxPack/summary.ts:159 + tests/bookkeeping/mon169170PackReconciliation.test.ts (worked example)",
-      "workedExample": "7 fixture rows: included 3 ($850) + transfers 2 ($1,050) + loanRepayments 1 ($300) + notPropertyScoped 1 ($2,000) = 7; incomeGross $500, expenseTotal $350.",
-      "verifiedDate": "2026-08-19",
+      "workedExample": "9 fixture rows: included 5 ($990) + transfers 2 ($1,050) + loanRepayments 1 ($300) + notPropertyScoped 1 ($2,000) = 9; incomeGross $500, expenseTotal $490; labelling partition labelled 2 ($580, one via the (l1,l2) fallback) + noCategory 1 ($150) + noAtoMapping 2 ($260) = 5.",
+      "verifiedDate": "2026-08-22",
       "status": "documented"
     },
     {
@@ -6935,6 +6935,69 @@
       "verifiedBy": "app/dashboard/ScoreboardClient.tsx:1",
       "workedExample": null,
       "verifiedDate": "2026-08-19",
+      "status": "documented"
+    },
+    {
+      "id": "engine.calculations.calculateOwnedPortfolioLvr",
+      "kind": "engine",
+      "label": "Owned-portfolio LVR (the ONE producer)",
+      "file": "lib/calculations/portfolioLvr.ts",
+      "line": 32,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Portfolio LVR percent (2dp, producer-owned rounding) on the ruled basis: OWNED properties only (type !== 'RENTAL'), property-attached loan principal over owned current value.",
+      "formula": "= round2( Σ owned attached loan.principal / Σ owned currentValue × 100 ); 0 when no owned value. Personal/credit-card debt never included; RENTAL rows leave both sides with their loans.",
+      "authority": "M3 punch-list brief §C-3 ruling (one producer wins; basis labelled on every surface) · MON-182 census (snapshot all-liabilities basis deleted; page screen arithmetic deleted)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/calculations/portfolioLvr.ts:32 + tests/calculations/portfolioLvr.test.ts (§19.2 worked example + Ring-1 one-producer guard)",
+      "workedExample": "owned 900k+600k=1.5M value, attached 500k+300k=800k debt, RENTAL 380k/100k excluded → 53.33%.",
+      "verifiedDate": "2026-08-22",
+      "status": "documented"
+    },
+    {
+      "id": "number.portfolio.ownedPortfolioLvr",
+      "kind": "number",
+      "label": "Portfolio LVR — owned properties",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "ownedPortfolioLvr",
+      "produces": "gearing.portfolioLVR on /api/portfolio/snapshot AND the properties-page hero figure — the SAME 2dp value from the one engine (MON-182 fix; was 41.3% vs 40.8% from two live bases).",
+      "formula": "= calculateOwnedPortfolioLvr(properties)",
+      "authority": "M3 punch-list brief §C-3 · RING3_M3_PUNCH_FIXES.md Part 2 (D-21 predicted movement: scoreboard 41.3 → 40.8; page unchanged)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/api/portfolio/snapshot/route.ts (gearing block) + app/dashboard/properties/page.tsx (averageLvr) — both call the one engine; Ring-1 guard test pins it",
+      "workedExample": null,
+      "verifiedDate": "2026-08-22",
+      "status": "documented"
+    },
+    {
+      "id": "ui.properties.heroPortfolioLvr",
+      "kind": "ui-surface",
+      "label": "Properties hero — Portfolio LVR (owned) KPI",
+      "file": "components/properties/PropertiesHero.tsx",
+      "line": 1,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "ownedPortfolioLvr",
+      "produces": "The hero KPI cell 'Portfolio LVR — owned' — renders the page's averageLvr, which reads the ONE engine (no screen arithmetic since MON-182).",
+      "formula": null,
+      "authority": null,
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "components/properties/PropertiesHero.tsx KpiCell label 'Portfolio LVR — owned'",
+      "workedExample": null,
+      "verifiedDate": "2026-08-22",
       "status": "documented"
     }
   ],
@@ -10710,6 +10773,41 @@
       "type": "rendered-at",
       "source": "verified",
       "evidence": "ScoreboardClient reads /api/portfolio/snapshot netWorth (calculateNetWorth-produced) directly"
+    },
+    {
+      "from": "engine.calculations.calculateOwnedPortfolioLvr",
+      "to": "number.portfolio.ownedPortfolioLvr",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "the function IS the number's producer; snapshot route assigns it to gearing.portfolioLVR unrounded-further"
+    },
+    {
+      "from": "number.portfolio.ownedPortfolioLvr",
+      "to": "ui.properties.heroPortfolioLvr",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "properties/page.tsx averageLvr = calculateOwnedPortfolioLvr(properties) → PropertiesHero KpiCell"
+    },
+    {
+      "from": "number.portfolio.ownedPortfolioLvr",
+      "to": "ui.scoreboard.portfolioTile",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "ScoreboardClient MiniStat 'Portfolio LVR — owned' reads snapshot gearing.portfolioLVR (the same producer via the route)"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.calculations.calculateOwnedPortfolioLvr",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "portfolioLvr.ts sums owned (type !== 'RENTAL') currentValue as the denominator"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.calculations.calculateOwnedPortfolioLvr",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "portfolioLvr.ts sums property-attached loans[].principal over owned rows as the numerator"
     }
   ]
 }

@@ -61,6 +61,8 @@
     "tests/dashboard/tileRegistry.test.ts": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. D-19 law tests.",
     "lib/dashboard/scoreboardDisplay.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Pure scoreboard DISPLAY helpers (window selection + render order, MON-180/183) — no financial calculation; every figure comes from its canonical engine.",
     "tests/dashboard/scoreboardDisplay.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Test for the display helpers.",
-    "tests/dashboard/reportTileKeys.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. MON-186 module-key guard test (source scan)."
+    "tests/dashboard/reportTileKeys.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. MON-186 module-key guard test (source scan).",
+    "lib/calculations/portfolioLvr.ts": "NEW in M3 punch-list PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. THE owned-portfolio-LVR producer (MON-182); modelled in Layer 1 as engine.calculations.calculateOwnedPortfolioLvr with a verified file:line anchor.",
+    "tests/calculations/portfolioLvr.test.ts": "NEW in M3 punch-list PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 worked example + Ring-1 one-producer guard for MON-182."
   }
 }

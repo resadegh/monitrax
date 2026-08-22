@@ -63,7 +63,8 @@ export interface PropertyTileData {
 
 export interface PropertyTileMetrics {
   equity: number;
-  lvr: number;
+  /** Per-property LVR from the canonical calculateLVR (lib/utils/calculations). */
+  perPropertyLvr: number;
   gainPercentage: number;
   rentalYield: number;
   cashflow: number;
@@ -172,7 +173,7 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
   const isMobile = useIsMobile();
   const meta = typeMeta(property.type);
   const Icon = meta.icon;
-  const lvr = lvrTone(metrics.lvr);
+  const lvr = lvrTone(metrics.perPropertyLvr);
   const isPositiveGain = metrics.gainPercentage >= 0;
   const isInvestment = property.type === 'INVESTMENT';
   // MON-039c: a property with rental income is income-producing even when it's
@@ -390,21 +391,21 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
                   <span className={`text-[9px] font-bold uppercase tracking-wider ${lvr.text} opacity-70`}>{lvr.label}</span>
                 </div>
                 <p className={`mt-0.5 text-lg font-semibold tabular-nums ${lvr.text}`}>
-                  {metrics.lvr.toFixed(1)}%
+                  {metrics.perPropertyLvr.toFixed(1)}%
                 </p>
                 {/* mini LVR bar */}
                 <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
                   <motion.div
                     aria-hidden
                     className={`h-full rounded-full ${
-                      metrics.lvr >= 80
+                      metrics.perPropertyLvr >= 80
                         ? 'bg-amber-500'
-                        : metrics.lvr >= 60
+                        : metrics.perPropertyLvr >= 60
                         ? 'bg-amber-400'
                         : 'bg-emerald-500'
                     }`}
-                    initial={reduced ? { width: `${Math.min(100, metrics.lvr)}%` } : { width: 0 }}
-                    animate={{ width: `${Math.min(100, metrics.lvr)}%` }}
+                    initial={reduced ? { width: `${Math.min(100, metrics.perPropertyLvr)}%` } : { width: 0 }}
+                    animate={{ width: `${Math.min(100, metrics.perPropertyLvr)}%` }}
                     transition={reduced ? { duration: 0 } : { duration: 0.9, ease: appleEase, delay: 0.2 + 0.04 * index }}
                   />
                 </div>

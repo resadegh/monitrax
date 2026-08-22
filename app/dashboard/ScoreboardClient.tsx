@@ -236,7 +236,9 @@ export default function ScoreboardClient() {
           >
             <BigNumber label="Property value" value={formatCurrency(data?.snapshot?.propertyValue ?? 0)} />
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <MiniStat label="Portfolio LVR" value={`${(data?.snapshot?.portfolioLVR ?? 0).toFixed(1)}%`} />
+              {/* MON-182: gearing.portfolioLVR is the ONE producer
+                  (lib/calculations/portfolioLvr) — basis named in the label. */}
+              <MiniStat label="Portfolio LVR — owned" value={`${(data?.snapshot?.portfolioLVR ?? 0).toFixed(1)}%`} />
               <MiniStat
                 label="Net worth"
                 value={formatCurrency(data?.snapshot?.netWorth ?? 0)}
