@@ -70,3 +70,77 @@ Verifies the pure display rules on fixtures and the static key wiring in source.
 verify: the rendered tiles on live data (the brief's Ring-3 handout — EOFY tile leading
 with FY2025-26, intake count, full strip), the gated 404/503 behaviour on a deployed build,
 or any money figure (none moved — changesNumbers: NO).
+
+---
+
+## Session: m3-punch-pr2 (Code, Fable 5) — BRIEF_M3_PUNCHLIST_AND_CLOSEOUT execution, PR 2 of 2 (§B + §C-3 + §E)
+
+### Changes Made
+- **Type**: Fix (number-moving). `changesNumbers: YES` by contract — D-21 honoured: the
+  expected-movement brief `docs/verification/briefs/RING3_M3_PUNCH_FIXES.md` was COMMITTED
+  BEFORE any fix code (first commit of the branch).
+- **Scope**: D-12 pack ATO labelling (MON-184) + the ONE portfolio-LVR producer (MON-182)
+  + §E M2.5 close-out
+- **Description**:
+  - **MON-184 (§B)** — live evidence (#1601 Ring-3): all 35 property rows carried a
+    category yet ZERO reached an ATO label. Diagnosis (verified in source + the verdict's
+    category listing): live rows carry the UPPERCASE enum values the link route writes as
+    `categoryLevel1` (RATES, INSURANCE, UTILITIES, MAINTENANCE, MODIFICATIONS), while the
+    seeds spoke title-case triples and the lookup demanded an EXACT triple match. Fix at
+    the ONE producer: `buildTaxPackSummary`'s lookup now falls back
+    `(l1,l2,sub) → (l1,l2) → (l1)` (a row is `noAtoMapping` only when NO level is mapped),
+    and `SYSTEM_TAX_MAPPING_SEEDS` gains the enum vocabulary → rental-schedule lines
+    (RENTAL→21F · RATES→21Q · INSURANCE→21V · UTILITIES→21S · MAINTENANCE→21M ·
+    STRATA→21H · LAND_TAX→21W · LOAN_INTEREST→21I · PROPERTY_MANAGEMENT→21G).
+    **Deliberately NOT mapped** (they stay honestly unmapped for the tile to surface):
+    MODIFICATIONS (capital-vs-repair is the tax agent's call — auto-labelling would hide
+    exactly the review the pack exists to prompt) and RENT (the literal collides across
+    the income/expense enums; direction-blind mappings would mislabel). D-21 movement:
+    totals/identity/perProperty byte-identical; movement confined to the atoLabelling
+    partition.
+  - **MON-182 (§C-3)** — two live producers disagreed (snapshot all-liabilities /
+    all-property-value 41.3% vs page owned-only screen arithmetic 40.8%).
+    `lib/calculations/portfolioLvr.ts` is now THE producer: owned properties only,
+    property-attached principal, producer-owned 2dp rounding (MON-154 lesson). The
+    snapshot's inline basis and the page's arithmetic are DELETED; both surfaces read the
+    engine and name the basis ("Portfolio LVR — owned"). D-21: the scoreboard figure moves
+    41.3% → 40.8%; the page figure does not move. Hidden-family LVR producers recorded
+    HELD under D-20 (portfolioEngine:493 · health metricAggregation:402 · testing
+    exporter:334) — untouched, out of kept scope.
+  - **§E — M2.5 CLOSED** with per-condition evidence in the plan (census at seed ·
+    source-lock/financial-surfaces/A3 green · expectedMoves landed per VR-045/047/047B +
+    #1601 · Ring-3 PASS 2026-08-22; honest boundary: PR-2's own movements verify at
+    `RING3_M3_PUNCH_FIXES.md`, and condition 5 — the complete Matrix sweep — closes the
+    programme, not M2.5).
+  - **Census note**: the new lib producer (+1 lvrGearing) was offset by removing a
+    TEXT-MATCH PHANTOM — `const lvr = calculateLVR(property)` consumption locals renamed
+    `perPropertyLvr` (they derive nothing; the pattern read the lowercase `lvr` as a
+    derivation). Ratchet green AT seed — never a reseed of a rise.
+
+### Files Modified
+- `docs/verification/briefs/RING3_M3_PUNCH_FIXES.md` — NEW, committed FIRST (D-21)
+- `lib/bookkeeping/taxPack/summary.ts` — hierarchy fallback at the one lookup
+- `lib/bookkeeping/taxCategoryMapping.ts` — enum seed vocabulary (+9 seeds, 2 stated omissions)
+- `tests/bookkeeping/mon169170PackReconciliation.test.ts` — 9-row worked example (fallback + unmapped)
+- `lib/calculations/portfolioLvr.ts` — NEW: THE owned-portfolio-LVR producer
+- `app/api/portfolio/snapshot/route.ts` — gearing reads the one engine
+- `app/dashboard/properties/page.tsx` — screen arithmetic deleted; phantom locals renamed
+- `components/properties/PropertiesHero.tsx` + `PropertyTile.tsx` + `ScoreboardClient.tsx` — basis labels + field rename
+- `tests/calculations/portfolioLvr.test.ts` — NEW: Ring-0 worked example + Ring-1 one-producer guard
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — engine + number + surface modelled; anchors re-pinned
+- `tests/golden/parityMatrix.ts` — KNOWN_UNRESOLVED +1 (hero LVR) with growth path
+- `docs/strategy/MONITRAX_V1_MASTER_PLAN.md` — M2.5 tick + cursor + §5 + §9
+- `docs/issues/ISSUES.json` + `ISSUES.md` — MON-182/184 → FIXING (follow-up commit with the PR number)
+
+### Build Status
+- [x] `npx tsc --noEmit` clean · pack suite 6/6 · portfolioLvr 7/7 · golden/neomatrix/issues 371/371
+- [x] `neomatrix:check` (anchors current, census gate 0 uncovered) · `census:producers:check`
+      (AT seed) · `lint:source-lock` · `lint:financial-surfaces` — all green
+- [x] Full vitest suite: run before push (result in the PR body)
+
+### Coverage boundary
+Ring-0 proves the fallback + formula on fixtures; Ring-1 proves the one-producer wiring in
+source. Does NOT prove the live movement — that is `RING3_M3_PUNCH_FIXES.md` (labelled>0
+with the predicted residue; LVR identical on both surfaces at ~40.8%), run by the Matrix
+after merge + deploy. XLSX/PDF label rendering follows the same summary object but was not
+opened in this session.
