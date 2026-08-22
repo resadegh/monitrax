@@ -812,7 +812,13 @@ function BalancesPageContent() {
           ) : (
             <div className="mt-6 anim-rise">
               <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                <span>Net position</span>
+                {/* M3 brief §D: this figure is ACCOUNTS-ONLY (cash + credit −
+                    account debt); property value/equity is deliberately not in
+                    it. The old label "Net position" presented it as THE net
+                    position — a red −$1.7M that reads as net worth is an
+                    honesty failure, not a data failure. Label states its
+                    basis; zero calculation changes. */}
+                <span>Accounts net — excludes property</span>
                 {/* Phase 12 PR 3c.2e — confidence indicator. Renders only
                     when ≥1 MANUAL account is stale. Derived inline
                     using the same `isBalanceStale` SSOT the chip and

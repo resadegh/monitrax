@@ -55,6 +55,9 @@
     "lib/bookkeeping/propertyLink.ts": "NEW in M3 PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Link→property attribution rule; modelled in Layer 1 (engine.bookkeeping.propertyLink.resolveLinkPropertyId).",
     "app/api/admin/maintenance/backfill-transaction-property/route.ts": "NEW in M3 PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Admin one-time backfill; dry-run default.",
     "tests/bookkeeping/mon168PropertyStampGuard.test.ts": "NEW in M3 PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-1 guard test.",
-    "tests/bookkeeping/mon169170PackReconciliation.test.ts": "NEW in M3 PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 fixture test."
+    "tests/bookkeeping/mon169170PackReconciliation.test.ts": "NEW in M3 PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 fixture test.",
+    "lib/dashboard/tileRegistry.ts": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. D-19 tile registry — pure config + the visibility law (no money arithmetic).",
+    "app/dashboard/ScoreboardClient.tsx": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. v1 scoreboard client — modelled in Layer 1 (ui.scoreboard.* surfaces); reads engines, computes nothing.",
+    "tests/dashboard/tileRegistry.test.ts": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. D-19 law tests."
   }
 }

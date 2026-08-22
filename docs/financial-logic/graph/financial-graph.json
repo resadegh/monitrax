@@ -6894,6 +6894,48 @@
       "workedExample": null,
       "verifiedDate": "2026-08-19",
       "status": "documented"
+    },
+    {
+      "id": "ui.scoreboard.propertyCashflowStrip",
+      "kind": "ui-surface",
+      "label": "Scoreboard — per-property cashflow strip",
+      "file": "app/dashboard/ScoreboardClient.tsx",
+      "line": 1,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "propertyCashflow",
+      "produces": "Each property's monthly cashflow on the v1 scoreboard — READS computePropertyCashflow with the identical inputs the properties list passes (same semanticKey ⇒ A3 convergence with the list/detail surfaces).",
+      "formula": null,
+      "authority": "D-16/D-19 (M3.4 scoreboard)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/dashboard/ScoreboardClient.tsx:1",
+      "workedExample": null,
+      "verifiedDate": "2026-08-19",
+      "status": "documented"
+    },
+    {
+      "id": "ui.scoreboard.portfolioTile",
+      "kind": "ui-surface",
+      "label": "Scoreboard — portfolio tile (value · LVR · net worth)",
+      "file": "app/dashboard/ScoreboardClient.tsx",
+      "line": 1,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "netWorth",
+      "produces": "Direct fields off /api/portfolio/snapshot (netWorth, assets.properties.totalValue, gearing.portfolioLVR) — zero screen arithmetic.",
+      "formula": null,
+      "authority": "D-16/D-19 (M3.4 scoreboard)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/dashboard/ScoreboardClient.tsx:1",
+      "workedExample": null,
+      "verifiedDate": "2026-08-19",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -10654,6 +10696,20 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "transfer marking writes isTransfer, the pack classifier reads it (excluded.transfers)"
+    },
+    {
+      "from": "engine.propertyCashflow.computePropertyCashflow",
+      "to": "ui.scoreboard.propertyCashflowStrip",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "ScoreboardClient computePropertyCashflow({income,expenses,loans,transactions}) — identical inputs to the properties list page"
+    },
+    {
+      "from": "number.netWorth",
+      "to": "ui.scoreboard.portfolioTile",
+      "type": "rendered-at",
+      "source": "verified",
+      "evidence": "ScoreboardClient reads /api/portfolio/snapshot netWorth (calculateNetWorth-produced) directly"
     }
   ]
 }

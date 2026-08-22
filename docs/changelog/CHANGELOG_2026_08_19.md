@@ -266,3 +266,23 @@ verified by type/lint/test gates; the RENDERED behaviour of each fix is on the M
 
 ### Build Status
 - [x] TypeScript clean · [x] bookkeeping suite 323 green (incl. the two new files) · [x] `lint:source-lock` ✓ · [x] `lint:financial-surfaces` ✓ · [x] `census:producers:check` ✓ (phantom fixed by inlining, never reseeded) · [x] `neomatrix:check` ✓ (0 uncovered) · [x] `issues:check` ✓ (166 valid)
+
+
+## Session: m3-pr2-scoreboard (Code, Fable 5)
+
+### Changes Made
+- **Type**: Feature (changesNumbers: NO — every number READ from an existing engine/API field)
+- **Scope**: M3 PR-2 per `BRIEF_M3_PACK_AND_SCOREBOARD.md` §C (D-16 scoreboard + D-19 tile registry) + §D (balances relabel)
+
+### Files Modified
+- `lib/dashboard/tileRegistry.ts` — NEW: TileDef + TILE_REGISTRY (5 v1 + 9 stage tiles) + the verbatim visibility law + `tileSuppressFlagKey`
+- `app/dashboard/ScoreboardClient.tsx` — NEW: the v1 scoreboard client (kept engines only; HomeClient untouched)
+- `app/dashboard/page.tsx` — MODULE_HOME-enabled path renders ScoreboardClient (redirect unchanged while hidden)
+- `app/api/feature-flags/modules/route.ts` — response gains `suppressedTiles` (same flag store, suppress-only semantics)
+- `app/admin/feature-flags/page.tsx` — "Dashboard tiles" section (computed state + suppress toggles, lazily-created flags)
+- `app/dashboard/balances/page.tsx` — §D: "Net position" → "Accounts net — excludes property" (label only)
+- `tests/dashboard/tileRegistry.test.ts` — NEW: 8 law tests
+- Neomatrix: ui.scoreboard.propertyCashflowStrip + ui.scoreboard.portfolioTile modelled with source semanticKeys (A3)
+
+### Build Status
+- [x] TypeScript clean · [x] tile tests 8/8 + deadLinkGuard 2/2 · [x] census ✓ · [x] both lints ✓ · [x] neomatrix ✓
