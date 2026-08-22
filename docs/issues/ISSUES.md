@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**173 total** · 112 open · 🔵 48 · 🟡 16 · 🟠 33 · 🟢 15 · ✅ 59
+**173 total** · 112 open · 🔵 48 · 🟡 12 · 🟠 37 · 🟢 15 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -173,13 +173,13 @@
 | MON-177 | 🔵 OPEN | 🟡 | yes | Recurring page hand-rolls monthly run-rate with approximate constants (4.33/2.17) and treats unknown patterns as monthly | — | — |
 | MON-178 | 🔵 OPEN | 🟡 | yes | Legacy tax-time report labels an engine-free subtraction 'Net Taxable Income' in a document meant for an accountant | — | — |
 | MON-179 | 🔵 OPEN | 🟡 | yes | HELD (hidden-only) trio in the legacy report layer: ANNUAL treated as monthly in declared burn; second health-score producer; investments valued two ways in one context | — | — |
-| MON-180 | 🟡 DIAGNOSED | 🟡 | no | Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back | — | n/a |
-| MON-181 | 🟡 DIAGNOSED | 🟡 | no | Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without | — | n/a |
+| MON-180 | 🟠 FIXING | 🟡 | no | Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back | ##1605 | ✅ |
+| MON-181 | 🟠 FIXING | 🟡 | no | Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without | ##1605 | n/a |
 | MON-182 | 🟡 DIAGNOSED | 🟠 | yes | Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal) | — | — |
-| MON-183 | 🟡 DIAGNOSED | 🟢 | no | Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule | — | n/a |
+| MON-183 | 🟠 FIXING | 🟢 | no | Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule | ##1605 | ✅ |
 | MON-184 | 🟡 DIAGNOSED | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | — | — |
 | MON-185 | 🔵 OPEN | 🟡 | no | DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix | — | n/a |
-| MON-186 | 🟡 DIAGNOSED | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | — | n/a |
+| MON-186 | 🟠 FIXING | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | ##1605 | ✅ |
 
 ---
 
@@ -2963,7 +2963,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/
 
 ### MON-180 — Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
 
 > **What was wrong:** In the first months of a new financial year the 'EOFY readiness' tile looks at the new, nearly-empty year and happily says everything is tax-ready — while the year you actually need to prepare for your accountant (the one that just ended) still has unlabelled rows the tile never mentions.
 >
@@ -2973,14 +2973,15 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/
 
 - **Root cause:** `app/dashboard/ScoreboardClient.tsx:101`
 - **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx EOFY tile (the only consumer — display window logic only; pack numbers untouched)`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** `tests/dashboard/scoreboardDisplay.test.ts#MON-180 — the EOFY tile window rule`
 - **Detail:** `M3 punch list §C-1 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
 
-Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes.
+Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
 
 ### MON-181 — Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
 
 > **What was wrong:** The 'needs review' tile on the scoreboard shows a dash for every account, always — the page asks the review-queue API without saying which confidence band it wants, the API rejects the request, and the tile treats the rejection as 'no data'.
 >
@@ -2990,10 +2991,11 @@ Depth-sweep class (b): a vacuously-true empty state hiding missing capability. R
 
 - **Root cause:** `app/dashboard/ScoreboardClient.tsx:103`, `app/api/unified-transactions/review-queue/route.ts:31`
 - **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx intake tile (display count only — no money number; the queue route itself is unchanged)`
+- **Fix PR(s):** ##1605
 - **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `M3 punch list §C-2 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
 
-Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed.
+Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
 
 ### MON-182 — Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal)
 
@@ -3014,7 +3016,7 @@ SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLV
 
 ### MON-183 — Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule
 
-**🟡 DIAGNOSED** · 🟢 low · changes numbers: **no** · area: dashboard · opened 2026-08-22
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: dashboard · opened 2026-08-22
 
 > **What was wrong:** The per-property cashflow strip shows 4 properties when you have 6, with no hint that anything is missing or how the 4 were chosen.
 >
@@ -3024,10 +3026,11 @@ SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLV
 
 - **Root cause:** `app/dashboard/ScoreboardClient.tsx:221`
 - **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx cashflow strip (render set + order only; each tile still reads computePropertyCashflow — no number changes)`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** `tests/dashboard/scoreboardDisplay.test.ts#MON-183 — the strip renders ALL rows, worst monthly figure first`
 - **Detail:** `M3 punch list §C-4 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
 
-Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order.
+Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
 
 ### MON-184 — Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels [])
 
@@ -3059,7 +3062,7 @@ REGISTER-ONLY (brief law): NO code change, NO auto-fix, NO data write by any ses
 
 ### MON-186 — MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-22
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-22
 
 > **What was wrong:** When the scoreboard went live, the switch that used to mean 'the old Home dashboard family' was turned on to mean 'the new scoreboard'. Two leftover surfaces still keyed to that switch came back on with it: the legacy Financial Overview report tile reappeared on the Reports page, and the old Home page's money-flow API is open again with nothing using it. The old Tax-Time report tile also has no switch at all, so it always shows despite the standing ruling to hide legacy report tiles.
 >
@@ -3069,8 +3072,9 @@ REGISTER-ONLY (brief law): NO code change, NO auto-fix, NO data write by any ses
 
 - **Root cause:** `app/dashboard/reports/page.tsx:66`, `app/api/money-flow/route.ts:22`
 - **Downstream consumers (§19.4):** `app/dashboard/reports/page.tsx REPORT_TYPES — Financial Overview tile (re-keyed MODULE_CFO) + Tax-Time tile (keyed MODULE_TAX; today NO key, always visible)`, `app/api/money-flow/route.ts moduleApiGuard (re-keyed MODULE_HOUSEHOLD; no kept consumer — HomeClient unmounted)`, `Correctly ON at the flip, NO change: app/dashboard/page.tsx scoreboard, trailNav + mobile-tab Home entries`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** `tests/dashboard/reportTileKeys.test.ts#MON-186 — report tiles + legacy money-flow API pin their module keys`
 - **Detail:** `M3 punch list §D (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · MODULE_HOME flip 2026-08-22 · exposure class`
 
-Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly.
+Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
 

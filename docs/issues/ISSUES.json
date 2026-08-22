@@ -4914,12 +4914,14 @@
       "downstreamConsumers": [
         "app/dashboard/ScoreboardClient.tsx EOFY tile (the only consumer — display window logic only; pack numbers untouched)"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        "#1605"
+      ],
+      "test": "tests/dashboard/scoreboardDisplay.test.ts#MON-180 — the EOFY tile window rule",
       "opened": "2026-08-22",
       "id": "MON-180",
       "title": "Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "area": "dashboard",
@@ -4929,7 +4931,7 @@
         "check": "Open the dashboard in August: the EOFY tile leads with FY2025-26 and its real not-ready count, instead of claiming 'All rows Tax-ready' for the empty new year."
       },
       "tracker": "M3 punch list §C-1 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22",
-      "notes": "Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes."
+      "notes": "Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge)."
     },
     {
       "rootCause": [
@@ -4940,12 +4942,14 @@
       "downstreamConsumers": [
         "app/dashboard/ScoreboardClient.tsx intake tile (display count only — no money number; the queue route itself is unchanged)"
       ],
-      "fixPRs": [],
+      "fixPRs": [
+        "#1605"
+      ],
       "test": null,
       "opened": "2026-08-22",
       "id": "MON-181",
       "title": "Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "medium",
       "changesNumbers": false,
       "area": "dashboard",
@@ -4955,7 +4959,7 @@
         "check": "The intake tile shows a number (the pending review count) instead of '—'; it reads 0 when nothing is waiting, and '—' only if the request genuinely fails."
       },
       "tracker": "M3 punch list §C-2 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22",
-      "notes": "Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed."
+      "notes": "Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge)."
     },
     {
       "rootCause": [
@@ -4993,12 +4997,14 @@
       "downstreamConsumers": [
         "app/dashboard/ScoreboardClient.tsx cashflow strip (render set + order only; each tile still reads computePropertyCashflow — no number changes)"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        "#1605"
+      ],
+      "test": "tests/dashboard/scoreboardDisplay.test.ts#MON-183 — the strip renders ALL rows, worst monthly figure first",
       "opened": "2026-08-22",
       "id": "MON-183",
       "title": "Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "low",
       "changesNumbers": false,
       "area": "dashboard",
@@ -5008,7 +5014,7 @@
         "check": "All 6 properties appear in the strip, the biggest monthly loss first."
       },
       "tracker": "M3 punch list §C-4 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22",
-      "notes": "Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order."
+      "notes": "Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge)."
     },
     {
       "rootCause": [
@@ -5070,12 +5076,14 @@
         "app/api/money-flow/route.ts moduleApiGuard (re-keyed MODULE_HOUSEHOLD; no kept consumer — HomeClient unmounted)",
         "Correctly ON at the flip, NO change: app/dashboard/page.tsx scoreboard, trailNav + mobile-tab Home entries"
       ],
-      "fixPRs": [],
-      "test": null,
+      "fixPRs": [
+        "#1605"
+      ],
+      "test": "tests/dashboard/reportTileKeys.test.ts#MON-186 — report tiles + legacy money-flow API pin their module keys",
       "opened": "2026-08-22",
       "id": "MON-186",
       "title": "MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE",
-      "status": "DIAGNOSED",
+      "status": "FIXING",
       "severity": "high",
       "changesNumbers": false,
       "area": "gating",
@@ -5085,7 +5093,7 @@
         "check": "On the Reports page: the Financial Overview and Tax-Time tiles are GONE; the accountant pack card is untouched. /api/money-flow returns the module-gated 503."
       },
       "tracker": "M3 punch list §D (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · MODULE_HOME flip 2026-08-22 · exposure class",
-      "notes": "Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly."
+      "notes": "Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge)."
     }
   ]
 }
