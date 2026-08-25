@@ -36,6 +36,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { computePropertyCashflow } from '@/lib/calculations/propertyCashflow';
+import { calculateOwnedPortfolioLvr } from '@/lib/calculations/portfolioLvr';
 import { calculateEquity as calcPropertyEquity } from '@/lib/utils/calculations';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
@@ -518,7 +519,9 @@ function PropertiesPageContent() {
     (sum, p) => sum + (p.loans?.reduce((s, l) => s + l.principal, 0) || 0),
     0,
   );
-  const averageLvr = totalValue > 0 ? (totalLoans / totalValue) * 100 : 0;
+  // MON-182: the ONE portfolio-LVR producer — the inline division that used
+  // to live here was a second live basis disagreeing with the snapshot's.
+  const averageLvr = calculateOwnedPortfolioLvr(properties);
   const heroSegments: PropertiesHeroSegment[] = (
     ['HOME', 'INVESTMENT', 'RENTAL'] as const
   )
@@ -656,7 +659,7 @@ function PropertiesPageContent() {
                 <tbody className="divide-y">
                   {filteredProperties.map((property) => {
                     const { gain, percentage } = calculateGain(property);
-                    const lvr = calculateLVR(property);
+                    const perPropertyLvr = calculateLVR(property);
                     const equity = calculateEquity(property);
                     return (
                       <tr
@@ -682,8 +685,8 @@ function PropertiesPageContent() {
                         <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(property.purchasePrice)}</td>
                         <td className="px-4 py-3 text-right font-medium text-green-600">{formatCurrency(equity)}</td>
                         <td className="px-4 py-3 text-right">
-                          <span className={lvr > 80 ? 'text-red-600' : lvr > 60 ? 'text-yellow-600' : 'text-green-600'}>
-                            {lvr.toFixed(1)}%
+                          <span className={perPropertyLvr > 80 ? 'text-red-600' : perPropertyLvr > 60 ? 'text-yellow-600' : 'text-green-600'}>
+                            {perPropertyLvr.toFixed(1)}%
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -748,7 +751,7 @@ function PropertiesPageContent() {
         <div className="max-md:space-y-5 md:grid md:grid-cols-2 md:gap-6 xl:grid-cols-3">
           {filteredProperties.map((property, idx) => {
             const { percentage } = calculateGain(property);
-            const lvr = calculateLVR(property);
+            const perPropertyLvr = calculateLVR(property);
             const equity = calculateEquity(property);
             const rentalYield = calculateRentalYield(property);
             const cashflow = calculateCashflow(property);
@@ -786,7 +789,7 @@ function PropertiesPageContent() {
                   }}
                   metrics={{
                     equity,
-                    lvr,
+                    perPropertyLvr,
                     gainPercentage: percentage,
                     rentalYield,
                     cashflow,

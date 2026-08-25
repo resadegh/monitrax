@@ -1,5 +1,5 @@
 {
-  "comment": "Phase 41i.6b \u2014 pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny \u2014 adding entries here suppresses bugs the lint is designed to catch).",
+  "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
   "generatedAt": "2026-06-25T11:00:32.520Z",
   "count": 32,
   "entries": [
@@ -8,7 +8,7 @@
       "line": 2523,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits",
-      "note": "Line re-pinned 2073\u21922169 on 2026-07-16 (Phase 59 income-form insertions shifted the file; the violation itself is untouched/pre-existing). Re-pinned 2169\u21922277 on 2026-07-17 (MON-080 income-form insertions shifted the file; violation untouched)."
+      "note": "Line re-pinned 2073→2169 on 2026-07-16 (Phase 59 income-form insertions shifted the file; the violation itself is untouched/pre-existing). Re-pinned 2169→2277 on 2026-07-17 (MON-080 income-form insertions shifted the file; violation untouched)."
     },
     {
       "file": "app/dashboard/tax/page.tsx",
@@ -90,7 +90,7 @@
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 885,
+      "line": 886,
       "pattern": "INLINE_ARITHMETIC",
       "match": "asset.purchasePrice - asset.currentValue"
     },

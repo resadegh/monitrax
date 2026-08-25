@@ -136,8 +136,10 @@ export function PropertiesHero({
           <dl className="grid grid-cols-3 gap-3 sm:gap-5">
             <KpiCell label="Equity" value={formatCurrency(totalEquity)} accent="emerald" />
             <KpiCell label="Loans" value={formatCurrency(totalLoans)} accent="slate" />
+            {/* MON-182: basis named on the surface — owned properties,
+                property-attached principal (lib/calculations/portfolioLvr). */}
             <KpiCell
-              label="Avg LVR"
+              label="Portfolio LVR — owned"
               value={`${averageLvr.toFixed(1)}%`}
               accent={averageLvr >= 80 ? 'amber' : averageLvr >= 60 ? 'amber-soft' : 'emerald'}
             />

@@ -24,6 +24,7 @@ import {
 import { bankedTotalsFromResult, type BankedIncomeResult } from '@/lib/income/banked/aggregator';
 import { calculateLVR, calculateRentalYield } from '@/lib/utils/calculations';
 import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
+import { calculateOwnedPortfolioLvr } from '@/lib/calculations/portfolioLvr';
 // MON-014: per-property cashflow reads the ONE canonical engine (same as the
 // master snapshot + property pages) so the Home tiles never show gross rent in
 // place of cashflow when a loan lacks minRepayment.
@@ -1021,9 +1022,11 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
         // Gearing metrics
         gearing: {
-          portfolioLVR: totalPropertyValue > 0
-            ? Math.round((totalLiabilities / totalPropertyValue) * 10000) / 100
-            : 0,
+          // MON-182: THE portfolio-LVR producer (owned properties, attached
+          // principal — lib/calculations/portfolioLvr.ts). The old inline
+          // all-liabilities-over-all-property-value basis was a second live
+          // producer that disagreed with the properties page on the same data.
+          portfolioLVR: calculateOwnedPortfolioLvr(properties),
           debtToIncome: totalAnnualIncome > 0
             ? Math.round((totalLiabilities / totalAnnualIncome) * 100) / 100
             : 0,

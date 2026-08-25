@@ -93,9 +93,15 @@ export const KNOWN_UNRESOLVED: Record<string, { reason: string; growth: string }
   },
   'ui.scoreboard.portfolioTile': {
     reason:
-      'Renders three DIRECT fields off /api/portfolio/snapshot (netWorth · assets.properties.totalValue · gearing.portfolioLVR) with zero screen arithmetic; the netWorth parity group already asserts the producer. No independent derivation exists on this surface to diverge.',
+      'Renders three DIRECT fields off /api/portfolio/snapshot (netWorth · assets.properties.totalValue · gearing.portfolioLVR — the latter the ONE calculateOwnedPortfolioLvr producer since MON-182) with zero screen arithmetic; the netWorth parity group already asserts the producer. No independent derivation exists on this surface to diverge.',
     growth:
       'NeoAudit growth: a snapshot-route golden resolver asserting the three fields byte-match the engines (arrives with the Ring-2 snapshot-route harness).',
+  },
+  'ui.properties.heroPortfolioLvr': {
+    reason:
+      'MON-182: the hero KPI reads the page-level averageLvr, which since the fix IS a direct calculateOwnedPortfolioLvr call (screen arithmetic deleted) — the same engine the snapshot route assigns to gearing.portfolioLVR. The Ring-1 one-producer guard (tests/calculations/portfolioLvr.test.ts) pins both call sites; convergence on live data is RING3_M3_PUNCH_FIXES.md Part 2. A golden resolver here would re-run the identical engine call with no independent serialization path between.',
+    growth:
+      'NeoAudit growth: fold ownedPortfolioLvr into a snapshot-route golden parity group (route-serialized value vs page-side engine call) when the Ring-2 snapshot-route harness lands — that creates the independent path a parity assertion needs.',
   },
   'ui.reports.taxPackExport': {
     reason:

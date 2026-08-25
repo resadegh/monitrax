@@ -127,6 +127,30 @@ export const SYSTEM_TAX_MAPPING_SEEDS: readonly TaxMappingSeed[] = [
 
   // === Transfers (always informational — never income / never deductible) ===
   { level1: 'Transfer', atoLabel: 'Transfer (informational only)', notes: 'NOT income; NOT a deduction' },
+
+  // === Link-route enum vocabulary (MON-184, M3 punch-list PR-2) ===
+  // The transaction link route writes the RAW IncomeType / ExpenseCategory
+  // enum value as categoryLevel1 (level2/subcategory null) — that is the
+  // vocabulary live linked rows actually carry, and the title-case seeds
+  // above never matched it (Ring-3 on #1601: 35/35 property rows unmapped).
+  // Only rows already property-scoped by the pack reach these labels, so the
+  // rental-schedule reading is sound. UNAMBIGUOUS values only — deliberately
+  // absent, staying honestly `noAtoMapping` for the tile to surface:
+  //   MODIFICATIONS — capital improvement vs repair is the tax agent's call;
+  //     auto-labelling it would hide exactly the review the pack exists to
+  //     prompt (never guess deductibility — CLAUDE.md §19).
+  //   RENT — the literal collides across the enums (IncomeType RENT = rent
+  //     received; ExpenseCategory RENT = rent paid); mappings are direction-
+  //     blind, so either label would mislabel the other direction.
+  { level1: 'RENTAL', atoLabel: 'Rental income — gross rent', schedule: 'Rental Schedule', lineItem: '21F' },
+  { level1: 'RATES', atoLabel: 'Council rates', schedule: 'Rental Schedule', lineItem: '21Q' },
+  { level1: 'INSURANCE', atoLabel: 'Insurance', schedule: 'Rental Schedule', lineItem: '21V', notes: 'Property-scoped rows: building / landlord / contents' },
+  { level1: 'UTILITIES', atoLabel: 'Electricity / gas / water (rental)', schedule: 'Rental Schedule', lineItem: '21S' },
+  { level1: 'MAINTENANCE', atoLabel: 'Repairs and maintenance', schedule: 'Rental Schedule', lineItem: '21M' },
+  { level1: 'STRATA', atoLabel: 'Body corporate fees / strata levies', schedule: 'Rental Schedule', lineItem: '21H' },
+  { level1: 'LAND_TAX', atoLabel: 'Land tax', schedule: 'Rental Schedule', lineItem: '21W' },
+  { level1: 'LOAN_INTEREST', atoLabel: 'Interest on loans', schedule: 'Rental Schedule', lineItem: '21I' },
+  { level1: 'PROPERTY_MANAGEMENT', atoLabel: 'Property agent fees / commission', schedule: 'Rental Schedule', lineItem: '21G' },
 ];
 
 /**

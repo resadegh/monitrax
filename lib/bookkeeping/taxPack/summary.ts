@@ -312,6 +312,30 @@ export async function buildTaxPackSummary(
     mappingsByCategoryId.set(categoryId, await getMappingsForCategory(userId, categoryId));
   }
 
+  // MON-184: hierarchy fallback at the ONE lookup — (l1,l2,sub) → (l1,l2) →
+  // (l1). The exact-triple-only match was why live rows (uppercase enum
+  // level1, no level2) reached zero labels while their family was seeded. A
+  // row lands in noAtoMapping only when NO level of its hierarchy carries a
+  // mapping. The registry map above already holds EVERY user registry row
+  // (not just the transactions' exact triples), so fallback levels resolve
+  // from the same prefetched maps — no extra queries.
+  const resolveMappingsByHierarchy = (
+    level1: string,
+    level2: string,
+    subcategory: string
+  ): Awaited<ReturnType<typeof getMappingsForCategory>> => {
+    const candidates = [`${level1}|${level2}|${subcategory}`];
+    if (subcategory !== '') candidates.push(`${level1}|${level2}|`);
+    if (level2 !== '') candidates.push(`${level1}||`);
+    for (const key of candidates) {
+      const categoryId = categoryIdByTriple.get(key);
+      if (!categoryId) continue;
+      const mappings = mappingsByCategoryId.get(categoryId) ?? [];
+      if (mappings.length > 0) return mappings;
+    }
+    return [];
+  };
+
   // MON-170: every row that fails to reach a label is COUNTED, never dropped.
   const labelled = { count: 0, amount: 0 };
   const noCategory = { count: 0, amount: 0 };
@@ -323,10 +347,12 @@ export async function buildTaxPackSummary(
       noCategory.amount += abs;
       continue;
     }
-    const triple = `${tx.categoryLevel1}|${tx.categoryLevel2 ?? ''}|${tx.subcategory ?? ''}`;
-    const categoryId = categoryIdByTriple.get(triple);
-    const mappings = categoryId ? (mappingsByCategoryId.get(categoryId) ?? []) : [];
-    if (!categoryId || mappings.length === 0) {
+    const mappings = resolveMappingsByHierarchy(
+      tx.categoryLevel1,
+      tx.categoryLevel2 ?? '',
+      tx.subcategory ?? ''
+    );
+    if (mappings.length === 0) {
       noAtoMapping.count++;
       noAtoMapping.amount += abs;
       continue;
