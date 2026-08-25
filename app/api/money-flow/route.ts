@@ -11,6 +11,13 @@
  * Permission: `report.read` — same gate as `/api/master-snapshot` since
  * both expose aggregated financial views (no per-row CDR data leaves
  * the boundary).
+ *
+ * MON-186 (M3 punch list §D): was gated MODULE_HOME, which flipped ON
+ * 2026-08-22 to mean "the v1 scoreboard" — leaving this route open with NO
+ * kept consumer (the entities Sankey folded into the canvas; the activity
+ * Sankey reads /api/master-snapshot). Re-keyed to the module that owns its
+ * CONTENT family: the per-entity money-flow story = MODULE_ENTITIES.
+ * Hidden, not deleted.
  */
 
 import { NextResponse } from 'next/server';
@@ -19,7 +26,7 @@ import { getMoneyFlow } from '@/lib/services/moneyFlowService';
 import { moduleApiGuard } from '@/lib/featureFlags/moduleRouteGuard';
 
 export const GET = withPermission('report.read', async (_request, auth) => {
-    const gateBlocked = await moduleApiGuard('MODULE_HOME', auth.userId);
+    const gateBlocked = await moduleApiGuard('MODULE_ENTITIES', auth.userId);
     if (gateBlocked) return gateBlocked;
   try {
     const flow = await getMoneyFlow(auth.userId);

@@ -58,6 +58,9 @@
     "tests/bookkeeping/mon169170PackReconciliation.test.ts": "NEW in M3 PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 fixture test.",
     "lib/dashboard/tileRegistry.ts": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. D-19 tile registry — pure config + the visibility law (no money arithmetic).",
     "app/dashboard/ScoreboardClient.tsx": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. v1 scoreboard client — modelled in Layer 1 (ui.scoreboard.* surfaces); reads engines, computes nothing.",
-    "tests/dashboard/tileRegistry.test.ts": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. D-19 law tests."
+    "tests/dashboard/tileRegistry.test.ts": "NEW in M3 PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. D-19 law tests.",
+    "lib/dashboard/scoreboardDisplay.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Pure scoreboard DISPLAY helpers (window selection + render order, MON-180/183) — no financial calculation; every figure comes from its canonical engine.",
+    "tests/dashboard/scoreboardDisplay.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Test for the display helpers.",
+    "tests/dashboard/reportTileKeys.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. MON-186 module-key guard test (source scan)."
   }
 }

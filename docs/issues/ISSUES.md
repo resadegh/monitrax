@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**166 total** · 105 open · 🔵 47 · 🟡 10 · 🟠 36 · 🟢 12 · ✅ 59
+**173 total** · 112 open · 🔵 48 · 🟡 12 · 🟠 37 · 🟢 15 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -161,9 +161,9 @@
 | MON-165 | 🟠 FIXING | 🔴 | yes | Depreciation has FOUR divergent producers on kept surfaces — the pack and the depreciation page use a first-year-only formula (1.95x off the canonical engine on a 3-year-old DV schedule) | ##1595 | ✅ |
 | MON-166 | 🟠 FIXING | 🟡 | no | Depreciation rate rendered 100x too large on the properties dialog — 2.5% schedule shows as 250.00% p.a. | ##1595 | ✅ |
 | MON-167 | 🟠 FIXING | 🟢 | no | Dead-link guard misses object-literal 'to:' link fields — EditorialMoneyStoryHero carries three hidden-module links the guard cannot see | ##1595 | ✅ |
-| MON-168 | 🟠 FIXING | 🔴 | yes | Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking | ##1601 | ✅ |
-| MON-169 | 🟠 FIXING | 🔴 | yes | The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted) | ##1601 | ✅ |
-| MON-170 | 🟠 FIXING | 🟠 | yes | Pack ATO-label totals silently drop unmapped and uncategorised transactions | ##1601 | ✅ |
+| MON-168 | 🟢 VERIFIED | 🔴 | yes | Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking | ##1601 | ✅ |
+| MON-169 | 🟢 VERIFIED | 🔴 | yes | The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted) | ##1601 | ✅ |
+| MON-170 | 🟢 VERIFIED | 🟠 | yes | Pack ATO-label totals silently drop unmapped and uncategorised transactions | ##1601 | ✅ |
 | MON-171 | 🔵 OPEN | 🟠 | yes | Onboarding Review screen runs a parallel financial engine — raw minRepayment, no one-off gate, first number a user ever sees | — | — |
 | MON-172 | 🔵 OPEN | 🟠 | yes | CASH accounts invisible on /dashboard/balances — the cash-wallet the quick-add creates appears in no section and no total | — | — |
 | MON-173 | 🔵 OPEN | 🟠 | yes | Properties dialog local frequency table missing HALF_YEARLY — 6x overstated Budget column for half-yearly rows | — | — |
@@ -173,6 +173,13 @@
 | MON-177 | 🔵 OPEN | 🟡 | yes | Recurring page hand-rolls monthly run-rate with approximate constants (4.33/2.17) and treats unknown patterns as monthly | — | — |
 | MON-178 | 🔵 OPEN | 🟡 | yes | Legacy tax-time report labels an engine-free subtraction 'Net Taxable Income' in a document meant for an accountant | — | — |
 | MON-179 | 🔵 OPEN | 🟡 | yes | HELD (hidden-only) trio in the legacy report layer: ANNUAL treated as monthly in declared burn; second health-score producer; investments valued two ways in one context | — | — |
+| MON-180 | 🟠 FIXING | 🟡 | no | Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back | ##1605 | ✅ |
+| MON-181 | 🟠 FIXING | 🟡 | no | Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without | ##1605 | n/a |
+| MON-182 | 🟡 DIAGNOSED | 🟠 | yes | Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal) | — | — |
+| MON-183 | 🟠 FIXING | 🟢 | no | Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule | ##1605 | ✅ |
+| MON-184 | 🟡 DIAGNOSED | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | — | — |
+| MON-185 | 🔵 OPEN | 🟡 | no | DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix | — | n/a |
+| MON-186 | 🟠 FIXING | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | ##1605 | ✅ |
 
 ---
 
@@ -2800,7 +2807,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: tests/featur
 
 ### MON-168 — Reconcile-to-link never stamps UnifiedTransaction.propertyId — the accountant pack's per-property P&L can be empty despite full linking
 
-**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+**🟢 VERIFIED** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
 
 > **What was wrong:** When you link imported bank rows to a property's income, expenses or loans, the link never records WHICH property on the transaction itself. The accountant pack builds its per-property section only from that missing field - so a fully-linked year can export with an empty per-property breakdown.
 >
@@ -2812,14 +2819,14 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: tests/featur
 - **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
 - **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts - perProperty P&L (keys solely on tx.propertyId, :151) -> export route JSON/XLSX/PDF/pack renderings`, `app/api/bookkeeping/tax-pack/export/route.ts - all six formats render perProperty`, `lib/bookkeeping/taxPack/xlsxExporter.ts - one sheet per property (:73)`, `lib/bookkeeping/taxPack/pdfExporter.ts - renderPerProperty (:165/:172)`, `lib/bookkeeping/taxPack/accountantPackBuilder.ts - bundles the same summary`, `app/api/intake/duplicates/route.ts - selects tx.propertyId (read-only)`
 - **Fix PR(s):** ##1601
-- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts + tests/bookkeeping/mon168PropertyStampGuard.test.ts`
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts#pack reconciliation (companion Ring-1 guard: tests/bookkeeping/mon168PropertyStampGuard.test.ts)`
 - **Detail:** `M2.6 depth sweep finding #1 (2026-08-19) · LIVE-CHECK 1 on the Matrix list`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/transactions/[id]/link/route.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 VR verdict on #1595 confirmed live (perProperty:[] on 387 tx). Producer census - 16 sites set target ids on UnifiedTransaction without propertyId: link/route.ts :227 (link primary), :251 (link batch), :312 (link auto-apply), :584/:606/:659 (create-income primary/batch/auto-apply), :860/:883/:949 (create-expense primary/batch/auto-apply), :1011 (update-income), :1049 (update-expense), :1070 (update-loan); lib/bookkeeping/loanLedger/matchRepayments.ts:251 (linkRepaymentToTransaction, loanId); app/api/bank/import/route.ts:481 (import auto-link createMany); lib/bookkeeping/receiptMatcher.ts:350 (linkReceiptToTransaction, expenseId); app/api/documents/analyze/confirm/route.ts:270 (RECEIPT-synthesised create, expenseId). Clear-sites that must also null propertyId: link/route.ts :1174/:1201 (unlink), :1242 (transfer), :1364/:1422 (investment). Manual field editor app/api/unified-transactions/[id]/route.ts:204-214 accepts link ids AND propertyId directly - derive when a link id is set without an explicit propertyId. TransactionSplit rows carry their own propertyId (separate model, out of scope). matchRepayments.ts:195 (accept path) sets isTransfer only, no target id - no stamp needed. Fix = ONE resolver (lib/bookkeeping/propertyLink.ts) + idempotent admin backfill (dry-run first, section 12.11).
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/transactions/[id]/link/route.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 VR verdict on #1595 confirmed live (perProperty:[] on 387 tx). Producer census - 16 sites set target ids on UnifiedTransaction without propertyId: link/route.ts :227 (link primary), :251 (link batch), :312 (link auto-apply), :584/:606/:659 (create-income primary/batch/auto-apply), :860/:883/:949 (create-expense primary/batch/auto-apply), :1011 (update-income), :1049 (update-expense), :1070 (update-loan); lib/bookkeeping/loanLedger/matchRepayments.ts:251 (linkRepaymentToTransaction, loanId); app/api/bank/import/route.ts:481 (import auto-link createMany); lib/bookkeeping/receiptMatcher.ts:350 (linkReceiptToTransaction, expenseId); app/api/documents/analyze/confirm/route.ts:270 (RECEIPT-synthesised create, expenseId). Clear-sites that must also null propertyId: link/route.ts :1174/:1201 (unlink), :1242 (transfer), :1364/:1422 (investment). Manual field editor app/api/unified-transactions/[id]/route.ts:204-214 accepts link ids AND propertyId directly - derive when a link id is set without an explicit propertyId. TransactionSplit rows carry their own propertyId (separate model, out of scope). matchRepayments.ts:195 (accept path) sets isTransfer only, no target id - no stamp needed. Fix = ONE resolver (lib/bookkeeping/propertyLink.ts) + idempotent admin backfill (dry-run first, section 12.11). VERIFIED 2026-08-22 — Ring-3 PASS verdict on #1601 (Matrix run on Reza's live data, sha b261d53f): backfill examined=293/stamped=46 across 7 buckets, idempotent re-run examined=247=293-46 with 0 stamps; identity 35+39+0+313=387 EXACT and to the cent ($24,980.26+$55,317.83+$0+$112,635.39=$192,933.48); perProperty 4 entries (Broadbeach 2tx / Guildford 12tx / HOME 12tx / Thornland Lot 1 9tx, sum=35); property tiles byte-identical (Las Vegas $15,000 / Broadbeach $15,879/5.89% / Thornland Lot 2 $3,580/3.76%). sectionsNotRun: P3 XLSX/PDF rendering (JSON payload verified; the exporters render the same summary object). Residual findings from the run are registered separately: MON-184 (ATO labelling zero rows) and MON-185 (data duplicates, register-only).
 
 ### MON-169 — The accountant pack counts internal transfers and loan repayments as income and expense (isTransfer never consulted)
 
-**🟠 FIXING** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+**🟢 VERIFIED** · 🔴 critical · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
 
 > **What was wrong:** Money moved between your own accounts, and loan principal repayments, are counted in the tax pack's income and expense totals as if they were real earnings and deductible costs. The rest of the app deliberately excludes these; the pack does not.
 >
@@ -2831,14 +2838,14 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: app/api/tran
 - **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
 - **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts totals.incomeGross/expenseTotal/netCashflow -> export route JSON + xlsxExporter Summary sheet (:51-53) + pdfExporter summary (:130-132) + accountantPackBuilder`
 - **Fix PR(s):** ##1601
-- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts + tests/bookkeeping/mon168PropertyStampGuard.test.ts`
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts#pack reconciliation (companion Ring-1 guard: tests/bookkeeping/mon168PropertyStampGuard.test.ts)`
 - **Detail:** `M2.6 depth sweep finding #2 (2026-08-19) · LIVE-CHECK 2`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 verdict confirmed ($1,000 transfer inside totals; isTransfer schema:2878 never referenced in summary.ts). Canonical predicate: actualCashflow.ts:111 excludes isTransfer===true rows by design; loan repayments linked via the Phase 51 ledger get isTransfer=true (confirmedTransferFields), but the plain link/update loan actions set loanId WITHOUT isTransfer - so the pack must divert BOTH isTransfer rows AND loanId-linked rows to the informational section. Input-feed census: buildTaxPackSummary fetches all window rows (:126) and sums by direction only (:143-146).
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 verdict confirmed ($1,000 transfer inside totals; isTransfer schema:2878 never referenced in summary.ts). Canonical predicate: actualCashflow.ts:111 excludes isTransfer===true rows by design; loan repayments linked via the Phase 51 ledger get isTransfer=true (confirmedTransferFields), but the plain link/update loan actions set loanId WITHOUT isTransfer - so the pack must divert BOTH isTransfer rows AND loanId-linked rows to the informational section. Input-feed census: buildTaxPackSummary fetches all window rows (:126) and sums by direction only (:143-146). VERIFIED 2026-08-22 — Ring-3 PASS verdict on #1601 (Matrix run on Reza's live data, sha b261d53f): backfill examined=293/stamped=46 across 7 buckets, idempotent re-run examined=247=293-46 with 0 stamps; identity 35+39+0+313=387 EXACT and to the cent ($24,980.26+$55,317.83+$0+$112,635.39=$192,933.48); perProperty 4 entries (Broadbeach 2tx / Guildford 12tx / HOME 12tx / Thornland Lot 1 9tx, sum=35); property tiles byte-identical (Las Vegas $15,000 / Broadbeach $15,879/5.89% / Thornland Lot 2 $3,580/3.76%). sectionsNotRun: P3 XLSX/PDF rendering (JSON payload verified; the exporters render the same summary object). Residual findings from the run are registered separately: MON-184 (ATO labelling zero rows) and MON-185 (data duplicates, register-only).
 
 ### MON-170 — Pack ATO-label totals silently drop unmapped and uncategorised transactions
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-19
 
 > **What was wrong:** Rows without a category, or whose category has no ATO label mapping, simply vanish from the pack's ATO-label totals with no 'unmapped' bucket and no warning - the accountant can receive totals materially below the true spend without knowing.
 >
@@ -2850,10 +2857,10 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeep
 - **Neomatrix:** `number.taxPack.packIncomeGross`, `number.taxPack.packExpenseTotal`
 - **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts atoLabels -> export JSON + xlsxExporter ATO Labels sheet (:70/:84) + pdfExporter renderAtoLabels (:139) + accountantPackBuilder`
 - **Fix PR(s):** ##1601
-- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts + tests/bookkeeping/mon168PropertyStampGuard.test.ts`
+- **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts#pack reconciliation (companion Ring-1 guard: tests/bookkeeping/mon168PropertyStampGuard.test.ts)`
 - **Detail:** `M2.6 depth sweep finding #9 (2026-08-19)`
 
-Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 verdict measured the live blast radius - 8 of 387 transactions / $6,830.50 of $192,933.48 reach any ATO label; :214 (no categoryLevel1) and :217 (no registry match) drop rows with no counter. Fix = every continue becomes a COUNTED exclusion; the payload + all renderings gain a reconciliation block with the asserted identity included + sum(excluded) = total.
+Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/bookkeeping/taxPack/summary.ts. DIAGNOSED 2026-08-19 (M3 PR-1): Ring-3 verdict measured the live blast radius - 8 of 387 transactions / $6,830.50 of $192,933.48 reach any ATO label; :214 (no categoryLevel1) and :217 (no registry match) drop rows with no counter. Fix = every continue becomes a COUNTED exclusion; the payload + all renderings gain a reconciliation block with the asserted identity included + sum(excluded) = total. VERIFIED 2026-08-22 — Ring-3 PASS verdict on #1601 (Matrix run on Reza's live data, sha b261d53f): backfill examined=293/stamped=46 across 7 buckets, idempotent re-run examined=247=293-46 with 0 stamps; identity 35+39+0+313=387 EXACT and to the cent ($24,980.26+$55,317.83+$0+$112,635.39=$192,933.48); perProperty 4 entries (Broadbeach 2tx / Guildford 12tx / HOME 12tx / Thornland Lot 1 9tx, sum=35); property tiles byte-identical (Las Vegas $15,000 / Broadbeach $15,879/5.89% / Thornland Lot 2 $3,580/3.76%). sectionsNotRun: P3 XLSX/PDF rendering (JSON payload verified; the exporters render the same summary object). Residual findings from the run are registered separately: MON-184 (ATO labelling zero rows) and MON-185 (data duplicates, register-only).
 
 ### MON-171 — Onboarding Review screen runs a parallel financial engine — raw minRepayment, no one-off gate, first number a user ever sees
 
@@ -2953,4 +2960,121 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/
 - **Detail:** `M2.6 depth sweep findings #34/#35/#36 (2026-08-19) · HELD under M2.0/D-20 — do NOT fix while hidden; re-scope at the MODULE_HOME/MODULE_INVESTMENTS returns`
 
 Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/contextBuilder.ts.
+
+### MON-180 — Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
+
+> **What was wrong:** In the first months of a new financial year the 'EOFY readiness' tile looks at the new, nearly-empty year and happily says everything is tax-ready — while the year you actually need to prepare for your accountant (the one that just ended) still has unlabelled rows the tile never mentions.
+>
+> **What changed:** The tile is honest on an empty year ('No property rows yet this FY' instead of a tax-ready claim), and during the EOFY work season (current FY still empty AND within 4 months of FY start) it also fetches the just-ended year and leads with it: 'FY2025-26: N rows not tax-ready'. Same producer, second window — no new engine.
+>
+> **What you should see:** Open the dashboard in August: the EOFY tile leads with FY2025-26 and its real not-ready count, instead of claiming 'All rows Tax-ready' for the empty new year.
+
+- **Root cause:** `app/dashboard/ScoreboardClient.tsx:101`
+- **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx EOFY tile (the only consumer — display window logic only; pack numbers untouched)`
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** `tests/dashboard/scoreboardDisplay.test.ts#MON-180 — the EOFY tile window rule`
+- **Detail:** `M3 punch list §C-1 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
+
+Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+
+### MON-181 — Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
+
+> **What was wrong:** The 'needs review' tile on the scoreboard shows a dash for every account, always — the page asks the review-queue API without saying which confidence band it wants, the API rejects the request, and the tile treats the rejection as 'no data'.
+>
+> **What changed:** The tile now asks for both review bands (medium + low) on the same existing route and shows their pending total — a real number, 0 when the queue is empty.
+>
+> **What you should see:** The intake tile shows a number (the pending review count) instead of '—'; it reads 0 when nothing is waiting, and '—' only if the request genuinely fails.
+
+- **Root cause:** `app/dashboard/ScoreboardClient.tsx:103`, `app/api/unified-transactions/review-queue/route.ts:31`
+- **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx intake tile (display count only — no money number; the queue route itself is unchanged)`
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `M3 punch list §C-2 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
+
+Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+
+### MON-182 — Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal)
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-22
+
+> **What was wrong:** The dashboard says your portfolio LVR is 41.3% while the properties page says 40.8% on the same data. Two different formulas are alive: the dashboard divides ALL loan debt (including personal loans and credit cards) by ALL property value (including rentals you don't own); the properties page divides property-attached loan principal by owned-property value, computed in the page itself.
+>
+> **What changed:** One formula in one place: owned-properties-only, property-secured debt over owned-property value, computed by a single lib function that both the snapshot API and the properties page read. The page-side arithmetic is deleted; the number is labelled by its basis ('Portfolio LVR — owned properties').
+>
+> **What you should see:** The dashboard scoreboard and the properties banner show the IDENTICAL LVR figure (~40.8% on current data, the owned-only basis), and the label says what the number means.
+
+- **Root cause:** `app/api/portfolio/snapshot/route.ts:1024`, `app/dashboard/properties/page.tsx:521`
+- **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx portfolio tile — renders gearing.portfolioLVR off /api/portfolio/snapshot`, `app/dashboard/properties/page.tsx hero banner AVG LVR — currently page-side arithmetic (deleted by the fix)`, `app/api/portfolio/snapshot/route.ts gearing block — any other consumer of gearing.portfolioLVR`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M3 punch list §C-3 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22 · D-21 applies (number moves)`
+
+SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLVR = nw.liabilities.total / nw.assets.properties (:646,:655,:1024) where liabilities.total includes personal loans + credit cards (calculateTotalLiabilities) and assets.properties sums ALL properties incl. RENTAL (calculateTotalAssets, no type filter); page banner = owned-only (type !== 'RENTAL') sum of property-attached loan.principal / sum currentValue (:515-521). D-21 expected movement: snapshot/scoreboard figure moves 41.3% -> the owned-only figure (~40.8%); the properties-page figure does NOT move. Nuance to flag: loans attached to RENTAL properties leave the numerator with their property; personal/credit-card debt never belonged in a PROPERTY LVR.
+
+### MON-183 — Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule
+
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: dashboard · opened 2026-08-22
+
+> **What was wrong:** The per-property cashflow strip shows 4 properties when you have 6, with no hint that anything is missing or how the 4 were chosen.
+>
+> **What changed:** The strip renders ALL properties, sorted worst-cashflow-first (portfolios this size don't need truncation) — and the sort rule is stated in code and locked by a test.
+>
+> **What you should see:** All 6 properties appear in the strip, the biggest monthly loss first.
+
+- **Root cause:** `app/dashboard/ScoreboardClient.tsx:221`
+- **Downstream consumers (§19.4):** `app/dashboard/ScoreboardClient.tsx cashflow strip (render set + order only; each tile still reads computePropertyCashflow — no number changes)`
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** `tests/dashboard/scoreboardDisplay.test.ts#MON-183 — the strip renders ALL rows, worst monthly figure first`
+- **Detail:** `M3 punch list §C-4 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
+
+Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+
+### MON-184 — Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels [])
+
+**🟡 DIAGNOSED** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-22
+
+> **What was wrong:** The accountant pack is supposed to group your property income and expenses under official ATO labels (rental schedule lines). On real data, not a single row gets a label — all 35 categorised rows fall into 'no ATO mapping', because the matching is too literal: it requires an exact three-part category match against a seed vocabulary that doesn't speak the same words your live categories use.
+>
+> **What changed:** The lookup falls back through the category hierarchy (level1+level2+subcategory, then level1+level2, then level1) at the one producer, and the seed vocabulary is extended with the legitimate live category words — so a row only lands in 'no ATO mapping' when NO level of its hierarchy is mapped. Ambiguous categories are NOT force-mapped; they stay honestly unmapped.
+>
+> **What you should see:** Export the FY2025-26 pack: the ATO Labels section is populated with rental-schedule lines, the labelled count is >0, the totals (income/expenses/count) are UNCHANGED to the byte, and labelled + noCategory + noAtoMapping still adds up to the included count.
+
+- **Root cause:** `lib/bookkeeping/taxPack/summary.ts:326`, `lib/bookkeeping/taxCategoryMapping.ts:48`
+- **Downstream consumers (§19.4):** `lib/bookkeeping/taxPack/summary.ts atoLabels + reconciliation.atoLabelling -> export route JSON (all formats)`, `lib/bookkeeping/taxPack/xlsxExporter.ts ATO Labels sheet`, `lib/bookkeeping/taxPack/pdfExporter.ts renderAtoLabels`, `lib/bookkeeping/taxPack/accountantPackBuilder.ts (bundles the same summary)`, `app/dashboard/ScoreboardClient.tsx EOFY tile (renders notReadyCount = noCategory + noAtoMapping)`
+- **Holistic test (§19.4):** ⚠ required before VERIFIED/CLOSED
+- **Detail:** `M3 punch list §B (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) — the M3.1 opener · Ring-3 PASS verdict on #1601 (2026-08-22) measured the live blast radius · D-21 applies`
+
+Live evidence (Ring-3 2026-08-22, FY2025-26): atoLabelling {labelled:0, noCategory:0, noAtoMapping:35/$24,980.26}, atoLabels []. NOT an unseeded-mappings bug — seedSystemMappings runs on every export (summary.ts:164). Verified mechanism: summary.ts resolves each tx by the EXACT triple level1|level2|subcategory (:326 against the :299 map) while SYSTEM_TAX_MAPPING_SEEDS registers title-case (level1, level2, subcategory:null) vocabulary ('Property'/'Rates'); the live rows carry the UPPERCASE ExpenseCategoryType enum values the link route writes as categoryLevel1 (RATES, INSURANCE, UTILITIES, MAINTENANCE, MODIFICATIONS per the verdict's category listing) — so BOTH a hierarchy fallback AND seed vocabulary for the live level1 values are required. D-21: totals/identity/perProperty byte-identical; movement confined to atoLabelling.labelled 0->N, noAtoMapping 35->(35-N), atoLabels []->populated.
+
+### MON-185 — DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: data-quality · opened 2026-08-22
+
+> **What was wrong:** Your account holds a second 'Guildford' property record with 2 bank rows attached (beside the real one with 12), a stray record named 'Thornlands' (distinct from the two legitimate 'Thornland Lot N' duplex records), and 2 bank rows whose links point at income/expense rows that no longer exist. Until cleaned, the pack's per-property section splits Guildford's rows across two entries.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `Ring-3 PASS verdict on #1601 (2026-08-22) data findings · BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md §A-6 · Reza runbook owner`
+
+REGISTER-ONLY (brief law): NO code change, NO auto-fix, NO data write by any session — user data is Reza's to merge/delete (§12.11). Evidence from the Ring-3 run: duplicate 'Guildford' a288774b (2 tx rows) beside the real 888d5685 (12 rows) — Reza 2026-08-22: exactly ONE Guildford exists; stray record 'Thornlands' 4f931826 (1 row) — Thornlands is a duplex with 2 legitimate 'Thornland Lot N' records, the third bare 'Thornlands' record is the stray; 2 tx rows whose link-target ids resolve to nothing (e0f1ab08…, 02437f99…) — counted targetNotPropertyScoped by the backfill, harmless to totals but noise in the queue. REZA RUNBOOK (existing UI only): (1) Properties page -> the duplicate Guildford a288774b -> re-link its 2 transactions to the real Guildford (the intake duplicate-merge / transaction link editor applies), then Delete the empty duplicate (PR-3's confirmed Delete). (2) Same for the stray 'Thornlands' record and its 1 row -> the correct 'Thornland Lot N'. (3) The 2 orphaned links: open each transaction in the review surface and clear/re-link the dead target. Verification: re-export the FY2025-26 pack — perProperty shows ONE Guildford entry with 14 rows, no 'Thornlands' entry, and the identity still holds. changesNumbers: false — no code producer changes; the number movement comes from Reza's data cleanup and is captured by the standing Ring-3 re-run.
+
+### MON-186 — MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-22
+
+> **What was wrong:** When the scoreboard went live, the switch that used to mean 'the old Home dashboard family' was turned on to mean 'the new scoreboard'. Two leftover surfaces still keyed to that switch came back on with it: the legacy Financial Overview report tile reappeared on the Reports page, and the old Home page's money-flow API is open again with nothing using it. The old Tax-Time report tile also has no switch at all, so it always shows despite the standing ruling to hide legacy report tiles.
+>
+> **What changed:** Each surface is re-keyed to the module that owns its CONTENT family and stays hidden until that family returns: Financial Overview -> MODULE_CFO (R4), /api/money-flow -> MODULE_HOUSEHOLD (R3), Tax-Time report tile -> MODULE_TAX (R2). Hidden, not deleted. A guard test pins the reports-page tile keys to an explicit expected map so a future flip can't silently resurface a legacy tile.
+>
+> **What you should see:** On the Reports page: the Financial Overview and Tax-Time tiles are GONE; the accountant pack card is untouched. /api/money-flow returns the module-gated 503.
+
+- **Root cause:** `app/dashboard/reports/page.tsx:66`, `app/api/money-flow/route.ts:22`
+- **Downstream consumers (§19.4):** `app/dashboard/reports/page.tsx REPORT_TYPES — Financial Overview tile (re-keyed MODULE_CFO) + Tax-Time tile (keyed MODULE_TAX; today NO key, always visible)`, `app/api/money-flow/route.ts moduleApiGuard (re-keyed MODULE_HOUSEHOLD; no kept consumer — HomeClient unmounted)`, `Correctly ON at the flip, NO change: app/dashboard/page.tsx scoreboard, trailNav + mobile-tab Home entries`
+- **Fix PR(s):** ##1605
+- **Holistic test (§19.4):** `tests/dashboard/reportTileKeys.test.ts#MON-186 — report tiles + legacy money-flow API pin their module keys`
+- **Detail:** `M3 punch list §D (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · MODULE_HOME flip 2026-08-22 · exposure class`
+
+Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
 
