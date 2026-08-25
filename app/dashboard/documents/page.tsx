@@ -55,6 +55,7 @@ import {
 } from '@/components/documents';
 import { SendToAccountantDialog } from '@/components/documents/SendToAccountantDialog';
 import { SmartInbox } from '@/components/documents/SmartInbox';
+import { responseErrorMessage } from '@/lib/utils/responseError';
 import {
   ReceiptCandidatePicker,
   type ReceiptPickerCandidate,
@@ -314,6 +315,12 @@ export default function DocumentsLibraryPage() {
       counts[`tax:${taxStatus}`] = (counts[`tax:${taxStatus}`] || 0) + 1;
     });
 
+    // MON-190: THE total — the same list the hero and grid render. The tree's
+    // root count reads this ONE key; it must never be re-derived by summing
+    // bucket groupings (categories + tax buckets each cover every document,
+    // so summing them together double-counted, +2 per upload).
+    counts['total'] = documents.length;
+
     return counts;
   }, [documents]);
 
@@ -416,8 +423,9 @@ export default function DocumentsLibraryPage() {
     });
 
     if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Upload failed');
+      // MON-194: the platform's 413 body is plain text — a raw res.json()
+      // here used to surface the JSON-parse exception to the user.
+      throw new Error(await responseErrorMessage(res, 'Upload failed'));
     }
 
     // Refresh list
@@ -590,6 +598,24 @@ export default function DocumentsLibraryPage() {
       setRefreshKey((k) => k + 1);
     }
 
+    return res.ok;
+  };
+
+  // MON-188 — persist Smart Inbox inline edits (PATCH; Done writes through).
+  const handlePersistEdits = async (
+    analysisId: string,
+    fields: Record<string, string | undefined>
+  ): Promise<boolean> => {
+    if (!token) return false;
+    const res = await fetch('/api/documents/analyze', {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ analysisId, fields }),
+    });
+    if (res.ok) setRefreshKey((k) => k + 1);
     return res.ok;
   };
 
@@ -825,6 +851,7 @@ export default function DocumentsLibraryPage() {
                 endpoint, no silent writes. */}
             {awaitingReviewCount > 0 && (
               <SmartInbox
+                onPersistEdits={handlePersistEdits}
                 docs={awaitingReview}
                 onConfirm={handleConfirmAnalysis}
                 onOpen={(docId) => {

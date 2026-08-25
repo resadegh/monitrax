@@ -320,9 +320,11 @@ export function FolderTree({
 
   // Build folder structure
   const folders: FolderNode[] = useMemo(() => {
-    const baseTotal = Object.entries(documentCounts)
-      .filter(([key]) => !key.startsWith('entity:') && !key.startsWith('fy:'))
-      .reduce((sum, [, count]) => sum + count, 0);
+    // MON-190: read THE total the page produces from the same documents list
+    // the hero renders. The old reduce summed every non-entity/non-fy bucket —
+    // which was the category buckets AND the tax-status buckets, each covering
+    // every document once — so 'All Documents' showed exactly 2× (+2/upload).
+    const baseTotal = documentCounts['total'] ?? 0;
 
     const result: FolderNode[] = [
       {

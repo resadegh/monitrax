@@ -22,8 +22,13 @@ export const SUPPORTED_MIME_TYPES = [
 
 export type SupportedMimeType = (typeof SUPPORTED_MIME_TYPES)[number];
 
-// Maximum file size (10MB)
-export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// THE upload limit — the ONE number every surface states AND enforces
+// (MON-193, M2 kept-depth PR-1). The UI used to promise 10 MB while the
+// hosting platform rejects request bodies at ~4.5 MB before our code runs
+// (413 at 6.2 MB, observed live). 4 MB leaves headroom for multipart form
+// overhead under that cap, so the promise is always keepable. When storage
+// moves to direct-to-GCS upload, raise it HERE and every surface follows.
+export const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 // Large file threshold (5MB - triggers cloud storage preference)
 export const LARGE_FILE_THRESHOLD = 5 * 1024 * 1024;

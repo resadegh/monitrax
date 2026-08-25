@@ -9,6 +9,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { MAX_FILE_SIZE } from '@/lib/documents/constants';
+import { responseErrorMessage } from '@/lib/utils/responseError';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -137,9 +139,9 @@ export function FormDocumentUpload({
       return;
     }
 
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      const error = 'File too large. Maximum size is 10MB.';
+    // MON-193: validate against THE shared limit (lib/documents/constants).
+    if (file.size > MAX_FILE_SIZE) {
+      const error = `File too large. Maximum size is ${Math.round(MAX_FILE_SIZE / 1024 / 1024)} MB.`;
       setErrorMessage(error);
       onError?.(error);
       return;
@@ -172,6 +174,10 @@ export function FormDocumentUpload({
         body: formData,
       });
 
+      // MON-194: guarded read — a platform 413 body is not JSON.
+      if (!response.ok) {
+        throw new Error(await responseErrorMessage(response, 'Analysis failed'));
+      }
       const result: AnalyzeForFormResult = await response.json();
 
       if (!result.success) {

@@ -24,6 +24,7 @@
 import React, { useRef, useState } from 'react';
 import { FileUp, Loader2, ChevronDown, Check, UploadCloud } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { MAX_FILE_SIZE } from '@/lib/documents/constants';
 import { WizardData, WizardStepId } from './types';
 import {
   mapDocumentToExpense,
@@ -41,7 +42,9 @@ export function isDocumentUploadStep(step: WizardStepId): boolean {
 // formats the analyze-for-form route can actually OCR / text-extract.
 const ACCEPT =
   'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif';
-const MAX_BYTES = 10 * 1024 * 1024; // mirrors server MAX_FILE_SIZE (10 MB)
+// MON-193: THE shared limit (lib/documents/constants) — never a local mirror.
+const MAX_BYTES = MAX_FILE_SIZE;
+const MAX_MB = Math.round(MAX_FILE_SIZE / 1024 / 1024);
 
 const DOC_TYPES: { id: DocumentFormType; label: string }[] = [
   { id: 'income', label: 'Payslip' },
@@ -76,7 +79,7 @@ export function DocumentUploadAccelerator({
     setResult(null);
 
     if (file.size > MAX_BYTES) {
-      setError('That file is over 10 MB — try a smaller scan or photo.');
+      setError(`That file is over ${MAX_MB} MB — try a smaller scan or photo.`);
       return;
     }
 
@@ -227,7 +230,7 @@ export function DocumentUploadAccelerator({
                   Drop a file here, or click to choose
                 </span>
                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                  PDF or photo, up to 10 MB ·{' '}
+                  PDF or photo, up to {MAX_MB} MB ·{' '}
                   {docType === 'income'
                     ? 'becomes an income row'
                     : 'becomes an expense row'}

@@ -64,6 +64,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { classifyConfidence } from '@/lib/documents/intelligence/confidencePolicy';
+import { MAX_FILE_SIZE } from '@/lib/documents/constants';
+import { responseErrorMessage } from '@/lib/utils/responseError';
 import { RenewalReminderCard } from '@/components/documents/RenewalReminderCard';
 
 type Stage = 'capture' | 'analyzing' | 'result' | 'renewal' | 'success' | 'error';
@@ -90,7 +92,8 @@ interface LinkTarget {
 }
 
 const SUPPORTED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MAX_BYTES = 10 * 1024 * 1024;
+// MON-193: THE shared limit (lib/documents/constants) — never a local number.
+const MAX_BYTES = MAX_FILE_SIZE;
 
 /** Read the first present key from the action's prefilled data, then the raw
  * extractedData. Keeps the preview resilient to analyzer key drift. */
@@ -269,7 +272,7 @@ export function GlobalScanReceipt() {
         return;
       }
       if (file.size > MAX_BYTES) {
-        setErrorMsg('That file is over 10MB. Try a photo instead.');
+        setErrorMsg(`That file is over ${Math.round(MAX_FILE_SIZE / 1024 / 1024)} MB. Try a smaller photo.`);
         setStage('error');
         return;
       }
@@ -293,6 +296,12 @@ export function GlobalScanReceipt() {
           headers: { Authorization: `Bearer ${token}` },
           body: fd,
         });
+        // MON-194: a platform 413 body is not JSON — read the error guarded.
+        if (!res.ok) {
+          setErrorMsg(await responseErrorMessage(res, 'We could not read that file'));
+          setStage('error');
+          return;
+        }
         const json = await res.json();
 
         if (json?.documentId) setSavedDocId(json.documentId as string);
@@ -403,9 +412,15 @@ export function GlobalScanReceipt() {
           ...(selectedTarget?.type === 'PROPERTY' ? { propertyId: selectedTarget.id } : {}),
         }),
       });
+      if (!res.ok) {
+        // MON-194: guarded read — never a raw JSON-parse exception as the banner.
+        setErrorMsg(await responseErrorMessage(res, 'We could not add that. It is still in your Vault'));
+        setStage('error');
+        return;
+      }
       const json = await res.json();
-      if (!res.ok || json?.error) {
-        setErrorMsg(json?.error || 'We could not add that. It is still in your Vault.');
+      if (json?.error) {
+        setErrorMsg(typeof json.error === 'string' ? json.error : 'We could not add that. It is still in your Vault.');
         setStage('error');
         return;
       }
