@@ -22,6 +22,14 @@
  * as for a single confirm. No new endpoint (§12.4) — it reads the same
  * `/api/documents` analysis payload the page already has.
  *
+ * MON-187/188 (M2 kept-depth PR-1): the row model + approve payload moved to
+ * lib/documents/intelligence/inboxModel.ts — pure, typed against the
+ * analyzer's OWN SuggestedAction shape (`action`, not the phantom `type` this
+ * component used to read, which left every checkbox disabled), and the
+ * payload is FLATTENED to the confirm route's flat contract. Done now
+ * PERSISTS edits via `onPersistEdits` (PATCH /api/documents/analyze) so
+ * corrections survive reload instead of living only in component state.
+ *
  * Design: in-app "My Wealth glass" Track vocabulary (CLAUDE.md §18.7.2) — warm
  * ivory / deep-navy ground, sky→indigo Track mesh-glow header, glass card, 22px
  * radii, emerald/amber/slate confidence palette from `confidencePolicy` (D.3).
@@ -43,77 +51,32 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { classifyConfidence } from '@/lib/documents/intelligence/confidencePolicy';
+import {
+  buildInboxRows,
+  payloadFor as buildPayload,
+  type InboxDocument,
+  type InboxEdits,
+  type InboxRowModel as RowModel,
+} from '@/lib/documents/intelligence/inboxModel';
 
-// ---------------------------------------------------------------------------
-// Types (mirror the page's DocumentListItem analysis shape — kept local so this
-// component stays decoupled from the page module).
-// ---------------------------------------------------------------------------
-
-export interface InboxDocument {
-  id: string;
-  originalFilename: string;
-  analysis: {
-    id: string;
-    documentType: string;
-    overallConfidence: number;
-    extractedData: Record<string, unknown> | null;
-    suggestedActions: Array<{ type: string; confidence: number; description: string }> | null;
-  } | null;
-}
+export type { InboxDocument };
 
 interface SmartInboxProps {
   /** Documents awaiting review (analysis COMPLETED && !userVerified). */
   docs: InboxDocument[];
   /** SSOT confirm — POST /api/documents/analyze/confirm. Returns ok. */
   onConfirm: (analysisId: string, action: string, data: Record<string, unknown>) => Promise<boolean>;
+  /** MON-188: persist inline edits (PATCH /api/documents/analyze) so Done
+   *  survives reload. Returns ok; on false the edit panel stays open. */
+  onPersistEdits: (analysisId: string, fields: InboxEdits) => Promise<boolean>;
   /** Open the source file (signed URL) in a new tab, by document id. */
   onOpen: (docId: string) => void;
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  CREATE_EXPENSE: 'Add as expense',
-  CREATE_INCOME: 'Add as income',
-  CREATE_LOAN: 'Add as loan',
-  UPDATE_LOAN: 'Update loan',
-  LINK_TO_PROPERTY: 'Link to property',
-};
-
-/** Unwrap the analyzer's {value, confidence} field shape → a flat scalar. */
-function flat(v: unknown): unknown {
-  if (v && typeof v === 'object' && 'value' in (v as Record<string, unknown>)) {
-    return (v as { value: unknown }).value;
-  }
-  return v;
-}
-
-function pickStr(data: Record<string, unknown> | null, keys: string[]): string {
-  if (!data) return '';
-  for (const k of keys) {
-    const val = flat(data[k]);
-    if (val != null && val !== '') return String(val);
-  }
-  return '';
 }
 
 function formatMoney(raw: string): string {
   const n = Number(String(raw).replace(/[^0-9.\-]/g, ''));
   if (!Number.isFinite(n) || n === 0) return '';
   return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
-}
-
-interface RowModel {
-  doc: InboxDocument;
-  analysisId: string;
-  action: string | null;
-  actionLabel: string | null;
-  vendor: string;
-  amount: string;
-  date: string;
-  category: string;
-  band: 'AUTO' | 'CONFIRM' | 'ASK';
-  confidenceLabel: string;
-  tone: 'emerald' | 'amber' | 'slate';
 }
 
 const TONE_PILL: Record<RowModel['tone'], string> = {
@@ -123,32 +86,10 @@ const TONE_PILL: Record<RowModel['tone'], string> = {
 };
 const SHORT_BAND: Record<RowModel['band'], string> = { AUTO: 'High', CONFIRM: 'Check', ASK: 'Review' };
 
-export function SmartInbox({ docs, onConfirm, onOpen }: SmartInboxProps) {
-  // Build a view model per doc (top action + flattened fields + D.3 band).
-  const rows = useMemo<RowModel[]>(() => {
-    return docs
-      .filter((d) => d.analysis)
-      .map((doc) => {
-        const a = doc.analysis!;
-        const top = (a.suggestedActions ?? [])
-          .slice()
-          .sort((x, y) => (y.confidence ?? 0) - (x.confidence ?? 0))[0];
-        const verdict = classifyConfidence(a.overallConfidence ?? 0);
-        return {
-          doc,
-          analysisId: a.id,
-          action: top?.type ?? null,
-          actionLabel: top ? ACTION_LABELS[top.type] ?? top.type : null,
-          vendor: pickStr(a.extractedData, ['vendor', 'vendorName', 'payee', 'merchant', 'name']) || doc.originalFilename,
-          amount: pickStr(a.extractedData, ['amount', 'total', 'totalAmount', 'amountDue']),
-          date: pickStr(a.extractedData, ['date', 'issueDate', 'transactionDate']),
-          category: pickStr(a.extractedData, ['category']),
-          band: verdict.band,
-          confidenceLabel: verdict.label,
-          tone: verdict.tone,
-        };
-      });
-  }, [docs]);
+export function SmartInbox({ docs, onConfirm, onPersistEdits, onOpen }: SmartInboxProps) {
+  // View model per doc — the PURE, analyzer-typed builder (MON-187: reads the
+  // real `action` field; the local `.type` read left every checkbox disabled).
+  const rows = useMemo<RowModel[]>(() => buildInboxRows(docs), [docs]);
 
   // Selection — AUTO-band rows pre-selected (earned-autonomy convenience).
   // Recomputed when the row set changes; user toggles override within a render.
@@ -167,7 +108,9 @@ export function SmartInbox({ docs, onConfirm, onOpen }: SmartInboxProps) {
   }
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [edits, setEdits] = useState<Record<string, Partial<Record<'vendor' | 'amount' | 'date' | 'category', string>>>>({});
+  const [edits, setEdits] = useState<Record<string, InboxEdits>>({});
+  const [savingEditId, setSavingEditId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
 
   const toggle = useCallback((id: string) => {
@@ -189,28 +132,36 @@ export function SmartInbox({ docs, onConfirm, onOpen }: SmartInboxProps) {
     return { high, check, review };
   }, [rows]);
 
-  /** Build the confirm payload for a row: the analyzer's extractedData with the
-   *  user's inline edits flattened on top (edits win — the user is the source of
-   *  truth, autonomy). */
-  const payloadFor = useCallback(
-    (r: RowModel): Record<string, unknown> => {
-      const base = { ...(r.doc.analysis?.extractedData ?? {}) };
-      const e = edits[r.doc.id];
-      if (e?.vendor != null) { base.vendor = e.vendor; base.name = e.vendor; }
-      if (e?.amount != null) base.amount = e.amount;
-      if (e?.date != null) base.date = e.date;
-      if (e?.category != null) base.category = e.category;
-      return base;
-    },
-    [edits],
-  );
-
+  /** Confirm payload — FLATTENED extractedData + the user's edits on top
+   *  (inboxModel.payloadFor: the confirm route reads flat scalars; the
+   *  wrapped-object spread this used to do would have written NaN). */
   const approveRow = useCallback(
     async (r: RowModel): Promise<boolean> => {
       if (!r.action) return false;
-      return onConfirm(r.analysisId, r.action, payloadFor(r));
+      return onConfirm(r.analysisId, r.action, buildPayload(r, edits[r.doc.id]));
     },
-    [onConfirm, payloadFor],
+    [onConfirm, edits],
+  );
+
+  /** MON-188 — Done persists the edit server-side, then closes the panel. */
+  const saveEdits = useCallback(
+    async (r: RowModel) => {
+      const e = edits[r.doc.id];
+      if (!e || Object.keys(e).length === 0) {
+        setEditingId(null);
+        return;
+      }
+      setSavingEditId(r.doc.id);
+      setEditError(null);
+      try {
+        const ok = await onPersistEdits(r.analysisId, e);
+        if (ok) setEditingId(null);
+        else setEditError('That change didn\u2019t save — please try again.');
+      } finally {
+        setSavingEditId(null);
+      }
+    },
+    [edits, onPersistEdits],
   );
 
   const approveSelected = useCallback(async () => {
@@ -361,19 +312,26 @@ export function SmartInbox({ docs, onConfirm, onOpen }: SmartInboxProps) {
                     <EditField label="Category" value={e.category ?? r.category} onChange={(v) => setEdits((p) => ({ ...p, [r.doc.id]: { ...p[r.doc.id], category: v } }))} />
                   </div>
                   <div className="mt-3 flex items-center justify-end gap-2">
+                    {editError && editingId === r.doc.id && (
+                      <span className="mr-auto text-[12px] text-amber-700 dark:text-amber-300">{editError}</span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => { setEdits((p) => { const n = { ...p }; delete n[r.doc.id]; return n; }); setEditingId(null); }}
+                      onClick={() => { setEdits((p) => { const n = { ...p }; delete n[r.doc.id]; return n; }); setEditingId(null); setEditError(null); }}
                       className="rounded-[10px] px-3 py-1.5 text-[12px] font-medium text-muted-foreground hover:bg-foreground/5"
                     >
                       Cancel
                     </button>
+                    {/* MON-188: Done PERSISTS (PATCH via onPersistEdits) — it is
+                        never again a local-close that loses the correction. */}
                     <button
                       type="button"
-                      onClick={() => setEditingId(null)}
-                      className="rounded-[10px] bg-foreground/5 px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-foreground/10"
+                      disabled={savingEditId === r.doc.id}
+                      onClick={() => void saveEdits(r)}
+                      className="inline-flex items-center gap-1.5 rounded-[10px] bg-foreground/5 px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-foreground/10 disabled:opacity-60"
                     >
-                      Done
+                      {savingEditId === r.doc.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                      {savingEditId === r.doc.id ? 'Saving\u2026' : 'Done'}
                     </button>
                   </div>
                 </div>

@@ -63,6 +63,11 @@
     "tests/dashboard/scoreboardDisplay.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Test for the display helpers.",
     "tests/dashboard/reportTileKeys.test.ts": "NEW in M3 punch-list PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. MON-186 module-key guard test (source scan).",
     "lib/calculations/portfolioLvr.ts": "NEW in M3 punch-list PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. THE owned-portfolio-LVR producer (MON-182); modelled in Layer 1 as engine.calculations.calculateOwnedPortfolioLvr with a verified file:line anchor.",
-    "tests/calculations/portfolioLvr.test.ts": "NEW in M3 punch-list PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 worked example + Ring-1 one-producer guard for MON-182."
+    "tests/calculations/portfolioLvr.test.ts": "NEW in M3 punch-list PR-2 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 worked example + Ring-1 one-producer guard for MON-182.",
+    "lib/documents/intelligence/inboxModel.ts": "NEW in M2 kept-depth PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Pure Smart Inbox row model + payload flatten (MON-187/188) — intake display/write plumbing, no financial calculation (every figure passes through; nothing derived).",
+    "lib/utils/responseError.ts": "NEW in M2 kept-depth PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Guarded HTTP error-message reader (MON-194) — no financial calculation.",
+    "tests/documents/inboxModel.test.ts": "NEW in M2 kept-depth PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 test for the inbox model.",
+    "tests/documents/receiptVendor.test.ts": "NEW in M2 kept-depth PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-0 test for MON-191 vendor extraction.",
+    "tests/documents/intakePipelineGuards.test.ts": "NEW in M2 kept-depth PR-1 (graphify binary unavailable in-session) — REMOVE at the next graphify regeneration. Ring-1 wiring guards for the PR-1 fixes."
   }
 }

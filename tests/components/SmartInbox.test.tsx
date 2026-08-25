@@ -27,8 +27,15 @@ describe('Phase 50 D.6 — SmartInbox module surface', () => {
 
 describe('Phase 50 D.6 — autonomy contract (must not regress)', () => {
   it('reuses the D.3 confidence SSOT for banding (no inline magic thresholds)', () => {
-    expect(SRC).toContain("from '@/lib/documents/intelligence/confidencePolicy'");
-    expect(SRC).toContain('classifyConfidence');
+    // MON-187: the row model (incl. the confidencePolicy banding) moved to
+    // the pure, analyzer-typed inboxModel — the component consumes it.
+    expect(SRC).toContain("from '@/lib/documents/intelligence/inboxModel'");
+    const MODEL = readFileSync(
+      join(process.cwd(), 'lib/documents/intelligence/inboxModel.ts'),
+      'utf8',
+    );
+    expect(MODEL).toContain("from './confidencePolicy'");
+    expect(MODEL).toContain('classifyConfidence'); // the model calls the D.3 SSOT
     // No re-hardcoded 0.9 / 0.7 thresholds — those belong to confidencePolicy.
     expect(SRC).not.toMatch(/>=\s*0\.9/);
     expect(SRC).not.toMatch(/>=\s*0\.7/);
@@ -51,7 +58,12 @@ describe('Phase 50 D.6 — autonomy contract (must not regress)', () => {
   });
 
   it('lets the user edit AI findings before approving (edits win over extracted data)', () => {
-    expect(SRC).toContain('edits win');
+    // MON-187: the edits-win rule lives in the model's payload builder now.
+    const MODEL2 = readFileSync(
+      join(process.cwd(), 'lib/documents/intelligence/inboxModel.ts'),
+      'utf8',
+    );
+    expect(MODEL2).toContain('edits win');
     expect(SRC).toContain('payloadFor');
   });
 });

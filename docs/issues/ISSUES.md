@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**173 total** · 112 open · 🔵 48 · 🟡 10 · 🟠 39 · 🟢 15 · ✅ 59
+**183 total** · 122 open · 🔵 50 · 🟡 11 · 🟠 40 · 🟢 21 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -173,13 +173,23 @@
 | MON-177 | 🔵 OPEN | 🟡 | yes | Recurring page hand-rolls monthly run-rate with approximate constants (4.33/2.17) and treats unknown patterns as monthly | — | — |
 | MON-178 | 🔵 OPEN | 🟡 | yes | Legacy tax-time report labels an engine-free subtraction 'Net Taxable Income' in a document meant for an accountant | — | — |
 | MON-179 | 🔵 OPEN | 🟡 | yes | HELD (hidden-only) trio in the legacy report layer: ANNUAL treated as monthly in declared burn; second health-score producer; investments valued two ways in one context | — | — |
-| MON-180 | 🟠 FIXING | 🟡 | no | Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back | ##1605 | ✅ |
-| MON-181 | 🟠 FIXING | 🟡 | no | Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without | ##1605 | n/a |
-| MON-182 | 🟠 FIXING | 🟠 | yes | Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal) | ##1606 | ✅ |
-| MON-183 | 🟠 FIXING | 🟢 | no | Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule | ##1605 | ✅ |
-| MON-184 | 🟠 FIXING | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | ##1606 | ✅ |
+| MON-180 | 🟢 VERIFIED | 🟡 | no | Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back | ##1605 | ✅ |
+| MON-181 | 🟢 VERIFIED | 🟡 | no | Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without | ##1605 | n/a |
+| MON-182 | 🟢 VERIFIED | 🟠 | yes | Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal) | ##1606 | ✅ |
+| MON-183 | 🟢 VERIFIED | 🟢 | no | Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule | ##1605 | ✅ |
+| MON-184 | 🟢 VERIFIED | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | ##1606 | ✅ |
 | MON-185 | 🔵 OPEN | 🟡 | no | DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix | — | n/a |
-| MON-186 | 🟠 FIXING | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | ##1605 | ✅ |
+| MON-186 | 🟢 VERIFIED | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | ##1605 | ✅ |
+| MON-187 | 🟠 FIXING | 🟠 | no | F1 — Smart Inbox select/approve dead on BOTH viewports: the component reads suggestedAction `.type` but the analyzer stores `.action`, so every row resolves actionless and every checkbox is born disabled | ##1614 | ✅ |
+| MON-188 | 🟠 FIXING | 🟠 | no | F2 — Smart Inbox edits don't persist: Done only closes the local edit panel; corrections vanish on reload | ##1614 | ✅ |
+| MON-189 | 🟠 FIXING | 🟠 | no | F3 — Net effect of F1+F2: the document-intake pipeline is display-only end-to-end; the intake promise 'edit any, then approve' is false on the live surface | ##1614 | ✅ |
+| MON-190 | 🟠 FIXING | 🟡 | no | F4 — Vault folder-tree 'All Documents' count is exactly 2× the true count (+2 per upload): the tree total sums the category buckets AND the tax-status buckets | ##1614 | ✅ |
+| MON-191 | 🟠 FIXING | 🟡 | no | F5 — OCR vendor extraction picks a mis-transcribed document-type word ('Invnice' from '** TAX INVOICE **') over the page-dominant merchant (BUNNINGS) | ##1614 | ✅ |
+| MON-192 | 🔵 OPEN | 🟡 | no | F6 — Scoreboard renders healthy-looking $0 / 0.0% / empty-state copy during load AND during real fetch failures (observed live 503s) instead of skeletons + LoadFailedState | — | n/a |
+| MON-193 | 🟠 FIXING | 🟡 | no | F7 — Upload promises 'Max 10.0 MB per file' but the platform rejects the request body at ~4.5MB (413 at 6.2MB): the stated limit and the enforced limit are different numbers | ##1614 | ✅ |
+| MON-194 | 🟠 FIXING | 🟢 | no | F8 — Non-JSON error bodies (the platform 413 et al.) are JSON.parsed and the raw parser exception is shown to the user: "Unexpected token 'R', 'Request En'… is not valid JSON" | ##1614 | ✅ |
+| MON-195 | 🔵 OPEN | 🟢 | no | F9 — Help drawer opens uninvited on the documents page (including from the Upload button click region) and could not be dismissed via X/Escape/outside-click | — | n/a |
+| MON-196 | 🟡 DIAGNOSED | 🟢 | no | F10 — /api/basiq/connections 403s on every balances-page load: the client calls a flag-gated route unconditionally | — | n/a |
 
 ---
 
@@ -2963,7 +2973,7 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/
 
 ### MON-180 — Scoreboard EOFY tile reads the CURRENT FY only — renders 'All rows Tax-ready' in August while 35 unmapped just-ended-FY rows sit one window back
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
 
 > **What was wrong:** In the first months of a new financial year the 'EOFY readiness' tile looks at the new, nearly-empty year and happily says everything is tax-ready — while the year you actually need to prepare for your accountant (the one that just ended) still has unlabelled rows the tile never mentions.
 >
@@ -2977,11 +2987,11 @@ Auto-raised by issues:raise (NeoAudit finding bus, §3.1). Surface: lib/reports/
 - **Holistic test (§19.4):** `tests/dashboard/scoreboardDisplay.test.ts#MON-180 — the EOFY tile window rule`
 - **Detail:** `M3 punch list §C-1 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
 
-Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+Depth-sweep class (b): a vacuously-true empty state hiding missing capability. Root cause verified in source: the tile fetches /api/bookkeeping/tax-pack/export?format=json with NO fy param (:101) so it always reads the CURRENT AU FY window (FY2026-27 in Aug 2026, includedCount 0) and renders the tax-ready claim from notReadyCount 0. The ?fy= param already exists on the route. changesNumbers: NO — display window selection; no engine or total changes. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge). VERIFIED 2026-08-25 — Ring-3 PASS on RING3_M3_PUNCH_FIXES.md (#1606 comments; envelope PARTIAL only for the authenticated /api/money-flow 503 not being observable account-first — that leg is Ring-1-verified; unauth GET = 401, no data): labelling live labelled 23/$13,864.90, noAtoMapping 12 explained to the cent (MODIFICATIONS ×8 + OTHER ×1 + 3 income rows); LVR 41.3→40.8 converged on both surfaces; EOFY tile leads FY2025-26; intake tile counts; strip renders all properties worst-first; reports tiles gone, pack card untouched.
 
 ### MON-181 — Scoreboard intake-queue tile renders '—' always — the fetch omits the band param the route 400s without
 
-**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
+**🟢 VERIFIED** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-22
 
 > **What was wrong:** The 'needs review' tile on the scoreboard shows a dash for every account, always — the page asks the review-queue API without saying which confidence band it wants, the API rejects the request, and the tile treats the rejection as 'no data'.
 >
@@ -2995,11 +3005,11 @@ Depth-sweep class (b): a vacuously-true empty state hiding missing capability. R
 - **Holistic test (§19.4):** n/a (display/UX)
 - **Detail:** `M3 punch list §C-2 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
 
-Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+Root cause verified in source: ScoreboardClient fetches /api/unified-transactions/review-queue with no query (:103); the route requires band=medium|low and returns 400 INVALID_BAND otherwise (:31-36) → res.ok false → intakeCount null → '—' unconditionally. Fix uses the SAME route (no second producer, §12.2.1): two banded fetches summed. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge). VERIFIED 2026-08-25 — Ring-3 PASS on RING3_M3_PUNCH_FIXES.md (#1606 comments; envelope PARTIAL only for the authenticated /api/money-flow 503 not being observable account-first — that leg is Ring-1-verified; unauth GET = 401, no data): labelling live labelled 23/$13,864.90, noAtoMapping 12 explained to the cent (MODIFICATIONS ×8 + OTHER ×1 + 3 income rows); LVR 41.3→40.8 converged on both surfaces; EOFY tile leads FY2025-26; intake tile counts; strip renders all properties worst-first; reports tiles gone, pack card untouched.
 
 ### MON-182 — Two portfolio-LVR producers disagree on live data — snapshot gearing 41.3% (all liabilities / all property value) vs properties banner 40.8% (owned-only, property-attached principal)
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-22
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: properties · opened 2026-08-22
 
 > **What was wrong:** The dashboard says your portfolio LVR is 41.3% while the properties page says 40.8% on the same data. Two different formulas are alive: the dashboard divides ALL loan debt (including personal loans and credit cards) by ALL property value (including rentals you don't own); the properties page divides property-attached loan principal by owned-property value, computed in the page itself.
 >
@@ -3014,11 +3024,11 @@ Root cause verified in source: ScoreboardClient fetches /api/unified-transaction
 - **Holistic test (§19.4):** `tests/calculations/portfolioLvr.test.ts#MON-182 — Ring-0 worked example + Ring-1 one-producer guard`
 - **Detail:** `M3 punch list §C-3 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22 · D-21 applies (number moves)`
 
-SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLVR = nw.liabilities.total / nw.assets.properties (:646,:655,:1024) where liabilities.total includes personal loans + credit cards (calculateTotalLiabilities) and assets.properties sums ALL properties incl. RENTAL (calculateTotalAssets, no type filter); page banner = owned-only (type !== 'RENTAL') sum of property-attached loan.principal / sum currentValue (:515-521). D-21 expected movement: snapshot/scoreboard figure moves 41.3% -> the owned-only figure (~40.8%); the properties-page figure does NOT move. Nuance to flag: loans attached to RENTAL properties leave the numerator with their property; personal/credit-card debt never belonged in a PROPERTY LVR. FIXING on #1606 (punch-list PR-2, 2026-08-22): lib/calculations/portfolioLvr.ts is THE producer; snapshot inline basis + page screen arithmetic DELETED; both surfaces basis-labelled. Hidden-family variants HELD under D-20 (portfolioEngine.ts:493, health/metricAggregation.ts:402, testing/exporter.ts:334) — recorded, untouched. VERIFIED gates on RING3_M3_PUNCH_FIXES.md Part 2.
+SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLVR = nw.liabilities.total / nw.assets.properties (:646,:655,:1024) where liabilities.total includes personal loans + credit cards (calculateTotalLiabilities) and assets.properties sums ALL properties incl. RENTAL (calculateTotalAssets, no type filter); page banner = owned-only (type !== 'RENTAL') sum of property-attached loan.principal / sum currentValue (:515-521). D-21 expected movement: snapshot/scoreboard figure moves 41.3% -> the owned-only figure (~40.8%); the properties-page figure does NOT move. Nuance to flag: loans attached to RENTAL properties leave the numerator with their property; personal/credit-card debt never belonged in a PROPERTY LVR. FIXING on #1606 (punch-list PR-2, 2026-08-22): lib/calculations/portfolioLvr.ts is THE producer; snapshot inline basis + page screen arithmetic DELETED; both surfaces basis-labelled. Hidden-family variants HELD under D-20 (portfolioEngine.ts:493, health/metricAggregation.ts:402, testing/exporter.ts:334) — recorded, untouched. VERIFIED gates on RING3_M3_PUNCH_FIXES.md Part 2. VERIFIED 2026-08-25 — Ring-3 PASS on RING3_M3_PUNCH_FIXES.md (#1606 comments; envelope PARTIAL only for the authenticated /api/money-flow 503 not being observable account-first — that leg is Ring-1-verified; unauth GET = 401, no data): labelling live labelled 23/$13,864.90, noAtoMapping 12 explained to the cent (MODIFICATIONS ×8 + OTHER ×1 + 3 income rows); LVR 41.3→40.8 converged on both surfaces; EOFY tile leads FY2025-26; intake tile counts; strip renders all properties worst-first; reports tiles gone, pack card untouched.
 
 ### MON-183 — Scoreboard cashflow strip silently truncates to 4 of N properties with no stated rule
 
-**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: dashboard · opened 2026-08-22
+**🟢 VERIFIED** · 🟢 low · changes numbers: **no** · area: dashboard · opened 2026-08-22
 
 > **What was wrong:** The per-property cashflow strip shows 4 properties when you have 6, with no hint that anything is missing or how the 4 were chosen.
 >
@@ -3032,11 +3042,11 @@ SSOT breach (§12.2.1) on a shipped number. Verified bases: snapshot portfolioLV
 - **Holistic test (§19.4):** `tests/dashboard/scoreboardDisplay.test.ts#MON-183 — the strip renders ALL rows, worst monthly figure first`
 - **Detail:** `M3 punch list §C-4 (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · Reza scoreboard acceptance 2026-08-22`
 
-Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no cap indicator. changesNumbers: NO — the per-tile numbers are unchanged; only which tiles render and in what order. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge). VERIFIED 2026-08-25 — Ring-3 PASS on RING3_M3_PUNCH_FIXES.md (#1606 comments; envelope PARTIAL only for the authenticated /api/money-flow 503 not being observable account-first — that leg is Ring-1-verified; unauth GET = 401, no data): labelling live labelled 23/$13,864.90, noAtoMapping 12 explained to the cent (MODIFICATIONS ×8 + OTHER ×1 + 3 income rows); LVR 41.3→40.8 converged on both surfaces; EOFY tile leads FY2025-26; intake tile counts; strip renders all properties worst-first; reports tiles gone, pack card untouched.
 
 ### MON-184 — Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels [])
 
-**🟠 FIXING** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-22
+**🟢 VERIFIED** · 🟠 high · changes numbers: **yes** · area: bookkeeping · opened 2026-08-22
 
 > **What was wrong:** The accountant pack is supposed to group your property income and expenses under official ATO labels (rental schedule lines). On real data, not a single row gets a label — all 35 categorised rows fall into 'no ATO mapping', because the matching is too literal: it requires an exact three-part category match against a seed vocabulary that doesn't speak the same words your live categories use.
 >
@@ -3051,7 +3061,7 @@ Root cause verified: bare slice(0, 4) at :221, insertion order (API order), no c
 - **Holistic test (§19.4):** `tests/bookkeeping/mon169170PackReconciliation.test.ts#MON-184 — (l1,l2) fallback labels; unmapped row still counted`
 - **Detail:** `M3 punch list §B (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) — the M3.1 opener · Ring-3 PASS verdict on #1601 (2026-08-22) measured the live blast radius · D-21 applies`
 
-Live evidence (Ring-3 2026-08-22, FY2025-26): atoLabelling {labelled:0, noCategory:0, noAtoMapping:35/$24,980.26}, atoLabels []. NOT an unseeded-mappings bug — seedSystemMappings runs on every export (summary.ts:164). Verified mechanism: summary.ts resolves each tx by the EXACT triple level1|level2|subcategory (:326 against the :299 map) while SYSTEM_TAX_MAPPING_SEEDS registers title-case (level1, level2, subcategory:null) vocabulary ('Property'/'Rates'); the live rows carry the UPPERCASE ExpenseCategoryType enum values the link route writes as categoryLevel1 (RATES, INSURANCE, UTILITIES, MAINTENANCE, MODIFICATIONS per the verdict's category listing) — so BOTH a hierarchy fallback AND seed vocabulary for the live level1 values are required. D-21: totals/identity/perProperty byte-identical; movement confined to atoLabelling.labelled 0->N, noAtoMapping 35->(35-N), atoLabels []->populated. FIXING on #1606 (punch-list PR-2, 2026-08-22): hierarchy fallback at the ONE lookup + enum seed vocabulary (9 seeds); MODIFICATIONS + RENT deliberately unmapped (stated in the PR + the D-21 brief). VERIFIED gates on RING3_M3_PUNCH_FIXES.md Part 1 (totals byte-identical; labelled 0->N).
+Live evidence (Ring-3 2026-08-22, FY2025-26): atoLabelling {labelled:0, noCategory:0, noAtoMapping:35/$24,980.26}, atoLabels []. NOT an unseeded-mappings bug — seedSystemMappings runs on every export (summary.ts:164). Verified mechanism: summary.ts resolves each tx by the EXACT triple level1|level2|subcategory (:326 against the :299 map) while SYSTEM_TAX_MAPPING_SEEDS registers title-case (level1, level2, subcategory:null) vocabulary ('Property'/'Rates'); the live rows carry the UPPERCASE ExpenseCategoryType enum values the link route writes as categoryLevel1 (RATES, INSURANCE, UTILITIES, MAINTENANCE, MODIFICATIONS per the verdict's category listing) — so BOTH a hierarchy fallback AND seed vocabulary for the live level1 values are required. D-21: totals/identity/perProperty byte-identical; movement confined to atoLabelling.labelled 0->N, noAtoMapping 35->(35-N), atoLabels []->populated. FIXING on #1606 (punch-list PR-2, 2026-08-22): hierarchy fallback at the ONE lookup + enum seed vocabulary (9 seeds); MODIFICATIONS + RENT deliberately unmapped (stated in the PR + the D-21 brief). VERIFIED gates on RING3_M3_PUNCH_FIXES.md Part 1 (totals byte-identical; labelled 0->N). VERIFIED 2026-08-25 — Ring-3 PASS on RING3_M3_PUNCH_FIXES.md (#1606 comments; envelope PARTIAL only for the authenticated /api/money-flow 503 not being observable account-first — that leg is Ring-1-verified; unauth GET = 401, no data): labelling live labelled 23/$13,864.90, noAtoMapping 12 explained to the cent (MODIFICATIONS ×8 + OTHER ×1 + 3 income rows); LVR 41.3→40.8 converged on both surfaces; EOFY tile leads FY2025-26; intake tile counts; strip renders all properties worst-first; reports tiles gone, pack card untouched.
 
 ### MON-185 — DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix
 
@@ -3066,7 +3076,7 @@ REGISTER-ONLY (brief law): NO code change, NO auto-fix, NO data write by any ses
 
 ### MON-186 — MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE
 
-**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-22
+**🟢 VERIFIED** · 🟠 high · changes numbers: **no** · area: gating · opened 2026-08-22
 
 > **What was wrong:** When the scoreboard went live, the switch that used to mean 'the old Home dashboard family' was turned on to mean 'the new scoreboard'. Two leftover surfaces still keyed to that switch came back on with it: the legacy Financial Overview report tile reappeared on the Reports page, and the old Home page's money-flow API is open again with nothing using it. The old Tax-Time report tile also has no switch at all, so it always shows despite the standing ruling to hide legacy report tiles.
 >
@@ -3080,5 +3090,166 @@ REGISTER-ONLY (brief law): NO code change, NO auto-fix, NO data write by any ses
 - **Holistic test (§19.4):** `tests/dashboard/reportTileKeys.test.ts#MON-186 — report tiles + legacy money-flow API pin their module keys`
 - **Detail:** `M3 punch list §D (BRIEF_M3_PUNCHLIST_AND_CLOSEOUT.md) · MODULE_HOME flip 2026-08-22 · exposure class`
 
-Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge).
+Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:66 (Financial Overview tile, resurfaced at the flip — the 2026-08-19 'hide legacy report tiles' ruling on #1595 covers it), money-flow/route.ts:22 (open API, Sankey feed for the unmounted HomeClient). Tax-Time tile has NO moduleKey (always shows); its generator is the calendar-YTD contextBuilder path the M2 Ring-3 FAIL condemned (counts salary/refunds/gifts as taxable income; disagrees with the D-12 pack by $271,546 on the same data) -> keyed to MODULE_TAX. Also flagged for Reza (OUT of brief scope, kept family): the property-portfolio report tile carries no moduleKey either — visible by design as a kept surface, but unpinned; the new expected-map guard test pins it explicitly. FIXING on #1605 (M3 punch-list PR-1, 2026-08-22); VERIFIED gates on the brief’s Ring-3 handout (Matrix, post-merge). VERIFIED 2026-08-25 — Ring-3 PASS on RING3_M3_PUNCH_FIXES.md (#1606 comments; envelope PARTIAL only for the authenticated /api/money-flow 503 not being observable account-first — that leg is Ring-1-verified; unauth GET = 401, no data): labelling live labelled 23/$13,864.90, noAtoMapping 12 explained to the cent (MODIFICATIONS ×8 + OTHER ×1 + 3 income rows); LVR 41.3→40.8 converged on both surfaces; EOFY tile leads FY2025-26; intake tile counts; strip renders all properties worst-first; reports tiles gone, pack card untouched.
+
+### MON-187 — F1 — Smart Inbox select/approve dead on BOTH viewports: the component reads suggestedAction `.type` but the analyzer stores `.action`, so every row resolves actionless and every checkbox is born disabled
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** In the document inbox, no tick-box ever works — clicking a row's box or 'Select all' leaves the counter at '0 selected', so the Approve button can never be pressed and nothing you scan can ever be booked. Your Bunnings $203.78 receipt is stranded there right now.
+>
+> **What changed:** The inbox now reads the action field by the name the analyser actually stores, so rows with a suggested action are selectable and approvable again. The row-model logic moved into a pure, typed module tied to the analyser's own types — the field-name mismatch class is now a compile error plus a tested contract.
+>
+> **What you should see:** Open My Vault's Smart Inbox: tick a row (or Select all) — the counter counts, and 'Approve N selected' becomes pressable and saves the item as the card shows it.
+
+- **Root cause:** `components/documents/SmartInbox.tsx:140`, `lib/documents/intelligence/types.ts:229`
+- **Downstream consumers (§19.4):** `components/documents/SmartInbox.tsx — checkbox disabled state, Select-all filter, Approve gating, per-row confirm payload`, `app/dashboard/documents/page.tsx handleConfirmAnalysis → POST /api/documents/analyze/confirm (the pre-existing SSOT write path — unreachable while F1 held)`, `Scoreboard intake/vault counters (they can finally clear once approves work)`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/inboxModel.test.ts#MON-187 — action resolution + flat payload`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 1`
+
+Root cause verified: types.ts:229 `SuggestedAction.action` is the stored field (receiptAnalyzer.ts:305 pushes action:'CREATE_EXPENSE'); SmartInbox.tsx:61 declares a LOCAL interface with `type` and :140 reads `top?.type` → always undefined → `action: null` → checkbox `disabled={!r.action}` (:297), Select-all filters on r.action (:391), Approve gates on selectedCount 0 (:401). The existing SmartInbox.test.tsx was source-scan only — it never exercised the field contract, which is why CI never caught this. SECOND latent leg found in the same diagnosis: `payloadFor` (:196) spreads the WRAPPED {value, confidence} extractedData while the confirm route reads FLAT (confirm/route.ts:225-227, :391-397) — an approve would have written '[object Object]'/NaN. Both legs fixed together: the payload is flattened so approve saves exactly what the card shows. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-188 — F2 — Smart Inbox edits don't persist: Done only closes the local edit panel; corrections vanish on reload
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** Correcting a document's vendor/amount/date in the inbox looks like it works — the row updates — but Done never saves anything, so a reload brings the wrong values back (your 'Invnice' vendor and the 2026-03-20 date both survived two corrected edits).
+>
+> **What changed:** Done now writes the corrections to the document's analysis record on the server (marked as your edits, full confidence) — they survive reload and flow into the approve payload.
+>
+> **What you should see:** Edit the Bunnings row's vendor to 'Bunnings' and the date to 2026-08-20, press Done, reload the page: the corrections are still there.
+
+- **Root cause:** `components/documents/SmartInbox.tsx:373`
+- **Downstream consumers (§19.4):** `components/documents/SmartInbox.tsx edit panel + row display`, `app/api/documents/analyze route (gains PATCH — the persist endpoint; merges user fields into DocumentAnalysis.extractedData)`, `POST /api/documents/analyze/confirm (approve payload now reflects persisted edits after reload too)`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-188 — Done persists`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 2`
+
+Root cause verified: Done's onClick is `setEditingId(null)` only (:371-377); `edits` is component state, merged into the confirm payload at approve time and never written anywhere. The surface's own copy ('edit any, then approve') promises persistence-by-approve, but F1 made approve unreachable AND a reload before approve loses the edit either way — the brief rules: persist. Fix: PATCH on the EXISTING /api/documents/analyze route (no new endpoint family, §12.4) merging the four editable fields into extractedData as {value, confidence: 1, source: 'user'} — user is the source of truth; ownership guarded via the analysis's document.userId. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-189 — F3 — Net effect of F1+F2: the document-intake pipeline is display-only end-to-end; the intake promise 'edit any, then approve' is false on the live surface
+
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** Everything after scanning a document is inert: you can look at what the AI found but not fix it, not select it, not approve it — so the dashboard's 'waiting for your confirm' and the vault's 'awaiting review' counts can never go down.
+>
+> **What changed:** Resolved by the MON-187 + MON-188 fixes together: select, edit-persist and approve all work, so intake items can finally clear.
+>
+> **What you should see:** End to end on the stranded Bunnings item: edit vendor/date → Done → reload (edits held) → tick → Approve → the item leaves the inbox and the expense exists (FY2026-27 once the date is corrected to 2026-08-20).
+
+- **Root cause:** `components/documents/SmartInbox.tsx:140`, `components/documents/SmartInbox.tsx:373`
+- **Downstream consumers (§19.4):** `Umbrella of MON-187/MON-188 — see their sweeps; closes when both do.`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/inboxModel.test.ts#MON-187 — (umbrella: resolves with 187+188)`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 (umbrella of F1+F2)`
+
+Registered as the sweep reported it (the combined user-facing effect). No code of its own — verification is the Ring-3 acceptance test: the stranded Bunnings $203.78 item becomes editable, selectable, approvable into FY2026-27. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-190 — F4 — Vault folder-tree 'All Documents' count is exactly 2× the true count (+2 per upload): the tree total sums the category buckets AND the tax-status buckets
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** The vault sidebar says you have twice as many documents as you do (16 when there are 8; goes up by 2 every upload), while the page header and dashboard tile show the right number.
+>
+> **What changed:** The tree now reads ONE total — the same document count every other surface uses — instead of adding two different groupings of the same documents together.
+>
+> **What you should see:** The sidebar 'All Documents' number equals the page hero's total and goes up by exactly 1 per upload.
+
+- **Root cause:** `components/documents/FolderTree.tsx:323`
+- **Downstream consumers (§19.4):** `components/documents/FolderTree.tsx root node count (the only wrong reader; category/FY/entity/tax sub-counts are each correct in their own lens)`, `app/dashboard/documents/page.tsx documentCounts (gains the one explicit 'total' produced from the same documents list the hero uses)`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-190 — ONE document total`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 6`
+
+Root cause verified: FolderTree.tsx:323-325 `baseTotal` sums every documentCounts key that isn't entity:/fy: — which is BOTH the per-category keys AND the Phase 38 tax: keys; every document carries exactly one of each → 2× by construction. §12.2.1: one producer — the page emits counts.total = documents.length (the same list the hero and grid render) and the tree reads it. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-191 — F5 — OCR vendor extraction picks a mis-transcribed document-type word ('Invnice' from '** TAX INVOICE **') over the page-dominant merchant (BUNNINGS)
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** Scanning a Bunnings receipt filled the vendor with 'Invnice' — a garbled reading of the words 'TAX INVOICE' — instead of Bunnings, which is the biggest text on the page.
+>
+> **What changed:** The vendor picker now refuses document-type words (invoice, receipt, statement — including near-miss OCR garblings of them) and prefers the merchant-like line: prominent, repeated, business-shaped text. Amount and date extraction are untouched — they were right.
+>
+> **What you should see:** Re-scan a receipt whose header says 'TAX INVOICE': the vendor comes back as the store's name, never 'Invoice' or a garbled variant of it.
+
+- **Root cause:** `lib/documents/intelligence/analyzers/receiptAnalyzer.ts:70`
+- **Downstream consumers (§19.4):** `lib/documents/intelligence/analyzers/receiptAnalyzer.ts extractVendor (the ONE vendor producer for pattern-analyzed receipts/invoices)`, `SmartInbox row vendor display + CREATE_EXPENSE prefill (vendorName on the created expense)`, `lib/documents/intelligence/learnedRouting.ts vendor→entity hints (bad vendor = bad routing memory)`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/receiptVendor.test.ts#MON-191 — the merchant wins over document-type words`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 5`
+
+Root cause verified: extractVendor's fallback (:70-89) takes the first non-numeric line of the OCR text; the garbled document-type header wins over the merchant name that appears later/repeatedly in the text. Fix constraints per the brief: prefer prominence/repetition signals available in the plain text (frequency + uppercase + business-shape), REJECT document-type vocabulary including fuzzy near-misses (edit-distance — catches 'Invnice', 'Reciept'), and never invent: if no plausible merchant line survives, return null (the field stays honestly empty for the user to fill). Amount/date paths untouched (verdict: exact + honestly read). FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-192 — F6 — Scoreboard renders healthy-looking $0 / 0.0% / empty-state copy during load AND during real fetch failures (observed live 503s) instead of skeletons + LoadFailedState
+
+**🔵 OPEN** · 🟡 medium · changes numbers: **no** · area: dashboard · opened 2026-08-25
+
+> **What was wrong:** While the dashboard is still loading — or when a data request actually fails — the tiles show $0, 0.0% and 'appears once transactions are in' as if that were your real position, for seconds at a time.
+>
+- **Root cause:** `app/dashboard/ScoreboardClient.tsx:198`
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-3 item 9 (fix scheduled there; registered now per the brief)`
+
+Evidence: P-9 S5 FAIL — /api/portfolio/snapshot and /api/linkage/health both 503'd transiently during a live dashboard load; ≥4s of $0-as-fact. The tiles render `data?.snapshot?.x ?? 0` under a 50%-opacity 'loading' dim — zeros are painted as values. Fix lands in BRIEF_M2_KEPT_DEPTH PR-3: per-tile skeletons while loading + per-feed LoadFailedState on failure; never a zero as interim truth.
+
+### MON-193 — F7 — Upload promises 'Max 10.0 MB per file' but the platform rejects the request body at ~4.5MB (413 at 6.2MB): the stated limit and the enforced limit are different numbers
+
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** The vault says files up to 10 MB are fine, but anything over about 4.5 MB is rejected by the hosting platform before our code even runs — a 6.2 MB photo fails with a cryptic error behind a promise that said it would work.
+>
+> **What changed:** There is now ONE file-size limit constant (4 MB — safely under the platform's 4.5 MB request cap) and every surface reads it: the drop-zone copy, the client-side check, the quick-capture scanner, the form-upload path and the server-side validator all state and enforce the same number.
+>
+> **What you should see:** The vault drop-zone says 'Max 4 MB per file'; a 6 MB photo is refused immediately with that same limit in a plain sentence (no upload attempt, no cryptic error); a 2 MB photo uploads fine.
+
+- **Root cause:** `lib/documents/constants.ts:26`, `lib/documents/types.ts:256`
+- **Downstream consumers (§19.4):** `lib/documents/constants.ts MAX_FILE_SIZE (becomes the ONE limit; types.ts re-exports it — today they are two independent 10MB constants, a §12.2.1 duplicate)`, `components/documents/DocumentUploadDropzone.tsx (copy + client check)`, `components/documents/GlobalScanReceipt.tsx MAX_BYTES (was a third local 10MB)`, `components/documents/FormDocumentUpload.tsx (inline 10MB check)`, `components/onboarding/wizard/DocumentUploadAccelerator.tsx (fourth local 10MB + copy)`, `lib/documents/documentService.ts:732 server-side validator`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-193 — ONE upload limit`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 3`
+
+Choice stated for Reza (brief: raise the real limit OR lower the promise): lowered the promise. Direct-to-storage upload (the raise path) would be NEW infrastructure — storage is Postgres BYTEA via monitraxProvider, no presigned-URL path exists — which D-22 (refinement only) rules out for this PR. 4MB (not 4.5) leaves headroom for multipart form overhead under Vercel's 4.5MB body cap so the promise is always keepable. When storage moves to GCS, raise the constant in ONE place. MAX_DB_FILE_SIZE (storage-layer ceiling, 10MB) deliberately left — it is a guard, not a promise. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-194 — F8 — Non-JSON error bodies (the platform 413 et al.) are JSON.parsed and the raw parser exception is shown to the user: "Unexpected token 'R', 'Request En'… is not valid JSON"
+
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** When an upload fails at the platform level, the red banner shows a programmer error message about JSON tokens instead of telling you what went wrong.
+>
+> **What changed:** One guarded error-reader now sits at the fetch seam: it tries the JSON error shape, and when the body isn't JSON it falls back to a human sentence mapped from the HTTP status (413 → 'that file is too large — the limit is 4 MB').
+>
+> **What you should see:** Force an upload failure: the banner reads as a plain sentence about the actual problem, never 'Unexpected token…'.
+
+- **Root cause:** `app/dashboard/documents/page.tsx:419`
+- **Downstream consumers (§19.4):** `lib/utils/responseError.ts (NEW — the one guarded reader)`, `app/dashboard/documents/page.tsx upload handler`, `components/documents/GlobalScanReceipt.tsx upload path`, `components/documents/FormDocumentUpload.tsx upload path`
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-194 — the guarded error reader`
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 4`
+
+Root cause verified: `const error = await res.json()` on !res.ok (:419) — a 413 body is plain text ('Request Entity Too Large') so .json() throws and the raw exception message becomes the banner. Search-first (§12.2.1): the only existing helper is component-local in the hidden entities canvas (entityGraphClient.ts readError) — no canonical one; created at lib/utils/responseError.ts and wired at the document-upload seams this brief covers (a whole-app fetch migration is out of scope, stated). FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
+
+### MON-195 — F9 — Help drawer opens uninvited on the documents page (including from the Upload button click region) and could not be dismissed via X/Escape/outside-click
+
+**🔵 OPEN** · 🟢 low · changes numbers: **no** · area: documents · opened 2026-08-25
+
+> **What was wrong:** A help panel sometimes opens when you didn't ask for it — including when clicking Upload — and then won't close except by reloading the page.
+>
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-3 item 12 (fix scheduled there). Caveat recorded from the sweep: automation clicks were the trigger context; manual reproduction not yet attempted — diagnose before fixing.`
+
+Register-only in PR-1. rootCause deliberately empty (§19.2: no verified line yet — the drawer's trigger overlap and dismiss handlers need diagnosis first; MON-147/159 precedent for no invented anchor).
+
+### MON-196 — F10 — /api/basiq/connections 403s on every balances-page load: the client calls a flag-gated route unconditionally
+
+**🟡 DIAGNOSED** · 🟢 low · changes numbers: **no** · area: balances · opened 2026-08-25
+
+> **What was wrong:** Every time the balances page loads, the app asks the bank-connections service and gets refused (the bank-feed feature is switched off) — harmless to what you see, but a guaranteed failed request on every visit.
+>
+- **Root cause:** `app/dashboard/balances/page.tsx:611`
+- **Holistic test (§19.4):** n/a (display/UX)
+- **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-3 item 13 (fix scheduled there; registered + diagnosed now)`
+
+Root cause verified: balances/page.tsx:611 fetches /api/basiq/connections unconditionally; the route is gated by basiqRouteGuard (BASIQ_INTEGRATION off → refused). The client already treats failure quietly (empty connections) — the defect is the guaranteed dead call + log noise. Fix (PR-3): gate on the purpose-built public flag endpoint /api/feature-flags/basiq (exists; fail-closed) and skip the call when disabled. The settings/connections management page stays as-is (user-initiated).
 

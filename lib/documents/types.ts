@@ -253,7 +253,8 @@ export const SUPPORTED_MIME_TYPES = [
 
 export type SupportedMimeType = typeof SUPPORTED_MIME_TYPES[number];
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+// MON-193: re-exported from constants.ts — ONE limit, never two numbers.
+export { MAX_FILE_SIZE } from './constants';
 
 // ============================================================================
 // MIME Type to Extension Mapping

@@ -34,8 +34,79 @@ import { inferExpenseCategory, normaliseVendor } from '../parsers/categoryInfere
 // ============================================================================
 
 /**
- * Extract vendor name from receipt text
- * Usually the vendor is at the top of the receipt
+ * MON-191 — document-type vocabulary a vendor can NEVER be, including fuzzy
+ * OCR garblings of it ("Invnice" from "** TAX INVOICE **" was chosen as the
+ * vendor on a live Bunnings receipt while BUNNINGS was the largest text on
+ * the page — P-9 finding F5). Matching is per-word with a small edit
+ * distance, so mis-transcriptions are caught without a dictionary.
+ */
+const DOC_TYPE_WORDS = ['invoice', 'receipt', 'statement', 'estimate', 'quote', 'docket', 'tax'];
+
+/** Levenshtein distance, early-exit above `max` (tiny inputs only). */
+function editDistance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  const prev = new Array(b.length + 1).fill(0).map((_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0];
+    prev[0] = i;
+    let rowMin = prev[0];
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = tmp;
+      if (prev[j] < rowMin) rowMin = prev[j];
+    }
+    if (rowMin > max) return max + 1;
+  }
+  return prev[b.length];
+}
+
+/** True when the candidate is document-type vocabulary (incl. OCR garblings)
+ *  rather than a merchant — e.g. "TAX INVOICE", "Invnice", "Reciept". */
+function isDocTypeText(candidate: string): boolean {
+  const words = candidate.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.length === 0 || words.length > 3) return false;
+  // EVERY word must be (a fuzzy match of) doc-type vocabulary for the whole
+  // candidate to be rejected — "BUNNINGS TAX INVOICE" is still a merchant line.
+  return words.every((w) =>
+    DOC_TYPE_WORDS.some((d) => {
+      if (w === d) return true;
+      if (w.length < 5 || d.length < 5) return false;
+      return editDistance(w, d, 2) <= 2;
+    })
+  );
+}
+
+/** Receipt-body boilerplate a vendor line never is (exact word matches). */
+const RECEIPT_BOILERPLATE = new Set([
+  'total', 'subtotal', 'change', 'cash', 'card', 'visa', 'mastercard',
+  'eftpos', 'due', 'paid', 'savings', 'rounding', 'tender',
+]);
+
+/** Lines that can never be a vendor regardless of position. */
+function isNonVendorLine(trimmed: string): boolean {
+  if (trimmed.length < 3 || trimmed.length >= 100) return true;
+  if (/^[\d\s.,\-*#=]+$/.test(trimmed)) return true; // numbers / rules / dividers
+  if (/[$]\s*\d/.test(trimmed)) return true; // carries a currency figure — a money line, not a masthead
+  if (/^\d+\s+\w+\s+(st|street|rd|road|ave|avenue)/i.test(trimmed)) return true; // address
+  if (/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(trimmed)) return true; // date
+  if (/\bABN\b|\bGST\b|\bEFTPOS\b/i.test(trimmed)) return true; // fiscal boilerplate
+  const words = trimmed.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.length > 0 && words.every((w) => RECEIPT_BOILERPLATE.has(w))) return true;
+  return isDocTypeText(trimmed);
+}
+
+/**
+ * Extract vendor name from receipt text.
+ *
+ * MON-191 refinement: the old first-plausible-line fallback let a garbled
+ * document-type header win over the merchant. Candidates are now scored by
+ * merchant-prominence signals available in plain OCR text — how often the
+ * line's dominant token repeats across the whole document (merchant names
+ * recur: header, footer, website) and whether the line is upper-case
+ * business-shaped text — and document-type vocabulary (with fuzzy OCR
+ * garblings) is rejected outright. When nothing plausible survives, return
+ * null: the field stays honestly empty for the user (never invent).
  */
 function extractVendor(text: string): ExtractedField<string> | null {
   const lines = text.split('\n').filter(line => line.trim().length > 0);
@@ -44,46 +115,47 @@ function extractVendor(text: string): ExtractedField<string> | null {
     return null;
   }
 
-  // Common patterns for vendor names
-  const vendorPatterns = [
-    // Pattern: "TAX INVOICE - Vendor Name" or similar
-    /^(?:TAX\s*)?(?:INVOICE|RECEIPT)[:\s-]+(.+)/i,
-    // Pattern: Look for ABN line and take the line before it
-    /^(.+?)\n.*ABN/im,
-  ];
-
-  for (const pattern of vendorPatterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      const vendor = match[1].trim();
-      if (vendor.length > 2 && vendor.length < 100) {
-        return {
-          value: normaliseVendor(vendor),
-          confidence: 0.85,
-          source: 'ocr',
-        };
-      }
+  // Pattern: "TAX INVOICE - Vendor Name" — the explicit label form. The
+  // captured name still runs through the doc-type rejection.
+  const labelled = text.match(/^(?:TAX\s*)?(?:INVOICE|RECEIPT)[:\s-]+(.+)/i);
+  if (labelled && labelled[1]) {
+    const vendor = labelled[1].trim();
+    if (vendor.length > 2 && vendor.length < 100 && !isDocTypeText(vendor)) {
+      return {
+        value: normaliseVendor(vendor),
+        confidence: 0.85,
+        source: 'ocr',
+      };
     }
   }
 
-  // Fallback: Use first non-empty line that looks like a business name
-  for (const line of lines.slice(0, 5)) {
+  // Score the early candidate lines by merchant-prominence.
+  const lower = text.toLowerCase();
+  let best: { line: string; score: number } | null = null;
+  for (const line of lines.slice(0, 8)) {
     const trimmed = line.trim();
-    // Skip lines that are just numbers or short
-    if (trimmed.length < 3 || /^[\d\s.,-]+$/.test(trimmed)) {
-      continue;
-    }
-    // Skip lines that look like addresses or dates
-    if (/^\d+\s+\w+\s+(st|street|rd|road|ave|avenue)/i.test(trimmed)) {
-      continue;
-    }
-    if (/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(trimmed)) {
-      continue;
-    }
+    if (isNonVendorLine(trimmed)) continue;
 
+    // Dominant token = the longest alphabetic word on the line.
+    const tokens = trimmed.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter((t) => t.length >= 4);
+    const dominant = tokens.sort((a, b) => b.length - a.length)[0];
+    let score = 1;
+    if (dominant) {
+      // Repetition across the whole document (merchant names recur).
+      const occurrences = lower.split(dominant).length - 1;
+      score += Math.min(occurrences - 1, 3) * 2;
+    }
+    // Upper-case business-shaped text reads as a masthead.
+    const letters = trimmed.replace(/[^A-Za-z]/g, '');
+    if (letters.length >= 4 && letters === letters.toUpperCase()) score += 1;
+
+    if (!best || score > best.score) best = { line: trimmed, score };
+  }
+
+  if (best) {
     return {
-      value: normaliseVendor(trimmed),
-      confidence: 0.7,
+      value: normaliseVendor(best.line),
+      confidence: best.score > 2 ? 0.75 : 0.7,
       source: 'inferred',
     };
   }
