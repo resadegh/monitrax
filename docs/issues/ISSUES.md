@@ -3,7 +3,7 @@
 > Generated from `docs/issues/ISSUES.json` by `npm run issues:generate`. Gated by `npm run issues:check`.
 > Lifecycle: 🔵 OPEN → 🟡 DIAGNOSED → 🟠 FIXING → 🟢 VERIFIED → ✅ CLOSED. See `docs/issues/README.md`.
 
-**183 total** · 122 open · 🔵 50 · 🟡 18 · 🟠 33 · 🟢 21 · ✅ 59
+**183 total** · 122 open · 🔵 50 · 🟡 11 · 🟠 40 · 🟢 21 · ✅ 59
 
 | ID | Status | Sev | Δ# | Title | Fix | Test |
 |---|---|---|---|---|---|---|
@@ -180,14 +180,14 @@
 | MON-184 | 🟢 VERIFIED | 🟠 | yes | Pack ATO labelling reaches ZERO rows on live data — exact-triple resolution + seed vocabulary mismatch (atoLabelling {labelled:0, noAtoMapping:35}, atoLabels []) | ##1606 | ✅ |
 | MON-185 | 🔵 OPEN | 🟡 | no | DATA: duplicate 'Guildford' + stray 'Thornlands' property records and 2 orphaned link targets in Reza's account — REGISTER-ONLY, never auto-fix | — | n/a |
 | MON-186 | 🟢 VERIFIED | 🟠 | no | MODULE_HOME's meaning changed at the 2026-08-22 flip (R4 wealth-OS family -> live v1 scoreboard) — legacy surfaces keyed to it are now mis-gated LIVE | ##1605 | ✅ |
-| MON-187 | 🟡 DIAGNOSED | 🟠 | no | F1 — Smart Inbox select/approve dead on BOTH viewports: the component reads suggestedAction `.type` but the analyzer stores `.action`, so every row resolves actionless and every checkbox is born disabled | — | n/a |
-| MON-188 | 🟡 DIAGNOSED | 🟠 | no | F2 — Smart Inbox edits don't persist: Done only closes the local edit panel; corrections vanish on reload | — | n/a |
-| MON-189 | 🟡 DIAGNOSED | 🟠 | no | F3 — Net effect of F1+F2: the document-intake pipeline is display-only end-to-end; the intake promise 'edit any, then approve' is false on the live surface | — | n/a |
-| MON-190 | 🟡 DIAGNOSED | 🟡 | no | F4 — Vault folder-tree 'All Documents' count is exactly 2× the true count (+2 per upload): the tree total sums the category buckets AND the tax-status buckets | — | n/a |
-| MON-191 | 🟡 DIAGNOSED | 🟡 | no | F5 — OCR vendor extraction picks a mis-transcribed document-type word ('Invnice' from '** TAX INVOICE **') over the page-dominant merchant (BUNNINGS) | — | n/a |
+| MON-187 | 🟠 FIXING | 🟠 | no | F1 — Smart Inbox select/approve dead on BOTH viewports: the component reads suggestedAction `.type` but the analyzer stores `.action`, so every row resolves actionless and every checkbox is born disabled | ##1614 | ✅ |
+| MON-188 | 🟠 FIXING | 🟠 | no | F2 — Smart Inbox edits don't persist: Done only closes the local edit panel; corrections vanish on reload | ##1614 | ✅ |
+| MON-189 | 🟠 FIXING | 🟠 | no | F3 — Net effect of F1+F2: the document-intake pipeline is display-only end-to-end; the intake promise 'edit any, then approve' is false on the live surface | ##1614 | ✅ |
+| MON-190 | 🟠 FIXING | 🟡 | no | F4 — Vault folder-tree 'All Documents' count is exactly 2× the true count (+2 per upload): the tree total sums the category buckets AND the tax-status buckets | ##1614 | ✅ |
+| MON-191 | 🟠 FIXING | 🟡 | no | F5 — OCR vendor extraction picks a mis-transcribed document-type word ('Invnice' from '** TAX INVOICE **') over the page-dominant merchant (BUNNINGS) | ##1614 | ✅ |
 | MON-192 | 🔵 OPEN | 🟡 | no | F6 — Scoreboard renders healthy-looking $0 / 0.0% / empty-state copy during load AND during real fetch failures (observed live 503s) instead of skeletons + LoadFailedState | — | n/a |
-| MON-193 | 🟡 DIAGNOSED | 🟡 | no | F7 — Upload promises 'Max 10.0 MB per file' but the platform rejects the request body at ~4.5MB (413 at 6.2MB): the stated limit and the enforced limit are different numbers | — | n/a |
-| MON-194 | 🟡 DIAGNOSED | 🟢 | no | F8 — Non-JSON error bodies (the platform 413 et al.) are JSON.parsed and the raw parser exception is shown to the user: "Unexpected token 'R', 'Request En'… is not valid JSON" | — | n/a |
+| MON-193 | 🟠 FIXING | 🟡 | no | F7 — Upload promises 'Max 10.0 MB per file' but the platform rejects the request body at ~4.5MB (413 at 6.2MB): the stated limit and the enforced limit are different numbers | ##1614 | ✅ |
+| MON-194 | 🟠 FIXING | 🟢 | no | F8 — Non-JSON error bodies (the platform 413 et al.) are JSON.parsed and the raw parser exception is shown to the user: "Unexpected token 'R', 'Request En'… is not valid JSON" | ##1614 | ✅ |
 | MON-195 | 🔵 OPEN | 🟢 | no | F9 — Help drawer opens uninvited on the documents page (including from the Upload button click region) and could not be dismissed via X/Escape/outside-click | — | n/a |
 | MON-196 | 🟡 DIAGNOSED | 🟢 | no | F10 — /api/basiq/connections 403s on every balances-page load: the client calls a flag-gated route unconditionally | — | n/a |
 
@@ -3094,7 +3094,7 @@ Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:6
 
 ### MON-187 — F1 — Smart Inbox select/approve dead on BOTH viewports: the component reads suggestedAction `.type` but the analyzer stores `.action`, so every row resolves actionless and every checkbox is born disabled
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** In the document inbox, no tick-box ever works — clicking a row's box or 'Select all' leaves the counter at '0 selected', so the Approve button can never be pressed and nothing you scan can ever be booked. Your Bunnings $203.78 receipt is stranded there right now.
 >
@@ -3104,14 +3104,15 @@ Inventory re-verified at HEAD (grep -rn MODULE_HOME app lib): reports/page.tsx:6
 
 - **Root cause:** `components/documents/SmartInbox.tsx:140`, `lib/documents/intelligence/types.ts:229`
 - **Downstream consumers (§19.4):** `components/documents/SmartInbox.tsx — checkbox disabled state, Select-all filter, Approve gating, per-row confirm payload`, `app/dashboard/documents/page.tsx handleConfirmAnalysis → POST /api/documents/analyze/confirm (the pre-existing SSOT write path — unreachable while F1 held)`, `Scoreboard intake/vault counters (they can finally clear once approves work)`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/inboxModel.test.ts#MON-187 — action resolution + flat payload`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 1`
 
-Root cause verified: types.ts:229 `SuggestedAction.action` is the stored field (receiptAnalyzer.ts:305 pushes action:'CREATE_EXPENSE'); SmartInbox.tsx:61 declares a LOCAL interface with `type` and :140 reads `top?.type` → always undefined → `action: null` → checkbox `disabled={!r.action}` (:297), Select-all filters on r.action (:391), Approve gates on selectedCount 0 (:401). The existing SmartInbox.test.tsx was source-scan only — it never exercised the field contract, which is why CI never caught this. SECOND latent leg found in the same diagnosis: `payloadFor` (:196) spreads the WRAPPED {value, confidence} extractedData while the confirm route reads FLAT (confirm/route.ts:225-227, :391-397) — an approve would have written '[object Object]'/NaN. Both legs fixed together: the payload is flattened so approve saves exactly what the card shows.
+Root cause verified: types.ts:229 `SuggestedAction.action` is the stored field (receiptAnalyzer.ts:305 pushes action:'CREATE_EXPENSE'); SmartInbox.tsx:61 declares a LOCAL interface with `type` and :140 reads `top?.type` → always undefined → `action: null` → checkbox `disabled={!r.action}` (:297), Select-all filters on r.action (:391), Approve gates on selectedCount 0 (:401). The existing SmartInbox.test.tsx was source-scan only — it never exercised the field contract, which is why CI never caught this. SECOND latent leg found in the same diagnosis: `payloadFor` (:196) spreads the WRAPPED {value, confidence} extractedData while the confirm route reads FLAT (confirm/route.ts:225-227, :391-397) — an approve would have written '[object Object]'/NaN. Both legs fixed together: the payload is flattened so approve saves exactly what the card shows. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-188 — F2 — Smart Inbox edits don't persist: Done only closes the local edit panel; corrections vanish on reload
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** Correcting a document's vendor/amount/date in the inbox looks like it works — the row updates — but Done never saves anything, so a reload brings the wrong values back (your 'Invnice' vendor and the 2026-03-20 date both survived two corrected edits).
 >
@@ -3121,14 +3122,15 @@ Root cause verified: types.ts:229 `SuggestedAction.action` is the stored field (
 
 - **Root cause:** `components/documents/SmartInbox.tsx:373`
 - **Downstream consumers (§19.4):** `components/documents/SmartInbox.tsx edit panel + row display`, `app/api/documents/analyze route (gains PATCH — the persist endpoint; merges user fields into DocumentAnalysis.extractedData)`, `POST /api/documents/analyze/confirm (approve payload now reflects persisted edits after reload too)`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-188 — Done persists`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 2`
 
-Root cause verified: Done's onClick is `setEditingId(null)` only (:371-377); `edits` is component state, merged into the confirm payload at approve time and never written anywhere. The surface's own copy ('edit any, then approve') promises persistence-by-approve, but F1 made approve unreachable AND a reload before approve loses the edit either way — the brief rules: persist. Fix: PATCH on the EXISTING /api/documents/analyze route (no new endpoint family, §12.4) merging the four editable fields into extractedData as {value, confidence: 1, source: 'user'} — user is the source of truth; ownership guarded via the analysis's document.userId.
+Root cause verified: Done's onClick is `setEditingId(null)` only (:371-377); `edits` is component state, merged into the confirm payload at approve time and never written anywhere. The surface's own copy ('edit any, then approve') promises persistence-by-approve, but F1 made approve unreachable AND a reload before approve loses the edit either way — the brief rules: persist. Fix: PATCH on the EXISTING /api/documents/analyze route (no new endpoint family, §12.4) merging the four editable fields into extractedData as {value, confidence: 1, source: 'user'} — user is the source of truth; ownership guarded via the analysis's document.userId. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-189 — F3 — Net effect of F1+F2: the document-intake pipeline is display-only end-to-end; the intake promise 'edit any, then approve' is false on the live surface
 
-**🟡 DIAGNOSED** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟠 high · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** Everything after scanning a document is inert: you can look at what the AI found but not fix it, not select it, not approve it — so the dashboard's 'waiting for your confirm' and the vault's 'awaiting review' counts can never go down.
 >
@@ -3138,14 +3140,15 @@ Root cause verified: Done's onClick is `setEditingId(null)` only (:371-377); `ed
 
 - **Root cause:** `components/documents/SmartInbox.tsx:140`, `components/documents/SmartInbox.tsx:373`
 - **Downstream consumers (§19.4):** `Umbrella of MON-187/MON-188 — see their sweeps; closes when both do.`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/inboxModel.test.ts#MON-187 — (umbrella: resolves with 187+188)`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 (umbrella of F1+F2)`
 
-Registered as the sweep reported it (the combined user-facing effect). No code of its own — verification is the Ring-3 acceptance test: the stranded Bunnings $203.78 item becomes editable, selectable, approvable into FY2026-27.
+Registered as the sweep reported it (the combined user-facing effect). No code of its own — verification is the Ring-3 acceptance test: the stranded Bunnings $203.78 item becomes editable, selectable, approvable into FY2026-27. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-190 — F4 — Vault folder-tree 'All Documents' count is exactly 2× the true count (+2 per upload): the tree total sums the category buckets AND the tax-status buckets
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** The vault sidebar says you have twice as many documents as you do (16 when there are 8; goes up by 2 every upload), while the page header and dashboard tile show the right number.
 >
@@ -3155,14 +3158,15 @@ Registered as the sweep reported it (the combined user-facing effect). No code o
 
 - **Root cause:** `components/documents/FolderTree.tsx:323`
 - **Downstream consumers (§19.4):** `components/documents/FolderTree.tsx root node count (the only wrong reader; category/FY/entity/tax sub-counts are each correct in their own lens)`, `app/dashboard/documents/page.tsx documentCounts (gains the one explicit 'total' produced from the same documents list the hero uses)`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-190 — ONE document total`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 6`
 
-Root cause verified: FolderTree.tsx:323-325 `baseTotal` sums every documentCounts key that isn't entity:/fy: — which is BOTH the per-category keys AND the Phase 38 tax: keys; every document carries exactly one of each → 2× by construction. §12.2.1: one producer — the page emits counts.total = documents.length (the same list the hero and grid render) and the tree reads it.
+Root cause verified: FolderTree.tsx:323-325 `baseTotal` sums every documentCounts key that isn't entity:/fy: — which is BOTH the per-category keys AND the Phase 38 tax: keys; every document carries exactly one of each → 2× by construction. §12.2.1: one producer — the page emits counts.total = documents.length (the same list the hero and grid render) and the tree reads it. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-191 — F5 — OCR vendor extraction picks a mis-transcribed document-type word ('Invnice' from '** TAX INVOICE **') over the page-dominant merchant (BUNNINGS)
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** Scanning a Bunnings receipt filled the vendor with 'Invnice' — a garbled reading of the words 'TAX INVOICE' — instead of Bunnings, which is the biggest text on the page.
 >
@@ -3172,10 +3176,11 @@ Root cause verified: FolderTree.tsx:323-325 `baseTotal` sums every documentCount
 
 - **Root cause:** `lib/documents/intelligence/analyzers/receiptAnalyzer.ts:70`
 - **Downstream consumers (§19.4):** `lib/documents/intelligence/analyzers/receiptAnalyzer.ts extractVendor (the ONE vendor producer for pattern-analyzed receipts/invoices)`, `SmartInbox row vendor display + CREATE_EXPENSE prefill (vendorName on the created expense)`, `lib/documents/intelligence/learnedRouting.ts vendor→entity hints (bad vendor = bad routing memory)`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/receiptVendor.test.ts#MON-191 — the merchant wins over document-type words`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 5`
 
-Root cause verified: extractVendor's fallback (:70-89) takes the first non-numeric line of the OCR text; the garbled document-type header wins over the merchant name that appears later/repeatedly in the text. Fix constraints per the brief: prefer prominence/repetition signals available in the plain text (frequency + uppercase + business-shape), REJECT document-type vocabulary including fuzzy near-misses (edit-distance — catches 'Invnice', 'Reciept'), and never invent: if no plausible merchant line survives, return null (the field stays honestly empty for the user to fill). Amount/date paths untouched (verdict: exact + honestly read).
+Root cause verified: extractVendor's fallback (:70-89) takes the first non-numeric line of the OCR text; the garbled document-type header wins over the merchant name that appears later/repeatedly in the text. Fix constraints per the brief: prefer prominence/repetition signals available in the plain text (frequency + uppercase + business-shape), REJECT document-type vocabulary including fuzzy near-misses (edit-distance — catches 'Invnice', 'Reciept'), and never invent: if no plausible merchant line survives, return null (the field stays honestly empty for the user to fill). Amount/date paths untouched (verdict: exact + honestly read). FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-192 — F6 — Scoreboard renders healthy-looking $0 / 0.0% / empty-state copy during load AND during real fetch failures (observed live 503s) instead of skeletons + LoadFailedState
 
@@ -3191,7 +3196,7 @@ Evidence: P-9 S5 FAIL — /api/portfolio/snapshot and /api/linkage/health both 5
 
 ### MON-193 — F7 — Upload promises 'Max 10.0 MB per file' but the platform rejects the request body at ~4.5MB (413 at 6.2MB): the stated limit and the enforced limit are different numbers
 
-**🟡 DIAGNOSED** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟡 medium · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** The vault says files up to 10 MB are fine, but anything over about 4.5 MB is rejected by the hosting platform before our code even runs — a 6.2 MB photo fails with a cryptic error behind a promise that said it would work.
 >
@@ -3201,14 +3206,15 @@ Evidence: P-9 S5 FAIL — /api/portfolio/snapshot and /api/linkage/health both 5
 
 - **Root cause:** `lib/documents/constants.ts:26`, `lib/documents/types.ts:256`
 - **Downstream consumers (§19.4):** `lib/documents/constants.ts MAX_FILE_SIZE (becomes the ONE limit; types.ts re-exports it — today they are two independent 10MB constants, a §12.2.1 duplicate)`, `components/documents/DocumentUploadDropzone.tsx (copy + client check)`, `components/documents/GlobalScanReceipt.tsx MAX_BYTES (was a third local 10MB)`, `components/documents/FormDocumentUpload.tsx (inline 10MB check)`, `components/onboarding/wizard/DocumentUploadAccelerator.tsx (fourth local 10MB + copy)`, `lib/documents/documentService.ts:732 server-side validator`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-193 — ONE upload limit`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 3`
 
-Choice stated for Reza (brief: raise the real limit OR lower the promise): lowered the promise. Direct-to-storage upload (the raise path) would be NEW infrastructure — storage is Postgres BYTEA via monitraxProvider, no presigned-URL path exists — which D-22 (refinement only) rules out for this PR. 4MB (not 4.5) leaves headroom for multipart form overhead under Vercel's 4.5MB body cap so the promise is always keepable. When storage moves to GCS, raise the constant in ONE place. MAX_DB_FILE_SIZE (storage-layer ceiling, 10MB) deliberately left — it is a guard, not a promise.
+Choice stated for Reza (brief: raise the real limit OR lower the promise): lowered the promise. Direct-to-storage upload (the raise path) would be NEW infrastructure — storage is Postgres BYTEA via monitraxProvider, no presigned-URL path exists — which D-22 (refinement only) rules out for this PR. 4MB (not 4.5) leaves headroom for multipart form overhead under Vercel's 4.5MB body cap so the promise is always keepable. When storage moves to GCS, raise the constant in ONE place. MAX_DB_FILE_SIZE (storage-layer ceiling, 10MB) deliberately left — it is a guard, not a promise. FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-194 — F8 — Non-JSON error bodies (the platform 413 et al.) are JSON.parsed and the raw parser exception is shown to the user: "Unexpected token 'R', 'Request En'… is not valid JSON"
 
-**🟡 DIAGNOSED** · 🟢 low · changes numbers: **no** · area: documents · opened 2026-08-25
+**🟠 FIXING** · 🟢 low · changes numbers: **no** · area: documents · opened 2026-08-25
 
 > **What was wrong:** When an upload fails at the platform level, the red banner shows a programmer error message about JSON tokens instead of telling you what went wrong.
 >
@@ -3218,10 +3224,11 @@ Choice stated for Reza (brief: raise the real limit OR lower the promise): lower
 
 - **Root cause:** `app/dashboard/documents/page.tsx:419`
 - **Downstream consumers (§19.4):** `lib/utils/responseError.ts (NEW — the one guarded reader)`, `app/dashboard/documents/page.tsx upload handler`, `components/documents/GlobalScanReceipt.tsx upload path`, `components/documents/FormDocumentUpload.tsx upload path`
-- **Holistic test (§19.4):** n/a (display/UX)
+- **Fix PR(s):** ##1614
+- **Holistic test (§19.4):** `tests/documents/intakePipelineGuards.test.ts#MON-194 — the guarded error reader`
 - **Detail:** `P-9 live sweep (Ring-3 PARTIAL, envelope on #1613, 2026-08-25) · BRIEF_M2_KEPT_DEPTH.md PR-1 item 4`
 
-Root cause verified: `const error = await res.json()` on !res.ok (:419) — a 413 body is plain text ('Request Entity Too Large') so .json() throws and the raw exception message becomes the banner. Search-first (§12.2.1): the only existing helper is component-local in the hidden entities canvas (entityGraphClient.ts readError) — no canonical one; created at lib/utils/responseError.ts and wired at the document-upload seams this brief covers (a whole-app fetch migration is out of scope, stated).
+Root cause verified: `const error = await res.json()` on !res.ok (:419) — a 413 body is plain text ('Request Entity Too Large') so .json() throws and the raw exception message becomes the banner. Search-first (§12.2.1): the only existing helper is component-local in the hidden entities canvas (entityGraphClient.ts readError) — no canonical one; created at lib/utils/responseError.ts and wired at the document-upload seams this brief covers (a whole-app fetch migration is out of scope, stated). FIXING on #1614 (P-10 PR-1, 2026-08-25); VERIFIED gates on the brief’s PR-1 Ring-3 (the stranded Bunnings item edited/selected/approved into FY2026-27).
 
 ### MON-195 — F9 — Help drawer opens uninvited on the documents page (including from the Upload button click region) and could not be dismissed via X/Escape/outside-click
 
