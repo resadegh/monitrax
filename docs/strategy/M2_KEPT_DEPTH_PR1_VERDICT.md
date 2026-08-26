@@ -51,3 +51,16 @@ Immediately before the approve, the activity money-flow widget (*Annual referenc
 **Establishes:** every PR-1 prediction on live data; the acceptance expense booked to the correct FY at the corrected date; the four document totals agreeing; the upload limit told and enforced as one number; mustNotMove byte-identical.
 
 **Does NOT establish:** S7 onboarding (blocked, G3) · MON-191's extractor (never exercised — no new upload) · the `+1 per upload` half of MON-190 (no upload completed) · pack totals byte-for-byte (JS tool blocked; the EOFY tile at 12 is the proxy) · the ×12 mechanism behind G1 (inferred, not measured) · the mechanism behind G3 · whether the approve path's choice of a **Cash** account is intended — note MON-172 means CASH accounts do not render on the balances page, so this expense's account is invisible there.
+
+## 5. Routing the UI findings — Stitch-first, ≥9/10 (Reza, 2026-08-26)
+
+**G7 and G2 are section-level UI changes and MUST NOT be fixed code-first.** Reza's ruling on this verdict: *"as this is a UI change it should pass through Stitch and your 9/10 review."* That is §18.2.1 (the STRICT in-app ruling — section-level compositions go through Stitch) plus §18.8 (every Stitch output self-reviewed on the 7-lens rubric and only presented above 9/10). Ownership follows the 2026-08-25a ruling: 🟩 Matrix generates and shows Reza preview PNGs; 🟦 Code commits the artefacts + JSDoc screen IDs only after his nod.
+
+| Finding | Route |
+|---|---|
+| **G7** upload panel renders below the Smart Inbox | **STITCH-FIRST.** Re-composition of the vault page's section order — the drop zone belongs immediately under the hero tile carrying the Upload button. |
+| **G2** `--$204` · inverted `+$204` day subtotal · income arrow on an expense | **STITCH-FIRST for the row treatment** (amount sign, day-subtotal sign, direction glyph are §18.7.2 money-signal vocabulary). The underlying data is correct, so this is presentation only. |
+| G4 raw `SET_REMINDER` label | Copy fix, not a composition change — Code may fix directly; the label vocabulary is a §18.7.2 concern only if the chip styling changes. |
+| G1 · G3 · G5 · G6 | Not UI compositions — normal Code routing (G1 = producer/engine, G3 = auth route, G5 = existing MON-195, G6 = M5.1 marketing). |
+
+**⛔ BLOCKER, unchanged since 2026-08-25:** Stitch tooling is down — `generate_screen_from_text` times out at the 60s MCP boundary with no retrievable screen, and `list_screens` returns EMPTY for the in-app project `5991501424852019479`. **So G7 and G2 cannot start.** They are recorded here as Stitch-gated and BLOCKED rather than quietly routed to Code, which is exactly the drift D-22 was raised to stop. No design will be invented as a workaround (the M3.4 precedent). Options for Reza in the next relay: retry the tooling, supply a working Stitch project, or rule a one-off exception in writing for these two narrowly-scoped presentational fixes.
