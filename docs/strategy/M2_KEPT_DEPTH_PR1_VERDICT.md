@@ -4,6 +4,8 @@
 **Handout:** `docs/strategy/BRIEF_M2_KEPT_DEPTH.md` §PR-1 — predictions committed in #1613 BEFORE the fix code (#1614). D-21 satisfied by the brief itself; no separate handout cut.
 **Envelope:** validated `matrix-result/v1`, posted on #1614. **Satellite doc pattern: P-11.**
 
+> **⚠️ §5 WAS RETRACTED AND REWRITTEN 2026-08-26.** The version of §5 merged in #1615 declared Stitch BLOCKED and said G7/G2 "cannot start". **That was wrong** — see §5 and `docs/architecture/STITCH_OPERATING_PROCEDURE.md` §1. Sections 1–4 are unchanged and stand as verified.
+
 ## 1. The acceptance test — PASSED, and Reza's expense is booked
 
 Reza's real Bunnings receipt ($203.78, Bunnings Smithfield, EFT 20/08/2026) had been stranded pending since the P-9 sweep because approve was impossible. This run cleared it end to end:
@@ -52,9 +54,9 @@ Immediately before the approve, the activity money-flow widget (*Annual referenc
 
 **Does NOT establish:** S7 onboarding (blocked, G3) · MON-191's extractor (never exercised — no new upload) · the `+1 per upload` half of MON-190 (no upload completed) · pack totals byte-for-byte (JS tool blocked; the EOFY tile at 12 is the proxy) · the ×12 mechanism behind G1 (inferred, not measured) · the mechanism behind G3 · whether the approve path's choice of a **Cash** account is intended — note MON-172 means CASH accounts do not render on the balances page, so this expense's account is invisible there.
 
-## 5. Routing the UI findings — Stitch-first, ≥9/10 (Reza, 2026-08-26)
+## 5. Routing the UI findings — Stitch-first, ≥9/10 (Reza, 2026-08-26) — §5 REWRITTEN, the earlier blocker RETRACTED
 
-**G7 and G2 are section-level UI changes and MUST NOT be fixed code-first.** Reza's ruling on this verdict: *"as this is a UI change it should pass through Stitch and your 9/10 review."* That is §18.2.1 (the STRICT in-app ruling — section-level compositions go through Stitch) plus §18.8 (every Stitch output self-reviewed on the 7-lens rubric and only presented above 9/10). Ownership follows the 2026-08-25a ruling: 🟩 Matrix generates and shows Reza preview PNGs; 🟦 Code commits the artefacts + JSDoc screen IDs only after his nod.
+**G7 and G2 are section-level UI changes and MUST NOT be fixed code-first.** Reza's ruling on this verdict: *"as this is a UI change it should pass through Stitch and your 9/10 review"* and *"I want stitch to be the UI designer as it is much nicer than code designs."* That is §18.2.1 (STRICT — in-app section-level compositions go through Stitch) plus §18.8 (≥9/10 self-review before Reza sees anything). Ownership follows the 2026-08-25a ruling: 🟩 Matrix authors the prompt and reviews; 🧑 Reza previews and nods; 🟦 Code commits artefacts + JSDoc screen IDs.
 
 | Finding | Route |
 |---|---|
@@ -63,4 +65,18 @@ Immediately before the approve, the activity money-flow widget (*Annual referenc
 | G4 raw `SET_REMINDER` label | Copy fix, not a composition change — Code may fix directly; the label vocabulary is a §18.7.2 concern only if the chip styling changes. |
 | G1 · G3 · G5 · G6 | Not UI compositions — normal Code routing (G1 = producer/engine, G3 = auth route, G5 = existing MON-195, G6 = M5.1 marketing). |
 
-**⛔ BLOCKER — RE-TESTED LIVE 2026-08-26, not recalled.** `list_screens` on the in-app project `5991501424852019479` returns **`{}`** — zero screens enumerable, exactly as on 2026-08-25. And `list_projects` (4 projects, read today) shows a second, larger problem: **no Stitch project covers the kept v1 surfaces at all.** The four are `1859462351962811110` Monitrax — Public Website Redesign (Phase 47) · `5991501424852019479` Monitrax — My Wealth: **Superannuation** (in-app, a HIDDEN-module surface, and the one that enumerates nothing) · `4167588157712714472` Monitrax Mobile · `6907302336968095589` iRoom Design & Drafting (unrelated). **There is no project holding the vault/documents or activity-ledger compositions that G7 and G2 would edit.** So §18.2.1's Stitch-first route has neither working tooling nor a home project for these two findings. Also unchanged from 2026-08-25: `generate_screen_from_text` times out at the 60s MCP boundary with no retrievable screen. **G7 and G2 therefore cannot start.** They are recorded as Stitch-gated and BLOCKED rather than quietly routed to Code — exactly the drift D-22 was raised to stop — and no design will be invented as a workaround (the M3.4 precedent). Options for Reza in the next relay: retry or repair the tooling · create (or point to) an in-app Stitch project that holds the KEPT v1 surfaces · or rule a written one-off exception for these two narrowly-scoped presentational fixes.
+### ⚠️ RETRACTION — the blocker recorded here in #1615 was WRONG
+
+The merged version of this section declared *"Stitch tooling is down… G7 and G2 therefore cannot start."* **That claim is withdrawn in full.** Re-tested properly on 2026-08-26:
+
+- **`generate_screen_from_text` timing out at 60s is DOCUMENTED, EXPECTED behaviour.** The tool's own description reads: *"This action can take a few minutes to complete. Please be patient. DO NOT RETRY. If the tool fails with a timeout, don't retry. Instead, try to get the screen with `get_screen` every 30 seconds."* The timeout was never evidence of a fault; the correct response is to poll, not to declare a blocker.
+- **The in-app project is fully alive.** `get_screen` on `1c01d0c1e990458899afbf2f68d5a615` (registered 2026-06-01) returns live `htmlCode` and `screenshot` download URLs. `list_screens` returning `{}` is a *listing* limitation only.
+- **`.stitch/metadata.inapp-wealth.json` is the screen-ID registry of record** — which is exactly how nine months of tiles were designed while `list_screens` was useless. The Matrix simply never read that file.
+- **A vault-page generation was submitted and LANDED** on 2026-08-26 at `04:13:03Z` (the project's `updateTime` moved).
+- **"No project covers the kept surfaces" was misleading.** The in-app project's title names Superannuation only because that was its first screen; it is not scoped to it, and every `/dashboard/*` surface belongs there.
+
+**The one real, narrow constraint:** a screen generated from a session with a 60s MCP ceiling cannot have its **new ID** read back, because this project does not enumerate. The screen exists; the pointer does not return. Recoveries, in order: **(a)** `edit_screens` on an ID already in the registry; **(b)** Reza reads the new ID once from the Stitch UI and it is recorded permanently; **(c)** 🟦 Code runs the generation — which is how this has always worked.
+
+**Consequence: G7 and G2 are UNBLOCKED.** Full mechanics, the correction record and the CLAUDE.md §18.3.1 carry text: **`docs/architecture/STITCH_OPERATING_PROCEDURE.md`**.
+
+**Honest status of the generated screen:** it exists in Stitch but the Matrix could not retrieve it, so it has **NOT** passed the §18.8 ≥9/10 gate and must not be treated as approved or ported. It is a draft awaiting retrieval.
