@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Freedom Horizon Variant C</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for mobile sparkline grid if needed */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2b322b",
+                        "trail-violet": "#8B5CF6",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-container": "#00873a",
+                        "on-tertiary-container": "#fdfcff",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-tertiary": "#ffffff",
+                        "outline-slate": "#94A3B8",
+                        "surface-container-highest": "#dde5d9",
+                        "surface-tint": "#006e2d",
+                        "outline": "#6e7b6c",
+                        "on-primary-fixed": "#002109",
+                        "on-background": "#171d16",
+                        "secondary-container": "#d9dff4",
+                        "primary-fixed": "#7ffc97",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f4fcf0",
+                        "background": "#f4fcf0",
+                        "trail-sky": "#0EA5E9",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "trail-amber": "#F59E0B",
+                        "tertiary-container": "#66768d",
+                        "secondary-fixed": "#dce2f6",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-variant": "#dde5d9",
+                        "inverse-primary": "#62df7d",
+                        "outline-variant": "#bdcaba",
+                        "trail-emerald": "#16A34A",
+                        "surface-container": "#e9f0e5",
+                        "on-surface-variant": "#3e4a3d",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-dim": "#F1EFE8",
+                        "on-surface": "#171d16",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-container-high": "#e3eadf",
+                        "tertiary": "#4d5d73",
+                        "trail-indigo": "#6366F1",
+                        "surface": "#f4fcf0",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-container-low": "#eff6ea",
+                        "on-primary-container": "#f7fff2",
+                        "primary": "#006b2c",
+                        "inverse-on-surface": "#ecf3e7",
+                        "surface-ivory": "#FAFAF7",
+                        "on-secondary-container": "#5c6274",
+                        "secondary": "#585e6f",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "error-container": "#ffdad6",
+                        "error-red": "#DC2626",
+                        "navy-deep": "#0B1220"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "48px",
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory min-h-screen py-12 px-margin-mobile md:px-margin-desktop antialiased font-sans flex flex-col items-center gap-12 dark:bg-navy-deep">
+<!-- TopNavBar Shell -->
+<nav class="bg-surface/80 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/10 shadow-sm flex justify-between items-center max-w-container-max mx-auto px-margin-desktop h-20 hidden md:flex">
+<div class="text-headline-lg font-headline-lg font-bold text-on-surface tracking-tighter">Monitrax</div>
+<div class="flex gap-8 items-center">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md hover:bg-white/5 transition-all duration-300" href="#">The TRAIL</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md hover:bg-white/5 transition-all duration-300" href="#">Capabilities</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md hover:bg-white/5 transition-all duration-300" href="#">Pricing</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md hover:bg-white/5 transition-all duration-300" href="#">Security</a>
+</div>
+<div class="flex gap-4 items-center">
+<button class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md">Login</button>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-primary-fixed-dim transition-colors">Get Started</button>
+</div>
+</nav>
+<div class="h-20 hidden md:block w-full"></div> <!-- Spacer for fixed nav -->
+<!-- Container for Variants -->
+<div class="w-full max-w-container-max mx-auto flex flex-col gap-16 items-center pt-8">
+<!-- Variant: Desktop Light -->
+<div class="w-[720px] max-w-full">
+<h2 class="text-label-md font-label-md text-outline mb-4">Desktop Light (720px)</h2>
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-xl p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] relative">
+<!-- Header -->
+<div class="flex justify-between items-start mb-2">
+<div>
+<div class="text-eyebrow font-eyebrow text-outline uppercase tracking-widest mb-1">FREEDOM HORIZON</div>
+<div class="text-data-xl font-data-xl text-on-surface">14.4 years</div>
+</div>
+<div class="flex bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-lg overflow-hidden">
+<button class="px-3 py-1 text-label-md font-label-md text-outline-slate hover:text-on-surface transition-colors">3M</button>
+<button class="px-3 py-1 text-label-md font-label-md text-outline-slate hover:text-on-surface transition-colors">6M</button>
+<button class="px-3 py-1 text-label-md font-label-md bg-surface-dim text-on-surface font-medium border-l border-r border-[#E2E8F0]">1Y</button>
+<button class="px-3 py-1 text-label-md font-label-md text-outline-slate hover:text-on-surface transition-colors">ALL</button>
+</div>
+</div>
+<div class="text-body-sm font-body-sm text-outline-slate mb-8">of freedom — strongest month was August at $6,392</div>
+<!-- Sparkline Grid -->
+<div class="grid grid-cols-6 grid-rows-2 gap-4 mb-8">
+<!-- Cell JAN -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">JAN</div>
+<div class="h-6 w-full relative">
+<!-- SVG Sparkline Mock (Flat SVG strictly for shape, no data-uri) -->
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,20 20,10 40,25 60,5 80,15 100,2" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$4,100</div>
+</div>
+<!-- Cell FEB -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">FEB</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,15 25,5 50,20 75,10 100,25" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$3,800</div>
+</div>
+<!-- Cell MAR -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">MAR</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,25 20,20 40,28 60,15 80,10 100,5" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$4,500</div>
+</div>
+<!-- Cell APR -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">APR</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,5 30,15 60,10 100,20" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$4,250</div>
+</div>
+<!-- Cell MAY -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">MAY</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,20 25,25 50,15 75,20 100,10" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$4,800</div>
+</div>
+<!-- Cell JUN -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">JUN</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,10 40,5 60,15 100,2" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$5,100</div>
+</div>
+<!-- Cell JUL -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">JUL</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,15 20,20 40,10 60,5 80,15 100,8" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$5,400</div>
+</div>
+<!-- Cell AUG -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group bg-surface-dim border-[#E2E8F0]">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">AUG</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,25 20,5 40,15 60,2 80,10 100,0" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface font-medium">$6,392</div>
+</div>
+<!-- Cell SEP -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">SEP</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,10 30,20 60,5 100,15" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$5,800</div>
+</div>
+<!-- Cell OCT -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">OCT</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,20 25,10 50,15 75,5 100,10" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$5,500</div>
+</div>
+<!-- Cell NOV -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">NOV</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,15 30,25 60,10 100,20" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$5,200</div>
+</div>
+<!-- Cell DEC -->
+<div class="flex flex-col gap-1 p-2 border-[1.5px] border-transparent hover:border-[#E2E8F0] hover:bg-surface-ivory rounded-lg transition-colors cursor-pointer group">
+<div class="text-[10px] font-eyebrow text-outline-slate uppercase">DEC</div>
+<div class="h-6 w-full relative">
+<svg class="absolute bottom-0 w-full h-full text-trail-emerald" preserveaspectratio="none" viewbox="0 0 100 30">
+<polyline fill="none" points="0,20 20,10 40,15 60,5 80,10 100,2" stroke="currentColor" stroke-width="1.5"></polyline>
+</svg>
+</div>
+<div class="text-[10px] font-mono text-on-surface">$5,900</div>
+</div>
+</div>
+<!-- Footer KPIs -->
+<div class="flex items-center justify-between border-t border-[#E2E8F0] pt-4 mt-2">
+<div class="flex gap-4">
+<div class="flex flex-col">
+<span class="text-eyebrow font-eyebrow text-outline-slate mb-1">EARNED YTD</span>
+<span class="text-label-md font-label-md text-on-surface">$142k</span>
+</div>
+<div class="w-px h-8 bg-[#E2E8F0]"></div>
+<div class="flex flex-col">
+<span class="text-eyebrow font-eyebrow text-outline-slate mb-1">KEPT YTD</span>
+<span class="text-label-md font-label-md text-on-surface">$60.2k</span>
+</div>
+<div class="w-px h-8 bg-[#E2E8F0]"></div>
+<div class="flex flex-col">
+<span class="text-eyebrow font-eyebrow text-outline-slate mb-1">BEST MONTH</span>
+<span class="text-label-md font-label-md text-on-surface">AUG ($6.3k)</span>
+</div>
+</div>
+<div class="text-[10px] font-body-sm text-outline-slate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">touch_app</span> Tap a month to expand details
+                    </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Shell -->
+<footer class="bg-surface-container-lowest w-full py-12 border-t border-white/5 mt-20 hidden md:block">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<div class="text-label-md font-label-md font-bold text-on-surface">Monitrax</div>
+<div class="text-label-sm font-label-sm text-primary opacity-80 hover:opacity-100">© 2024 Monitrax. Australian Financial Services Licensee.</div>
+<div class="flex gap-6">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Regulatory Disclosure</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Security Architecture</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Contact</a>
+</div>
+</div>
+</footer>
+</body></html>
